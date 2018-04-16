@@ -138,8 +138,56 @@ export class AppComponent {
       case 12:
       case 13:
         return startLeft - xSpace * 5;
+      case 25: // bar
+        return startLeft + xSpace;
+      case 0: // off
+        return startRight + xSpace * 6;
     }
 
     return -120;
   }
+
+  private showBottomRightDot(diceValue: number): string {
+    if(diceValue === 2 || diceValue === 3 || diceValue === 4 || diceValue === 5 || diceValue === 6){
+      return "visible";
+    }
+    return "hidden";
+  }
+  private showMiddleRightDot(diceValue: number): string {
+    if(diceValue === 6){
+      return "visible";
+    }
+    return "hidden";
+  }
+  private showTopRightDot(diceValue: number): string {
+    if(diceValue === 4 || diceValue === 5 || diceValue === 6){
+      return "visible";
+    }
+    return "hidden";
+  }
+  private showTopLeftDot(diceValue: number): string {
+    if(diceValue === 2 || diceValue === 3 || diceValue === 4 || diceValue === 5 || diceValue === 6){
+      return "visible";
+    }
+    return "hidden";
+  }
+  private showMiddleLeftDot(diceValue: number): string {
+    if(diceValue === 6){
+      return "visible";
+    }
+    return "hidden";
+  }
+  private showBottomLeftDot(diceValue: number): string {
+    if( diceValue === 4 || diceValue === 5 || diceValue === 6){
+      return "visible";
+    }
+    return "hidden";
+  }
+  private showMiddleDot(diceValue: number): string {
+    if(diceValue === 1 || diceValue === 3  || diceValue === 5){
+      return "visible";
+    }
+    return "hidden";
+  }
+
 }

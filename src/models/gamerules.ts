@@ -62,7 +62,7 @@ export class Gamerules {
             }
             const targetField = this.board.getFieldByNumber(move.to);
             // achtung: rule spezifische logik, muss hier raus
-            if (targetField.checkers.length === 1 && targetField.checkers[0].color !== this._currentPlayer.color) {
+            if (targetField.number !== Board.offNumber && targetField.checkers.length === 1 && targetField.checkers[0].color !== this._currentPlayer.color) {
                 const hitChecker = targetField.checkers.pop();
                 if (!hitChecker) {
                     throw new Error("hit checker not found on target field " + targetField.number);
@@ -142,7 +142,7 @@ export class Gamerules {
         const ownCheckers = _.filter(board.bar.checkers, c => c.color === player.color);
         diceRolls.forEach(roll => {
             if (!_.find(moves, m => m.to === roll) && this.canMoveToField(sortedBoard[roll - 1], player)) {
-                moves.push(new Move(Board.barNumber, roll - 1, roll));
+                moves.push(new Move(Board.barNumber, sortedBoard[roll - 1].number, roll));
             }
         });
         return moves;
