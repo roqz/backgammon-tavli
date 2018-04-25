@@ -28,4 +28,10 @@ describe("Player", () => {
         const player = new Player("P1", CheckerColor.WHITE);
         expect(player.colorString).toEqual("white");
     }));
+    it("should return correct opponent color", async(() => {
+        const player = new Player("P1", CheckerColor.WHITE);
+        expect(player.getOpponentColor()).toEqual(CheckerColor.BLACK);
+        const playerB = new Player("P1", CheckerColor.BLACK);
+        expect(playerB.getOpponentColor()).toEqual(CheckerColor.WHITE);
+    }));
 });

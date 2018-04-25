@@ -3,6 +3,7 @@ import { Board } from "./board";
 
 import { Move } from "./move";
 import { Gamerules } from "./gamerules";
+import { Helper } from "../helper/helper";
 
 export class Player {
     public readonly name: string;
@@ -32,7 +33,7 @@ export class Player {
         let possible = gameRules.getAllPossibleMoves(gameRules.getBoard(), this, rolls);
         let count = 0;
         while (rolls.length > 0 && possible.length > 0) {
-            await this.timeout(200);
+            await Helper.timeout(200);
             gameRules.makeMove(possible[0], this);
             rolls = gameRules.getOpenRollsOrRoll(this);
             possible = gameRules.getAllPossibleMoves(gameRules.getBoard(), this, rolls);
@@ -43,8 +44,12 @@ export class Player {
         }
 
     }
-    private timeout(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+
+    public getOpponentColor(): CheckerColor {
+        if (this.color === CheckerColor.BLACK) {
+            return CheckerColor.WHITE;
+        }
+        return CheckerColor.BLACK;
     }
 }
 

@@ -6,6 +6,7 @@ import { Move } from "./move";
 import { Field } from "./field";
 import { DiceService } from "../services/dice.service";
 import { timeout } from "q";
+import { Helper } from "../helper/helper";
 
 export class Gamerules {
     private startWhite = 1;
@@ -62,7 +63,9 @@ export class Gamerules {
             }
             const targetField = this.board.getFieldByNumber(move.to);
             // achtung: rule spezifische logik, muss hier raus
-            if (targetField.number !== Board.offNumber && targetField.checkers.length === 1 && targetField.checkers[0].color !== this._currentPlayer.color) {
+            if (targetField.number !== Board.offNumber &&
+                targetField.checkers.length === 1 &&
+                targetField.checkers[0].color !== this._currentPlayer.color) {
                 const hitChecker = targetField.checkers.pop();
                 if (!hitChecker) {
                     throw new Error("hit checker not found on target field " + targetField.number);
@@ -105,15 +108,12 @@ export class Gamerules {
     }
 
     private async start() {
-        await this.timeout(500);
+        await Helper.timeout(500);
         if (this.isAnyMovePossible()) {
             this._currentPlayer.play(_.cloneDeep(this.board), this, this.openDiceRolls);
         } else {
             this.nextPlayer();
         }
-    }
-    private timeout(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     private fieldHasOwnChecker(field: Field, player: Player): boolean {
@@ -195,19 +195,13 @@ export class Gamerules {
         if (field.checkers.length === 0) {
             return true;
         }
-        const opponentCheckers = _.filter(field.checkers, c => c.color === this.getOpponentColor(player));
+        const opponentCheckers = _.filter(field.checkers, c => c.color === player.getOpponentColor());
         if (opponentCheckers.length <= 1) {
             return true;
         }
         return false;
     }
 
-    private getOpponentColor(player: Player): CheckerColor {
-        if (player.color === CheckerColor.BLACK) {
-            return CheckerColor.WHITE;
-        }
-        return CheckerColor.BLACK;
-    }
 
     private sortBoardFieldsByPlayingDirection(board: Board, player: Player): Field[] {
         const startPos = this.getFirstFieldNumber(player);
