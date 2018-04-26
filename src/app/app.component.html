@@ -139,31 +139,56 @@
       <path d="M139.5 4.871v228.133" stroke="#774b1f" />
       <path d="M140.5 4.871v228.133" stroke="#b1875a" />
     </g>
-    <g transform="matrix(.02315 -.01 .01 .02315 65.427 113.008)" overflow="visible" id="dice1" *ngIf="rules.openRolls[0]">
+    <g transform="matrix(.02315 -.01 .01 .02315 65.427 113.008)" overflow="visible" id="dice1" *ngIf="rules.openRolls[0] && rules.currentPlayer.color==0">
+      <rect width="550" height="550" x="3.5" y="3.5" rx="67.96" ry="67.96" color="#000" fill="#000" stroke="#000" stroke-width="24.048"
+        overflow="visible" />
+
+      <circle cx="439.975" cy="439.974" fill="#fff" r="57.115" class="rightBottom" [attr.visibility]="showBottomRightDot(rules.openRolls[0])"></circle>
+      <circle cx="439.975" cy="275" fill="#fff" r="57.115" class="rightMiddle" [attr.visibility]="showMiddleRightDot(rules.openRolls[0])"></circle>
+      <circle cx="439.975" cy="117.026" fill="#fff" r="57.115" class="rightTop" [attr.visibility]="showTopRightDot(rules.openRolls[0])"></circle>
+      <circle cx="117.026" cy="117.026" fill="#fff" r="57.115" class="leftTop" [attr.visibility]="showTopLeftDot(rules.openRolls[0])"></circle>
+      <circle cx="117.026" cy="275" fill="#fff" r="57.115" class="leftMiddle" [attr.visibility]="showMiddleLeftDot(rules.openRolls[0])"></circle>
+      <circle cx="117.026" cy="439.974" fill="#fff" r="57.115" class="leftBottom" [attr.visibility]="showBottomLeftDot(rules.openRolls[0])"></circle>
+      <circle cx="275" cy="275" fill="#fff" r="57.115" class="middle" [attr.visibility]="showMiddleDot(rules.openRolls[0])"></circle>
+    </g>
+    <g transform="matrix(.02315 -.01 .01 .02315 85.427 123.008)" overflow="visible" id="dice2" *ngIf="rules.openRolls[1] && rules.currentPlayer.color==0">
+      <rect width="550" height="550" x="3.5" y="3.5" rx="67.96" ry="67.96" color="#000" fill="#000" stroke="#000" stroke-width="24.048"
+        overflow="visible" />
+
+      <circle cx="439.975" cy="439.974" fill="#fff" r="57.115" class="rightBottom" [attr.visibility]="showBottomRightDot(rules.openRolls[1])"></circle>
+      <circle cx="439.975" cy="275" fill="#fff" r="57.115" class="rightMiddle" [attr.visibility]="showMiddleRightDot(rules.openRolls[1])"></circle>
+      <circle cx="439.975" cy="117.026" fill="#fff" r="57.115" class="rightTop" [attr.visibility]="showTopRightDot(rules.openRolls[1])"></circle>
+      <circle cx="117.026" cy="117.026" fill="#fff" r="57.115" class="leftTop" [attr.visibility]="showTopLeftDot(rules.openRolls[1])"></circle>
+      <circle cx="117.026" cy="275" fill="#fff" r="57.115" class="leftMiddle" [attr.visibility]="showMiddleLeftDot(rules.openRolls[1])"></circle>
+      <circle cx="117.026" cy="439.974" fill="#fff" r="57.115" class="leftBottom" [attr.visibility]="showBottomLeftDot(rules.openRolls[1])"></circle>
+      <circle cx="275" cy="275" fill="#fff" r="57.115" class="middle" [attr.visibility]="showMiddleDot(rules.openRolls[1])"></circle>
+    </g>
+
+    <g transform="matrix(.02315 -.01 .01 .02315 205.427 113.008)" overflow="visible" id="dice3" *ngIf="rules.openRolls[0] && rules.currentPlayer.color==1">
       <rect width="550" height="550" x="3.5" y="3.5" rx="67.96" ry="67.96" color="#000" fill="#ee0701" stroke="#000" stroke-width="24.048"
         overflow="visible" />
-      
-      <circle  cx="439.975" cy="439.974" fill="#fff" r="57.115" class="rightBottom" [attr.visibility]="showBottomRightDot(rules.openRolls[0])"></circle>
-      <circle  cx="439.975" cy="275" fill="#fff" r="57.115" class="rightMiddle" [attr.visibility]="showMiddleRightDot(rules.openRolls[0])"></circle>
-      <circle  cx="439.975" cy="117.026" fill="#fff" r="57.115" class="rightTop" [attr.visibility]="showTopRightDot(rules.openRolls[0])"></circle>
-      <circle  cx="117.026" cy="117.026" fill="#fff" r="57.115" class="leftTop" [attr.visibility]="showTopLeftDot(rules.openRolls[0])"></circle>
-      <circle  cx="117.026" cy="275" fill="#fff" r="57.115" class="leftMiddle" [attr.visibility]="showMiddleLeftDot(rules.openRolls[0])"></circle>
-      <circle  cx="117.026" cy="439.974" fill="#fff" r="57.115" class="leftBottom" [attr.visibility]="showBottomLeftDot(rules.openRolls[0])"></circle>
-      <circle  cx="275" cy="275" fill="#fff" r="57.115" class="middle" [attr.visibility]="showMiddleDot(rules.openRolls[0])"></circle>
+
+      <circle cx="439.975" cy="439.974" fill="#fff" r="57.115" class="rightBottom" [attr.visibility]="showBottomRightDot(rules.openRolls[0])"></circle>
+      <circle cx="439.975" cy="275" fill="#fff" r="57.115" class="rightMiddle" [attr.visibility]="showMiddleRightDot(rules.openRolls[0])"></circle>
+      <circle cx="439.975" cy="117.026" fill="#fff" r="57.115" class="rightTop" [attr.visibility]="showTopRightDot(rules.openRolls[0])"></circle>
+      <circle cx="117.026" cy="117.026" fill="#fff" r="57.115" class="leftTop" [attr.visibility]="showTopLeftDot(rules.openRolls[0])"></circle>
+      <circle cx="117.026" cy="275" fill="#fff" r="57.115" class="leftMiddle" [attr.visibility]="showMiddleLeftDot(rules.openRolls[0])"></circle>
+      <circle cx="117.026" cy="439.974" fill="#fff" r="57.115" class="leftBottom" [attr.visibility]="showBottomLeftDot(rules.openRolls[0])"></circle>
+      <circle cx="275" cy="275" fill="#fff" r="57.115" class="middle" [attr.visibility]="showMiddleDot(rules.openRolls[0])"></circle>
     </g>
-    <g transform="matrix(.02315 -.01 .01 .02315 85.427 123.008)" overflow="visible" id="dice2" *ngIf="rules.openRolls[1]">
+    <g transform="matrix(.02315 -.01 .01 .02315 225.427 123.008)" overflow="visible" id="dice4" *ngIf="rules.openRolls[1] && rules.currentPlayer.color==1">
       <rect width="550" height="550" x="3.5" y="3.5" rx="67.96" ry="67.96" color="#000" fill="#ee0701" stroke="#000" stroke-width="24.048"
         overflow="visible" />
-      
-      <circle  cx="439.975" cy="439.974" fill="#fff" r="57.115" class="rightBottom" [attr.visibility]="showBottomRightDot(rules.openRolls[1])"></circle>
-      <circle  cx="439.975" cy="275" fill="#fff" r="57.115" class="rightMiddle" [attr.visibility]="showMiddleRightDot(rules.openRolls[1])"></circle>
-      <circle  cx="439.975" cy="117.026" fill="#fff" r="57.115" class="rightTop" [attr.visibility]="showTopRightDot(rules.openRolls[1])"></circle>
-      <circle  cx="117.026" cy="117.026" fill="#fff" r="57.115" class="leftTop" [attr.visibility]="showTopLeftDot(rules.openRolls[1])"></circle>
-      <circle  cx="117.026" cy="275" fill="#fff" r="57.115" class="leftMiddle" [attr.visibility]="showMiddleLeftDot(rules.openRolls[1])"></circle>
-      <circle  cx="117.026" cy="439.974" fill="#fff" r="57.115" class="leftBottom" [attr.visibility]="showBottomLeftDot(rules.openRolls[1])"></circle>
-      <circle  cx="275" cy="275" fill="#fff" r="57.115" class="middle" [attr.visibility]="showMiddleDot(rules.openRolls[1])"></circle>
+
+      <circle cx="439.975" cy="439.974" fill="#fff" r="57.115" class="rightBottom" [attr.visibility]="showBottomRightDot(rules.openRolls[1])"></circle>
+      <circle cx="439.975" cy="275" fill="#fff" r="57.115" class="rightMiddle" [attr.visibility]="showMiddleRightDot(rules.openRolls[1])"></circle>
+      <circle cx="439.975" cy="117.026" fill="#fff" r="57.115" class="rightTop" [attr.visibility]="showTopRightDot(rules.openRolls[1])"></circle>
+      <circle cx="117.026" cy="117.026" fill="#fff" r="57.115" class="leftTop" [attr.visibility]="showTopLeftDot(rules.openRolls[1])"></circle>
+      <circle cx="117.026" cy="275" fill="#fff" r="57.115" class="leftMiddle" [attr.visibility]="showMiddleLeftDot(rules.openRolls[1])"></circle>
+      <circle cx="117.026" cy="439.974" fill="#fff" r="57.115" class="leftBottom" [attr.visibility]="showBottomLeftDot(rules.openRolls[1])"></circle>
+      <circle cx="275" cy="275" fill="#fff" r="57.115" class="middle" [attr.visibility]="showMiddleDot(rules.openRolls[1])"></circle>
     </g>
- 
+
     <g transform="rotate(14.584 141.599 -45.82)" id="doublerDice">
       <rect transform="rotate(-.2)" ry="1.714" rx="1.714" y="115.591" x="177.252" height="13.87" width="13.87" color="#000" fill="#ee0701"
         stroke="#000" stroke-width=".606" overflow="visible" />
@@ -234,7 +259,9 @@
 </svg>
 
 <div>Current Player: {{ rules.currentPlayer.colorString }}</div>
-<div>Open rolls: <span *ngFor="let roll of rules.openRolls">{{ roll }}</span></div>
+<div>Open rolls:
+  <span *ngFor="let roll of rules.openRolls">{{ roll }}</span>
+</div>
 <div>White checkers on bar: {{ barCheckersWhite }}</div>
 <div>Black checkers on bar: {{ barCheckersBlack }}</div>
 <div>White checkers in off: {{ offCheckersWhite }}</div>

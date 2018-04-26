@@ -7,34 +7,16 @@ import { Field } from "./field";
 import { DiceService } from "../services/dice.service";
 import { timeout } from "q";
 import { Helper } from "../helper/helper";
+import { GameRulesBase } from "./gamerulesbase";
+import { GameMode } from "./gamemode";
 
-export class Gamerules {
-    private startWhite = 1;
+export class GamerulesBackgammon extends GameRulesBase {
 
-    private _currentPlayer: Player;
-    private openDiceRolls: number[];
-
-    constructor(private board: Board, private player1: Player, private player2: Player, private dice: DiceService) {
-        this.initBoardPositions(board, this.player1, this.player2);
+    constructor(board: Board, private player1: Player, private player2: Player, dice: DiceService) {
+        super(board, dice, GameMode.BACKGAMMON);
+        this.initBoardPositions(this.board, this.player1, this.player2);
         this._currentPlayer = this.getStartingPlayer();
         this.start();
-    }
-    public getBoard(): Board {
-        return _.cloneDeep(this.board);
-    }
-    public getOpenRollsOrRoll(player: Player): number[] {
-        if (player !== this._currentPlayer) {
-            return [];
-        }
-        return this.openDiceRolls;
-    }
-
-    public get openRolls(): number[] {
-        return this.openDiceRolls;
-    }
-
-    public get currentPlayer(): Player {
-        return this._currentPlayer;
     }
 
     public getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[] {
@@ -52,7 +34,7 @@ export class Gamerules {
         if (player !== this._currentPlayer) {
             return;
         }
-        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this.openDiceRolls);
+        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
             const startField = this.board.getFieldByNumber(move.from);
             const idx = _.findIndex(startField.checkers, c => c.color === this._currentPlayer.color);
@@ -73,11 +55,11 @@ export class Gamerules {
                 this.board.bar.checkers.push(hitChecker);
             }
             targetField.checkers.push(checker[0]);
-            const executedRoll = this.openDiceRolls.indexOf(move.roll);
+            const executedRoll = this._openDiceRolls.indexOf(move.roll);
             if (executedRoll === -1) {
                 throw new Error("mit dem würfel is was hin, roll: " + move.roll);
             }
-            this.openDiceRolls.splice(executedRoll, 1);
+            this._openDiceRolls.splice(executedRoll, 1);
             console.log(this.currentPlayer.colorString + " made move - roll: " + move.roll);
             this.checkIfMustSwitchPlayersOrGameOver();
         } else {
@@ -89,7 +71,7 @@ export class Gamerules {
 
     private checkIfMustSwitchPlayersOrGameOver() {
         if (!this.isAnyMovePossible()) {
-            if (!this.gameOver()) {
+            if (!this.isGameOver()) {
                 this.nextPlayer();
             } else {
                 console.log("game over! winner: " + this._currentPlayer.colorString);
@@ -98,38 +80,21 @@ export class Gamerules {
         }
     }
 
-    private gameOver() {
-        const offCheckers = _.filter(this.board.off.checkers, c => c.color === this._currentPlayer.color);
-        console.log("off checkers: " + offCheckers.length + ", color: " + this._currentPlayer.colorString);
-        if (offCheckers.length === 15) {
-            return true;
-        }
-        return false;
-    }
-
     private async start() {
         await Helper.timeout(500);
         if (this.isAnyMovePossible()) {
-            this._currentPlayer.play(_.cloneDeep(this.board), this, this.openDiceRolls);
+            this._currentPlayer.play(_.cloneDeep(this.board), this, this._openDiceRolls);
         } else {
             this.nextPlayer();
         }
     }
 
-    private fieldHasOwnChecker(field: Field, player: Player): boolean {
-        field.checkers.forEach(c => {
-            if (!c) {
-                throw new Error(field.number + " field has null checker object");
-            }
-        });
-        return _.find(field.checkers, c => c.color === player.color) != null;
-    }
 
     private isAnyMovePossible(): boolean {
-        if (this.openDiceRolls.length === 0) {
+        if (this._openDiceRolls.length === 0) {
             return false;
         }
-        const possibleMovesLength = this.getAllPossibleMoves(this.board, this._currentPlayer, this.openDiceRolls).length;
+        const possibleMovesLength = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls).length;
         if (possibleMovesLength === 0) {
             console.log("zero moves possible");
         }
@@ -202,31 +167,6 @@ export class Gamerules {
         return false;
     }
 
-
-    private sortBoardFieldsByPlayingDirection(board: Board, player: Player): Field[] {
-        const startPos = this.getFirstFieldNumber(player);
-        if (startPos === 1) {
-            return _.orderBy(board.fields, f => f.number);
-        }
-        if (startPos === 24) {
-            return _.orderBy(board.fields, f => f.number, "desc");
-        }
-        const firstPart = board.fields.slice(0, 12);
-        const secondPart = board.fields.slice(12, 24);
-        if (startPos === 12) {
-            return _.concat(
-                _.orderBy(firstPart, f => f.number, "desc"),
-                _.orderBy(secondPart, f => f.number, "desc")
-            );
-        }
-        if (startPos === 13) {
-            return _.concat(
-                _.orderBy(secondPart, f => f.number, "asc"),
-                _.orderBy(firstPart, f => f.number, "asc")
-            );
-        }
-    }
-
     private canMoveOut(): boolean {
         const home = this.getHomeSector(this.board, this._currentPlayer);
         const checkersInHome = _.flatMap(home, h => h.checkers);
@@ -234,32 +174,6 @@ export class Gamerules {
         const ownCheckersAlreadyOff = _.filter(this.board.off.checkers, c => c.color === this._currentPlayer.color);
         return currentPlayerCheckersInHome.length + ownCheckersAlreadyOff.length === 15;
     }
-
-    private getHomeSector(board: Board, player: Player): Field[] {
-        const lastField = this.getLastFieldNumber(player);
-
-        return this.getSectorOfStartfield(board, lastField);
-    }
-    private getStartSector(board: Board, player: Player): Field[] {
-        const startField = this.getFirstFieldNumber(player);
-        return this.getSectorOfStartfield(board, startField);
-    }
-
-    private getSectorOfStartfield(board: Board, fieldNumber: number): Field[] {
-        if (fieldNumber === 1 || fieldNumber === 6) {
-            return _.filter(board.fields, f => 1 <= f.number && f.number <= 6);
-        }
-        if (fieldNumber === 12 || fieldNumber === 7) {
-            return _.filter(board.fields, f => 7 <= f.number && f.number <= 12);
-        }
-        if (fieldNumber === 13 || fieldNumber === 18) {
-            return _.filter(board.fields, f => 13 <= f.number && f.number <= 18);
-        }
-        if (fieldNumber === 24 || fieldNumber === 19) {
-            return _.filter(board.fields, f => 19 <= f.number && f.number <= 24);
-        }
-    }
-
     private initBoardPositions(board: Board, player1: Player, player2: Player): Board {
         let white = player1;
         let black = player2;
@@ -271,16 +185,7 @@ export class Gamerules {
         this.initPlayer(board, black);
         return board;
     }
-    private getLastFieldNumber(player: Player): number {
-        const ownStartField = this.getFirstFieldNumber(player);
-        return 25 - ownStartField;
-    }
-    private getFirstFieldNumber(player: Player): number {
-        if (player.color === CheckerColor.WHITE) {
-            return this.startWhite;
-        }
-        return 25 - this.startWhite;
-    }
+
     private getSecondFieldNumber(player: Player): number {
         const firstFieldNumber = this.getFirstFieldNumber(player);
         let secondFieldNumber = 12;
@@ -360,7 +265,7 @@ export class Gamerules {
         } else {
             this._currentPlayer = this.player2;
         }
-        this.openDiceRolls = [player1Roll, player2Roll];
+        this._openDiceRolls = [player1Roll, player2Roll];
         return this._currentPlayer;
     }
     private nextPlayer() {
@@ -369,8 +274,8 @@ export class Gamerules {
         } else {
             this._currentPlayer = this.player1;
         }
-        this.openDiceRolls = this.rollDices();
-        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this.openDiceRolls);
+        this._openDiceRolls = this.rollDices();
+        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (possibleMoves && possibleMoves.length > 0) {
             this._currentPlayer.play(_.cloneDeep(this.board), this);
         } else {
@@ -379,16 +284,6 @@ export class Gamerules {
         }
 
     }
-    private rollDices(): number[] {
-        const dice1 = this.dice.roll();
-        const dice2 = this.dice.roll();
-        if (dice1 === dice2) {
-            return [dice1, dice1, dice1, dice1];
-        }
-        return [dice1, dice2];
-    }
 }
 
-export enum GameMode {
-    BACKGAMMON, PORTES, PLAKATO, FEVGA
-}
+

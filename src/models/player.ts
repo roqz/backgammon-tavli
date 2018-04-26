@@ -1,9 +1,8 @@
 import { CheckerColor, Checker } from "./checker";
 import { Board } from "./board";
-
 import { Move } from "./move";
-import { Gamerules } from "./gamerules";
 import { Helper } from "../helper/helper";
+import { GameRulesBase } from "./gamerulesbase";
 
 export class Player {
     public readonly name: string;
@@ -28,14 +27,14 @@ export class Player {
         return this.color === CheckerColor.BLACK ? "black" : "white";
     }
 
-    public async play(board: Board, gameRules: Gamerules, startDices: number[] = null) {
-        let rolls = gameRules.getOpenRollsOrRoll(this);
+    public async play(board: Board, gameRules: GameRulesBase, startDices: number[] = null) {
+        let rolls = gameRules.openRolls;
         let possible = gameRules.getAllPossibleMoves(gameRules.getBoard(), this, rolls);
         let count = 0;
         while (rolls.length > 0 && possible.length > 0) {
             await Helper.timeout(200);
             gameRules.makeMove(possible[0], this);
-            rolls = gameRules.getOpenRollsOrRoll(this);
+            rolls = gameRules.openRolls;
             possible = gameRules.getAllPossibleMoves(gameRules.getBoard(), this, rolls);
             count++;
             if (count > 10) {

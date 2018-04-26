@@ -3,7 +3,7 @@ import { Field } from "../models/field";
 import { Board } from "../models/board";
 import { Player } from "../models/player";
 import { CheckerColor, Checker } from "../models/checker";
-import { Gamerules } from "../models/gamerules";
+import { GamerulesBackgammon } from "../models/gamerules-backgammon";
 import _ = require("lodash");
 import { DiceService } from "../services/dice.service";
 
@@ -14,7 +14,7 @@ import { DiceService } from "../services/dice.service";
 })
 export class AppComponent {
   title = "Backgammon Tavli";
-  private rules: Gamerules;
+  private rules: GamerulesBackgammon;
   public board: Board;
   public rolls: number[];
   public currentPlayer: Player;
@@ -24,9 +24,9 @@ export class AppComponent {
     const board = new Board();
     const p1 = new Player("Tom", CheckerColor.WHITE);
     const p2 = new Player("PC1", CheckerColor.BLACK);
-    
+
     this.board = board;
-    this.rules = new Gamerules(board, p1, p2, new DiceService());
+    this.rules = new GamerulesBackgammon(board, p1, p2, new DiceService());
     this.rolls = this.rules.openRolls;
     this.currentPlayer = this.rules.currentPlayer;
     console.log(this.board);
@@ -148,43 +148,43 @@ export class AppComponent {
   }
 
   private showBottomRightDot(diceValue: number): string {
-    if(diceValue === 2 || diceValue === 3 || diceValue === 4 || diceValue === 5 || diceValue === 6){
+    if (diceValue === 2 || diceValue === 3 || diceValue === 4 || diceValue === 5 || diceValue === 6) {
       return "visible";
     }
     return "hidden";
   }
   private showMiddleRightDot(diceValue: number): string {
-    if(diceValue === 6){
+    if (diceValue === 6) {
       return "visible";
     }
     return "hidden";
   }
   private showTopRightDot(diceValue: number): string {
-    if(diceValue === 4 || diceValue === 5 || diceValue === 6){
+    if (diceValue === 4 || diceValue === 5 || diceValue === 6) {
       return "visible";
     }
     return "hidden";
   }
   private showTopLeftDot(diceValue: number): string {
-    if(diceValue === 2 || diceValue === 3 || diceValue === 4 || diceValue === 5 || diceValue === 6){
+    if (diceValue === 2 || diceValue === 3 || diceValue === 4 || diceValue === 5 || diceValue === 6) {
       return "visible";
     }
     return "hidden";
   }
   private showMiddleLeftDot(diceValue: number): string {
-    if(diceValue === 6){
+    if (diceValue === 6) {
       return "visible";
     }
     return "hidden";
   }
   private showBottomLeftDot(diceValue: number): string {
-    if( diceValue === 4 || diceValue === 5 || diceValue === 6){
+    if (diceValue === 4 || diceValue === 5 || diceValue === 6) {
       return "visible";
     }
     return "hidden";
   }
   private showMiddleDot(diceValue: number): string {
-    if(diceValue === 1 || diceValue === 3  || diceValue === 5){
+    if (diceValue === 1 || diceValue === 3 || diceValue === 5) {
       return "visible";
     }
     return "hidden";

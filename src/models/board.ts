@@ -25,6 +25,21 @@ export class Board {
         return field;
     }
 
+    public getSectorOfField(fieldNumber: number): Field[] {
+        if (1 <= fieldNumber && fieldNumber <= 6) {
+            return _.filter(this.fields, f => 1 <= f.number && f.number <= 6);
+        }
+        if (7 <= fieldNumber && fieldNumber <= 1) {
+            return _.filter(this.fields, f => 7 <= f.number && f.number <= 12);
+        }
+        if (13 <= fieldNumber && fieldNumber <= 18) {
+            return _.filter(this.fields, f => 13 <= f.number && f.number <= 18);
+        }
+        if (19 <= fieldNumber && fieldNumber <= 24) {
+            return _.filter(this.fields, f => 19 <= f.number && f.number <= 24);
+        }
+    }
+
     private generateFields(): Field[] {
         const fields = [];
         for (let i = 1; i <= 24; i++) {

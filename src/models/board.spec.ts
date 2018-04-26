@@ -1,5 +1,6 @@
 import { TestBed, async } from "@angular/core/testing";
 import { Board } from "./board";
+import * as _ from "lodash";
 describe("Board", () => {
   beforeEach(async(() => {
 
@@ -34,5 +35,18 @@ describe("Board", () => {
     const board: Board = new Board();
     const field = board.getFieldByNumber(11);
     expect(field.number).toEqual(11);
+  }));
+  it("should return undefined if field number to get sector is too high", async(() => {
+    const board: Board = new Board();
+    const sector = board.getSectorOfField(77);
+    expect(sector).toBeUndefined();
+  }));
+  it("should return fields 1-6 as sector for field 5", async(() => {
+    const board: Board = new Board();
+    const sector = board.getSectorOfField(5);
+    expect(sector).toBeDefined();
+    expect(sector.length).toEqual(6);
+    const fieldOne = _.find(sector, f => f.number === 1);
+    expect(fieldOne).toBeDefined();
   }));
 });

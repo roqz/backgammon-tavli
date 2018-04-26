@@ -1,5 +1,5 @@
 import { TestBed, async } from "@angular/core/testing";
-import { Gamerules } from "./gamerules";
+import { GamerulesBackgammon } from "./gamerules-backgammon";
 import { Board } from "./board";
 import { Player } from "./player";
 import { CheckerColor } from "./checker";
@@ -19,21 +19,21 @@ describe("Gamerules", () => {
     }));
     it("should return open dice rolls", async(() => {
         const rules = getRulesImplementation();
-        expect(rules.getOpenRollsOrRoll((rules as any).currentPlayer)).toBeDefined();
+        expect(rules.openRolls).toBeDefined();
     }));
     it("should return possible moves", async(() => {
         const rules = getRulesImplementation();
         const rulesAny: any = rules;
         expect(rules.getAllPossibleMoves(
-            rulesAny.board, rulesAny.currentPlayer, rules.getOpenRollsOrRoll(rulesAny.currentPlayer))).toBeDefined();
+            rulesAny.board, rulesAny.currentPlayer, rules.openRolls)).toBeDefined();
     }));
 
-    function getRulesImplementation(): Gamerules {
+    function getRulesImplementation(): GamerulesBackgammon {
         const board = new Board();
         const p1 = new Player("p1", CheckerColor.BLACK);
         const p2 = new Player("p2", CheckerColor.WHITE);
         const diceService = new DiceService();
-        const rules = new Gamerules(board, p1, p2, diceService);
+        const rules = new GamerulesBackgammon(board, p1, p2, diceService);
         return rules;
     }
 });
