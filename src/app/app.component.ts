@@ -4,8 +4,11 @@ import { Board } from "../models/board";
 import { Player } from "../models/player";
 import { CheckerColor, Checker } from "../models/checker";
 import { GamerulesBackgammon } from "../models/gamerules-backgammon";
-import _ = require("lodash");
+import * as _ from "lodash";
 import { DiceService } from "../services/dice.service";
+import { PlayerComputer } from "../models/player-computer";
+import { PlayerHuman } from "../models/player-human";
+import { Move } from "../models/move";
 
 @Component({
   selector: "app-root",
@@ -17,20 +20,22 @@ export class AppComponent {
   private rules: GamerulesBackgammon;
   public board: Board;
   public rolls: number[];
-  public currentPlayer: Player;
-
+  private selectedChecker: Checker;
+  private moveStartField: Field;
+  private moveEndField: Field;
+  private possibleMovesForStartField: Move[];
   constructor() {
     console.log("app component constructor");
     const board = new Board();
-    const p1 = new Player("Tom", CheckerColor.WHITE);
-    const p2 = new Player("PC1", CheckerColor.BLACK);
+    const p1 = new PlayerHuman("Tom", CheckerColor.WHITE);
+    const p2 = new PlayerComputer("PC1", CheckerColor.BLACK);
 
     this.board = board;
     this.rules = new GamerulesBackgammon(board, p1, p2, new DiceService());
     this.rolls = this.rules.openRolls;
-    this.currentPlayer = this.rules.currentPlayer;
+
     console.log(this.board);
-    console.log(this.currentPlayer);
+    console.log(this.rules.currentPlayer);
   }
 
   public get fields(): Field[] {
@@ -53,6 +58,14 @@ export class AppComponent {
     if (!this.board) { return null; }
     return this.board.off;
   }
+  public get offWhite(): Checker[] {
+    if (!this.board) { return null; }
+    return _.filter(this.board.off.checkers, c => c.color === CheckerColor.WHITE);
+  }
+  public get offBlack(): Checker[] {
+    if (!this.board) { return null; }
+    return _.filter(this.board.off.checkers, c => c.color === CheckerColor.BLACK);
+  }
   public get offCheckersWhite(): number {
     if (!this.board) { return null; }
     return _.filter(this.board.off.checkers, c => c.color === CheckerColor.WHITE).length;
@@ -62,6 +75,54 @@ export class AppComponent {
     return _.filter(this.board.off.checkers, c => c.color === CheckerColor.BLACK).length;
   }
 
+  public get controlsEnabled(): boolean {
+    return this.rules.currentPlayer instanceof PlayerHuman;
+  }
+
+  public selectChecker(checker: Checker, field: Field, idx: number) {
+    if (!this.controlsEnabled || this.rules.currentPlayer.color !== checker.color) { return; }
+    this.selectedChecker = checker;
+    this.moveStartField = field;
+    this.possibleMovesForStartField = this.getPossibleMovesForSelectedField(field);
+    console.log("checker selected");
+  }
+  public selectTargetField(field: Field) {
+    const movesForStartFieldWithCurrentRolls = this.getPossibleMovesForSelectedField(field);
+    if (!movesForStartFieldWithCurrentRolls || movesForStartFieldWithCurrentRolls.length === 0) {
+      console.log("no moves for this field");
+    } else {
+      const moveToTargetField = _.find(movesForStartFieldWithCurrentRolls, m => m.to === field.number);
+      if (!moveToTargetField) {
+        console.log("move to the selected field not possible");
+      } else {
+        this.rules.makeMove(moveToTargetField, this.rules.currentPlayer);
+        this.selectedChecker = null;
+        this.moveStartField = null;
+        this.moveEndField = null;
+        this.possibleMovesForStartField = null;
+      }
+    }
+  }
+
+  private getPossibleMovesForSelectedField(field: Field): Move[] {
+    if (!this.controlsEnabled) { return; }
+    if (!this.selectedChecker) { return; }
+    if (!this.moveStartField) { return; }
+    const possibleMoves = this.rules.getAllPossibleMoves(this.rules.getBoard(), this.rules.currentPlayer, this.rules.openRolls);
+    const movesForStartField = _.filter(possibleMoves, p => p.from === this.moveStartField.number);
+    const movesForStartFieldWithCurrentRolls = _.filter(movesForStartField, m => _.findIndex(this.rules.openRolls, o => o === m.roll) > -1);
+    return movesForStartFieldWithCurrentRolls;
+  }
+
+  private getRectFill(field: Field): number {
+    if (this.possibleMovesForStartField) {
+      if (_.findIndex(this.possibleMovesForStartField, p => p.to === field.number) > -1) {
+        return 0.2;
+      }
+    }
+    return 0;
+  }
+
   private getFill(checker: Checker): string {
     let id = "B";
     if (checker.color === CheckerColor.WHITE) {
@@ -69,30 +130,49 @@ export class AppComponent {
     }
     return `url(#${id}`;
   }
-  private getUrl(checker: Checker): string {
-    let id = "Q";
+  private getBorder(checker: Checker): string {
+    let id = "checkerGradientBorderBlack";
     if (checker.color === CheckerColor.WHITE) {
-      id = "S";
+      id = "checkerGradientBorderWhite";
+    }
+    if (checker === this.selectedChecker) {
+      id = "checkerGradientBorderSelected";
     }
     return `url(#${id})`;
   }
   private getTransform(field: Field, checker: Checker, index: number): string {
     const xAxis = this.getXByField(field);
-    const yAxis = this.getYByField(field, index);
+    const yAxis = this.getYByField(field, index, checker);
     return `matrix(.945 0 0 .945 ${xAxis} ${yAxis})`;
   }
 
-  private getYByField(field: Field, index: number): number {
+  private getYByField(field: Field, index: number, checker: Checker): number {
     const ySpace = 19.252;
     const startBottom = 200.778;
     const startTop = 1.022;
-    if (index >= 5) {
+    if (index >= 5 && index < 10) {
       index = index - 4.5;
+    } else if (index >= 10) {
+      index = index - 12.5;
     }
     if (field.number <= 12) {
+      if (field.number === Board.offNumber) {
+        const lastField = this.rules.getLastFieldNumber(checker.color);
+        if (lastField === 24) {
+          return startTop + ySpace * index;
+        }
+      }
       return startBottom - ySpace * index;
     } else {
       return startTop + ySpace * index;
+    }
+  }
+
+  private getYOutsideByField(field: Field): number {
+    if (field.number < 13) {
+      return 130;
+    } else {
+      return 10;
     }
   }
 
@@ -145,49 +225,6 @@ export class AppComponent {
     }
 
     return -120;
-  }
-
-  private showBottomRightDot(diceValue: number): string {
-    if (diceValue === 2 || diceValue === 3 || diceValue === 4 || diceValue === 5 || diceValue === 6) {
-      return "visible";
-    }
-    return "hidden";
-  }
-  private showMiddleRightDot(diceValue: number): string {
-    if (diceValue === 6) {
-      return "visible";
-    }
-    return "hidden";
-  }
-  private showTopRightDot(diceValue: number): string {
-    if (diceValue === 4 || diceValue === 5 || diceValue === 6) {
-      return "visible";
-    }
-    return "hidden";
-  }
-  private showTopLeftDot(diceValue: number): string {
-    if (diceValue === 2 || diceValue === 3 || diceValue === 4 || diceValue === 5 || diceValue === 6) {
-      return "visible";
-    }
-    return "hidden";
-  }
-  private showMiddleLeftDot(diceValue: number): string {
-    if (diceValue === 6) {
-      return "visible";
-    }
-    return "hidden";
-  }
-  private showBottomLeftDot(diceValue: number): string {
-    if (diceValue === 4 || diceValue === 5 || diceValue === 6) {
-      return "visible";
-    }
-    return "hidden";
-  }
-  private showMiddleDot(diceValue: number): string {
-    if (diceValue === 1 || diceValue === 3 || diceValue === 5) {
-      return "visible";
-    }
-    return "hidden";
   }
 
 }

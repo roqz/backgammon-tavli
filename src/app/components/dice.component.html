@@ -1,0 +1,13 @@
+<svg:g [attr.transform]="'matrix(.02315 -.01 .01 .02315 '+ x +' ' + y + ')'">
+  <svg:rect width="550" height="550" x="3.5" y="3.5" rx="67.96" ry="67.96" color="#000" [attr.fill]="color" stroke="#000" stroke-width="24.048"
+    overflow="visible">
+  </svg:rect>
+
+  <svg:circle cx="439.975" cy="439.974" fill="#fff" r="57.115" class="rightBottom" [attr.visibility]="showBottomRightDot()"></svg:circle>
+  <svg:circle cx="439.975" cy="275" fill="#fff" r="57.115" class="rightMiddle" [attr.visibility]="showMiddleRightDot()"></svg:circle>
+  <svg:circle cx="439.975" cy="117.026" fill="#fff" r="57.115" class="rightTop" [attr.visibility]="showTopRightDot()"></svg:circle>
+  <svg:circle cx="117.026" cy="117.026" fill="#fff" r="57.115" class="leftTop" [attr.visibility]="showTopLeftDot()"></svg:circle>
+  <svg:circle cx="117.026" cy="275" fill="#fff" r="57.115" class="leftMiddle" [attr.visibility]="showMiddleLeftDot()"></svg:circle>
+  <svg:circle cx="117.026" cy="439.974" fill="#fff" r="57.115" class="leftBottom" [attr.visibility]="showBottomLeftDot()"></svg:circle>
+  <svg:circle cx="275" cy="275" fill="#fff" r="57.115" class="middle" [attr.visibility]="showMiddleDot()"></svg:circle>
+</svg:g>

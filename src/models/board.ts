@@ -1,5 +1,5 @@
 import { Field } from "./field";
-import _ = require("lodash");
+import * as _ from "lodash";
 
 export class Board {
     public static readonly barNumber = 25;

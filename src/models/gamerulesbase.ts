@@ -27,20 +27,20 @@ export abstract class GameRulesBase {
     public get openRolls(): number[] {
         return this._openDiceRolls;
     }
-    public getFirstFieldNumber(player: Player): number {
-        if (player.color === CheckerColor.WHITE) {
+    public getFirstFieldNumber(color: CheckerColor): number {
+        if (color === CheckerColor.WHITE) {
             return this.startWhite;
         }
         return 25 - this.startWhite;
     }
 
-    public getLastFieldNumber(player: Player): number {
-        const ownStartField = this.getFirstFieldNumber(player);
+    public getLastFieldNumber(color: CheckerColor): number {
+        const ownStartField = this.getFirstFieldNumber(color);
         return 25 - ownStartField;
     }
 
     protected sortBoardFieldsByPlayingDirection(board: Board, player: Player): Field[] {
-        const startPos = this.getFirstFieldNumber(player);
+        const startPos = this.getFirstFieldNumber(player.color);
         if (startPos === 1) {
             return _.orderBy(board.fields, f => f.number);
         }
@@ -63,12 +63,12 @@ export abstract class GameRulesBase {
         }
     }
     protected getHomeSector(board: Board, player: Player): Field[] {
-        const lastField = this.getLastFieldNumber(player);
+        const lastField = this.getLastFieldNumber(player.color);
 
         return this.board.getSectorOfField(lastField);
     }
     protected getStartSector(board: Board, player: Player): Field[] {
-        const startField = this.getFirstFieldNumber(player);
+        const startField = this.getFirstFieldNumber(player.color);
         return this.board.getSectorOfField(startField);
     }
     protected rollDices(): number[] {

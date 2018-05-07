@@ -1,18 +1,22 @@
-import { BrowserModule } from '@angular/platform-browser';
-import { NgModule } from '@angular/core';
+import { BrowserModule } from "@angular/platform-browser";
+import { NgModule, NO_ERRORS_SCHEMA } from "@angular/core";
 
 
-import { AppComponent } from './app.component';
+import { AppComponent } from "./app.component";
+import { DiceComponent } from "./components/dice.component";
 
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    DiceComponent
   ],
   imports: [
     BrowserModule
   ],
   providers: [],
-  bootstrap: [AppComponent]
+  bootstrap: [AppComponent],
+  schemas: [NO_ERRORS_SCHEMA]
+
 })
 export class AppModule { }

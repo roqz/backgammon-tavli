@@ -1,6 +1,6 @@
 import { Checker } from "./checker";
 import { Player } from "./player";
-import _ = require("lodash");
+import * as _ from "lodash";
 
 export class Field {
     public readonly number: number;

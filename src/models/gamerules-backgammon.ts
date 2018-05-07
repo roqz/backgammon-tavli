@@ -36,36 +36,49 @@ export class GamerulesBackgammon extends GameRulesBase {
         }
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
-            const startField = this.board.getFieldByNumber(move.from);
-            const idx = _.findIndex(startField.checkers, c => c.color === this._currentPlayer.color);
-            const checker = startField.checkers.splice(idx, 1);
-            if (!checker || checker.length === 0) {
-                throw new Error("checker not found on start field: " +
-                    idx + " startfield: " + move.from + " color: " + this._currentPlayer.colorString);
-            }
-            const targetField = this.board.getFieldByNumber(move.to);
-            // achtung: rule spezifische logik, muss hier raus
-            if (targetField.number !== Board.offNumber &&
-                targetField.checkers.length === 1 &&
-                targetField.checkers[0].color !== this._currentPlayer.color) {
-                const hitChecker = targetField.checkers.pop();
-                if (!hitChecker) {
-                    throw new Error("hit checker not found on target field " + targetField.number);
-                }
-                this.board.bar.checkers.push(hitChecker);
-            }
-            targetField.checkers.push(checker[0]);
-            const executedRoll = this._openDiceRolls.indexOf(move.roll);
-            if (executedRoll === -1) {
-                throw new Error("mit dem würfel is was hin, roll: " + move.roll);
-            }
-            this._openDiceRolls.splice(executedRoll, 1);
-            console.log(this.currentPlayer.colorString + " made move - roll: " + move.roll);
+            this.executeMove(move);
             this.checkIfMustSwitchPlayersOrGameOver();
         } else {
             this.checkIfMustSwitchPlayersOrGameOver();
             console.log("wanted to make move but move not found ?! Color:" + player.colorString + ",From:" +
                 move.from + ",To:" + move.to + ",Roll:" + move.roll);
+        }
+    }
+
+    private executeMove(move: Move) {
+        const startField = this.board.getFieldByNumber(move.from);
+        const targetField = this.board.getFieldByNumber(move.to);
+        const idxCheckerToMove = _.findIndex(startField.checkers, c => c.color === this._currentPlayer.color);
+        const checkerToMove = startField.checkers.splice(idxCheckerToMove, 1);
+        if (!checkerToMove || checkerToMove.length === 0) {
+            throw new Error("checker not found on start field: " +
+                idxCheckerToMove + " startfield: " + move.from + " color: " + this._currentPlayer.colorString);
+        }
+        // achtung: rule spezifische logik, muss hier raus
+        this.ifOppenentCheckerOnTargetFieldMoveItToBar(targetField);
+        targetField.checkers.push(checkerToMove[0]);
+        this.removeDiceRollFromOpenRolls(move.roll);
+        console.log(this.currentPlayer.colorString + " made move - roll: " + move.roll);
+    }
+
+    private removeDiceRollFromOpenRolls(roll: number) {
+        const executedRoll = this._openDiceRolls.indexOf(roll);
+        if (executedRoll === -1) {
+            throw new Error("mit dem würfel is was hin, roll: " + roll);
+        }
+        this._openDiceRolls.splice(executedRoll, 1);
+    }
+
+    private ifOppenentCheckerOnTargetFieldMoveItToBar(targetField: Field) {
+        // achtung: rule spezifische logik, muss hier raus
+        if (targetField.number !== Board.offNumber &&
+            targetField.checkers.length === 1 &&
+            targetField.checkers[0].color !== this._currentPlayer.color) {
+            const hitChecker = targetField.checkers.pop();
+            if (!hitChecker) {
+                throw new Error("hit checker not found on target field " + targetField.number);
+            }
+            this.board.bar.checkers.push(hitChecker);
         }
     }
 
@@ -83,7 +96,7 @@ export class GamerulesBackgammon extends GameRulesBase {
     private async start() {
         await Helper.timeout(500);
         if (this.isAnyMovePossible()) {
-            this._currentPlayer.play(_.cloneDeep(this.board), this, this._openDiceRolls);
+            this._currentPlayer.play(_.cloneDeep(this.board), this);
         } else {
             this.nextPlayer();
         }
@@ -136,25 +149,20 @@ export class GamerulesBackgammon extends GameRulesBase {
                 const destField = sortedBoard[idxDestination1];
                 if (this.canMoveToField(destField, player)) {
                     tmpMoves.push(new Move(field.number, destField.number, roll));
-
                 }
             } else {
                 if (this.canMoveOut()) {
                     tmpMoves.push(new Move(field.number, Board.offNumber, roll));
-                } else {
-                    // console.log(player.colorString + " can not move out with roll " + roll);
                 }
             }
         });
 
         tmpMoves.forEach(roll => {
-            if (!_.find(moves, m => m.to === roll.to)) {
+            if (!_.find(moves, m => m.from === roll.from && m.to === roll.to)) {
                 moves.push(roll);
             }
         });
     }
-
-
 
     private canMoveToField(field: Field, player: Player): boolean {
         if (field.checkers.length === 0) {
@@ -187,7 +195,7 @@ export class GamerulesBackgammon extends GameRulesBase {
     }
 
     private getSecondFieldNumber(player: Player): number {
-        const firstFieldNumber = this.getFirstFieldNumber(player);
+        const firstFieldNumber = this.getFirstFieldNumber(player.color);
         let secondFieldNumber = 12;
         if (firstFieldNumber === 12) {
             secondFieldNumber = 1;
@@ -199,7 +207,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         return secondFieldNumber;
     }
     private getThirdFieldNumber(player: Player): number {
-        const firstFieldNumber = this.getFirstFieldNumber(player);
+        const firstFieldNumber = this.getFirstFieldNumber(player.color);
         let thirdFieldNumber = 17;
         if (firstFieldNumber === 12) {
             thirdFieldNumber = 19;
@@ -211,7 +219,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         return thirdFieldNumber;
     }
     private getFourthFieldNumber(player: Player): number {
-        const firstFieldNumber = this.getFirstFieldNumber(player);
+        const firstFieldNumber = this.getFirstFieldNumber(player.color);
         let fourthFieldNumber = 19;
         if (firstFieldNumber === 12) {
             fourthFieldNumber = 18;
@@ -223,7 +231,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         return fourthFieldNumber;
     }
     private initPlayer(board: Board, player: Player) {
-        const firstFieldNumber = this.getFirstFieldNumber(player);
+        const firstFieldNumber = this.getFirstFieldNumber(player.color);
         const firstField = board.getFieldByNumber(firstFieldNumber);
         firstField.checkers.push(player.checkers[0]);
         firstField.checkers.push(player.checkers[1]);
