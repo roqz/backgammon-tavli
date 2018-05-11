@@ -25,3 +25,24 @@ Run `ng e2e` to execute the end-to-end tests via [Protractor](http://www.protrac
 ## Further help
 
 To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI README](https://github.com/angular/angular-cli/blob/master/README.md).
+
+## Open Features
+
+- Checker Move Animations
+- Svg Responsiveness 
+- Game history with print to official backgammon notation 
+- Play Game from history 
+- UI to select players and start games 
+- implementation of missing game rules
+- implementation of backgammon variations Tavli, Plakkato, Portes
+- implementation of state handling with ngrx
+- computer AI
+- revert move 
+- drag and drop 
+- statistics
+- configurable colors and start positions 
+
+
+- create optional server/ multi-player mode with signal r
+- random numbers from server
+- server logic validation 
