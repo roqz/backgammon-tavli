@@ -134,6 +134,18 @@ export class GamerulesBackgammon extends GameRulesBase {
         sortedBoard.forEach(field => {
             this.getPossibleMovesForField(sortedBoard, field, player, diceRolls, moves);
         });
+        // raus ziehen nur erlaubt wenn direkt auf das off field rausgezogen werden kann
+        // oder wenn kein anderer move mit diesem roll möglich ist
+        const outMovesWithHigherRolls = _.filter(moves, m =>
+            m.to === Board.offNumber &&
+            ((m.from < 6 && (m.roll > m.from))) ||
+            (m.from > 19 && (m.roll > 25 - m.from)));
+        outMovesWithHigherRolls.forEach(outMove => {
+            const movesWithinField = _.filter(moves, m => m.roll === outMove.roll && m.to !== Board.offNumber);
+            if (movesWithinField.length > 0) {
+                _.remove(moves, m => m === outMove);
+            }
+        });
         return moves;
     }
 
@@ -144,7 +156,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         if (!_.find(field.checkers, c => c.color === player.color)) {
             return;
         }
-        const tmpMoves = [];
+        const tmpMoves: Move[] = [];
         rolls.forEach(roll => {
             const idxDestination1 = currentFieldIdx + roll;
 
@@ -154,14 +166,14 @@ export class GamerulesBackgammon extends GameRulesBase {
                     tmpMoves.push(new Move(field.number, destField.number, roll));
                 }
             } else {
-                if (this.canMoveOut()) {
+                if (this.canMoveOut(roll)) {
                     tmpMoves.push(new Move(field.number, Board.offNumber, roll));
                 }
             }
         });
 
         tmpMoves.forEach(roll => {
-            if (!_.find(moves, m => m.from === roll.from && m.to === roll.to)) {
+            if (!_.find(moves, m => m.from === roll.from && m.to === roll.to && m.roll === roll.roll)) {
                 moves.push(roll);
             }
         });
@@ -178,12 +190,14 @@ export class GamerulesBackgammon extends GameRulesBase {
         return false;
     }
 
-    private canMoveOut(): boolean {
+    private canMoveOut(roll: number): boolean {
         const home = this.getHomeSector(this.board, this._currentPlayer);
+        // alle steine müssen sich im Home Feld befinden
         const checkersInHome = _.flatMap(home, h => h.checkers);
         const currentPlayerCheckersInHome = _.filter(checkersInHome, c => c.color === this._currentPlayer.color);
         const ownCheckersAlreadyOff = _.filter(this.board.off.checkers, c => c.color === this._currentPlayer.color);
-        return currentPlayerCheckersInHome.length + ownCheckersAlreadyOff.length === 15;
+        const allCheckersInHomeOrOff = currentPlayerCheckersInHome.length + ownCheckersAlreadyOff.length === 15;
+        return allCheckersInHomeOrOff;
     }
     private initBoardPositions(board: Board, player1: Player, player2: Player): Board {
         let white = player1;

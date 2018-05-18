@@ -4,6 +4,8 @@ import { Board } from "./board";
 import { Player } from "./player";
 import { CheckerColor } from "./checker";
 import { DiceService } from "../services/dice.service";
+import { PlayerComputer } from "./player-computer";
+import { PlayerHuman } from "./player-human";
 describe("Gamerules", () => {
 
     beforeEach(async(() => {
@@ -30,8 +32,8 @@ describe("Gamerules", () => {
 
     function getRulesImplementation(): GamerulesBackgammon {
         const board = new Board();
-        const p1 = new Player("p1", CheckerColor.BLACK);
-        const p2 = new Player("p2", CheckerColor.WHITE);
+        const p1 = new PlayerComputer("p1", CheckerColor.BLACK);
+        const p2 = new PlayerHuman("p2", CheckerColor.WHITE);
         const diceService = new DiceService();
         const rules = new GamerulesBackgammon(board, p1, p2, diceService);
         return rules;

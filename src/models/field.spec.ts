@@ -2,6 +2,7 @@ import { TestBed, async } from "@angular/core/testing";
 import { Field } from "./field";
 import { Player } from "./player";
 import { CheckerColor, Checker } from "./checker";
+import { PlayerComputer } from "./player-computer";
 describe("Field", () => {
   beforeEach(async(() => {
 
@@ -18,13 +19,13 @@ describe("Field", () => {
   }));
   it("should not have checker of player if checkers empty", async(() => {
     const field = new Field(3);
-    const player = new Player("Test", CheckerColor.WHITE);
+    const player = new PlayerComputer("Test", CheckerColor.WHITE);
     expect(field.hasCheckersOfPlayer(player)).toBeFalsy();
   }));
   it("should return true for checker of player if checkers have one", async(() => {
     const field = new Field(3);
-    field.checkers.push(new Checker(CheckerColor.WHITE));
-    const player = new Player("Test", CheckerColor.WHITE);
+    field.checkers.push(new Checker(CheckerColor.WHITE, 1));
+    const player = new PlayerComputer("Test", CheckerColor.WHITE);
     expect(field.hasCheckersOfPlayer(player)).toBeTruthy();
   }));
 });

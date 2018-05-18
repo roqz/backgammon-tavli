@@ -40,6 +40,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - statistics
 - configurable colors and start positions 
 
+- game history notation at the moment with static board numbers (24 top right to 1 bottom right), must be from players view
 - game history ui
 
 - create optional server/ multi-player mode with signal r
