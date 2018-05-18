@@ -1,4 +1,4 @@
-import { Component, NgZone } from "@angular/core";
+import { Component, NgZone, Renderer } from "@angular/core";
 import { Field } from "../models/field";
 import { Board } from "../models/board";
 import { Player } from "../models/player";
@@ -9,6 +9,7 @@ import { DiceService } from "../services/dice.service";
 import { PlayerComputer } from "../models/player-computer";
 import { PlayerHuman } from "../models/player-human";
 import { Move } from "../models/move";
+import { Helper } from "../helper/helper";
 
 @Component({
   selector: "app-root",
@@ -24,7 +25,7 @@ export class AppComponent {
   private moveStartField: Field;
   private moveEndField: Field;
   private possibleMovesForStartField: Move[];
-  constructor() {
+  constructor(public renderer: Renderer) {
     console.log("app component constructor");
     const board = new Board();
     const p1 = new PlayerHuman("Tom", CheckerColor.WHITE);
@@ -84,9 +85,9 @@ export class AppComponent {
     this.selectedChecker = checker;
     this.moveStartField = field;
     this.possibleMovesForStartField = this.getPossibleMovesForSelectedField(field);
-    console.log("checker selected");
+    console.log("checker selected " + this.selectedChecker.id);
   }
-  public selectTargetField(field: Field) {
+  public async selectTargetField(field: Field) {
     const movesForStartFieldWithCurrentRolls = this.getPossibleMovesForSelectedField(field);
     if (!movesForStartFieldWithCurrentRolls || movesForStartFieldWithCurrentRolls.length === 0) {
       console.log("no moves for this field");
@@ -95,13 +96,19 @@ export class AppComponent {
       if (!moveToTargetField) {
         console.log("move to the selected field not possible");
       } else {
+        await this.showCheckerAnimation(moveToTargetField);
+
         this.rules.makeMove(moveToTargetField, this.rules.currentPlayer);
-        this.selectedChecker = null;
-        this.moveStartField = null;
-        this.moveEndField = null;
-        this.possibleMovesForStartField = null;
+        this.resetUiSelection();
       }
     }
+  }
+
+  private resetUiSelection() {
+    this.selectedChecker = null;
+    this.moveStartField = null;
+    this.moveEndField = null;
+    this.possibleMovesForStartField = null;
   }
 
   private getPossibleMovesForSelectedField(field: Field): Move[] {
@@ -112,6 +119,17 @@ export class AppComponent {
     const movesForStartField = _.filter(possibleMoves, p => p.from === this.moveStartField.number);
     const movesForStartFieldWithCurrentRolls = _.filter(movesForStartField, m => _.findIndex(this.rules.openRolls, o => o === m.roll) > -1);
     return movesForStartFieldWithCurrentRolls;
+  }
+
+  private async showCheckerAnimation(move: Move) {
+    const el = document.getElementById(this.selectedChecker.id);
+    const destField = this.board.getFieldByNumber(move.to);
+    const durationInSeconds = 0.5;
+    this.renderer.setElementStyle(el, "transition", `${durationInSeconds}s linear`);
+    const transformString = this.getTransform(destField, this.selectedChecker, destField.checkers.length);
+    this.renderer.setElementAttribute(el, "transform", transformString);
+    await Helper.timeout(durationInSeconds * 1000);
+    this.renderer.setElementStyle(el, "transition", "");
   }
 
   private getRectFill(field: Field): number {

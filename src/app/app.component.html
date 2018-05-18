@@ -248,11 +248,11 @@
     </g>
     <g *ngFor="let field of fields; let i = index">
       <circle *ngFor="let checker of field.checkers; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(field, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field)"></circle>
+        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field, idx)" [attr.id]="checker.id"></circle>
     </g>
     <g>
       <circle *ngFor="let checker of bar.checkers; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(bar, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, bar)"></circle>
+        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, bar, idx)" [attr.id]="checker.id"></circle>
     </g>
 
     <g>
@@ -261,11 +261,11 @@
     </g>
     <g>
       <circle *ngFor="let checker of offWhite; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(off, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)"></circle>
+        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
     </g>
     <g>
       <circle *ngFor="let checker of offBlack; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(off, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)"></circle>
+        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
     </g>
 
   </g>
@@ -279,3 +279,8 @@
 <div>Black checkers on bar: {{ barCheckersBlack }}</div>
 <div>White checkers in off: {{ offCheckersWhite }}</div>
 <div>Black checkers in off: {{ offCheckersBlack }}</div>
+
+<br>
+<div *ngFor="let turn of rules.history; let idx = index">
+  <span>{{turn.player.colorString}} ({{turn.player.name}}) {{turn}}</span>
+</div>

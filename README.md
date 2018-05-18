@@ -28,22 +28,26 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 ## Open Features
 
-- Checker Move Animations
-- Svg Responsiveness 
-- Game history with print to official backgammon notation 
-- Play Game from history 
-- UI to select players and start games 
-- implementation of missing game rules
+- implementation of missing backgammon game rules
 - implementation of backgammon variations Tavli, Plakkato, Portes
 - implementation of state handling with ngrx
+- Checker Move Animations
+- Svg Responsiveness 
+- UI to select players and start games 
 - computer AI
 - revert move 
 - drag and drop 
 - statistics
 - configurable colors and start positions 
 
+- game history ui
 
 - create optional server/ multi-player mode with signal r
 - random numbers from server
 - server logic validation 
 - greenkeeper.io
+- Play Game from history 
+
+## Implemented
+
+- Game history with print to official backgammon notation 

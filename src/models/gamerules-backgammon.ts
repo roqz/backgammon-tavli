@@ -12,9 +12,9 @@ import { GameMode } from "./gamemode";
 
 export class GamerulesBackgammon extends GameRulesBase {
 
-    constructor(board: Board, private player1: Player, private player2: Player, dice: DiceService) {
-        super(board, dice, GameMode.BACKGAMMON);
-        this.initBoardPositions(this.board, this.player1, this.player2);
+    constructor(board: Board, player1: Player, player2: Player, dice: DiceService) {
+        super(board, dice, GameMode.BACKGAMMON, player1, player2);
+        this.initBoardPositions(this.board, player1, player2);
         this._currentPlayer = this.getStartingPlayer();
         this.start();
     }
@@ -55,10 +55,11 @@ export class GamerulesBackgammon extends GameRulesBase {
                 idxCheckerToMove + " startfield: " + move.from + " color: " + this._currentPlayer.colorString);
         }
         // achtung: rule spezifische logik, muss hier raus
-        this.ifOppenentCheckerOnTargetFieldMoveItToBar(targetField);
+        const hitOpponent = this.ifOppenentCheckerOnTargetFieldMoveItToBar(targetField);
         targetField.checkers.push(checkerToMove[0]);
         this.removeDiceRollFromOpenRolls(move.roll);
         console.log(this.currentPlayer.colorString + " made move - roll: " + move.roll);
+        this.addMoveToHistory(move, hitOpponent);
     }
 
     private removeDiceRollFromOpenRolls(roll: number) {
@@ -69,7 +70,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         this._openDiceRolls.splice(executedRoll, 1);
     }
 
-    private ifOppenentCheckerOnTargetFieldMoveItToBar(targetField: Field) {
+    private ifOppenentCheckerOnTargetFieldMoveItToBar(targetField: Field): boolean {
         // achtung: rule spezifische logik, muss hier raus
         if (targetField.number !== Board.offNumber &&
             targetField.checkers.length === 1 &&
@@ -79,7 +80,9 @@ export class GamerulesBackgammon extends GameRulesBase {
                 throw new Error("hit checker not found on target field " + targetField.number);
             }
             this.board.bar.checkers.push(hitChecker);
+            return true;
         }
+        return false;
     }
 
     private checkIfMustSwitchPlayersOrGameOver() {
@@ -274,15 +277,11 @@ export class GamerulesBackgammon extends GameRulesBase {
             this._currentPlayer = this.player2;
         }
         this._openDiceRolls = [player1Roll, player2Roll];
+        this.addPlayerTurn();
         return this._currentPlayer;
     }
     private nextPlayer() {
-        if (this._currentPlayer === this.player1) {
-            this._currentPlayer = this.player2;
-        } else {
-            this._currentPlayer = this.player1;
-        }
-        this._openDiceRolls = this.rollDices();
+        this.nextPlayerTurn();
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (possibleMoves && possibleMoves.length > 0) {
             this._currentPlayer.play(_.cloneDeep(this.board), this);
@@ -290,7 +289,6 @@ export class GamerulesBackgammon extends GameRulesBase {
             console.log("no moves possible, next player");
             this.nextPlayer();
         }
-
     }
 }
 

@@ -19,7 +19,7 @@ export abstract class Player {
     private getCheckers(): Checker[] {
         const checkers = [];
         for (let i = 0; i < 15; i++) {
-            checkers.push(new Checker(this.color));
+            checkers.push(new Checker(this.color, i));
         }
         return checkers;
     }

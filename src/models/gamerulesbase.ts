@@ -6,13 +6,17 @@ import { Field } from "./field";
 import { DiceService } from "../services/dice.service";
 import { GameMode } from "./gamemode";
 import { Move } from "./move";
+import { Turn } from "./turn";
+import { HistoryMoveEntry } from "./history-move-entry";
 
 
 export abstract class GameRulesBase {
     protected startWhite = 1;
     protected _currentPlayer: Player;
     protected _openDiceRolls: number[];
-    constructor(protected board: Board, protected dice: DiceService, public gameMode: GameMode) {
+    protected _turnHistory: Turn[] = [];
+    constructor(protected board: Board, protected dice: DiceService, public gameMode: GameMode,
+        protected player1: Player, protected player2: Player) {
 
     }
     public abstract getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[];
@@ -37,6 +41,28 @@ export abstract class GameRulesBase {
     public getLastFieldNumber(color: CheckerColor): number {
         const ownStartField = this.getFirstFieldNumber(color);
         return 25 - ownStartField;
+    }
+
+    public get history(): Turn[] {
+        return _.cloneDeep(this._turnHistory);
+    }
+    protected addMoveToHistory(move: Move, hitOpponent: boolean) {
+        this._turnHistory[this._turnHistory.length - 1].moves.push(new HistoryMoveEntry(move, hitOpponent));
+    }
+    protected nextPlayerTurn() {
+        if (this._currentPlayer === this.player1) {
+            this._currentPlayer = this.player2;
+        } else {
+            this._currentPlayer = this.player1;
+        }
+        this._openDiceRolls = this.rollDices();
+        this.addPlayerTurn();
+    }
+    protected addPlayerTurn() {
+        if (!this._turnHistory) {
+            this._turnHistory = [];
+        }
+        this._turnHistory.push(new Turn(this._currentPlayer, this._openDiceRolls[0], this._openDiceRolls[1], new Array<HistoryMoveEntry>()));
     }
 
     protected sortBoardFieldsByPlayingDirection(board: Board, player: Player): Field[] {
