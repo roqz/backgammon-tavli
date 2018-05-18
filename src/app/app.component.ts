@@ -80,7 +80,7 @@ export class AppComponent {
     return this.rules.currentPlayer instanceof PlayerHuman;
   }
 
-  public selectChecker(checker: Checker, field: Field, idx: number) {
+  public selectChecker(checker: Checker, field: Field) {
     if (!this.controlsEnabled || this.rules.currentPlayer.color !== checker.color) { return; }
     this.selectedChecker = checker;
     this.moveStartField = field;
@@ -99,7 +99,12 @@ export class AppComponent {
         await this.showCheckerAnimation(moveToTargetField);
 
         this.rules.makeMove(moveToTargetField, this.rules.currentPlayer);
-        this.resetUiSelection();
+        if (this.selectedChecker.color === this.rules.currentPlayer.color) {
+          const targetField = this.board.getFieldByNumber(moveToTargetField.to);
+          this.selectChecker(targetField.checkers[targetField.checkers.length - 1], targetField);
+        } else {
+          this.resetUiSelection();
+        }
       }
     }
   }

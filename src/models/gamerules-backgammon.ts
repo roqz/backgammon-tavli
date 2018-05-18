@@ -146,6 +146,7 @@ export class GamerulesBackgammon extends GameRulesBase {
                 _.remove(moves, m => m === outMove);
             }
         });
+        // todo züge aussortieren, die den zweiten zug unmöglich machen würden
         return moves;
     }
 

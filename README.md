@@ -28,7 +28,9 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 ## Open Features
 
-- implementation of missing backgammon game rules
+- implementation of missing backgammon game rules (es müssen so viele Züge wie möglich gespielt werden, wenn nur einer der beiden geht aber beide gehen dann der höhere)
+- implement gammon and backgammon / points
+- implement doubler dice
 - implementation of backgammon variations Tavli, Plakkato, Portes
 - implementation of state handling with ngrx
 - Checker Move Animations
