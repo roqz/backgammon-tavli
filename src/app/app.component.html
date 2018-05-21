@@ -176,14 +176,14 @@
       <path d="M139.5 4.871v228.133" stroke="#774b1f" />
       <path d="M140.5 4.871v228.133" stroke="#b1875a" />
     </g>
-    <svg:g dice-component [value]="rules.openRolls[0]" [x]="'65.427'" [y]="'113.008'" [color]="'#000'" *ngIf="rules.openRolls[0] && rules.currentPlayer.color==0"
+    <svg:g dice-component [value]="currentTurn.roll1" [x]="'65.427'" [y]="'113.008'" [color]="'#000'" *ngIf="currentTurn.roll1 && currentTurn.player.color==0 && roll1StillOpen"
       id="dice1"></svg:g>
-    <svg:g dice-component [value]="rules.openRolls[1]" [x]="'85.427'" [y]="'123.008'" [color]="'#000'" *ngIf="rules.openRolls[1] && rules.currentPlayer.color==0"
+    <svg:g dice-component [value]="currentTurn.roll2" [x]="'85.427'" [y]="'123.008'" [color]="'#000'" *ngIf="currentTurn.roll2 && currentTurn.player.color==0 && roll2StillOpen"
       id="dice2"></svg:g>
 
-    <svg:g dice-component [value]="rules.openRolls[0]" [x]="'205.427'" [y]="'113.008'" [color]="'#ee0701'" *ngIf="rules.openRolls[0] && rules.currentPlayer.color==1"
+    <svg:g dice-component [value]="currentTurn.roll1" [x]="'205.427'" [y]="'113.008'" [color]="'#ee0701'" *ngIf="currentTurn.roll1 && currentTurn.player.color==1 && roll1StillOpen"
       id="dice3"></svg:g>
-    <svg:g dice-component [value]="rules.openRolls[1]" [x]="'225.427'" [y]="'123.008'" [color]="'#ee0701'" *ngIf="rules.openRolls[1] && rules.currentPlayer.color==1"
+    <svg:g dice-component [value]="currentTurn.roll2" [x]="'225.427'" [y]="'123.008'" [color]="'#ee0701'" *ngIf="currentTurn.roll2 && currentTurn.player.color==1 && roll2StillOpen"
       id="dice4"></svg:g>
 
     <g color="#000" id="scharnierTop">
@@ -271,7 +271,7 @@
   </g>
 </svg>
 
-<div>Current Player: {{ rules.currentPlayer.colorString }} ({{rules.currentPlayer.name}})</div>
+<div>Current Player: {{ currentTurn.player.colorString }} ({{currentTurn.player.name}})</div>
 <div>Open rolls:
   <span *ngFor="let roll of rules.openRolls">{{ roll }}</span>
 </div>

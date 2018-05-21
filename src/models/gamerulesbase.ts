@@ -8,6 +8,9 @@ import { GameMode } from "./gamemode";
 import { Move } from "./move";
 import { Turn } from "./turn";
 import { HistoryMoveEntry } from "./history-move-entry";
+import { Store } from "@ngrx/store";
+import { State } from "../app/reducers";
+import { MakeMoveAction, NextTurnAction } from "../app/board.actions";
 
 
 export abstract class GameRulesBase {
@@ -16,7 +19,7 @@ export abstract class GameRulesBase {
     protected _openDiceRolls: number[];
     protected _turnHistory: Turn[] = [];
     constructor(protected board: Board, protected dice: DiceService, public gameMode: GameMode,
-        protected player1: Player, protected player2: Player) {
+        protected player1: Player, protected player2: Player, protected store: Store<State>) {
 
     }
     public abstract getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[];
@@ -62,7 +65,9 @@ export abstract class GameRulesBase {
         if (!this._turnHistory) {
             this._turnHistory = [];
         }
-        this._turnHistory.push(new Turn(this._currentPlayer, this._openDiceRolls[0], this._openDiceRolls[1], new Array<HistoryMoveEntry>()));
+        const turn = new Turn(this._currentPlayer, this._openDiceRolls[0], this._openDiceRolls[1], new Array<HistoryMoveEntry>());
+        this._turnHistory.push(turn);
+        this.store.dispatch(new NextTurnAction({ turn: turn }));
     }
 
     protected sortBoardFieldsByPlayingDirection(board: Board, player: Player): Field[] {

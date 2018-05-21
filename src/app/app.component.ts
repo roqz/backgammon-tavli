@@ -1,4 +1,4 @@
-import { Component, NgZone, Renderer } from "@angular/core";
+import { Component, NgZone, Renderer, OnDestroy, ApplicationRef, ChangeDetectorRef } from "@angular/core";
 import { Field } from "../models/field";
 import { Board } from "../models/board";
 import { Player } from "../models/player";
@@ -10,33 +10,78 @@ import { PlayerComputer } from "../models/player-computer";
 import { PlayerHuman } from "../models/player-human";
 import { Move } from "../models/move";
 import { Helper } from "../helper/helper";
+import { Store } from "@ngrx/store";
+import { State, reducers } from "./reducers";
+import { BoardActionTypes, SetBoardAction } from "./board.actions";
+import { ISubscription } from "rxjs/Subscription";
+import { takeUntil, flatMap, map, concatAll, concatMap, timeout } from "rxjs/operators";
+import { Observable, BehaviorSubject, defer } from "rxjs";
+import { BoardState } from "./board.reducer";
+import { fromPromise } from "rxjs/observable/fromPromise";
+import { Turn } from "../models/turn";
 
 @Component({
   selector: "app-root",
   templateUrl: "./app.component.html",
   styleUrls: ["./app.component.css"]
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
+
+  private subscription: ISubscription;
   title = "Backgammon Tavli";
   private rules: GamerulesBackgammon;
-  public board: Board;
-  public rolls: number[];
+  private board: Board;
+  private currentTurn: Turn;
+
   private selectedChecker: Checker;
   private moveStartField: Field;
   private moveEndField: Field;
   private possibleMovesForStartField: Move[];
-  constructor(public renderer: Renderer) {
+  constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>) {
     console.log("app component constructor");
     const board = new Board();
     const p1 = new PlayerHuman("Tom", CheckerColor.WHITE);
     const p2 = new PlayerComputer("PC1", CheckerColor.BLACK);
 
-    this.board = board;
-    this.rules = new GamerulesBackgammon(board, p1, p2, new DiceService());
-    this.rolls = this.rules.openRolls;
+    this.rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), store);
+    const boardStore = store.select("board");
+    boardStore.pipe(
+      concatMap(s => fromPromise(this.handleStateUpdate(s))) // concat map wartet immer bis
+      // das vorherige observable fertig ist
+    ).subscribe();
 
-    console.log(this.board);
-    console.log(this.rules.currentPlayer);
+    boardStore.dispatch(new SetBoardAction({
+      board: _.cloneDeep(board)
+    }));
+  }
+  private async handleStateUpdate(state: BoardState) {
+    // console.log("store update:");
+    // console.log(state);
+    if (state.turn) {
+      this.currentTurn = state.turn;
+
+    }
+    if (state.move) {
+      await this.showCheckerAnimation(state.move);
+      this.cdRef.detectChanges();
+    }
+    if (state.board) {
+      this.board = state.board;
+      this.cdRef.detectChanges();
+    }
+    if (this.selectedChecker &&
+      this.selectedChecker.color === this.currentTurn.player.color &&
+      this.currentTurn.player instanceof PlayerHuman) {
+      if (state.move) {
+        const targetField = this.board.getFieldByNumber(state.move.to);
+        this.selectChecker(targetField.checkers[targetField.checkers.length - 1], targetField);
+      }
+    } else {
+      this.resetUiSelection();
+    }
+  }
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
   }
 
   public get fields(): Field[] {
@@ -75,13 +120,29 @@ export class AppComponent {
     if (!this.board) { return null; }
     return _.filter(this.board.off.checkers, c => c.color === CheckerColor.BLACK).length;
   }
+  public get roll1StillOpen(): boolean {
+    return this.rollStillOpen(this.currentTurn.roll1);
+  }
+  public get roll2StillOpen(): boolean {
+    return this.rollStillOpen(this.currentTurn.roll2);
+  }
+  private rollStillOpen(roll: number): boolean {
+    if (!this.currentTurn) { return true; }
+    if (!this.currentTurn.moves || this.currentTurn.moves.length === 0) { return true; }
+    const usedroll = _.find(this.currentTurn.moves, m => {
+      let diff = m.from - m.to;
+      if (diff < 0) { diff = diff * -1; }
+      return diff === roll;
+    });
+    return usedroll == null;
+  }
 
   public get controlsEnabled(): boolean {
-    return this.rules.currentPlayer instanceof PlayerHuman;
+    return this.currentTurn.player instanceof PlayerHuman;
   }
 
   public selectChecker(checker: Checker, field: Field) {
-    if (!this.controlsEnabled || this.rules.currentPlayer.color !== checker.color) { return; }
+    if (!this.controlsEnabled || this.currentTurn.player.color !== checker.color) { return; }
     this.selectedChecker = checker;
     this.moveStartField = field;
     this.possibleMovesForStartField = this.getPossibleMovesForSelectedField(field);
@@ -96,15 +157,7 @@ export class AppComponent {
       if (!moveToTargetField) {
         console.log("move to the selected field not possible");
       } else {
-        await this.showCheckerAnimation(moveToTargetField);
-
-        this.rules.makeMove(moveToTargetField, this.rules.currentPlayer);
-        if (this.selectedChecker.color === this.rules.currentPlayer.color) {
-          const targetField = this.board.getFieldByNumber(moveToTargetField.to);
-          this.selectChecker(targetField.checkers[targetField.checkers.length - 1], targetField);
-        } else {
-          this.resetUiSelection();
-        }
+        this.rules.makeMove(moveToTargetField, this.currentTurn.player);
       }
     }
   }
@@ -127,13 +180,19 @@ export class AppComponent {
   }
 
   private async showCheckerAnimation(move: Move) {
-    const el = document.getElementById(this.selectedChecker.id);
+    let checker = this.selectedChecker;
+    if (!checker) {
+      const fromCheckers = this.board.getFieldByNumber(move.from).checkers;
+      checker = fromCheckers[fromCheckers.length - 1];
+    }
+    const el = document.getElementById(checker.id);
+    await Helper.timeout(0); // wird benötigt, damit sicher das Binding mit dem neuen Board durch ist
     const destField = this.board.getFieldByNumber(move.to);
     const durationInSeconds = 0.5;
     this.renderer.setElementStyle(el, "transition", `${durationInSeconds}s linear`);
-    const transformString = this.getTransform(destField, this.selectedChecker, destField.checkers.length);
+    const transformString = this.getTransform(destField, checker, destField.checkers.length);
     this.renderer.setElementAttribute(el, "transform", transformString);
-    await Helper.timeout(durationInSeconds * 1000);
+    await Helper.timeout(durationInSeconds * 1000 + 200);
     this.renderer.setElementStyle(el, "transition", "");
   }
 
@@ -151,7 +210,7 @@ export class AppComponent {
     if (checker.color === CheckerColor.WHITE) {
       id = "R";
     }
-    return `url(#${id}`;
+    return `url(#${id})`;
   }
   private getBorder(checker: Checker): string {
     let id = "checkerGradientBorderBlack";

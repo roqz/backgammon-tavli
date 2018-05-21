@@ -9,11 +9,14 @@ import { timeout } from "q";
 import { Helper } from "../helper/helper";
 import { GameRulesBase } from "./gamerulesbase";
 import { GameMode } from "./gamemode";
+import { Store } from "@ngrx/store";
+import { State } from "../app/reducers";
+import { BoardActionTypes, MakeMoveAction } from "../app/board.actions";
 
 export class GamerulesBackgammon extends GameRulesBase {
 
-    constructor(board: Board, player1: Player, player2: Player, dice: DiceService) {
-        super(board, dice, GameMode.BACKGAMMON, player1, player2);
+    constructor(board: Board, player1: Player, player2: Player, dice: DiceService, store: Store<State>) {
+        super(board, dice, GameMode.BACKGAMMON, player1, player2, store);
         this.initBoardPositions(this.board, player1, player2);
         this._currentPlayer = this.getStartingPlayer();
         this.start();
@@ -37,6 +40,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
             this.executeMove(move);
+            this.store.dispatch(new MakeMoveAction({ move: move, board: _.cloneDeep(this.board) }));
             this.checkIfMustSwitchPlayersOrGameOver();
         } else {
             this.checkIfMustSwitchPlayersOrGameOver();
@@ -48,7 +52,7 @@ export class GamerulesBackgammon extends GameRulesBase {
     private executeMove(move: Move) {
         const startField = this.board.getFieldByNumber(move.from);
         const targetField = this.board.getFieldByNumber(move.to);
-        const idxCheckerToMove = _.findIndex(startField.checkers, c => c.color === this._currentPlayer.color);
+        const idxCheckerToMove = startField.checkers.length - 1;
         const checkerToMove = startField.checkers.splice(idxCheckerToMove, 1);
         if (!checkerToMove || checkerToMove.length === 0) {
             throw new Error("checker not found on start field: " +
