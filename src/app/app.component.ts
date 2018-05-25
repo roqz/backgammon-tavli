@@ -1,24 +1,25 @@
-import { Component, NgZone, Renderer, OnDestroy, ApplicationRef, ChangeDetectorRef } from "@angular/core";
-import { Field } from "../models/field";
-import { Board } from "../models/board";
-import { Player } from "../models/player";
-import { CheckerColor, Checker } from "../models/checker";
-import { GamerulesBackgammon } from "../models/gamerules-backgammon";
+import { ChangeDetectorRef, Component, OnDestroy, Renderer } from "@angular/core";
+import { Store } from "@ngrx/store";
 import * as _ from "lodash";
-import { DiceService } from "../services/dice.service";
+import { ISubscription } from "rxjs/Subscription";
+import { fromPromise } from "rxjs/observable/fromPromise";
+import { concatMap } from "rxjs/operators";
+import { Helper } from "../helper/helper";
+import { Board } from "../models/board";
+import { Checker, CheckerColor } from "../models/checker";
+import { Field } from "../models/field";
+import { Game } from "../models/game";
+import { GameMode } from "../models/gamemode";
+import { GamerulesBackgammon } from "../models/gamerules-backgammon";
+import { GameRulesBase } from "../models/gamerulesbase";
+import { Move } from "../models/move";
 import { PlayerComputer } from "../models/player-computer";
 import { PlayerHuman } from "../models/player-human";
-import { Move } from "../models/move";
-import { Helper } from "../helper/helper";
-import { Store } from "@ngrx/store";
-import { State, reducers } from "./reducers";
-import { BoardActionTypes, SetBoardAction } from "./board.actions";
-import { ISubscription } from "rxjs/Subscription";
-import { takeUntil, flatMap, map, concatAll, concatMap, timeout } from "rxjs/operators";
-import { Observable, BehaviorSubject, defer } from "rxjs";
-import { BoardState } from "./board.reducer";
-import { fromPromise } from "rxjs/observable/fromPromise";
 import { Turn } from "../models/turn";
+import { DiceService } from "../services/dice.service";
+import { SetBoardAction } from "./board.actions";
+import { BoardState } from "./board.reducer";
+import { State } from "./reducers";
 
 @Component({
   selector: "app-root",
@@ -29,7 +30,7 @@ export class AppComponent implements OnDestroy {
 
   private subscription: ISubscription;
   title = "Backgammon Tavli";
-  private rules: GamerulesBackgammon;
+  private game: Game;
   private board: Board;
   private currentTurn: Turn;
 
@@ -39,18 +40,29 @@ export class AppComponent implements OnDestroy {
   private possibleMovesForStartField: Move[];
   constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>) {
     console.log("app component constructor");
+    let rules: GameRulesBase;
     const board = new Board();
     const p1 = new PlayerHuman("Tom", CheckerColor.WHITE);
     const p2 = new PlayerComputer("PC1", CheckerColor.BLACK);
+    const mode: GameMode = GameMode.BACKGAMMON;
+    switch (mode) {
+      case GameMode.BACKGAMMON:
+        rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), store);
+        break;
+      // case GameMode.PLAKATO:
+      // case GameMode.PORTES:
+      default:
+        rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), store);
+    }
+    this.game = new Game(rules);
 
-    this.rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), store);
     const boardStore = store.select("board");
     boardStore.pipe(
       concatMap(s => fromPromise(this.handleStateUpdate(s))) // concat map wartet immer bis
       // das vorherige observable fertig ist
     ).subscribe();
 
-    boardStore.dispatch(new SetBoardAction({
+    store.dispatch(new SetBoardAction({
       board: _.cloneDeep(board)
     }));
   }
@@ -83,7 +95,10 @@ export class AppComponent implements OnDestroy {
   ngOnDestroy() {
     this.subscription.unsubscribe();
   }
-
+  public get rules(): GameRulesBase {
+    if (!this.game) { return null; }
+    return this.game.rules;
+  }
   public get fields(): Field[] {
     if (!this.board) { return null; }
     return this.board.fields;

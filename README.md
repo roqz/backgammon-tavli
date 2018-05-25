@@ -32,8 +32,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - implement gammon and backgammon / points
 - implement doubler dice
 - implementation of backgammon variations Tavli, Plakkato, Portes
-- implementation of state handling with ngrx
-- Checker Move Animations
+
 - Svg Responsiveness 
 - UI to select players and start games 
 - computer AI
@@ -54,3 +53,5 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 ## Implemented
 
 - Game history with print to official backgammon notation 
+- Checker Move Animations
+- implementation of state handling with ngrx
