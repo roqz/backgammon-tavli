@@ -11,6 +11,7 @@ import { HistoryMoveEntry } from "./history-move-entry";
 import { Store } from "@ngrx/store";
 import { State } from "../app/reducers";
 import { MakeMoveAction, NextTurnAction } from "../app/board.actions";
+import { GameResult } from "./gameresult";
 
 
 export abstract class GameRulesBase {
@@ -24,13 +25,21 @@ export abstract class GameRulesBase {
     }
     public abstract getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[];
     public abstract makeMove(move: Move, player: Player);
+    public abstract getResult(): GameResult;
 
     public getBoard(): Board {
         return _.cloneDeep(this.board);
     }
+    public getPlayer1(): Player {
+        return _.cloneDeep(this.player1);
+    }
+    public getPlayer2(): Player {
+        return _.cloneDeep(this.player2);
+    }
     public get currentPlayer(): Player {
         return this._currentPlayer;
     }
+
     public get openRolls(): number[] {
         return this._openDiceRolls;
     }
@@ -49,6 +58,7 @@ export abstract class GameRulesBase {
     public get history(): Turn[] {
         return _.cloneDeep(this._turnHistory);
     }
+
     protected addMoveToHistory(move: Move, hitOpponent: boolean) {
         this._turnHistory[this._turnHistory.length - 1].moves.push(new HistoryMoveEntry(move, hitOpponent));
     }
@@ -110,7 +120,7 @@ export abstract class GameRulesBase {
         }
         return [dice1, dice2];
     }
-    protected isGameOver() {
+    public isGameOver() {
         const offCheckers = _.filter(this.board.off.checkers, c => c.color === this._currentPlayer.color);
         console.log("off checkers: " + offCheckers.length + ", color: " + this._currentPlayer.colorString);
         if (offCheckers.length === 15) {

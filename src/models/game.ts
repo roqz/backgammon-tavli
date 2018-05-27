@@ -1,5 +1,6 @@
 import { Board } from "./board";
 import { GameRulesBase } from "./gamerulesbase";
+import { GameResult } from "./gameresult";
 
 export class Game {
     constructor(
@@ -20,5 +21,11 @@ export class Game {
     // }
     public get board(): Board {
         return this._rules.getBoard();
+    }
+    public isGameOver(): boolean {
+        return this._rules.isGameOver();
+    }
+    public getResult(): GameResult {
+        return this.rules.getResult();
     }
 }

@@ -284,3 +284,8 @@
 <div *ngFor="let turn of rules.history; let idx = index">
   <span>{{turn.player.colorString}} ({{turn.player.name}}) {{turn}}</span>
 </div>
+
+<div *ngIf="game.isGameOver()">
+  <div>Game Over!</div>
+  <div>{{game.getResult().points}} Points</div>
+</div>

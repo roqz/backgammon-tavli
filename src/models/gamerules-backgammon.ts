@@ -12,6 +12,7 @@ import { GameMode } from "./gamemode";
 import { Store } from "@ngrx/store";
 import { State } from "../app/reducers";
 import { BoardActionTypes, MakeMoveAction } from "../app/board.actions";
+import { GameResult } from "./gameresult";
 
 export class GamerulesBackgammon extends GameRulesBase {
 
@@ -47,6 +48,55 @@ export class GamerulesBackgammon extends GameRulesBase {
             console.log("wanted to make move but move not found ?! Color:" + player.colorString + ",From:" +
                 move.from + ",To:" + move.to + ",Roll:" + move.roll);
         }
+    }
+
+    public getResult(): GameResult {
+        if (!this.isGameOver()) { return null; }
+        const result = new GameResult();
+        result.player1 = this.getPlayer1();
+        result.player2 = this.getPlayer2();
+        result.winner = this.currentPlayer;
+
+        result.history = this.history;
+        result.points = this.calculatePoints();
+    }
+    private calculatePoints(): number {
+        let result = 1;
+        const doublerDiceValue = 1;
+        result = doublerDiceValue;
+
+        let multiplier = 1;
+        if (this.isGammon()) { multiplier = 2; }
+        if (this.isBackGammon()) { multiplier = 3; }
+        return result * multiplier;
+    }
+
+    private isGammon(): boolean {
+        if (!this.isGameOver()) { return false; }
+        const loserColor = this._currentPlayer.getOpponentColor();
+        if (!_.find(this.getBoard().off.checkers, c => c.color === loserColor)) {
+            return true;
+        }
+        return false;
+    }
+
+    private isBackGammon(): boolean {
+        if (!this.isGameOver()) { return false; }
+        const winner = this._currentPlayer;
+        const loserColor = this._currentPlayer.getOpponentColor();
+        if (_.find(this.getBoard().bar.checkers, c => c.color === loserColor)) {
+            return true;
+        }
+        const homeFields = this.getHomeSector(this.getBoard(), winner);
+        if (_.find(homeFields, f => {
+            if (_.find(f.checkers, c => c.color === loserColor)) {
+                return true;
+            }
+            return false;
+        })) {
+            return true;
+        }
+        return false;
     }
 
     private executeMove(move: Move) {
