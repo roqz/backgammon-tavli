@@ -27,7 +27,7 @@ Run `ng e2e` to execute the end-to-end tests via [Protractor](http://www.protrac
 To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI README](https://github.com/angular/angular-cli/blob/master/README.md).
 
 ## Open Features
-- bug in getpossiblemoves calculation, needs unit tests
+
 - implementation of missing backgammon game rules (es müssen so viele Züge wie möglich gespielt werden, wenn nur einer der beiden geht aber beide gehen dann der höhere)
 
 - implement doubler dice
@@ -56,3 +56,4 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - Checker Move Animations
 - implementation of state handling with ngrx
 - implement gammon and backgammon / points
+- bug in getpossiblemoves calculation, needs unit tests

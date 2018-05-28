@@ -183,35 +183,41 @@ export class GamerulesBackgammon extends GameRulesBase {
         return moves;
     }
     private getPossibleFieldMoves(board: Board, player: Player, diceRolls: number[]): Move[] {
-        const moves: Move[] = [];
+        const movesToReturn: Move[] = [];
         const sortedBoard = this.sortBoardFieldsByPlayingDirection(board, player);
-        sortedBoard.forEach(field => {
-            this.getPossibleMovesForField(sortedBoard, field, player, diceRolls, moves);
-        });
+        for (const field of sortedBoard) {
+            const tmpMoves = this.getPossibleMovesForField(sortedBoard, field, player, diceRolls);
+            for (const move of tmpMoves) {
+                if (_.findIndex(movesToReturn, m => m.from === move.from && m.to === move.to && m.roll === move.roll) < 0) {
+                    movesToReturn.push(new Move(move.from, move.to, move.roll));
+                }
+            }
+        }
+
         // raus ziehen nur erlaubt wenn direkt auf das off field rausgezogen werden kann
         // oder wenn kein anderer move mit diesem roll möglich ist
-        const outMovesWithHigherRolls = _.filter(moves, m =>
+        const outMovesWithHigherRolls = _.filter(movesToReturn, m =>
             m.to === Board.offNumber &&
-            ((m.from < 6 && (m.roll > m.from))) ||
-            (m.from > 19 && (m.roll > 25 - m.from)));
+            (((m.from < 6 && (m.roll > m.from))) ||
+                (m.from > 19 && (m.roll > 25 - m.from))));
         outMovesWithHigherRolls.forEach(outMove => {
-            const movesWithinField = _.filter(moves, m => m.roll === outMove.roll && m.to !== Board.offNumber);
+            const movesWithinField = _.filter(movesToReturn, m => m.roll === outMove.roll && m.to !== Board.offNumber);
             if (movesWithinField.length > 0) {
-                _.remove(moves, m => m === outMove);
+                _.remove(movesToReturn, m => m === outMove);
             }
         });
         // todo züge aussortieren, die den zweiten zug unmöglich machen würden
-        return moves;
+        return movesToReturn;
     }
 
 
 
-    private getPossibleMovesForField(sortedBoard: Field[], field: Field, player: Player, rolls: number[], moves: Move[]) {
-        const currentFieldIdx = sortedBoard.indexOf(field);
-        if (!_.find(field.checkers, c => c.color === player.color)) {
-            return;
-        }
+    private getPossibleMovesForField(sortedBoard: Field[], field: Field, player: Player, rolls: number[]): Move[] {
         const tmpMoves: Move[] = [];
+        if (!_.find(field.checkers, c => c.color === player.color)) {
+            return tmpMoves;
+        }
+        const currentFieldIdx = _.findIndex(sortedBoard, f => f.number === field.number);
         rolls.forEach(roll => {
             const idxDestination1 = currentFieldIdx + roll;
 
@@ -227,11 +233,7 @@ export class GamerulesBackgammon extends GameRulesBase {
             }
         });
 
-        tmpMoves.forEach(roll => {
-            if (!_.find(moves, m => m.from === roll.from && m.to === roll.to && m.roll === roll.roll)) {
-                moves.push(roll);
-            }
-        });
+        return tmpMoves;
     }
 
     private canMoveToField(field: Field, player: Player): boolean {
