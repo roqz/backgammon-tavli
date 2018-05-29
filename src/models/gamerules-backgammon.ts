@@ -1,18 +1,17 @@
-import * as _ from "lodash";
-import { Board } from "./board";
-import { Player } from "./player";
-import { CheckerColor, Checker } from "./checker";
-import { Move } from "./move";
-import { Field } from "./field";
-import { DiceService } from "../services/dice.service";
-import { timeout } from "q";
-import { Helper } from "../helper/helper";
-import { GameRulesBase } from "./gamerulesbase";
-import { GameMode } from "./gamemode";
 import { Store } from "@ngrx/store";
+import * as _ from "lodash";
+import { MakeMoveAction } from "../app/board.actions";
 import { State } from "../app/reducers";
-import { BoardActionTypes, MakeMoveAction } from "../app/board.actions";
+import { Helper } from "../helper/helper";
+import { DiceService } from "../services/dice.service";
+import { Board } from "./board";
+import { CheckerColor } from "./checker";
+import { Field } from "./field";
+import { GameMode } from "./gamemode";
 import { GameResult } from "./gameresult";
+import { GameRulesBase } from "./gamerulesbase";
+import { Move } from "./move";
+import { Player } from "./player";
 
 export class GamerulesBackgammon extends GameRulesBase {
 
@@ -20,7 +19,6 @@ export class GamerulesBackgammon extends GameRulesBase {
         super(board, dice, GameMode.BACKGAMMON, player1, player2, store);
         this.initBoardPositions(this.board, player1, player2);
         this._currentPlayer = this.getStartingPlayer();
-        this.start();
     }
 
     public getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[] {
@@ -59,6 +57,7 @@ export class GamerulesBackgammon extends GameRulesBase {
 
         result.history = this.history;
         result.points = this.calculatePoints();
+        return result;
     }
     private calculatePoints(): number {
         let result = 1;
@@ -150,7 +149,9 @@ export class GamerulesBackgammon extends GameRulesBase {
         }
     }
 
-    private async start() {
+    public async start() {
+        if (this._alreadyStarted) { return; }
+        this._alreadyStarted = true;
         await Helper.timeout(500);
         if (this.isAnyMovePossible()) {
             this._currentPlayer.play(_.cloneDeep(this.board), this);

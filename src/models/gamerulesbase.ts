@@ -1,17 +1,17 @@
-import { Player } from "./player";
+import { Store } from "@ngrx/store";
+import * as _ from "lodash";
+import { NextTurnAction } from "../app/board.actions";
+import { State } from "../app/reducers";
+import { DiceService } from "../services/dice.service";
 import { Board } from "./board";
 import { CheckerColor } from "./checker";
-import * as _ from "lodash";
 import { Field } from "./field";
-import { DiceService } from "../services/dice.service";
 import { GameMode } from "./gamemode";
-import { Move } from "./move";
-import { Turn } from "./turn";
-import { HistoryMoveEntry } from "./history-move-entry";
-import { Store } from "@ngrx/store";
-import { State } from "../app/reducers";
-import { MakeMoveAction, NextTurnAction } from "../app/board.actions";
 import { GameResult } from "./gameresult";
+import { HistoryMoveEntry } from "./history-move-entry";
+import { Move } from "./move";
+import { Player } from "./player";
+import { Turn } from "./turn";
 
 
 export abstract class GameRulesBase {
@@ -19,10 +19,12 @@ export abstract class GameRulesBase {
     protected _currentPlayer: Player;
     protected _openDiceRolls: number[];
     protected _turnHistory: Turn[] = [];
+    protected _alreadyStarted = false;
     constructor(protected board: Board, protected dice: DiceService, public gameMode: GameMode,
         protected player1: Player, protected player2: Player, protected store: Store<State>) {
 
     }
+    public abstract async start();
     public abstract getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[];
     public abstract makeMove(move: Move, player: Player);
     public abstract getResult(): GameResult;
