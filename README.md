@@ -30,16 +30,17 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 - implementation of missing backgammon game rules (es müssen so viele Züge wie möglich gespielt werden, wenn nur einer der beiden geht aber beide gehen dann der höhere)
 
-- implement doubler dice
+- implement doubler cube
 - implementation of backgammon variations Tavli, Plakkato, Portes
 
 - Svg Responsiveness 
 - UI to select players and start games 
+- configurable colors and start positions
+- add routing 
 - computer AI
 - revert move 
 - drag and drop 
 - statistics
-- configurable colors and start positions 
 
 - game history notation at the moment with static board numbers (24 top right to 1 bottom right), must be from players view
 - game history ui

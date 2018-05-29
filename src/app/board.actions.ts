@@ -20,7 +20,7 @@ export class SetBoardAction implements Action {
 }
 export class MakeMoveAction implements Action {
   readonly type = BoardActionTypes.MakeMove;
-  constructor(public payload: { board: Board, move: Move }) { }
+  constructor(public payload: { board: Board, move: Move, turn: Turn }) { }
 }
 
 export class NextTurnAction implements Action {

@@ -39,7 +39,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
             this.executeMove(move);
-            this.store.dispatch(new MakeMoveAction({ move: move, board: _.cloneDeep(this.board) }));
+            this.store.dispatch(new MakeMoveAction({ move: move, board: _.cloneDeep(this.board), turn: _.cloneDeep(this.currentTurn) }));
             this.checkIfMustSwitchPlayersOrGameOver();
         } else {
             this.checkIfMustSwitchPlayersOrGameOver();

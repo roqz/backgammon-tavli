@@ -41,6 +41,10 @@ export abstract class GameRulesBase {
     public get currentPlayer(): Player {
         return this._currentPlayer;
     }
+    public get currentTurn(): Turn {
+        if (!this._turnHistory) { return null; }
+        return this._turnHistory[this._turnHistory.length - 1];
+    }
 
     public get openRolls(): number[] {
         return this._openDiceRolls;

@@ -65,6 +65,7 @@ export class AppComponent implements OnDestroy {
     store.dispatch(new SetBoardAction({
       board: _.cloneDeep(board)
     }));
+    rules.start();
   }
   private async handleStateUpdate(state: BoardState) {
     // console.log("store update:");
