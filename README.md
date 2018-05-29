@@ -28,8 +28,6 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 ## Open Features
 
-- implementation of missing backgammon game rules (es müssen so viele Züge wie möglich gespielt werden, wenn nur einer der beiden geht aber beide gehen dann der höhere)
-
 - implement doubler cube
 - implementation of backgammon variations Tavli, Plakkato, Portes
 
@@ -58,3 +56,4 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - implementation of state handling with ngrx
 - implement gammon and backgammon / points
 - bug in getpossiblemoves calculation, needs unit tests
+- implementation of missing backgammon game rules (es müssen so viele Züge wie möglich gespielt werden, wenn nur einer der beiden geht aber beide gehen dann der höhere)

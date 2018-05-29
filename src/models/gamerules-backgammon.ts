@@ -38,7 +38,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         }
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
-            this.executeMove(move);
+            this.executeMove(move, this.board);
             this.store.dispatch(new MakeMoveAction({ move: move, board: _.cloneDeep(this.board), turn: _.cloneDeep(this.currentTurn) }));
             this.checkIfMustSwitchPlayersOrGameOver();
         } else {
@@ -98,9 +98,9 @@ export class GamerulesBackgammon extends GameRulesBase {
         return false;
     }
 
-    private executeMove(move: Move) {
-        const startField = this.board.getFieldByNumber(move.from);
-        const targetField = this.board.getFieldByNumber(move.to);
+    private executeMove(move: Move, board: Board, testMove: boolean = false) {
+        const startField = board.getFieldByNumber(move.from);
+        const targetField = board.getFieldByNumber(move.to);
         const idxCheckerToMove = startField.checkers.length - 1;
         const checkerToMove = startField.checkers.splice(idxCheckerToMove, 1);
         if (!checkerToMove || checkerToMove.length === 0) {
@@ -108,11 +108,13 @@ export class GamerulesBackgammon extends GameRulesBase {
                 idxCheckerToMove + " startfield: " + move.from + " color: " + this._currentPlayer.colorString);
         }
         // achtung: rule spezifische logik, muss hier raus
-        const hitOpponent = this.ifOppenentCheckerOnTargetFieldMoveItToBar(targetField);
+        const hitOpponent = this.ifOppenentCheckerOnTargetFieldMoveItToBar(targetField, board);
         targetField.checkers.push(checkerToMove[0]);
-        this.removeDiceRollFromOpenRolls(move.roll);
-        console.log(this.currentPlayer.colorString + " made move - roll: " + move.roll);
-        this.addMoveToHistory(move, hitOpponent);
+        if (!testMove) {
+            this.removeDiceRollFromOpenRolls(move.roll);
+            console.log(this.currentPlayer.colorString + " made move - roll: " + move.roll);
+            this.addMoveToHistory(move, hitOpponent);
+        }
     }
 
     private removeDiceRollFromOpenRolls(roll: number) {
@@ -123,7 +125,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         this._openDiceRolls.splice(executedRoll, 1);
     }
 
-    private ifOppenentCheckerOnTargetFieldMoveItToBar(targetField: Field): boolean {
+    private ifOppenentCheckerOnTargetFieldMoveItToBar(targetField: Field, board: Board): boolean {
         // achtung: rule spezifische logik, muss hier raus
         if (targetField.number !== Board.offNumber &&
             targetField.checkers.length === 1 &&
@@ -132,7 +134,7 @@ export class GamerulesBackgammon extends GameRulesBase {
             if (!hitChecker) {
                 throw new Error("hit checker not found on target field " + targetField.number);
             }
-            this.board.bar.checkers.push(hitChecker);
+            board.bar.checkers.push(hitChecker);
             return true;
         }
         return false;
@@ -195,23 +197,76 @@ export class GamerulesBackgammon extends GameRulesBase {
             }
         }
 
-        // raus ziehen nur erlaubt wenn direkt auf das off field rausgezogen werden kann
-        // oder wenn kein anderer move mit diesem roll möglich ist
-        const outMovesWithHigherRolls = _.filter(movesToReturn, m =>
-            m.to === Board.offNumber &&
-            (((m.from < 6 && (m.roll > m.from))) ||
-                (m.from > 19 && (m.roll > 25 - m.from))));
-        outMovesWithHigherRolls.forEach(outMove => {
-            const movesWithinField = _.filter(movesToReturn, m => m.roll === outMove.roll && m.to !== Board.offNumber);
-            if (movesWithinField.length > 0) {
-                _.remove(movesToReturn, m => m === outMove);
-            }
-        });
-        // todo züge aussortieren, die den zweiten zug unmöglich machen würden
+
+        this.removeMovesToOffWithHigherRollThanNeccessaryIfOtherLegalMovePossible(movesToReturn, board);
+        this.ifOnlyOneOfTwoMovesCanBeMadeRemoveLowerRollMove(movesToReturn, board);
+
         return movesToReturn;
     }
 
+    private ifOnlyOneOfTwoMovesCanBeMadeRemoveLowerRollMove(moves: Move[], board: Board) {
+        // züge aussortieren, die den zweiten zug unmöglich machen würden
+        if (moves.length !== 2) { return; }
+        const move1 = moves[0];
+        const move2 = moves[1];
+        const high = move1.roll > move2.roll ? move1 : move2;
+        const low = move1.roll > move2.roll ? move2 : move1;
+        let highThenLowPossible = true;
+        let lowThenHighPossible = true;
+        if (move1.roll === move2.roll) { return; }
 
+        let boardCopy = _.cloneDeep(board);
+        this.executeMove(high, boardCopy, true);
+        let possibleMovesAfterFirst = this.getAllPossibleMoves(boardCopy, this.currentPlayer, [low.roll]);
+        if (possibleMovesAfterFirst.length === 0) {
+            // high possible then low not
+            highThenLowPossible = false;
+        }
+
+        boardCopy = _.cloneDeep(board);
+        this.executeMove(low, boardCopy, true);
+        possibleMovesAfterFirst = this.getAllPossibleMoves(boardCopy, this.currentPlayer, [high.roll]);
+        if (possibleMovesAfterFirst.length === 0) {
+            // low possible then high not
+            lowThenHighPossible = false;
+        }
+
+        if (!highThenLowPossible && !lowThenHighPossible) {
+            // nur high spielen
+            _.remove(moves, m => m === low);
+        } else if (highThenLowPossible && !lowThenHighPossible) {
+            // nur high spielen
+            _.remove(moves, m => m === low);
+        } else if (!highThenLowPossible && lowThenHighPossible) {
+            // nur low spielen
+            _.remove(moves, m => m === high);
+        }
+    }
+
+    private removeMovesToOffWithHigherRollThanNeccessaryIfOtherLegalMovePossible(movesToReturn: Move[], board: Board) {
+        // raus ziehen nur erlaubt wenn direkt auf das off field rausgezogen werden kann
+        // oder wenn kein anderer stein mehr im endfeld ist, der auf einem feld ist höher als der roll
+        const outMovesWithHigherRolls = _.filter(movesToReturn, m => m.to === Board.offNumber &&
+            (((m.from < 6 && (m.roll > m.from))) ||
+                (m.from > 19 && (m.roll > 25 - m.from))));
+
+        outMovesWithHigherRolls.forEach(outMove => {
+            const sortedBoard = this.sortBoardFieldsByPlayingDirection(board, this.currentPlayer);
+            const outMoveFieldIndex = sortedBoard.indexOf(board.getFieldByNumber(outMove.from));
+            const fieldsBetweenMoveFieldAndRoll = [];
+            for (let i = 17; i < outMoveFieldIndex; i++) {
+                if (_.find(sortedBoard[i].checkers, c => c.color === this.currentPlayer.color)) {
+                    _.remove(movesToReturn, m => m === outMove);
+                }
+            }
+
+            // const movesWithinField = _.filter(movesToReturn, m =>
+            //     m.roll === outMove.roll && (m.to !== Board.offNumber || Math.abs(m.to - m.from) === m.roll));
+            // if (movesWithinField.length > 0) {
+            //     _.remove(movesToReturn, m => m === outMove);
+            // }
+        });
+    }
 
     private getPossibleMovesForField(sortedBoard: Field[], field: Field, player: Player, rolls: number[]): Move[] {
         const tmpMoves: Move[] = [];
