@@ -1,4 +1,5 @@
 <div *ngIf="result">
   <div>Game Over!</div>
-  <div>{{result.points}} Points</div>
+  <div *ngIf="result.points === 1">{{result.points}} Point</div>
+  <div *ngIf="result.points !== 1">{{result.points}} Points</div>
 </div>

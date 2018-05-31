@@ -48,7 +48,7 @@ describe("Gamerules", () => {
         expect(rules.getAllPossibleMoves(
             rulesAny.board, rulesAny.currentPlayer, rules.openRolls)).toBeDefined();
     }));
-    it("should return Gameresult if game is over", () => {
+    it("should return Gameresult if game is over", (() => {
         const boardWithState: any = new Board();
         // tslint:disable-next-line:max-line-length
         boardWithState.fields = [{ "number": 1, "checkers": [] }, { "number": 2, "checkers": [] }, { "number": 3, "checkers": [] }, { "number": 4, "checkers": [] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [] }, { "number": 18, "checkers": [] }, { "number": 19, "checkers": [] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [] }, { "number": 22, "checkers": [] },
@@ -65,8 +65,8 @@ describe("Gamerules", () => {
         expect(result.points).toBeGreaterThan(0);
         expect(result.history.length).toBeGreaterThan(0);
         expect(result.winner.color).toBe(p1.color);
-    });
-    it("should return one point for winner", () => {
+    }));
+    it("should return one point for winner", (() => {
         const boardWithState: any = new Board();
         // tslint:disable-next-line:max-line-length
         boardWithState.fields = [{ "number": 1, "checkers": [] }, { "number": 2, "checkers": [] }, { "number": 3, "checkers": [] }, { "number": 4, "checkers": [] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [] }, { "number": 18, "checkers": [] }, { "number": 19, "checkers": [] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [] }, { "number": 22, "checkers": [] },
@@ -80,8 +80,8 @@ describe("Gamerules", () => {
         rules["board"] = boardWithState;
         const result = rules.getResult();
         expect(result.points).toBe(1);
-    });
-    it("should return two points for winner of gammon if no checker in off", () => {
+    }));
+    it("should return two points for winner of gammon if no checker in off", (() => {
         const boardWithState: any = new Board();
         // tslint:disable-next-line:max-line-length
         boardWithState.fields = [{ "number": 1, "checkers": [] }, { "number": 2, "checkers": [] }, { "number": 3, "checkers": [] }, { "number": 4, "checkers": [] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [] }, { "number": 18, "checkers": [] }, { "number": 19, "checkers": [] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [] }, { "number": 22, "checkers": [] },
@@ -95,8 +95,8 @@ describe("Gamerules", () => {
         rules["board"] = boardWithState;
         const result = rules.getResult();
         expect(result.points).toBe(2);
-    });
-    it("should return three points for winner of backgammon if checker on bar", () => {
+    }));
+    it("should return three points for winner of backgammon if checker on bar", (() => {
         const boardWithState: any = new Board();
         // tslint:disable-next-line:max-line-length
         boardWithState.fields = [{ "number": 1, "checkers": [] }, { "number": 2, "checkers": [] }, { "number": 3, "checkers": [] }, { "number": 4, "checkers": [] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [] }, { "number": 18, "checkers": [] }, { "number": 19, "checkers": [] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [] }, { "number": 22, "checkers": [] },
@@ -110,8 +110,8 @@ describe("Gamerules", () => {
         rules["board"] = boardWithState;
         const result = rules.getResult();
         expect(result.points).toBe(3);
-    });
-    it("should return three points for winner of backgammon if checker in home sector", () => {
+    }));
+    it("should return three points for winner of backgammon if checker in home sector", (() => {
         const boardWithState: any = new Board();
         // tslint:disable-next-line:max-line-length
         boardWithState.fields = [{ "number": 1, "checkers": [{ "color": 1, "idNumber": 0 }] }, { "number": 2, "checkers": [] }, { "number": 3, "checkers": [] }, { "number": 4, "checkers": [] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [] }, { "number": 18, "checkers": [] }, { "number": 19, "checkers": [] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [] }, { "number": 22, "checkers": [] },
@@ -125,8 +125,15 @@ describe("Gamerules", () => {
         rules["board"] = boardWithState;
         const result = rules.getResult();
         expect(result.points).toBe(3);
-    });
-    it("should enforce higher roll if only one move can be made 1", () => {
+    }));
+    it("should return doubler cube value as points if double was rejected", (() => {
+        rules["_currentPlayer"] = p1;
+        rules["_doublerCube"] = 2;
+        rules["_doubleRequestAccepted"] = false;
+        const result = rules.getResult();
+        expect(result.points).toBe(2);
+    }));
+    it("should enforce higher roll if only one move can be made 1", (() => {
         const boardWithState: any = new Board();
         boardWithState.fields = [
             // tslint:disable-next-line:max-line-length
@@ -167,9 +174,9 @@ describe("Gamerules", () => {
         expect(move.from).toBe(24);
         expect(move.to).toBe(22);
         // es sind nur zwei Züge möglich: 24/22 und 24/23. Daher muss der höhere Wurf gespielt werden.
-    });
+    }));
 
-    it("should enforce move that enables second if otherwise only one is possible", () => {
+    it("should enforce move that enables second if otherwise only one is possible", (() => {
         const boardWithState: any = new Board();
         // tslint:disable-next-line:max-line-length
         boardWithState.fields = [
@@ -210,8 +217,8 @@ describe("Gamerules", () => {
         expect(move.from).toBe(6);
         expect(move.to).toBe(3);
         // damit beide züge gespielt werden können muss zuerst 6/3 gespielt werden, damit danach mit der 6 noch 4/0 geht
-    });
-    it("should calculate correct possible moves 1", () => {
+    }));
+    it("should calculate correct possible moves 1", (() => {
         const boardWithState: any = new Board();
         // tslint:disable-next-line:max-line-length
         boardWithState.fields = [{ "number": 1, "checkers": [{ "color": 0, "idNumber": 6 }, { "color": 0, "idNumber": 5 }] }, { "number": 2, "checkers": [{ "color": 0, "idNumber": 2 }, { "color": 0, "idNumber": 11 }, { "color": 0, "idNumber": 14 }, { "color": 0, "idNumber": 7 }, { "color": 0, "idNumber": 8 }] }, { "number": 3, "checkers": [{ "color": 0, "idNumber": 13 }, { "color": 0, "idNumber": 12 }, { "color": 0, "idNumber": 10 }, { "color": 0, "idNumber": 3 }] }, { "number": 4, "checkers": [{ "color": 0, "idNumber": 4 }, { "color": 0, "idNumber": 9 }] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [{ "color": 1, "idNumber": 3 }] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [{ "color": 1, "idNumber": 7 }, { "color": 1, "idNumber": 12 }, { "color": 1, "idNumber": 4 }] }, { "number": 18, "checkers": [{ "color": 1, "idNumber": 6 }, { "color": 1, "idNumber": 5 }, { "color": 1, "idNumber": 0 }, { "color": 1, "idNumber": 2 }] }, { "number": 19, "checkers": [{ "color": 1, "idNumber": 10 }, { "color": 1, "idNumber": 11 }] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [{ "color": 1, "idNumber": 9 }, { "color": 1, "idNumber": 14 }, { "color": 1, "idNumber": 1 }] }, { "number": 22, "checkers": [] }, { "number": 23, "checkers": [{ "color": 1, "idNumber": 13 }, { "color": 1, "idNumber": 8 }] }, { "number": 24, "checkers": [{ "color": 0, "idNumber": 0 }, { "color": 0, "idNumber": 1 }] }];
@@ -223,8 +230,8 @@ describe("Gamerules", () => {
         const possibleMoves = rules.getAllPossibleMoves(boardWithState, p1, [5, 6]);
         expect(possibleMoves).toBeDefined();
         expect(possibleMoves.length).toBe(0);
-    });
-    it("should calculate correct possible moves 2", () => {
+    }));
+    it("should calculate correct possible moves 2", (() => {
         const boardWithState: any = new Board();
         // tslint:disable-next-line:max-line-length
         boardWithState.fields = [{ "number": 1, "checkers": [] }, { "number": 2, "checkers": [] }, { "number": 3, "checkers": [] }, { "number": 4, "checkers": [] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [] }, { "number": 18, "checkers": [] }, { "number": 19, "checkers": [] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [] }, { "number": 22, "checkers": [] },
@@ -238,8 +245,8 @@ describe("Gamerules", () => {
         const possibleMoves = rules.getAllPossibleMoves(boardWithState, p1, [2, 2]);
         expect(possibleMoves).toBeDefined();
         expect(possibleMoves.length).toBe(1);
-    });
-    it("should calculate correct possible moves 3", () => {
+    }));
+    it("should calculate correct possible moves 3", (() => {
         const boardWithState: any = new Board();
         // tslint:disable-next-line:max-line-length
         boardWithState.fields = [{ "number": 1, "checkers": [{ "color": 0, "idNumber": 6 }, { "color": 0, "idNumber": 5 }] }, { "number": 2, "checkers": [{ "color": 0, "idNumber": 2 }, { "color": 0, "idNumber": 11 }, { "color": 0, "idNumber": 14 }, { "color": 0, "idNumber": 7 }, { "color": 0, "idNumber": 8 }] }, { "number": 3, "checkers": [{ "color": 0, "idNumber": 13 }, { "color": 0, "idNumber": 12 }, { "color": 0, "idNumber": 10 }, { "color": 0, "idNumber": 3 }] }, { "number": 4, "checkers": [{ "color": 0, "idNumber": 4 }, { "color": 0, "idNumber": 9 }] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [{ "color": 1, "idNumber": 3 }] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [{ "color": 1, "idNumber": 7 }, { "color": 1, "idNumber": 12 }, { "color": 1, "idNumber": 4 }] }, { "number": 18, "checkers": [{ "color": 1, "idNumber": 6 }, { "color": 1, "idNumber": 5 }, { "color": 1, "idNumber": 0 }, { "color": 1, "idNumber": 2 }] }, { "number": 19, "checkers": [{ "color": 1, "idNumber": 10 }, { "color": 1, "idNumber": 11 }] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [{ "color": 1, "idNumber": 9 }, { "color": 1, "idNumber": 14 }, { "color": 1, "idNumber": 1 }] }, { "number": 22, "checkers": [] }, { "number": 23, "checkers": [{ "color": 1, "idNumber": 13 }, { "color": 1, "idNumber": 8 }] }, { "number": 24, "checkers": [{ "color": 0, "idNumber": 0 }, { "color": 0, "idNumber": 1 }] }];
@@ -251,5 +258,29 @@ describe("Gamerules", () => {
         const possibleMoves = rules.getAllPossibleMoves(boardWithState, p1, [4, 6]);
         expect(possibleMoves).toBeDefined();
         expect(possibleMoves.length).toBe(1);
-    });
+    }));
+    it("should not be possible to double if it is not players turn", (() => {
+        rules["_currentPlayer"] = p1;
+        const canDouble = rules.canPlayerDouble(p2);
+        expect(canDouble).toBe(false);
+    }));
+    it("should be possible to double if cube value is 1", (() => {
+        rules["_currentPlayer"] = p1;
+        const canDouble = rules.canPlayerDouble(p1);
+        expect(canDouble).toBe(true);
+    }));
+    it("should be possible to double if cube value is 2 and was last used by opponent", (() => {
+        rules["_currentPlayer"] = p1;
+        rules["_doublerCube"] = 2;
+        rules["_doublerCubeLastUsedBy"] = p2;
+        const canDouble = rules.canPlayerDouble(p1);
+        expect(canDouble).toBe(true);
+    }));
+    it("should not be possible to double doubler cube feature is disabled", (() => {
+        rules["_currentPlayer"] = p1;
+        rules["_doublerCubeEnabled"] = false;
+        const canDouble = rules.canPlayerDouble(p1);
+        expect(canDouble).toBe(false);
+    }));
+
 });

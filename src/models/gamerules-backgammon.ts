@@ -12,6 +12,7 @@ import { GameResult } from "./gameresult";
 import { GameRulesBase } from "./gamerulesbase";
 import { Move } from "./move";
 import { Player } from "./player";
+import { PlayAction } from "./playaction";
 
 export class GamerulesBackgammon extends GameRulesBase {
 
@@ -47,6 +48,15 @@ export class GamerulesBackgammon extends GameRulesBase {
                 move.from + ",To:" + move.to + ",Roll:" + move.roll);
         }
     }
+    public finishTurn(player: Player) {
+        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
+        if (possibleMoves && possibleMoves.length > 0) {
+
+        } else {
+
+        }
+        this.checkIfMustSwitchPlayersOrGameOver();
+    }
 
     public getResult(): GameResult {
         if (!this.isGameOver()) { return null; }
@@ -60,14 +70,12 @@ export class GamerulesBackgammon extends GameRulesBase {
         return result;
     }
     private calculatePoints(): number {
-        let result = 1;
-        const doublerDiceValue = 1;
-        result = doublerDiceValue;
 
         let multiplier = 1;
+        if (!this._doubleRequestAccepted) { return this.doublerCube; }
         if (this.isGammon()) { multiplier = 2; }
         if (this.isBackGammon()) { multiplier = 3; }
-        return result * multiplier;
+        return this.doublerCube * multiplier;
     }
 
     private isGammon(): boolean {
@@ -143,7 +151,7 @@ export class GamerulesBackgammon extends GameRulesBase {
     private checkIfMustSwitchPlayersOrGameOver() {
         if (!this.isAnyMovePossible()) {
             if (!this.isGameOver()) {
-                this.nextPlayer();
+                this.nextPlayerTurn(PlayAction.PLAY);
             } else {
                 console.log("game over! winner: " + this._currentPlayer.colorString);
                 console.log(this.board);
@@ -155,11 +163,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         if (this._alreadyStarted) { return; }
         this._alreadyStarted = true;
         await Helper.timeout(500);
-        if (this.isAnyMovePossible()) {
-            this._currentPlayer.play(_.cloneDeep(this.board), this);
-        } else {
-            this.nextPlayer();
-        }
+        this._currentPlayer.play(_.cloneDeep(this.board), this);
     }
 
 
@@ -407,16 +411,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         this.addPlayerTurn();
         return this._currentPlayer;
     }
-    private nextPlayer() {
-        this.nextPlayerTurn();
-        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
-        if (possibleMoves && possibleMoves.length > 0) {
-            this._currentPlayer.play(_.cloneDeep(this.board), this);
-        } else {
-            console.log("no moves possible, next player");
-            this.nextPlayer();
-        }
-    }
+
 }
 
 

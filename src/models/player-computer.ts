@@ -6,6 +6,7 @@ import { Helper } from "../helper/helper";
 export class PlayerComputer extends Player {
 
     public async play(board: Board, gameRules: GameRulesBase) {
+        gameRules.rollDices();
         let rolls = gameRules.openRolls;
         let possible = gameRules.getAllPossibleMoves(gameRules.getBoard(), this, rolls);
         let count = 0;
@@ -19,6 +20,15 @@ export class PlayerComputer extends Player {
                 throw new Error("oha da geht nix, rolls: " + rolls.length + ", possible moves: " + possible.length);
             }
         }
+        gameRules.finishTurn(this);
+    }
 
+    public async respondToDouble(board: Board, gameRules: GameRulesBase, doubleTo: number) {
+        await Helper.timeout(200);
+        const rnd = Helper.getRandomInt(1, 2);
+        if (rnd === 1) {
+            gameRules.respondToDouble(this, true);
+        }
+        gameRules.respondToDouble(this, false);
     }
 }

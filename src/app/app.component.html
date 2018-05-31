@@ -207,7 +207,7 @@
       </g>
     </g>
 
-    <g transform="rotate(14.584 141.599 -45.82)" id="doublerDice">
+    <g transform="rotate(14.584 141.599 -45.82)" id="doublerDice" (click)="doublerCubeClick()" *ngIf="doublerCubeEnabled">
       <rect transform="rotate(-.2)" ry="1.714" rx="1.714" y="115.591" x="177.252" height="13.87" width="13.87" color="#000" fill="#ee0701"
         stroke="#000" stroke-width=".606" overflow="visible" />
       <g font-size="2" font-weight="400" letter-spacing="0" word-spacing="0" text-anchor="end" fill="#fff" font-family="DIN Next W01 Medium">
@@ -271,7 +271,7 @@
   </g>
 </svg>
 <div class="info-box">
-  <div>Current Player: {{ currentTurn.player.colorString }} ({{currentTurn.player.name}})</div>
+  <div>Current Player: {{ currentTurn.player.colorString }} ({{currentTurn.player.name}}) (can double: {{rules.canPlayerDouble(currentTurn.player)}})</div>
   <div>Open rolls:
     <span *ngFor="let roll of rules.openRolls">{{ roll }}</span>
   </div>

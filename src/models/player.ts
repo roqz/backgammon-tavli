@@ -5,6 +5,7 @@ import { Helper } from "../helper/helper";
 import { GameRulesBase } from "./gamerulesbase";
 
 export abstract class Player {
+
     public readonly name: string;
     public readonly color: CheckerColor;
     public readonly checkers: Checker[];
@@ -16,6 +17,7 @@ export abstract class Player {
     }
 
     public abstract async play(board: Board, gameRules: GameRulesBase);
+    public abstract async respondToDouble(board: Board, gameRules: GameRulesBase, doubleTo: number);
     private getCheckers(): Checker[] {
         const checkers = [];
         for (let i = 0; i < 15; i++) {

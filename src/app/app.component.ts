@@ -156,6 +156,14 @@ export class AppComponent implements OnDestroy {
   public get controlsEnabled(): boolean {
     return this.currentTurn.player instanceof PlayerHuman;
   }
+  public get doublerCubeEnabled(): boolean {
+    return this.rules.doublerCubeEnabled;
+  }
+  private doublerCubeClick() {
+    if (this.rules.canPlayerDouble(this.currentTurn.player)) {
+      this.rules.double(this.currentTurn.player);
+    }
+  }
 
   public selectChecker(checker: Checker, field: Field) {
     if (!this.controlsEnabled || this.currentTurn.player.color !== checker.color) { return; }
