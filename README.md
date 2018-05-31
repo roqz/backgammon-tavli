@@ -29,10 +29,11 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 ## Open Features
 
 - implement doubler cube
+- rolling dice must be an active action to give player the chance to double
+- revert move, confirmation of turn end (+ automatic after x seconds)
 - implementation of backgammon variations Tavli, Plakkato, Portes
-- revert move 
 
-- Svg Responsiveness 
+
 - UI to select players and start games 
 - configurable colors and start positions
 - add routing 
@@ -57,3 +58,4 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - implement gammon and backgammon / points
 - bug in getpossiblemoves calculation, needs unit tests
 - implementation of missing backgammon game rules (es müssen so viele Züge wie möglich gespielt werden, wenn nur einer der beiden geht aber beide gehen dann der höhere)
+- Svg Responsiveness with viewbox

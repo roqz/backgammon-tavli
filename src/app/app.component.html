@@ -4,7 +4,7 @@
     Welcome to {{ title }}!
   </h1>
 </div>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="705.712" height="604.896">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="70%" height="100%" viewBox="0 0 705.712 604.896">
   <defs>
     <linearGradient id="checkerGradientW">
       <stop offset="0" stop-color="#b7b4a5" />
@@ -270,21 +270,17 @@
 
   </g>
 </svg>
+<div class="info-box">
+  <div>Current Player: {{ currentTurn.player.colorString }} ({{currentTurn.player.name}})</div>
+  <div>Open rolls:
+    <span *ngFor="let roll of rules.openRolls">{{ roll }}</span>
+  </div>
+  <div>White checkers on bar: {{ barCheckersWhite }}</div>
+  <div>Black checkers on bar: {{ barCheckersBlack }}</div>
+  <div>White checkers in off: {{ offCheckersWhite }}</div>
+  <div>Black checkers in off: {{ offCheckersBlack }}</div>
 
-<div>Current Player: {{ currentTurn.player.colorString }} ({{currentTurn.player.name}})</div>
-<div>Open rolls:
-  <span *ngFor="let roll of rules.openRolls">{{ roll }}</span>
+  <gameresult [result]="game.getResult()"></gameresult>
 </div>
-<div>White checkers on bar: {{ barCheckersWhite }}</div>
-<div>Black checkers on bar: {{ barCheckersBlack }}</div>
-<div>White checkers in off: {{ offCheckersWhite }}</div>
-<div>Black checkers in off: {{ offCheckersBlack }}</div>
-
-<br>
 
 <game-history-component [history]="rules.history"></game-history-component>
-
-<div *ngIf="game.isGameOver()">
-  <div>Game Over!</div>
-  <div>{{game.getResult().points}} Points</div>
-</div>

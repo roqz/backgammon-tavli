@@ -22,7 +22,7 @@ export class GamerulesBackgammon extends GameRulesBase {
     }
 
     public getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[] {
-        if (player !== this._currentPlayer) {
+        if (player.color !== this._currentPlayer.color) {
             return [];
         }
         const ownCheckersOnBar = _.filter(board.bar.checkers, c => c.color === player.color);
@@ -33,7 +33,7 @@ export class GamerulesBackgammon extends GameRulesBase {
     }
 
     public makeMove(move: Move, player: Player) {
-        if (player !== this._currentPlayer) {
+        if (player.color !== this._currentPlayer.color) {
             return;
         }
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
