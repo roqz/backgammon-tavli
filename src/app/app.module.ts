@@ -10,12 +10,14 @@ import { StoreDevtoolsModule } from "@ngrx/store-devtools";
 import { environment } from "../environments/environment";
 import { EffectsModule } from "@ngrx/effects";
 import { AppEffects } from "./app.effects";
+import { GameHistoryComponent } from "./components/gamehistory.component";
 
 
 @NgModule({
   declarations: [
     AppComponent,
-    DiceComponent
+    DiceComponent,
+    GameHistoryComponent
   ],
   imports: [
     BrowserModule,

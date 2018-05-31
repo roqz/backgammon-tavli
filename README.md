@@ -30,13 +30,13 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 - implement doubler cube
 - implementation of backgammon variations Tavli, Plakkato, Portes
+- revert move 
 
 - Svg Responsiveness 
 - UI to select players and start games 
 - configurable colors and start positions
 - add routing 
 - computer AI
-- revert move 
 - drag and drop 
 - statistics
 
