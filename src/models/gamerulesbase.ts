@@ -60,6 +60,7 @@ export abstract class GameRulesBase {
         return this._doublerCubeEnabled;
     }
     public canPlayerDouble(player: Player): boolean {
+        if (this.isGameOver()) {return false;}
         if (!this.doublerCubeEnabled) { return false; }
         if (player.color !== this._currentPlayer.color) {
             return false;

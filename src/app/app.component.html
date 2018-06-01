@@ -210,11 +210,12 @@
     <g transform="rotate(14.584 141.599 -45.82)" id="doublerDice" (click)="doublerCubeClick()" *ngIf="doublerCubeEnabled">
       <rect transform="rotate(-.2)" ry="1.714" rx="1.714" y="115.591" x="177.252" height="13.87" width="13.87" color="#000" fill="#ee0701"
         stroke="#000" stroke-width=".606" overflow="visible" />
-      <g font-size="2" font-weight="400" letter-spacing="0" word-spacing="0" text-anchor="end" fill="#fff" font-family="DIN Next W01 Medium">
-        <path d="M179.764 123.254c0-.277.04-.548.126-.815.085-.267.194-.521.33-.764l1.8-3.229c.026-.04.068-.06.122-.06h.972c.074 0 .094.035.06.1l-1.517 2.754.02.02a.84.84 0 0 1 .217-.066 2.002 2.002 0 0 1 1.053.116 1.86 1.86 0 0 1 1.053 1.043c.104.25.156.533.156.85 0 .35-.057.661-.172.931-.115.27-.27.498-.465.684a1.927 1.927 0 0 1-.699.42c-.27.094-.556.141-.86.141-.304 0-.59-.045-.86-.141a1.967 1.967 0 0 1-.699-.415 1.981 1.981 0 0 1-.465-.668 2.232 2.232 0 0 1-.172-.901zm1.153.02c0 .324.093.587.279.79.185.202.44.303.764.303s.58-.101.77-.303c.188-.203.282-.466.282-.79s-.094-.587-.283-.79c-.189-.202-.445-.303-.77-.303-.323 0-.578.101-.763.304-.186.202-.279.465-.279.789zM184.898 124.215c-.067 0-.101-.035-.101-.1v-.78c0-.046.01-.088.03-.122l2.227-4.747c.025-.054.074-.08.142-.08h.961c.075 0 .098.03.071.09l-2.186 4.707v.02h1.559c.04 0 .06-.02.06-.06v-1.721c0-.067.036-.101.101-.101h.932c.068 0 .101.035.101.1v1.722c0 .04.02.06.06.06h.507c.067 0 .101.036.101.102v.81c0 .066-.035.1-.101.1h-.506c-.04 0-.061.02-.061.061v.89c0 .068-.035.102-.101.102h-.932c-.067 0-.1-.036-.1-.101v-.89c0-.041-.02-.062-.061-.062z"
-          style="text-align:end;line-height:1000%;-inkscape-font-specification:'DIN Next W01 Medium,'" />
-      </g>
+      <text transform="rotate(1 0 0)" x="186.5" y="122.5" stroke="#000" fill="#ffffff" font-family="Sans-serif" style="font-size:10px;cursor:default;"
+        text-anchor="middle" stroke-width="0">
+        {{doublerCube}}
+      </text>
     </g>
+
     <g stroke="#000" stroke-width=".228" id="topLeft">
       <path d="M31.537 10.12l9.626 96.26 9.626-96.26H31.537zM70.041 10.12l9.626 96.26 9.626-96.26H70.041zM108.545 10.12l9.626 96.26 9.626-96.26h-19.252z"
         fill="#dedcae" stroke-width=".24115788" />
@@ -244,7 +245,7 @@
 
     <g *ngFor="let field of fields; let i = index">
       <rect height="100" width="19" [attr.x]="getXByField(field)+142" [attr.y]="getYOutsideByField(field)" fill="azure" (click)="selectTargetField(field)"
-        [attr.fill-opacity]="getRectFill(field)"></rect>
+        [attr.fill-opacity]="getRectFill(field)" class="point"></rect>
     </g>
     <g *ngFor="let field of fields; let i = index">
       <circle *ngFor="let checker of field.checkers; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(field, checker, idx)"

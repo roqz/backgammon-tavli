@@ -159,6 +159,9 @@ export class AppComponent implements OnDestroy {
   public get doublerCubeEnabled(): boolean {
     return this.rules.doublerCubeEnabled;
   }
+  public get doublerCube(): number {
+    return this.rules.doublerCube !== 1 ? this.rules.doublerCube : 64;
+  }
   private doublerCubeClick() {
     if (this.rules.canPlayerDouble(this.currentTurn.player)) {
       this.rules.double(this.currentTurn.player);

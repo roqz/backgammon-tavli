@@ -37,6 +37,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         if (player.color !== this._currentPlayer.color) {
             return;
         }
+        if(this._doubleRequestOpen) {return;}
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
             this.executeMove(move, this.board);
