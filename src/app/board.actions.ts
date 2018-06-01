@@ -9,7 +9,9 @@ export enum BoardActionTypes {
   MakeMove = "[Board] Make Move",
   NextTurn = "[Board] Next Turn",
   Double = "[Board] Double",
-  DoubleAccept = "[Board] Double Accept"
+  DoubleAccept = "[Board] Double Accept",
+  DiceRoll = "[Board] DiceRoll",
+  GameOver = "[Board] GameOver"
 }
 
 export class GetBoardAction implements Action {
@@ -37,6 +39,23 @@ export class NextTurnAction implements Action {
   readonly type = BoardActionTypes.NextTurn;
   constructor(public payload: { turn: Turn }) { }
 }
+export class DiceRollAction implements Action {
+  readonly type = BoardActionTypes.DiceRoll;
+  constructor(public payload: { turn: Turn, rolls: number[] }) { }
+}
 
-export type BoardActions = GetBoardAction | SetBoardAction | MakeMoveAction | NextTurnAction | DoubleAction | DoubleAcceptAction;
+export class GameOverAction implements Action {
+  readonly type = BoardActionTypes.GameOver;
+  constructor(public payload: { gameOver: boolean }) { }
+}
+
+export type BoardActions =
+  GetBoardAction |
+  SetBoardAction |
+  MakeMoveAction |
+  NextTurnAction |
+  DoubleAction |
+  DoubleAcceptAction |
+  DiceRollAction |
+  GameOverAction;
 

@@ -28,7 +28,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 ## Open Features
 
-
+- ui should get data only from ngrx store
 - revert move, confirmation of turn end (+ automatic after x seconds)
 - implementation of backgammon variations Tavli, Plakkato, Portes
 
@@ -42,7 +42,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 - game history notation at the moment with static board numbers (24 top right to 1 bottom right), must be from players view
 - game history ui
-- pip counts http://www.bkgm.com/articles/Driver/GuideToCountingPips/
+
 
 - create optional server/ multi-player mode with signal r
 - random numbers from server
@@ -61,4 +61,4 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - Svg Responsiveness with viewbox
 - implement doubler cube
 - rolling dice must be an active action to give player the chance to double
-- pip count
+- pip counts http://www.bkgm.com/articles/Driver/GuideToCountingPips/

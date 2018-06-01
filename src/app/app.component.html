@@ -4,7 +4,7 @@
     Welcome to {{ title }}!
   </h1>
 </div>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="70%" height="100%" viewBox="0 0 705.712 604.896">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="60%" height="50%" viewBox="0 0 705.712 604.896">
   <defs>
     <linearGradient id="checkerGradientW">
       <stop offset="0" stop-color="#b7b4a5" />
@@ -184,90 +184,92 @@
     <svg:g dice-component [value]="currentTurn.roll1" [x]="'205.427'" [y]="'113.008'" [color]="'#ee0701'" *ngIf="currentTurn.roll1 && currentTurn.player.color==1 && roll1StillOpen"
       id="dice3"></svg:g>
     <svg:g dice-component [value]="currentTurn.roll2" [x]="'225.427'" [y]="'123.008'" [color]="'#ee0701'" *ngIf="currentTurn.roll2 && currentTurn.player.color==1 && roll2StillOpen"
-      id="dice4"></svg:g>
+      id="dice4">
+        </svg:g>
 
-    <g color="#000" id="scharnierTop">
-      <path fill="#5d3d21" overflow="visible" d="M137.546 15.287h5.107v11.13h-5.107z" />
-      <path fill="url(#av)" overflow="visible" d="M375.52 154.28h2.455v7.77h-2.455z" transform="translate(-399.621 -205.732) scale(1.43258)"
-      />
-    </g>
-    <g fill="none" stroke-width=".5" id="scharnierDivider">
-      <path d="M138.34 21.23l3.518-.02" stroke="#774b1f" stroke-width=".71629" />
-      <path d="M138.34 20.493l3.518-.02" stroke="#b1875a" stroke-width=".71629" />
-    </g>
-    <g id="scharnierBottom">
-      <g color="#000">
-        <path fill="#5d3d21" overflow="visible" d="M137.546 213.584h5.107v11.131h-5.107z" />
-        <path fill="url(#aw)" overflow="visible" d="M375.52 154.28h2.455v7.77h-2.455z" transform="translate(-399.621 -7.435) scale(1.43258)"
-        />
-      </g>
-      <g fill="none" stroke-width=".5">
-        <path d="M138.34 219.527l3.518-.02" stroke="#774b1f" stroke-width=".71629" />
-        <path d="M138.34 218.79l3.518-.02" stroke="#b1875a" stroke-width=".71629" />
-      </g>
-    </g>
+        <g color="#000" id="scharnierTop">
+          <path fill="#5d3d21" overflow="visible" d="M137.546 15.287h5.107v11.13h-5.107z" />
+          <path fill="url(#av)" overflow="visible" d="M375.52 154.28h2.455v7.77h-2.455z" transform="translate(-399.621 -205.732) scale(1.43258)"
+          />
+        </g>
+        <g fill="none" stroke-width=".5" id="scharnierDivider">
+          <path d="M138.34 21.23l3.518-.02" stroke="#774b1f" stroke-width=".71629" />
+          <path d="M138.34 20.493l3.518-.02" stroke="#b1875a" stroke-width=".71629" />
+        </g>
+        <g id="scharnierBottom">
+          <g color="#000">
+            <path fill="#5d3d21" overflow="visible" d="M137.546 213.584h5.107v11.131h-5.107z" />
+            <path fill="url(#aw)" overflow="visible" d="M375.52 154.28h2.455v7.77h-2.455z" transform="translate(-399.621 -7.435) scale(1.43258)"
+            />
+          </g>
+          <g fill="none" stroke-width=".5">
+            <path d="M138.34 219.527l3.518-.02" stroke="#774b1f" stroke-width=".71629" />
+            <path d="M138.34 218.79l3.518-.02" stroke="#b1875a" stroke-width=".71629" />
+          </g>
+        </g>
 
-    <g transform="rotate(14.584 141.599 -45.82)" id="doublerDice" (click)="doublerCubeClick()" *ngIf="doublerCubeEnabled">
-      <rect transform="rotate(-.2)" ry="1.714" rx="1.714" y="115.591" x="177.252" height="13.87" width="13.87" color="#000" fill="#ee0701"
-        stroke="#000" stroke-width=".606" overflow="visible" />
-      <text transform="rotate(1 0 0)" x="186.5" y="122.5" stroke="#000" fill="#ffffff" font-family="Sans-serif" style="font-size:10px;cursor:default;"
-        text-anchor="middle" stroke-width="0">
-        {{doublerCube}}
-      </text>
-    </g>
+        <g transform="rotate(14.584 141.599 -45.82)" id="doublerDice" (click)="doublerCubeClick()" *ngIf="doublerCubeEnabled">
+          <rect transform="rotate(-.2)" ry="1.714" rx="1.714" y="115.591" x="177.252" height="13.87" width="13.87" color="#000" fill="#ee0701"
+            stroke="#000" stroke-width=".606" overflow="visible" />
+          <text transform="rotate(1 0 0)" x="186.5" y="122.5" stroke="#000" fill="#ffffff" font-family="Sans-serif" style="font-size:10px;cursor:default;"
+            text-anchor="middle" stroke-width="0">
+            {{doublerCube}}
+          </text>
+        </g>
 
-    <g stroke="#000" stroke-width=".228" id="topLeft">
-      <path d="M31.537 10.12l9.626 96.26 9.626-96.26H31.537zM70.041 10.12l9.626 96.26 9.626-96.26H70.041zM108.545 10.12l9.626 96.26 9.626-96.26h-19.252z"
-        fill="#dedcae" stroke-width=".24115788" />
-      <path d="M12.285 10.12l9.626 96.26 9.626-96.26H12.285zM50.79 10.12l9.625 96.26 9.626-96.26H50.789zM89.293 10.12l9.626 96.26 9.626-96.26H89.293z"
-        fill="#da251d" stroke-width=".24115788" />
-    </g>
-    <g stroke="#000" stroke-width=".228" id="bottomLeft">
-      <path d="M108.545 229.88l-9.626-96.26-9.626 96.26h19.252zM70.041 229.88l-9.626-96.26-9.626 96.26h19.252zM31.537 229.88l-9.626-96.26-9.626 96.26h19.252z"
-        fill="#dedcae" stroke-width=".24115788" />
-      <path d="M127.797 229.88l-9.626-96.26-9.626 96.26h19.252zM89.293 229.88l-9.626-96.26-9.626 96.26h19.252zM50.79 229.88l-9.627-96.26-9.626 96.26H50.79z"
-        fill="#da251d" stroke-width=".24115788" />
-    </g>
-    <g stroke="#000" stroke-width=".228" id="topRight">
-      <path d="M171.537 10.12l9.626 96.26 9.626-96.26h-19.252zM210.041 10.12l9.626 96.26 9.626-96.26h-19.252zM248.545 10.12l9.626 96.26 9.626-96.26h-19.252z"
-        fill="#dedcae" stroke-width=".24115788" />
-      <path d="M152.285 10.12l9.626 96.26 9.626-96.26h-19.252zM190.79 10.12l9.625 96.26 9.626-96.26h-19.252zM229.293 10.12l9.626 96.26 9.626-96.26h-19.252z"
-        fill="#da251d" stroke-width=".24115788" />
-    </g>
-    <g stroke="#000" stroke-width=".228" id="bottomRight">
-      <path d="M171.537 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#dedcae" stroke-width=".24115788" id="bottomRight1"></path>
-      <path d="M190.79 229.88l-9.627-96.26-9.626 96.26h19.252z" fill="#da251d" stroke-width=".24115788" id="bottomRight2"></path>
-      <path d="M210.041 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#dedcae" stroke-width=".24115788" id="bottomRight3"></path>
-      <path d="M229.293 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#da251d" stroke-width=".24115788" id="bottomRight4"></path>
-      <path d="M248.545 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#dedcae" stroke-width=".24115788" id="bottomRight5"></path>
-      <path d="M267.797 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#da251d" stroke-width=".24115788" id="bottomRight6"></path>
-    </g>
+        <g stroke="#000" stroke-width=".228" id="topLeft">
+          <path d="M31.537 10.12l9.626 96.26 9.626-96.26H31.537zM70.041 10.12l9.626 96.26 9.626-96.26H70.041zM108.545 10.12l9.626 96.26 9.626-96.26h-19.252z"
+            fill="#dedcae" stroke-width=".24115788" />
+          <path d="M12.285 10.12l9.626 96.26 9.626-96.26H12.285zM50.79 10.12l9.625 96.26 9.626-96.26H50.789zM89.293 10.12l9.626 96.26 9.626-96.26H89.293z"
+            fill="#da251d" stroke-width=".24115788" />
+        </g>
+        <g stroke="#000" stroke-width=".228" id="bottomLeft">
+          <path d="M108.545 229.88l-9.626-96.26-9.626 96.26h19.252zM70.041 229.88l-9.626-96.26-9.626 96.26h19.252zM31.537 229.88l-9.626-96.26-9.626 96.26h19.252z"
+            fill="#dedcae" stroke-width=".24115788" />
+          <path d="M127.797 229.88l-9.626-96.26-9.626 96.26h19.252zM89.293 229.88l-9.626-96.26-9.626 96.26h19.252zM50.79 229.88l-9.627-96.26-9.626 96.26H50.79z"
+            fill="#da251d" stroke-width=".24115788" />
+        </g>
+        <g stroke="#000" stroke-width=".228" id="topRight">
+          <path d="M171.537 10.12l9.626 96.26 9.626-96.26h-19.252zM210.041 10.12l9.626 96.26 9.626-96.26h-19.252zM248.545 10.12l9.626 96.26 9.626-96.26h-19.252z"
+            fill="#dedcae" stroke-width=".24115788" />
+          <path d="M152.285 10.12l9.626 96.26 9.626-96.26h-19.252zM190.79 10.12l9.625 96.26 9.626-96.26h-19.252zM229.293 10.12l9.626 96.26 9.626-96.26h-19.252z"
+            fill="#da251d" stroke-width=".24115788" />
+        </g>
+        <g stroke="#000" stroke-width=".228" id="bottomRight">
+          <path d="M171.537 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#dedcae" stroke-width=".24115788" id="bottomRight1"></path>
+          <path d="M190.79 229.88l-9.627-96.26-9.626 96.26h19.252z" fill="#da251d" stroke-width=".24115788" id="bottomRight2"></path>
+          <path d="M210.041 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#dedcae" stroke-width=".24115788" id="bottomRight3"></path>
+          <path d="M229.293 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#da251d" stroke-width=".24115788" id="bottomRight4"></path>
+          <path d="M248.545 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#dedcae" stroke-width=".24115788" id="bottomRight5"></path>
+          <path d="M267.797 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#da251d" stroke-width=".24115788" id="bottomRight6"></path>
+        </g>
 
-    <g *ngFor="let field of fields; let i = index">
-      <rect height="100" width="19" [attr.x]="getXByField(field)+142" [attr.y]="getYOutsideByField(field)" fill="azure" (click)="selectTargetField(field)"
-        [attr.fill-opacity]="getRectFill(field)" class="point"></rect>
-    </g>
-    <g *ngFor="let field of fields; let i = index">
-      <circle *ngFor="let checker of field.checkers; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(field, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field, idx)" [attr.id]="checker.id"></circle>
-    </g>
-    <g>
-      <circle *ngFor="let checker of bar.checkers; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(bar, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, bar, idx)" [attr.id]="checker.id"></circle>
-    </g>
+        <g *ngFor="let field of fields; let i = index">
+          <rect height="100" width="19" [attr.x]="getXByField(field)+142" [attr.y]="getYOutsideByField(field)" fill="azure" (click)="selectTargetField(field)"
+            [attr.fill-opacity]="getRectFill(field)" class="point"></rect>
+        </g>
+        <g *ngFor="let field of fields; let i = index">
+          <circle *ngFor="let checker of field.checkers; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(field, checker, idx)"
+            [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field, idx)"
+            [attr.id]="checker.id"></circle>
+        </g>
+        <g>
+          <circle *ngFor="let checker of bar.checkers; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(bar, checker, idx)"
+            [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, bar, idx)" [attr.id]="checker.id"></circle>
+        </g>
 
-    <g>
-      <rect height="250" width="19" [attr.x]="getXByField(off)+142" [attr.y]="getYOutsideByField(off)-140" fill="azure" [attr.fill-opacity]="getRectFill(off)"
-        (click)="selectTargetField(off)"></rect>
-    </g>
-    <g>
-      <circle *ngFor="let checker of offWhite; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(off, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
-    </g>
-    <g>
-      <circle *ngFor="let checker of offBlack; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(off, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
-    </g>
+        <g>
+          <rect height="250" width="19" [attr.x]="getXByField(off)+142" [attr.y]="getYOutsideByField(off)-140" fill="azure" [attr.fill-opacity]="getRectFill(off)"
+            (click)="selectTargetField(off)"></rect>
+        </g>
+        <g>
+          <circle *ngFor="let checker of offWhite; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(off, checker, idx)"
+            [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
+        </g>
+        <g>
+          <circle *ngFor="let checker of offBlack; let idx = index" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(off, checker, idx)"
+            [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
+        </g>
 
   </g>
 </svg>

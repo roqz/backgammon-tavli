@@ -1,6 +1,6 @@
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
-import { NextTurnAction, DoubleAction, DoubleAcceptAction } from "../app/board.actions";
+import { NextTurnAction, DoubleAction, DoubleAcceptAction, DiceRollAction, GameOverAction } from "../app/board.actions";
 import { State } from "../app/reducers";
 import { DiceService } from "../services/dice.service";
 import { Board } from "./board";
@@ -74,6 +74,14 @@ export abstract class GameRulesBase {
     public get doublerCubeEnabled(): boolean {
         return this._doublerCubeEnabled;
     }
+    public rollDices() {
+        if (this.currentTurn.roll1) { return; }
+
+        this._openDiceRolls = this.rollDicesInternal();
+        this.currentTurn.roll1 = this._openDiceRolls[0];
+        this.currentTurn.roll2 = this._openDiceRolls[1];
+        this.store.dispatch(new DiceRollAction({ turn: _.cloneDeep(this.currentTurn), rolls: this._openDiceRolls }));
+    }
     public canPlayerDouble(player: Player): boolean {
         if (this.isGameOver()) { return false; }
         if (!this.doublerCubeEnabled) { return false; }
@@ -125,20 +133,21 @@ export abstract class GameRulesBase {
     public get openRolls(): number[] {
         return this._openDiceRolls;
     }
-    public getFirstFieldNumber(color: CheckerColor): number {
-        if (color === CheckerColor.WHITE) {
-            return this.startWhite;
-        }
-        return 25 - this.startWhite;
-    }
-
-    public getLastFieldNumber(color: CheckerColor): number {
-        const ownStartField = this.getFirstFieldNumber(color);
-        return 25 - ownStartField;
-    }
 
     public get history(): Turn[] {
         return _.cloneDeep(this._turnHistory);
+    }
+    public isGameOver() {
+        const offCheckers = _.filter(this.board.off.checkers, c => c.color === this._currentPlayer.color);
+        if (offCheckers.length === 15) {
+            this.store.dispatch(new GameOverAction({ gameOver: true }));
+            return true;
+        }
+        if (!this._doubleRequestAccepted) {
+            this.store.dispatch(new GameOverAction({ gameOver: true }));
+            return true;
+        }
+        return false;
     }
 
     protected addMoveToHistory(move: Move, hitOpponent: boolean) {
@@ -194,6 +203,17 @@ export abstract class GameRulesBase {
             );
         }
     }
+    public getFirstFieldNumber(color: CheckerColor): number {
+        if (color === CheckerColor.WHITE) {
+            return this.startWhite;
+        }
+        return 25 - this.startWhite;
+    }
+
+    public getLastFieldNumber(color: CheckerColor): number {
+        const ownStartField = this.getFirstFieldNumber(color);
+        return 25 - ownStartField;
+    }
     protected getHomeSector(board: Board, player: Player): Field[] {
         const lastField = this.getLastFieldNumber(player.color);
 
@@ -203,14 +223,7 @@ export abstract class GameRulesBase {
         const startField = this.getFirstFieldNumber(player.color);
         return this.board.getSectorOfField(startField);
     }
-    public rollDices() {
-        if (this.currentTurn.roll1) { return; }
 
-        this._openDiceRolls = this.rollDicesInternal();
-        this.currentTurn.roll1 = this._openDiceRolls[0];
-        this.currentTurn.roll2 = this._openDiceRolls[1];
-
-    }
     private rollDicesInternal() {
         const dice1 = this.dice.roll();
         const dice2 = this.dice.roll();
@@ -219,14 +232,5 @@ export abstract class GameRulesBase {
         }
         return [dice1, dice2];
     }
-    public isGameOver() {
-        const offCheckers = _.filter(this.board.off.checkers, c => c.color === this._currentPlayer.color);
-        if (offCheckers.length === 15) {
-            return true;
-        }
-        if (!this._doubleRequestAccepted) {
-            return true;
-        }
-        return false;
-    }
+
 }

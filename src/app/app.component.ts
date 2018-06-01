@@ -17,7 +17,7 @@ import { PlayerComputer } from "../models/player-computer";
 import { PlayerHuman } from "../models/player-human";
 import { Turn } from "../models/turn";
 import { DiceService } from "../services/dice.service";
-import { SetBoardAction } from "./board.actions";
+import { SetBoardAction, BoardActionTypes } from "./board.actions";
 import { BoardState } from "./board.reducer";
 import { State } from "./reducers";
 
@@ -70,18 +70,31 @@ export class AppComponent implements OnDestroy {
   private async handleStateUpdate(state: BoardState) {
     // console.log("store update:");
     // console.log(state);
-    if (state.turn) {
-      this.currentTurn = state.turn;
+    switch (state.action) {
+      case BoardActionTypes.NextTurn:
+        this.currentTurn = state.turn;
+        break;
+      case BoardActionTypes.MakeMove:
+        await this.showCheckerAnimation(state.move);
+        this.board = state.board;
+        this.cdRef.detectChanges();
+        break;
+      case BoardActionTypes.SetBoard:
+        this.board = state.board;
+        this.cdRef.detectChanges();
+        break;
+      case BoardActionTypes.DiceRoll:
+        await this.showDiceRollAnimation(state.turn);
+        this.currentTurn = state.turn;
+        break;
+      case BoardActionTypes.Double:
+        break;
+      case BoardActionTypes.DoubleAccept:
+        break;
+      case BoardActionTypes.GameOver:
+        break;
+    }
 
-    }
-    if (state.move) {
-      await this.showCheckerAnimation(state.move);
-      this.cdRef.detectChanges();
-    }
-    if (state.board) {
-      this.board = state.board;
-      this.cdRef.detectChanges();
-    }
     if (this.selectedChecker &&
       this.selectedChecker.color === this.currentTurn.player.color &&
       this.currentTurn.player instanceof PlayerHuman) {
@@ -238,6 +251,29 @@ export class AppComponent implements OnDestroy {
     await Helper.timeout(durationInSeconds * 1000 + 200);
     this.renderer.setElementStyle(el, "transition", "");
   }
+
+  private async showDiceRollAnimation(turn: Turn) {
+// <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" begin="0s" dur="0.85s" repeatCount="5" ></animateTransform>
+const el = document.getElementById("dice4");
+  //   await Helper.timeout(0);
+  // var a = svg.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+  // var bb = el.getBBox();
+  // var cx = bb.x + bb.width/2;
+  // var cy = bb.y + bb.height/2;
+  // a.setAttributeNS(null, "attributeName", "transform");
+  // a.setAttributeNS(null, "attributeType", "XML");
+  // a.setAttributeNS(null, "type", "rotate");
+  // a.setAttributeNS(null, "dur", dur + "s");
+  // a.setAttributeNS(null, "repeatCount", "indefinite");
+  // a.setAttributeNS(null, "from", "0 "+cx+" "+cy);
+  // a.setAttributeNS(null, "to", 360*dir+" "+cx+" "+cy);
+  // el.appendChild(a);
+  // a.beginElement();
+  //   await Helper.timeout(durationInSeconds * 1000 + 200);
+  //   el.removeChild(a);
+  }
+
+
 
   private getRectFill(field: Field): number {
     if (this.possibleMovesForStartField) {
