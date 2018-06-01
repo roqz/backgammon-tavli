@@ -61,3 +61,4 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - Svg Responsiveness with viewbox
 - implement doubler cube
 - rolling dice must be an active action to give player the chance to double
+- pip count

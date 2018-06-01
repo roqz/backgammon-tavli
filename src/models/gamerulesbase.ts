@@ -45,6 +45,21 @@ export abstract class GameRulesBase {
     public getPlayer2(): Player {
         return _.cloneDeep(this.player2);
     }
+    public getPlayer1PipCount(): number {
+        return this.getPipCount(this.player1);
+    }
+    public getPlayer2PipCount(): number {
+        return this.getPipCount(this.player2);
+    }
+    private getPipCount(player: Player): number {
+        const sortedBoard = this.sortBoardFieldsByPlayingDirection(this.board, player).reverse();
+        let count = 0;
+        for (let i = 0; i < sortedBoard.length; i++) {
+            const checkers = _.filter(sortedBoard[i].checkers, c => c.color === player.color);
+            count += checkers.length * (i + 1);
+        }
+        return count;
+    }
     public get currentPlayer(): Player {
         return this._currentPlayer;
     }
@@ -60,7 +75,7 @@ export abstract class GameRulesBase {
         return this._doublerCubeEnabled;
     }
     public canPlayerDouble(player: Player): boolean {
-        if (this.isGameOver()) {return false;}
+        if (this.isGameOver()) { return false; }
         if (!this.doublerCubeEnabled) { return false; }
         if (player.color !== this._currentPlayer.color) {
             return false;

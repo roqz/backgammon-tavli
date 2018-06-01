@@ -136,6 +136,22 @@ export class AppComponent implements OnDestroy {
     if (!this.board) { return null; }
     return _.filter(this.board.off.checkers, c => c.color === CheckerColor.BLACK).length;
   }
+  public get pipCountWhite(): number {
+    if (!this.board) { return null; }
+    if (this.rules.getPlayer1().color === CheckerColor.WHITE) {
+      return this.rules.getPlayer1PipCount();
+    } else {
+      return this.rules.getPlayer2PipCount();
+    }
+  }
+  public get pipCountBlack(): number {
+    if (!this.board) { return null; }
+    if (this.rules.getPlayer1().color === CheckerColor.BLACK) {
+      return this.rules.getPlayer1PipCount();
+    } else {
+      return this.rules.getPlayer2PipCount();
+    }
+  }
   public get roll1StillOpen(): boolean {
     return this.rollStillOpen(this.currentTurn.roll1);
   }
