@@ -13,6 +13,7 @@ import { Move } from "./move";
 import { Player } from "./player";
 import { Turn } from "./turn";
 import { PlayAction } from "./playaction";
+import { SetPlayersAction } from "../app/player.actions";
 
 
 export abstract class GameRulesBase {
@@ -28,7 +29,7 @@ export abstract class GameRulesBase {
     protected _alreadyStarted = false;
     constructor(protected board: Board, protected dice: DiceService, public gameMode: GameMode,
         protected player1: Player, protected player2: Player, protected store: Store<State>) {
-
+        this.store.dispatch(new SetPlayersAction({ player1: this.player1, player2: this.player2 }));
     }
     public abstract async start();
     public abstract getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[];
@@ -80,7 +81,7 @@ export abstract class GameRulesBase {
         this._openDiceRolls = this.rollDicesInternal();
         this.currentTurn.roll1 = this._openDiceRolls[0];
         this.currentTurn.roll2 = this._openDiceRolls[1];
-        this.store.dispatch(new DiceRollAction({ turn: _.cloneDeep(this.currentTurn), rolls: this._openDiceRolls }));
+        this.store.dispatch(new DiceRollAction({ turn: _.cloneDeep(this.currentTurn), rolls: _.cloneDeep(this._openDiceRolls) }));
     }
     public canPlayerDouble(player: Player): boolean {
         if (this.isGameOver()) { return false; }
@@ -127,7 +128,10 @@ export abstract class GameRulesBase {
             this.nextPlayerTurn(PlayAction.PLAY);
         }
         this.store.dispatch(
-            new DoubleAcceptAction({ accept: accept, board: _.cloneDeep(this.board), turn: _.cloneDeep(this.currentTurn) }));
+            new DoubleAcceptAction({
+                accept: accept,
+                doubleTo: this._doublerCube, board: _.cloneDeep(this.board), turn: _.cloneDeep(this.currentTurn)
+            }));
     }
 
     public get openRolls(): number[] {
@@ -176,8 +180,8 @@ export abstract class GameRulesBase {
             this._turnHistory = [];
         }
         const turn = new Turn(this._currentPlayer, roll1, roll2, new Array<HistoryMoveEntry>());
+        this.store.dispatch(new NextTurnAction({ turn: turn, history: _.cloneDeep(this._turnHistory) }));
         this._turnHistory.push(turn);
-        this.store.dispatch(new NextTurnAction({ turn: turn }));
     }
 
     protected sortBoardFieldsByPlayingDirection(board: Board, player: Player): Field[] {

@@ -7,14 +7,17 @@ import {
 } from "@ngrx/store";
 import { environment } from "../../environments/environment";
 import { Board } from "../../models/board";
-import { BoardState, reducer } from "../board.reducer";
+import { BoardState, boardReducer } from "../board.reducer";
+import { PlayerState, playerdReducer } from "../player.reducer";
 
 export interface State {
   board: BoardState;
+  players: PlayerState;
 }
 
 export const reducers: ActionReducerMap<State> = {
-  board: reducer
+  board: boardReducer,
+  players: playerdReducer
 };
 
 

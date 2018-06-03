@@ -11,6 +11,7 @@ export enum BoardActionTypes {
   Double = "[Board] Double",
   DoubleAccept = "[Board] Double Accept",
   DiceRoll = "[Board] DiceRoll",
+  OpenDiceRollUpdate = "[Board] Open Dice Roll Update",
   GameOver = "[Board] GameOver"
 }
 
@@ -33,15 +34,20 @@ export class DoubleAction implements Action {
 }
 export class DoubleAcceptAction implements Action {
   readonly type = BoardActionTypes.DoubleAccept;
-  constructor(public payload: { accept: boolean, board: Board, turn: Turn }) { }
+  constructor(public payload: { accept: boolean, doubleTo: number, board: Board, turn: Turn }) { }
 }
 export class NextTurnAction implements Action {
   readonly type = BoardActionTypes.NextTurn;
-  constructor(public payload: { turn: Turn }) { }
+  constructor(public payload: { turn: Turn, history: Turn[] }) { }
 }
 export class DiceRollAction implements Action {
   readonly type = BoardActionTypes.DiceRoll;
   constructor(public payload: { turn: Turn, rolls: number[] }) { }
+}
+
+export class OpenDiceRollUpdateAction implements Action {
+  readonly type = BoardActionTypes.OpenDiceRollUpdate;
+  constructor(public payload: { rolls: number[] }) { }
 }
 
 export class GameOverAction implements Action {
@@ -57,5 +63,6 @@ export type BoardActions =
   DoubleAction |
   DoubleAcceptAction |
   DiceRollAction |
+  OpenDiceRollUpdateAction |
   GameOverAction;
 

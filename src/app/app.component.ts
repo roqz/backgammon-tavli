@@ -20,6 +20,7 @@ import { DiceService } from "../services/dice.service";
 import { SetBoardAction, BoardActionTypes } from "./board.actions";
 import { BoardState } from "./board.reducer";
 import { State } from "./reducers";
+import { Player } from "../models/player";
 
 @Component({
   selector: "app-root",
@@ -32,14 +33,21 @@ export class AppComponent implements OnDestroy {
   title = "Backgammon Tavli";
   private game: Game;
   private board: Board;
+  private openRolls: number[];
   private currentTurn: Turn;
+  private player1: Player;
+  private player2: Player;
+  private history: Turn[];
+  private _doublerCube = 1;
 
+  // ab hier ui helper
   private selectedChecker: Checker;
   private moveStartField: Field;
   private moveEndField: Field;
   private possibleMovesForStartField: Move[];
   constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>) {
-    console.log("app component constructor");
+    this.initStoreSubscriptions(store);
+
     let rules: GameRulesBase;
     const board = new Board();
     const p1 = new PlayerHuman("Tom", CheckerColor.WHITE);
@@ -56,23 +64,27 @@ export class AppComponent implements OnDestroy {
     }
     this.game = new Game(rules);
 
-    const boardStore = store.select("board");
-    boardStore.pipe(
-      concatMap(s => fromPromise(this.handleStateUpdate(s))) // concat map wartet immer bis
-      // das vorherige observable fertig ist
-    ).subscribe();
-
-    store.dispatch(new SetBoardAction({
-      board: _.cloneDeep(board)
-    }));
     rules.start();
   }
+  private initStoreSubscriptions(store: Store<State>) {
+    const playerStore = store.select("players").subscribe(players => {
+      console.log(players);
+      this.player1 = players.player1;
+      this.player2 = players.player2;
+    });
+    const boardStore = store.select("board");
+    boardStore.pipe(concatMap(s => fromPromise(this.handleStateUpdate(s))) // concat map wartet immer bis
+      // das vorherige observable fertig ist
+    ).subscribe();
+  }
+
   private async handleStateUpdate(state: BoardState) {
     // console.log("store update:");
     // console.log(state);
     switch (state.action) {
       case BoardActionTypes.NextTurn:
         this.currentTurn = state.turn;
+        this.history = state.history;
         break;
       case BoardActionTypes.MakeMove:
         await this.showCheckerAnimation(state.move);
@@ -80,16 +92,23 @@ export class AppComponent implements OnDestroy {
         this.cdRef.detectChanges();
         break;
       case BoardActionTypes.SetBoard:
+        await Helper.timeout(0);
         this.board = state.board;
         this.cdRef.detectChanges();
         break;
       case BoardActionTypes.DiceRoll:
         await this.showDiceRollAnimation(state.turn);
         this.currentTurn = state.turn;
+        this.openRolls = state.rolls;
+        await Helper.timeout(500);
+        break;
+      case BoardActionTypes.OpenDiceRollUpdate:
+        this.openRolls = state.rolls;
         break;
       case BoardActionTypes.Double:
         break;
       case BoardActionTypes.DoubleAccept:
+        this._doublerCube = state.doublerCube;
         break;
       case BoardActionTypes.GameOver:
         break;
@@ -129,10 +148,15 @@ export class AppComponent implements OnDestroy {
     if (!this.board) { return null; }
     return _.filter(this.board.bar.checkers, c => c.color === CheckerColor.BLACK).length;
   }
+  public get barCheckers(): Checker[] {
+    if (!this.board) { return null; }
+    return this.board.bar.checkers;
+  }
   public get off(): Field {
     if (!this.board) { return null; }
     return this.board.off;
   }
+
   public get offWhite(): Checker[] {
     if (!this.board) { return null; }
     return _.filter(this.board.off.checkers, c => c.color === CheckerColor.WHITE);
@@ -150,21 +174,22 @@ export class AppComponent implements OnDestroy {
     return _.filter(this.board.off.checkers, c => c.color === CheckerColor.BLACK).length;
   }
   public get pipCountWhite(): number {
-    if (!this.board) { return null; }
-    if (this.rules.getPlayer1().color === CheckerColor.WHITE) {
+    if (!this.board || !this.player1) { return null; }
+    if (this.player1.color === CheckerColor.WHITE) {
       return this.rules.getPlayer1PipCount();
     } else {
       return this.rules.getPlayer2PipCount();
     }
   }
   public get pipCountBlack(): number {
-    if (!this.board) { return null; }
-    if (this.rules.getPlayer1().color === CheckerColor.BLACK) {
+    if (!this.board || !this.player1) { return null; }
+    if (this.player1.color === CheckerColor.BLACK) {
       return this.rules.getPlayer1PipCount();
     } else {
       return this.rules.getPlayer2PipCount();
     }
   }
+
   public get roll1StillOpen(): boolean {
     return this.rollStillOpen(this.currentTurn.roll1);
   }
@@ -189,7 +214,7 @@ export class AppComponent implements OnDestroy {
     return this.rules.doublerCubeEnabled;
   }
   public get doublerCube(): number {
-    return this.rules.doublerCube !== 1 ? this.rules.doublerCube : 64;
+    return this._doublerCube !== 1 ? this._doublerCube : 64;
   }
   private doublerCubeClick() {
     if (this.rules.canPlayerDouble(this.currentTurn.player)) {
@@ -236,6 +261,7 @@ export class AppComponent implements OnDestroy {
   }
 
   private async showCheckerAnimation(move: Move) {
+    if (!this.board) { return; }
     let checker = this.selectedChecker;
     if (!checker) {
       const fromCheckers = this.board.getFieldByNumber(move.from).checkers;
@@ -253,24 +279,29 @@ export class AppComponent implements OnDestroy {
   }
 
   private async showDiceRollAnimation(turn: Turn) {
-// <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" begin="0s" dur="0.85s" repeatCount="5" ></animateTransform>
-const el = document.getElementById("dice4");
-  //   await Helper.timeout(0);
-  // var a = svg.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
-  // var bb = el.getBBox();
-  // var cx = bb.x + bb.width/2;
-  // var cy = bb.y + bb.height/2;
-  // a.setAttributeNS(null, "attributeName", "transform");
-  // a.setAttributeNS(null, "attributeType", "XML");
-  // a.setAttributeNS(null, "type", "rotate");
-  // a.setAttributeNS(null, "dur", dur + "s");
-  // a.setAttributeNS(null, "repeatCount", "indefinite");
-  // a.setAttributeNS(null, "from", "0 "+cx+" "+cy);
-  // a.setAttributeNS(null, "to", 360*dir+" "+cx+" "+cy);
-  // el.appendChild(a);
-  // a.beginElement();
-  //   await Helper.timeout(durationInSeconds * 1000 + 200);
-  //   el.removeChild(a);
+    // tslint:disable-next-line:max-line-length
+    // <animateTransform attributeType="xml" attributeName="transform" type="rotate" from="0 177.252 115.591" to="360 191.122 129.461" dur="0.5s"
+    // additive="sum" repeatCount="indefinite" />
+
+    // tslint:disable-next-line:max-line-length
+    // <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" begin="0s" dur="0.85s" repeatCount="5" ></animateTransform>
+    const el = document.getElementById("dice4");
+    //   await Helper.timeout(0);
+    // var a = svg.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+    // var bb = el.getBBox();
+    // var cx = bb.x + bb.width/2;
+    // var cy = bb.y + bb.height/2;
+    // a.setAttributeNS(null, "attributeName", "transform");
+    // a.setAttributeNS(null, "attributeType", "XML");
+    // a.setAttributeNS(null, "type", "rotate");
+    // a.setAttributeNS(null, "dur", dur + "s");
+    // a.setAttributeNS(null, "repeatCount", "indefinite");
+    // a.setAttributeNS(null, "from", "0 "+cx+" "+cy);
+    // a.setAttributeNS(null, "to", 360*dir+" "+cx+" "+cy);
+    // el.appendChild(a);
+    // a.beginElement();
+    //   await Helper.timeout(durationInSeconds * 1000 + 200);
+    //   el.removeChild(a);
   }
 
 
@@ -308,6 +339,7 @@ const el = document.getElementById("dice4");
   }
 
   private getYByField(field: Field, index: number, checker: Checker): number {
+    if (!field || !checker) { return 0; }
     const ySpace = 19.252;
     const startBottom = 200.778;
     const startTop = 1.022;
@@ -330,6 +362,7 @@ const el = document.getElementById("dice4");
   }
 
   private getYOutsideByField(field: Field): number {
+    if (!field) { return 0; }
     if (field.number < 13) {
       return 130;
     } else {
@@ -338,6 +371,7 @@ const el = document.getElementById("dice4");
   }
 
   private getXByField(field: Field): number {
+    if (!field) { return 0; }
     const xSpace = 19.252;
     const startRight = 10.711;
     const startLeft = -32.281;

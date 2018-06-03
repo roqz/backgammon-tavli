@@ -1,6 +1,6 @@
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
-import { MakeMoveAction } from "../app/board.actions";
+import { MakeMoveAction, SetBoardAction, OpenDiceRollUpdateAction } from "../app/board.actions";
 import { State } from "../app/reducers";
 import { Helper } from "../helper/helper";
 import { DiceService } from "../services/dice.service";
@@ -19,6 +19,7 @@ export class GamerulesBackgammon extends GameRulesBase {
     constructor(board: Board, player1: Player, player2: Player, dice: DiceService, store: Store<State>) {
         super(board, dice, GameMode.BACKGAMMON, player1, player2, store);
         this.initBoardPositions(this.board, player1, player2);
+
         this._currentPlayer = this.getStartingPlayer();
     }
 
@@ -37,7 +38,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         if (player.color !== this._currentPlayer.color) {
             return;
         }
-        if(this._doubleRequestOpen) {return;}
+        if (this._doubleRequestOpen) { return; }
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
             this.executeMove(move, this.board);
@@ -116,13 +117,13 @@ export class GamerulesBackgammon extends GameRulesBase {
             throw new Error("checker not found on start field: " +
                 idxCheckerToMove + " startfield: " + move.from + " color: " + this._currentPlayer.colorString);
         }
-        // achtung: rule spezifische logik, muss hier raus
         const hitOpponent = this.ifOppenentCheckerOnTargetFieldMoveItToBar(targetField, board);
         targetField.checkers.push(checkerToMove[0]);
         if (!testMove) {
             this.removeDiceRollFromOpenRolls(move.roll);
-            console.log(this.currentPlayer.colorString + " made move - roll: " + move.roll);
             this.addMoveToHistory(move, hitOpponent);
+            this.store.dispatch(
+                new OpenDiceRollUpdateAction({ rolls: _.cloneDeep(this._openDiceRolls) }));
         }
     }
 
@@ -162,8 +163,11 @@ export class GamerulesBackgammon extends GameRulesBase {
 
     public async start() {
         if (this._alreadyStarted) { return; }
+        this.store.dispatch(new SetBoardAction({
+            board: _.cloneDeep(this.board)
+        }));
         this._alreadyStarted = true;
-        await Helper.timeout(500);
+        await Helper.timeout(1000);
         this._currentPlayer.play(_.cloneDeep(this.board), this);
     }
 

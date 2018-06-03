@@ -6,23 +6,28 @@ import { Turn } from "../models/turn";
 
 export interface BoardState {
   board: Board;
+  gameOver: boolean;
+  doublerCube: number;
+  history: Turn[];
+  // move und turn eigentlich kein state?
   move: Move;
   turn: Turn;
   rolls: number[];
-  gameOver: boolean;
   action: BoardActionTypes;
 }
 
 export const initialState: BoardState = {
   board: null,
+  doublerCube: 1,
   move: null,
   turn: null,
+  history: null,
   rolls: [],
   gameOver: false,
   action: null
 };
 
-export function reducer(state = initialState, action: BoardActions): BoardState {
+export function boardReducer(state = initialState, action: BoardActions): BoardState {
   switch (action.type) {
 
     case BoardActionTypes.GetBoard:
@@ -35,10 +40,16 @@ export function reducer(state = initialState, action: BoardActions): BoardState 
       return { ...state, board: null, move: null, action: action.type, ...action.payload };
     case BoardActionTypes.DiceRoll:
       return { ...state, move: null, action: action.type, ...action.payload };
+    case BoardActionTypes.OpenDiceRollUpdate:
+      return { ...state, move: null, action: action.type, ...action.payload };
     case BoardActionTypes.GameOver:
       return { ...state, move: null, action: action.type, ...action.payload };
-    case BoardActionTypes.Double:
     case BoardActionTypes.DoubleAccept:
+      return {
+        ...state, move: null, action: action.type,
+        doublerCube: action.payload.accept ? action.payload.doubleTo : state.doublerCube
+      };
+    case BoardActionTypes.Double:
     default:
       return state;
   }
