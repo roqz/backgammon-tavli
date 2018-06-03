@@ -31,22 +31,26 @@ export function boardReducer(state = initialState, action: BoardActions): BoardS
   switch (action.type) {
 
     case BoardActionTypes.GetBoard:
-      return { ...state, move: null, action: action.type };
+      return { ...state, action: action.type };
     case BoardActionTypes.SetBoard:
-      return { ...state, move: null, action: action.type, ...action.payload };
+      return { ...state, action: action.type, ...action.payload };
     case BoardActionTypes.MakeMove:
-      return { ...state, turn: null, action: action.type, ...action.payload };
+      return { ...state, action: action.type, ...action.payload };
+    case BoardActionTypes.RevertMove:
+      const res = action.payload.state;
+      res.action = BoardActionTypes.RevertMove;
+      return res;
     case BoardActionTypes.NextTurn:
-      return { ...state, board: null, move: null, action: action.type, ...action.payload };
+      return { ...state, move: null, action: action.type, ...action.payload };
     case BoardActionTypes.DiceRoll:
-      return { ...state, move: null, action: action.type, ...action.payload };
+      return { ...state, action: action.type, ...action.payload };
     case BoardActionTypes.OpenDiceRollUpdate:
-      return { ...state, move: null, action: action.type, ...action.payload };
+      return { ...state, action: action.type, ...action.payload };
     case BoardActionTypes.GameOver:
-      return { ...state, move: null, action: action.type, ...action.payload };
+      return { ...state, action: action.type, ...action.payload };
     case BoardActionTypes.DoubleAccept:
       return {
-        ...state, move: null, action: action.type,
+        ...state, action: action.type,
         doublerCube: action.payload.accept ? action.payload.doubleTo : state.doublerCube
       };
     case BoardActionTypes.Double:

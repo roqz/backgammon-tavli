@@ -283,7 +283,7 @@ describe("Gamerules", () => {
         expect(canDouble).toBe(false);
     }));
     it("should return pip count 167 on inital board", (() => {
-        const result = rules.getPlayer1PipCount();
+        const result = rules.getPipCount(p1, board);
         expect(result).toBe(167);
     }));
 });

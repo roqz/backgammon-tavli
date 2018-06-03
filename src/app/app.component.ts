@@ -68,7 +68,6 @@ export class AppComponent implements OnDestroy {
   }
   private initStoreSubscriptions(store: Store<State>) {
     const playerStore = store.select("players").subscribe(players => {
-      console.log(players);
       this.player1 = players.player1;
       this.player2 = players.player2;
     });
@@ -89,6 +88,12 @@ export class AppComponent implements OnDestroy {
       case BoardActionTypes.MakeMove:
         await this.showCheckerAnimation(state.move);
         this.board = state.board;
+        this.cdRef.detectChanges();
+        break;
+      case BoardActionTypes.RevertMove:
+        // await this.showCheckerAnimation(state.move);
+        this.board = state.board;
+        this.openRolls = state.rolls;
         this.cdRef.detectChanges();
         break;
       case BoardActionTypes.SetBoard:
@@ -176,17 +181,17 @@ export class AppComponent implements OnDestroy {
   public get pipCountWhite(): number {
     if (!this.board || !this.player1) { return null; }
     if (this.player1.color === CheckerColor.WHITE) {
-      return this.rules.getPlayer1PipCount();
+      return this.rules.getPipCount(this.player1, this.board);
     } else {
-      return this.rules.getPlayer2PipCount();
+      return this.rules.getPipCount(this.player2, this.board);
     }
   }
   public get pipCountBlack(): number {
     if (!this.board || !this.player1) { return null; }
     if (this.player1.color === CheckerColor.BLACK) {
-      return this.rules.getPlayer1PipCount();
+      return this.rules.getPipCount(this.player1, this.board);
     } else {
-      return this.rules.getPlayer2PipCount();
+      return this.rules.getPipCount(this.player2, this.board);
     }
   }
 
@@ -222,8 +227,24 @@ export class AppComponent implements OnDestroy {
     }
   }
 
+  private rollDiceClick() {
+    if (!this.controlsEnabled) { return; }
+    this.rules.rollDices();
+  }
+  private finishTurnClick() {
+    if (!this.controlsEnabled) { return; }
+    this.rules.finishTurn(this.currentTurn.player);
+  }
+  private revertMoveClick() {
+    if (!this.controlsEnabled) { return; }
+    this.rules.revertLastMove();
+  }
+
   public selectChecker(checker: Checker, field: Field) {
-    if (!this.controlsEnabled || this.currentTurn.player.color !== checker.color) { return; }
+    if (!this.controlsEnabled ||
+      this.currentTurn.player.color !== checker.color ||
+      !this.openRolls ||
+      this.openRolls.length === 0) { return; }
     this.selectedChecker = checker;
     this.moveStartField = field;
     this.possibleMovesForStartField = this.getPossibleMovesForSelectedField(field);

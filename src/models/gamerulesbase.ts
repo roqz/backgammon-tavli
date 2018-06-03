@@ -34,6 +34,7 @@ export abstract class GameRulesBase {
     public abstract async start();
     public abstract getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[];
     public abstract makeMove(move: Move, player: Player);
+    public abstract revertLastMove();
     public abstract finishTurn(player: Player);
     public abstract getResult(): GameResult;
 
@@ -46,14 +47,8 @@ export abstract class GameRulesBase {
     public getPlayer2(): Player {
         return _.cloneDeep(this.player2);
     }
-    public getPlayer1PipCount(): number {
-        return this.getPipCount(this.player1);
-    }
-    public getPlayer2PipCount(): number {
-        return this.getPipCount(this.player2);
-    }
-    private getPipCount(player: Player): number {
-        const sortedBoard = this.sortBoardFieldsByPlayingDirection(this.board, player).reverse();
+    public getPipCount(player: Player, board: Board): number {
+        const sortedBoard = this.sortBoardFieldsByPlayingDirection(board, player).reverse();
         let count = 0;
         for (let i = 0; i < sortedBoard.length; i++) {
             const checkers = _.filter(sortedBoard[i].checkers, c => c.color === player.color);
@@ -83,6 +78,7 @@ export abstract class GameRulesBase {
         this.currentTurn.roll2 = this._openDiceRolls[1];
         this.store.dispatch(new DiceRollAction({ turn: _.cloneDeep(this.currentTurn), rolls: _.cloneDeep(this._openDiceRolls) }));
     }
+
     public canPlayerDouble(player: Player): boolean {
         if (this.isGameOver()) { return false; }
         if (!this.doublerCubeEnabled) { return false; }
@@ -179,6 +175,7 @@ export abstract class GameRulesBase {
         if (!this._turnHistory) {
             this._turnHistory = [];
         }
+
         const turn = new Turn(this._currentPlayer, roll1, roll2, new Array<HistoryMoveEntry>());
         this.store.dispatch(new NextTurnAction({ turn: turn, history: _.cloneDeep(this._turnHistory) }));
         this._turnHistory.push(turn);

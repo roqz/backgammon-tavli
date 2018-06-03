@@ -1,6 +1,6 @@
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
-import { MakeMoveAction, SetBoardAction, OpenDiceRollUpdateAction } from "../app/board.actions";
+import { MakeMoveAction, SetBoardAction, OpenDiceRollUpdateAction, RevertMoveAction, DiceRollAction } from "../app/board.actions";
 import { State } from "../app/reducers";
 import { Helper } from "../helper/helper";
 import { DiceService } from "../services/dice.service";
@@ -15,7 +15,7 @@ import { Player } from "./player";
 import { PlayAction } from "./playaction";
 
 export class GamerulesBackgammon extends GameRulesBase {
-
+    private _storeBackupBeforeMove: State[] = [];
     constructor(board: Board, player1: Player, player2: Player, dice: DiceService, store: Store<State>) {
         super(board, dice, GameMode.BACKGAMMON, player1, player2, store);
         this.initBoardPositions(this.board, player1, player2);
@@ -41,14 +41,26 @@ export class GamerulesBackgammon extends GameRulesBase {
         if (this._doubleRequestOpen) { return; }
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
         if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
+            this._storeBackupBeforeMove.push(_.cloneDeep(this.getState(this.store)));
             this.executeMove(move, this.board);
             this.store.dispatch(new MakeMoveAction({ move: move, board: _.cloneDeep(this.board), turn: _.cloneDeep(this.currentTurn) }));
-            this.checkIfMustSwitchPlayersOrGameOver();
         } else {
             this.checkIfMustSwitchPlayersOrGameOver();
             console.log("wanted to make move but move not found ?! Color:" + player.colorString + ",From:" +
                 move.from + ",To:" + move.to + ",Roll:" + move.roll);
         }
+    }
+    private getState(store: Store<State>): State {
+        let state: State;
+        store.subscribe(s => state = s);
+        return state;
+    }
+    public revertLastMove() {
+        if (!this.currentTurn.moves || this.currentTurn.moves.length === 0) { return; }
+        const lastMoveBackup = this._storeBackupBeforeMove.pop();
+        this.board = lastMoveBackup.board.board;
+        this._openDiceRolls = lastMoveBackup.board.rolls;
+        this.store.dispatch(new RevertMoveAction({ state: lastMoveBackup.board }));
     }
     public finishTurn(player: Player) {
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
@@ -152,6 +164,7 @@ export class GamerulesBackgammon extends GameRulesBase {
 
     private checkIfMustSwitchPlayersOrGameOver() {
         if (!this.isAnyMovePossible()) {
+            this._storeBackupBeforeMove = [];
             if (!this.isGameOver()) {
                 this.nextPlayerTurn(PlayAction.PLAY);
             } else {
@@ -413,7 +426,8 @@ export class GamerulesBackgammon extends GameRulesBase {
             this._currentPlayer = this.player2;
         }
         this._openDiceRolls = [player1Roll, player2Roll];
-        this.addPlayerTurn();
+        this.store.dispatch(new OpenDiceRollUpdateAction({ rolls: this._openDiceRolls }));
+        this.addPlayerTurn(this._openDiceRolls[0], this._openDiceRolls[1]);
         return this._currentPlayer;
     }
 

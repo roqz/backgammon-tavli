@@ -217,7 +217,7 @@
         text-anchor="middle" stroke-width="0">
         {{doublerCube}}
       </text>
-      
+
     </g>
 
     <g stroke="#000" stroke-width=".228" id="topLeft">
@@ -276,7 +276,7 @@
   </g>
 </svg>
 <div class="info-box" *ngIf="currentTurn">
-  <div>Current Player: {{ currentTurn.player.colorString }} ({{currentTurn.player.name}})})</div>
+  <div>Current Player: {{ currentTurn.player.colorString }} ({{currentTurn.player.name}})</div>
   <div>Open rolls:
     <span *ngFor="let roll of openRolls">{{ roll }}</span>
   </div>
@@ -289,6 +289,11 @@
   <div>Black pip count: {{ pipCountBlack }}</div>
 
   <gameresult [result]="game.getResult()"></gameresult>
+</div>
+<div>
+  <input type="button" value="roll" (click)="rollDiceClick()" />
+  <input type="button" value="finish" (click)="finishTurnClick()" />
+  <input type="button" value="revert" (click)="revertMoveClick()" />
 </div>
 
 <game-history-component [history]="history"></game-history-component>

@@ -5,7 +5,7 @@ import { Helper } from "../helper/helper";
 
 export class PlayerHuman extends Player {
     public async play(board: Board, gameRules: GameRulesBase) {
-        gameRules.rollDices();
+        // gameRules.rollDices();
         // let rolls = gameRules.openRolls;
         // let possible = gameRules.getAllPossibleMoves(gameRules.getBoard(), this, rolls);
         // gameRules.makeMove(possible[0], this);

@@ -2,11 +2,14 @@ import { Action } from "@ngrx/store";
 import { Board } from "../models/board";
 import { Move } from "../models/move";
 import { Turn } from "../models/turn";
+import { State } from "./reducers";
+import { BoardState } from "./board.reducer";
 
 export enum BoardActionTypes {
   GetBoard = "[Board] Get Board",
   SetBoard = "[Board] Set Board",
   MakeMove = "[Board] Make Move",
+  RevertMove = "[Board] Revert Move",
   NextTurn = "[Board] Next Turn",
   Double = "[Board] Double",
   DoubleAccept = "[Board] Double Accept",
@@ -26,6 +29,11 @@ export class SetBoardAction implements Action {
 export class MakeMoveAction implements Action {
   readonly type = BoardActionTypes.MakeMove;
   constructor(public payload: { board: Board, move: Move, turn: Turn }) { }
+}
+
+export class RevertMoveAction implements Action {
+  readonly type = BoardActionTypes.RevertMove;
+  constructor(public payload: { state: BoardState }) { }
 }
 
 export class DoubleAction implements Action {
@@ -59,6 +67,7 @@ export type BoardActions =
   GetBoardAction |
   SetBoardAction |
   MakeMoveAction |
+  RevertMoveAction |
   NextTurnAction |
   DoubleAction |
   DoubleAcceptAction |
