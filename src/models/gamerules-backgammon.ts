@@ -1,6 +1,6 @@
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
-import { MakeMoveAction, SetBoardAction, OpenDiceRollUpdateAction, RevertMoveAction, DiceRollAction } from "../app/board.actions";
+import { MakeMoveAction, OpenDiceRollUpdateAction, RevertMoveAction, SetBoardAction } from "../app/board.actions";
 import { State } from "../app/reducers";
 import { Helper } from "../helper/helper";
 import { DiceService } from "../services/dice.service";
@@ -11,8 +11,8 @@ import { GameMode } from "./gamemode";
 import { GameResult } from "./gameresult";
 import { GameRulesBase } from "./gamerulesbase";
 import { Move } from "./move";
-import { Player } from "./player";
 import { PlayAction } from "./playaction";
+import { Player } from "./player";
 
 export class GamerulesBackgammon extends GameRulesBase {
     private _storeBackupBeforeMove: State[] = [];
@@ -56,11 +56,12 @@ export class GamerulesBackgammon extends GameRulesBase {
         return state;
     }
     public revertLastMove() {
-        if (!this.currentTurn.moves || this.currentTurn.moves.length === 0) { return; }
+        if (!this._storeBackupBeforeMove || this._storeBackupBeforeMove.length === 0) { return; }
         const lastMoveBackup = this._storeBackupBeforeMove.pop();
         this.board = lastMoveBackup.board.board;
+        this._turnHistory[this._turnHistory.length - 1].moves.pop();
         this._openDiceRolls = lastMoveBackup.board.rolls;
-        this.store.dispatch(new RevertMoveAction({ state: lastMoveBackup.board }));
+        this.store.dispatch(new RevertMoveAction({ state: _.cloneDeep(lastMoveBackup.board) }));
     }
     public finishTurn(player: Player) {
         const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);

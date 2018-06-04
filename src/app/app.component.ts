@@ -13,14 +13,14 @@ import { GameMode } from "../models/gamemode";
 import { GamerulesBackgammon } from "../models/gamerules-backgammon";
 import { GameRulesBase } from "../models/gamerulesbase";
 import { Move } from "../models/move";
+import { Player } from "../models/player";
 import { PlayerComputer } from "../models/player-computer";
 import { PlayerHuman } from "../models/player-human";
 import { Turn } from "../models/turn";
 import { DiceService } from "../services/dice.service";
-import { SetBoardAction, BoardActionTypes } from "./board.actions";
+import { BoardActionTypes } from "./board.actions";
 import { BoardState } from "./board.reducer";
 import { State } from "./reducers";
-import { Player } from "../models/player";
 
 @Component({
   selector: "app-root",
@@ -92,14 +92,17 @@ export class AppComponent implements OnDestroy {
         break;
       case BoardActionTypes.RevertMove:
         // await this.showCheckerAnimation(state.move);
+        await Helper.timeout(0);
         this.board = state.board;
         this.openRolls = state.rolls;
         this.cdRef.detectChanges();
+        await Helper.timeout(0);
         break;
       case BoardActionTypes.SetBoard:
         await Helper.timeout(0);
         this.board = state.board;
         this.cdRef.detectChanges();
+        await Helper.timeout(0);
         break;
       case BoardActionTypes.DiceRoll:
         await this.showDiceRollAnimation(state.turn);
