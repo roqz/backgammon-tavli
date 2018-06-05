@@ -1,6 +1,6 @@
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
-import { MakeMoveAction, OpenDiceRollUpdateAction, RevertMoveAction, SetBoardAction } from "../app/board.actions";
+import { MakeMoveAction, OpenDiceRollUpdateAction, RevertMoveAction, SetBoardAction, GameOverAction } from "../app/board.actions";
 import { State } from "../app/reducers";
 import { Helper } from "../helper/helper";
 import { DiceService } from "../services/dice.service";
@@ -169,6 +169,7 @@ export class GamerulesBackgammon extends GameRulesBase {
             if (!this.isGameOver()) {
                 this.nextPlayerTurn(PlayAction.PLAY);
             } else {
+                this.store.dispatch(new GameOverAction({ gameOver: true }));
                 console.log("game over! winner: " + this._currentPlayer.colorString);
                 console.log(this.board);
             }

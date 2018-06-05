@@ -54,6 +54,10 @@ export abstract class GameRulesBase {
             const checkers = _.filter(sortedBoard[i].checkers, c => c.color === player.color);
             count += checkers.length * (i + 1);
         }
+        const barCheckers = _.filter(board.bar.checkers, c => c.color === player.color);
+        if (barCheckers.length > 0) {
+            count += barCheckers.length * 25;
+        }
         return count;
     }
     public get currentPlayer(): Player {
@@ -140,11 +144,9 @@ export abstract class GameRulesBase {
     public isGameOver() {
         const offCheckers = _.filter(this.board.off.checkers, c => c.color === this._currentPlayer.color);
         if (offCheckers.length === 15) {
-            this.store.dispatch(new GameOverAction({ gameOver: true }));
             return true;
         }
         if (!this._doubleRequestAccepted) {
-            this.store.dispatch(new GameOverAction({ gameOver: true }));
             return true;
         }
         return false;

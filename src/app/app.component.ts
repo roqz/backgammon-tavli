@@ -276,11 +276,11 @@ export class AppComponent implements OnDestroy {
     }
   }
   private autoFinishTick = 0;
-  private endAutoFinish$: Subject;
+  private endAutoFinish$: Subject<string>;
   private autoFinishTurnIfRequired() {
     if (!this._settings.autoFinishTurnEnabled) { return; }
     if (this.openRolls.length === 0 && this.currentTurn.player instanceof PlayerHuman) {
-      this.endAutoFinish$ = new Subject();
+      this.endAutoFinish$ = new Subject<string>();
       const obs = interval(1000).pipe(takeUntil(this.endAutoFinish$));
       obs.subscribe(tick => {
         this.autoFinishTick = 3 - tick;
@@ -301,11 +301,11 @@ export class AppComponent implements OnDestroy {
     if (this.endAutoFinish$) { this.endAutoFinish$.next("finish"); }
   }
   private autoRollTick = 0;
-  private endAutoRoll$: Subject;
+  private endAutoRoll$: Subject<string>;
   private autoRollIfRequired() {
     if (!this._settings.autoRollDiceEnabled) { return; }
     if (!this.currentTurn.roll1 && !this.currentTurn.roll2 && this.currentTurn.player instanceof PlayerHuman) {
-      this.endAutoRoll$ = new Subject();
+      this.endAutoRoll$ = new Subject<string>();
       const obs = interval(1000).pipe(takeUntil(this.endAutoRoll$));
       obs.subscribe(tick => {
         this.autoRollTick = 3 - tick;
