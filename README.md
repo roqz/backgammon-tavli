@@ -29,7 +29,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 ## Open Features
 
 - add option to auto roll dices and to auto finish turn after x seconds
-- fix checker animation after revert move action
+
 - implementation of backgammon variations Tavli, Plakkato, Portes
 
 
@@ -64,3 +64,4 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - pip counts http://www.bkgm.com/articles/Driver/GuideToCountingPips/
 - ui should get data only from ngrx store
 - revert move, confirmation of turn end 
+- fix checker animation after revert move action

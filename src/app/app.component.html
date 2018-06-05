@@ -291,9 +291,15 @@
   <gameresult [result]="game.getResult()"></gameresult>
 </div>
 <div>
-  <input type="button" value="roll" (click)="rollDiceClick()" />
-  <input type="button" value="finish" (click)="finishTurnClick()" />
-  <input type="button" value="revert" (click)="revertMoveClick()" />
+  <input type="button" value="roll" (click)="rollDiceClick()" *ngIf="rollDiceButtonEnabled" />
+  <input type="button" value="finish" (click)="finishTurnClick()" *ngIf="finishTurnButtonEnabled" />
+  <input type="button" value="revert" (click)="revertMoveClick()" *ngIf="revertMoveButtonEnabled" />
+  <div *ngIf="autoFinishTick!=0">Auto finish in {{autoFinishTick}}
+    <input type="button" value="cancel" (click)="cancelAutoFinishClick()" />
+  </div>
+  <div *ngIf="autoRollTick!=0">Auto roll in {{autoRollTick}}
+    <input type="button" value="cancel" (click)="cancelAutoRollClick()" />
+  </div>
 </div>
 
 <game-history-component [history]="history"></game-history-component>

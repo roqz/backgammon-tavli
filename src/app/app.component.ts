@@ -1,9 +1,10 @@
 import { ChangeDetectorRef, Component, OnDestroy, Renderer } from "@angular/core";
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
+import { Subject, interval } from "rxjs";
 import { ISubscription } from "rxjs/Subscription";
 import { fromPromise } from "rxjs/observable/fromPromise";
-import { concatMap } from "rxjs/operators";
+import { concatMap, takeUntil } from "rxjs/operators";
 import { Helper } from "../helper/helper";
 import { Board } from "../models/board";
 import { Checker, CheckerColor } from "../models/checker";
@@ -18,6 +19,7 @@ import { PlayerComputer } from "../models/player-computer";
 import { PlayerHuman } from "../models/player-human";
 import { Turn } from "../models/turn";
 import { DiceService } from "../services/dice.service";
+import { AppSettings } from "./app.settings";
 import { BoardActionTypes } from "./board.actions";
 import { BoardState } from "./board.reducer";
 import { State } from "./reducers";
@@ -41,6 +43,7 @@ export class AppComponent implements OnDestroy {
   private _doublerCube = 1;
 
   // ab hier ui helper
+  private _settings: AppSettings = new AppSettings();
   private selectedChecker: Checker;
   private moveStartField: Field;
   private moveEndField: Field;
@@ -84,10 +87,12 @@ export class AppComponent implements OnDestroy {
       case BoardActionTypes.NextTurn:
         this.currentTurn = state.turn;
         this.history = state.history;
+        this.autoRollIfRequired();
         break;
       case BoardActionTypes.MakeMove:
         await this.showCheckerAnimation(state.move);
         this.board = state.board;
+        this.currentTurn = state.turn;
         this.cdRef.detectChanges();
         break;
       case BoardActionTypes.RevertMove:
@@ -216,7 +221,7 @@ export class AppComponent implements OnDestroy {
   }
 
   public get controlsEnabled(): boolean {
-    return this.currentTurn.player instanceof PlayerHuman;
+    return this.currentTurn && this.currentTurn.player instanceof PlayerHuman;
   }
   public get doublerCubeEnabled(): boolean {
     return this.rules.doublerCubeEnabled;
@@ -232,14 +237,17 @@ export class AppComponent implements OnDestroy {
 
   private rollDiceClick() {
     if (!this.controlsEnabled) { return; }
+    this.cancelAutoRollClick();
     this.rules.rollDices();
   }
   private finishTurnClick() {
     if (!this.controlsEnabled) { return; }
+    this.cancelAutoFinishClick();
     this.rules.finishTurn(this.currentTurn.player);
   }
   private revertMoveClick() {
     if (!this.controlsEnabled) { return; }
+    this.cancelAutoFinishClick();
     this.rules.revertLastMove();
   }
 
@@ -263,8 +271,70 @@ export class AppComponent implements OnDestroy {
         console.log("move to the selected field not possible");
       } else {
         this.rules.makeMove(moveToTargetField, this.currentTurn.player);
+        this.autoFinishTurnIfRequired();
       }
     }
+  }
+  private autoFinishTick = 0;
+  private endAutoFinish$: Subject;
+  private autoFinishTurnIfRequired() {
+    if (!this._settings.autoFinishTurnEnabled) { return; }
+    if (this.openRolls.length === 0 && this.currentTurn.player instanceof PlayerHuman) {
+      this.endAutoFinish$ = new Subject();
+      const obs = interval(1000).pipe(takeUntil(this.endAutoFinish$));
+      obs.subscribe(tick => {
+        this.autoFinishTick = 3 - tick;
+        if (tick === 3) {
+          this.endAutoFinish$.next("finish");
+          this.endAutoFinish$.next("finish");
+          this.finishTurnClick();
+        }
+      });
+    }
+    const possibleMoves = this.rules.getAllPossibleMoves(this.board, this.currentTurn.player, this.openRolls);
+    if (!possibleMoves || possibleMoves.length === 0) {
+
+    }
+  }
+  private cancelAutoFinishClick() {
+    this.autoFinishTick = 0;
+    if (this.endAutoFinish$) { this.endAutoFinish$.next("finish"); }
+  }
+  private autoRollTick = 0;
+  private endAutoRoll$: Subject;
+  private autoRollIfRequired() {
+    if (!this._settings.autoRollDiceEnabled) { return; }
+    if (!this.currentTurn.roll1 && !this.currentTurn.roll2 && this.currentTurn.player instanceof PlayerHuman) {
+      this.endAutoRoll$ = new Subject();
+      const obs = interval(1000).pipe(takeUntil(this.endAutoRoll$));
+      obs.subscribe(tick => {
+        this.autoRollTick = 3 - tick;
+        if (tick >= 3) {
+          this.endAutoRoll$.next("finish");
+          this.autoRollTick = 0;
+          this.rollDiceClick();
+        }
+      });
+    }
+  }
+  private cancelAutoRollClick() {
+    this.autoRollTick = 0;
+    if (this.endAutoRoll$) { this.endAutoRoll$.next("finish"); }
+  }
+
+  private get rollDiceButtonEnabled() {
+    return this.controlsEnabled && !this.currentTurn.roll1 && !this.currentTurn.roll2;
+  }
+  private get revertMoveButtonEnabled() {
+    return this.controlsEnabled && this.currentTurn.moves && this.currentTurn.moves.length > 0;
+  }
+  private get finishTurnButtonEnabled() {
+    return this.controlsEnabled &&
+      !this.rollDiceButtonEnabled &&
+      (this.openRolls.length === 0 || (
+        this.board &&
+        this.rules.getAllPossibleMoves(this.board, this.currentTurn.player, this.openRolls).length === 0)
+      );
   }
 
   private resetUiSelection() {
