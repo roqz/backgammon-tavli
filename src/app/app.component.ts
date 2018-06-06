@@ -75,7 +75,7 @@ export class AppComponent implements OnDestroy {
       this.player2 = players.player2;
     });
     const boardStore = store.select("board");
-    boardStore.pipe(concatMap(s => fromPromise(this.handleStateUpdate(s))) // concat map wartet immer bis
+    this.subscription = boardStore.pipe(concatMap(s => fromPromise(this.handleStateUpdate(s))) // concat map wartet immer bis
       // das vorherige observable fertig ist
     ).subscribe();
   }
@@ -100,6 +100,7 @@ export class AppComponent implements OnDestroy {
         await Helper.timeout(0);
         this.board = state.board;
         this.openRolls = state.rolls;
+        this.currentTurn = state.turn;
         this.cdRef.detectChanges();
         await Helper.timeout(0);
         break;
@@ -124,6 +125,7 @@ export class AppComponent implements OnDestroy {
         this._doublerCube = state.doublerCube;
         break;
       case BoardActionTypes.GameOver:
+        this.subscription.unsubscribe();
         break;
     }
 
