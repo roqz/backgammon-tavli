@@ -49,27 +49,12 @@ export class AppComponent implements OnDestroy {
   private moveEndField: Field;
   private possibleMovesForStartField: Move[];
   constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>) {
-    this.initStoreSubscriptions(store);
-
-    let rules: GameRulesBase;
-    const board = new Board();
-    const p1 = new PlayerHuman("Tom", CheckerColor.WHITE);
-    const p2 = new PlayerComputer("PC1", CheckerColor.BLACK);
-    const mode: GameMode = GameMode.BACKGAMMON;
-    switch (mode) {
-      case GameMode.BACKGAMMON:
-        rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), store);
-        break;
-      // case GameMode.PLAKATO:
-      // case GameMode.PORTES:
-      default:
-        rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), store);
-    }
-    this.game = new Game(rules);
-
-    rules.start();
+    this.restartGame();
   }
   private initStoreSubscriptions(store: Store<State>) {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
     const playerStore = store.select("players").subscribe(players => {
       this.player1 = players.player1;
       this.player2 = players.player2;
@@ -261,7 +246,6 @@ export class AppComponent implements OnDestroy {
     this.selectedChecker = checker;
     this.moveStartField = field;
     this.possibleMovesForStartField = this.getPossibleMovesForSelectedField(field);
-    console.log("checker selected " + this.selectedChecker.id);
   }
   public async selectTargetField(field: Field) {
     const movesForStartFieldWithCurrentRolls = this.getPossibleMovesForSelectedField(this.moveStartField);
@@ -356,6 +340,28 @@ export class AppComponent implements OnDestroy {
     return movesForStartFieldWithCurrentRolls;
   }
 
+  private restartGame() {
+    this.initStoreSubscriptions(this.store);
+
+    let rules: GameRulesBase;
+    const board = new Board();
+    const p1 = new PlayerHuman("Tom", CheckerColor.WHITE);
+    const p2 = new PlayerComputer("PC1", CheckerColor.BLACK);
+    const mode: GameMode = GameMode.BACKGAMMON;
+    switch (mode) {
+      case GameMode.BACKGAMMON:
+        rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), this.store);
+        break;
+      // case GameMode.PLAKATO:
+      // case GameMode.PORTES:
+      default:
+        rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), this.store);
+    }
+    this.game = new Game(rules);
+
+    rules.start();
+  }
+
   private async showCheckerAnimation(move: Move) {
     if (!this.board) { return; }
     let checker = this.selectedChecker;
@@ -363,15 +369,19 @@ export class AppComponent implements OnDestroy {
     if (!checker || !_.find(fromCheckers, c => c.id === checker.id)) {
       checker = fromCheckers[fromCheckers.length - 1];
     }
-    const el = document.getElementById(checker.id);
-    await Helper.timeout(0); // wird benötigt, damit sicher das Binding mit dem neuen Board durch ist
-    const destField = this.board.getFieldByNumber(move.to);
-    const durationInSeconds = 0.5;
-    this.renderer.setElementStyle(el, "transition", `${durationInSeconds}s linear`);
-    const transformString = this.getTransform(destField, checker, destField.checkers.length);
-    this.renderer.setElementAttribute(el, "transform", transformString);
-    await Helper.timeout(durationInSeconds * 1000 + 200);
-    this.renderer.setElementStyle(el, "transition", "");
+    try {
+      const el = document.getElementById(checker.id);
+      await Helper.timeout(0); // wird benötigt, damit sicher das Binding mit dem neuen Board durch ist
+      const destField = this.board.getFieldByNumber(move.to);
+      const durationInSeconds = 0.5;
+      this.renderer.setElementStyle(el, "transition", `${durationInSeconds}s linear`);
+      const transformString = this.getTransform(destField, checker, destField.checkers.length);
+      this.renderer.setElementAttribute(el, "transform", transformString);
+      await Helper.timeout(durationInSeconds * 1000 + 200);
+      this.renderer.setElementStyle(el, "transition", "");
+    } catch (e) {
+      console.log(e);
+    }
   }
 
   private async showDiceRollAnimation(turn: Turn) {
