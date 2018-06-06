@@ -264,7 +264,7 @@ export class AppComponent implements OnDestroy {
     console.log("checker selected " + this.selectedChecker.id);
   }
   public async selectTargetField(field: Field) {
-    const movesForStartFieldWithCurrentRolls = this.getPossibleMovesForSelectedField(field);
+    const movesForStartFieldWithCurrentRolls = this.getPossibleMovesForSelectedField(this.moveStartField);
     if (!movesForStartFieldWithCurrentRolls || movesForStartFieldWithCurrentRolls.length === 0) {
       console.log("no moves for this field");
     } else {
@@ -359,8 +359,8 @@ export class AppComponent implements OnDestroy {
   private async showCheckerAnimation(move: Move) {
     if (!this.board) { return; }
     let checker = this.selectedChecker;
-    if (!checker) {
-      const fromCheckers = this.board.getFieldByNumber(move.from).checkers;
+    const fromCheckers = this.board.getFieldByNumber(move.from).checkers;
+    if (!checker || !_.find(fromCheckers, c => c.id === checker.id)) {
       checker = fromCheckers[fromCheckers.length - 1];
     }
     const el = document.getElementById(checker.id);

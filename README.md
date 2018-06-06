@@ -28,9 +28,6 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 ## Open Features
 
-- checker animation bugfixes -> sometimes wrong element is moved
-
-
 - implementation of backgammon variations Tavli, Plakkato, Portes
 
 
@@ -69,3 +66,4 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - add option to auto roll dices and to auto finish turn after x seconds
 - show dice condition bugfixes
 - game over endless loop fix
+- checker animation bugfixes -> sometimes wrong element is moved
