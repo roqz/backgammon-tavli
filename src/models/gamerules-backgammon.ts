@@ -19,7 +19,6 @@ export class GamerulesBackgammon extends GameRulesBase {
     constructor(board: Board, player1: Player, player2: Player, dice: DiceService, store: Store<State>) {
         super(board, dice, GameMode.BACKGAMMON, player1, player2, store);
         this.initBoardPositions(this.board, player1, player2);
-
         this._currentPlayer = this.getStartingPlayer();
     }
 
@@ -84,7 +83,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         result.points = this.calculatePoints();
         return result;
     }
-    private calculatePoints(): number {
+    protected calculatePoints(): number {
 
         let multiplier = 1;
         if (!this._doubleRequestAccepted) { return this.doublerCube; }
@@ -93,7 +92,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         return this.doublerCube * multiplier;
     }
 
-    private isGammon(): boolean {
+    protected isGammon(): boolean {
         if (!this.isGameOver()) { return false; }
         const loserColor = this._currentPlayer.getOpponentColor();
         if (!_.find(this.getBoard().off.checkers, c => c.color === loserColor)) {
@@ -178,6 +177,7 @@ export class GamerulesBackgammon extends GameRulesBase {
 
     public async start() {
         if (this._alreadyStarted) { return; }
+
         this.store.dispatch(new SetBoardAction({
             board: _.cloneDeep(this.board)
         }));
@@ -283,12 +283,6 @@ export class GamerulesBackgammon extends GameRulesBase {
                     _.remove(movesToReturn, m => m === outMove);
                 }
             }
-
-            // const movesWithinField = _.filter(movesToReturn, m =>
-            //     m.roll === outMove.roll && (m.to !== Board.offNumber || Math.abs(m.to - m.from) === m.roll));
-            // if (movesWithinField.length > 0) {
-            //     _.remove(movesToReturn, m => m === outMove);
-            // }
         });
     }
 
@@ -413,7 +407,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         fourthField.checkers.push(player.checkers[14]);
     }
 
-    private getStartingPlayer(): Player {
+    protected getStartingPlayer(): Player {
         let player1Roll = this.dice.roll();
         let player2Roll = this.dice.roll();
         let equalRoll = true;

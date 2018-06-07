@@ -23,6 +23,9 @@ import { AppSettings } from "./app.settings";
 import { BoardActionTypes } from "./board.actions";
 import { BoardState } from "./board.reducer";
 import { State } from "./reducers";
+import { GamerulesTavli } from "../models/gamerules-tavli";
+import { GamerulesPlakato } from "../models/gamerules-plakato";
+import { GamerulesPortes } from "../models/gamerules-portes";
 
 @Component({
   selector: "app-root",
@@ -49,7 +52,7 @@ export class AppComponent implements OnDestroy {
   private moveEndField: Field;
   private possibleMovesForStartField: Move[];
   constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>) {
-    this.restartGame();
+    this.restartGame(GameMode.BACKGAMMON);
   }
   private initStoreSubscriptions(store: Store<State>) {
     if (this.subscription) {
@@ -340,20 +343,27 @@ export class AppComponent implements OnDestroy {
     return movesForStartFieldWithCurrentRolls;
   }
 
-  private restartGame() {
+  private restartGame(mode: GameMode) {
     this.initStoreSubscriptions(this.store);
 
     let rules: GameRulesBase;
     const board = new Board();
     const p1 = new PlayerHuman("Tom", CheckerColor.WHITE);
     const p2 = new PlayerComputer("PC1", CheckerColor.BLACK);
-    const mode: GameMode = GameMode.BACKGAMMON;
+
     switch (mode) {
       case GameMode.BACKGAMMON:
         rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), this.store);
         break;
-      // case GameMode.PLAKATO:
-      // case GameMode.PORTES:
+      case GameMode.TAVLI:
+        rules = new GamerulesTavli(board, p1, p2, new DiceService(), this.store);
+        break;
+      case GameMode.PLAKATO:
+        rules = new GamerulesPlakato(board, p1, p2, new DiceService(), this.store);
+        break;
+      case GameMode.PORTES:
+        rules = new GamerulesPortes(board, p1, p2, new DiceService(), this.store);
+        break;
       default:
         rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), this.store);
     }
