@@ -23,7 +23,7 @@ import { AppSettings } from "./app.settings";
 import { BoardActionTypes } from "./board.actions";
 import { BoardState } from "./board.reducer";
 import { State } from "./reducers";
-import { GamerulesTavli } from "../models/gamerules-tavli";
+import { GamerulesFevga } from "../models/gamerules-fevga";
 import { GamerulesPlakato } from "../models/gamerules-plakato";
 import { GamerulesPortes } from "../models/gamerules-portes";
 
@@ -51,8 +51,15 @@ export class AppComponent implements OnDestroy {
   private moveStartField: Field;
   private moveEndField: Field;
   private possibleMovesForStartField: Move[];
+  private mode: GameMode = GameMode.BACKGAMMON;
+  private modes = [
+    { name: "Backgammon", value: GameMode.BACKGAMMON },
+    { name: "Portes", value: GameMode.PORTES },
+    { name: "Plakato", value: GameMode.PLAKATO },
+    { name: "Fevga", value: GameMode.FEVGA }
+  ];
   constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>) {
-    this.restartGame(GameMode.BACKGAMMON);
+    this.restartGame(this.mode);
   }
   private initStoreSubscriptions(store: Store<State>) {
     if (this.subscription) {
@@ -355,8 +362,8 @@ export class AppComponent implements OnDestroy {
       case GameMode.BACKGAMMON:
         rules = new GamerulesBackgammon(board, p1, p2, new DiceService(), this.store);
         break;
-      case GameMode.TAVLI:
-        rules = new GamerulesTavli(board, p1, p2, new DiceService(), this.store);
+      case GameMode.FEVGA:
+        rules = new GamerulesFevga(board, p1, p2, new DiceService(), this.store);
         break;
       case GameMode.PLAKATO:
         rules = new GamerulesPlakato(board, p1, p2, new DiceService(), this.store);
@@ -420,7 +427,9 @@ export class AppComponent implements OnDestroy {
     //   el.removeChild(a);
   }
 
-
+  private selectedModeChanged(val: GameMode) {
+    this.mode = +val;
+  }
 
   private getRectFill(field: Field): number {
     if (this.possibleMovesForStartField) {

@@ -1,6 +1,9 @@
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
-import { NextTurnAction, DoubleAction, DoubleAcceptAction, DiceRollAction, GameOverAction } from "../app/board.actions";
+import {
+    NextTurnAction, DoubleAction, DoubleAcceptAction,
+    DiceRollAction, GameOverAction, SetBoardAction, OpenDiceRollUpdateAction, MakeMoveAction, RevertMoveAction
+} from "../app/board.actions";
 import { State } from "../app/reducers";
 import { DiceService } from "../services/dice.service";
 import { Board } from "./board";
@@ -14,6 +17,7 @@ import { Player } from "./player";
 import { Turn } from "./turn";
 import { PlayAction } from "./playaction";
 import { SetPlayersAction } from "../app/player.actions";
+import { Helper } from "../helper/helper";
 
 
 export abstract class GameRulesBase {
@@ -27,16 +31,74 @@ export abstract class GameRulesBase {
     protected _openDiceRolls: number[];
     protected _turnHistory: Turn[] = [];
     protected _alreadyStarted = false;
+    protected _storeBackupBeforeMove: State[] = [];
     constructor(protected board: Board, protected dice: DiceService, public gameMode: GameMode,
         protected player1: Player, protected player2: Player, protected store: Store<State>) {
         this.store.dispatch(new SetPlayersAction({ player1: this.player1, player2: this.player2 }));
     }
-    public abstract async start();
+    public async start() {
+        if (this._alreadyStarted) { return; }
+
+        this.store.dispatch(new SetBoardAction({
+            board: _.cloneDeep(this.board)
+        }));
+        this._alreadyStarted = true;
+        await Helper.timeout(1000);
+        this._currentPlayer.play(_.cloneDeep(this.board), this);
+    }
     public abstract getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[];
-    public abstract makeMove(move: Move, player: Player);
-    public abstract revertLastMove();
-    public abstract finishTurn(player: Player);
-    public abstract getResult(): GameResult;
+    protected abstract executeMove(move: Move, board: Board, testMove: boolean);
+    protected abstract calculatePoints();
+    public getResult(): GameResult {
+        if (!this.isGameOver()) { return null; }
+        const result = new GameResult();
+        result.player1 = this.getPlayer1();
+        result.player2 = this.getPlayer2();
+        result.winner = this.currentPlayer;
+
+        result.history = this.history;
+        result.points = this.calculatePoints();
+        return result;
+    }
+
+    public makeMove(move: Move, player: Player) {
+        if (player.color !== this._currentPlayer.color) {
+            return;
+        }
+        if (this._doubleRequestOpen) { return; }
+        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
+        if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
+            this._storeBackupBeforeMove.push(_.cloneDeep(this.getState(this.store)));
+            this.executeMove(move, this.board, false);
+            this.removeDiceRollFromOpenRolls(move.roll);
+            this.addMoveToHistory(move, false);
+            this.store.dispatch(
+                new OpenDiceRollUpdateAction({ rolls: _.cloneDeep(this._openDiceRolls) }));
+
+            this.store.dispatch(new MakeMoveAction({ move: move, board: _.cloneDeep(this.board), turn: _.cloneDeep(this.currentTurn) }));
+        } else {
+            this.checkIfMustSwitchPlayersOrGameOver();
+            console.log("wanted to make move but move not found ?! Color:" + player.colorString + ",From:" +
+                move.from + ",To:" + move.to + ",Roll:" + move.roll);
+        }
+    }
+    public revertLastMove() {
+        if (!this._storeBackupBeforeMove || this._storeBackupBeforeMove.length === 0) { return; }
+        const lastMoveBackup = this._storeBackupBeforeMove.pop();
+        this.board = lastMoveBackup.board.board;
+        this._turnHistory[this._turnHistory.length - 1].moves.pop();
+        this._openDiceRolls = lastMoveBackup.board.rolls;
+        this.store.dispatch(new RevertMoveAction({ state: _.cloneDeep(lastMoveBackup.board) }));
+    }
+    public finishTurn(player: Player) {
+        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
+        if (possibleMoves && possibleMoves.length > 0) {
+
+        } else {
+
+        }
+        this.checkIfMustSwitchPlayersOrGameOver();
+    }
 
     public getBoard(): Board {
         return _.cloneDeep(this.board);
@@ -227,6 +289,122 @@ export abstract class GameRulesBase {
         return this.board.getSectorOfField(startField);
     }
 
+    protected getStartingPlayer(startDiceRollsRemain: boolean = false): Player {
+        let player1Roll = this.dice.roll();
+        let player2Roll = this.dice.roll();
+        let equalRoll = true;
+        while (equalRoll) {
+            player1Roll = this.dice.roll();
+            player2Roll = this.dice.roll();
+            equalRoll = player1Roll === player2Roll;
+        }
+        if (player1Roll > player2Roll) {
+            this._currentPlayer = this.player1;
+        } else {
+            this._currentPlayer = this.player2;
+        }
+        if (startDiceRollsRemain) {
+            this._openDiceRolls = [player1Roll, player2Roll];
+            this.store.dispatch(new OpenDiceRollUpdateAction({ rolls: this._openDiceRolls }));
+            this.addPlayerTurn(this._openDiceRolls[0], this._openDiceRolls[1]);
+        } else {
+            this.addPlayerTurn();
+        }
+        return this._currentPlayer;
+    }
+    protected removeDiceRollFromOpenRolls(roll: number) {
+        const executedRoll = this._openDiceRolls.indexOf(roll);
+        if (executedRoll === -1) {
+            throw new Error("mit dem würfel is was hin, roll: " + roll);
+        }
+        this._openDiceRolls.splice(executedRoll, 1);
+    }
+    protected checkIfMustSwitchPlayersOrGameOver() {
+        if (!this.isAnyMovePossible()) {
+            this._storeBackupBeforeMove = [];
+            if (!this.isGameOver()) {
+                this.nextPlayerTurn(PlayAction.PLAY);
+            } else {
+                this.store.dispatch(new GameOverAction({ gameOver: true }));
+                console.log("game over! winner: " + this._currentPlayer.colorString);
+                console.log(this.board);
+            }
+        }
+    }
+
+    protected isAnyMovePossible(): boolean {
+        if (this._openDiceRolls.length === 0) {
+            return false;
+        }
+        const possibleMovesLength = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls).length;
+        if (possibleMovesLength === 0) {
+            console.log("zero moves possible");
+        }
+        return possibleMovesLength > 0;
+    }
+    protected ifOnlyOneOfTwoMovesCanBeMadeRemoveLowerRollMove(moves: Move[], board: Board) {
+        // züge aussortieren, die den zweiten zug unmöglich machen würden
+        if (moves.length !== 2) { return; }
+        const move1 = moves[0];
+        const move2 = moves[1];
+        const high = move1.roll > move2.roll ? move1 : move2;
+        const low = move1.roll > move2.roll ? move2 : move1;
+        let highThenLowPossible = true;
+        let lowThenHighPossible = true;
+        if (move1.roll === move2.roll) { return; }
+
+        let boardCopy = _.cloneDeep(board);
+        this.executeMove(high, boardCopy, true);
+        let possibleMovesAfterFirst = this.getAllPossibleMoves(boardCopy, this.currentPlayer, [low.roll]);
+        if (possibleMovesAfterFirst.length === 0) {
+            // high possible then low not
+            highThenLowPossible = false;
+        }
+
+        boardCopy = _.cloneDeep(board);
+        this.executeMove(low, boardCopy, true);
+        possibleMovesAfterFirst = this.getAllPossibleMoves(boardCopy, this.currentPlayer, [high.roll]);
+        if (possibleMovesAfterFirst.length === 0) {
+            // low possible then high not
+            lowThenHighPossible = false;
+        }
+
+        if (!highThenLowPossible && !lowThenHighPossible) {
+            // nur high spielen
+            _.remove(moves, m => m === low);
+        } else if (highThenLowPossible && !lowThenHighPossible) {
+            // nur high spielen
+            _.remove(moves, m => m === low);
+        } else if (!highThenLowPossible && lowThenHighPossible) {
+            // nur low spielen
+            _.remove(moves, m => m === high);
+        }
+    }
+
+    protected removeMovesToOffWithHigherRollThanNeccessaryIfOtherLegalMovePossible(movesToReturn: Move[], board: Board) {
+        // raus ziehen nur erlaubt wenn direkt auf das off field rausgezogen werden kann
+        // oder wenn kein anderer stein mehr im endfeld ist, der auf einem feld ist höher als der roll
+        const outMovesWithHigherRolls = _.filter(movesToReturn, m => m.to === Board.offNumber &&
+            (((m.from < 6 && (m.roll > m.from))) ||
+                (m.from > 19 && (m.roll > 25 - m.from))));
+
+        outMovesWithHigherRolls.forEach(outMove => {
+            const sortedBoard = this.sortBoardFieldsByPlayingDirection(board, this.currentPlayer);
+            const outMoveFieldIndex = sortedBoard.indexOf(board.getFieldByNumber(outMove.from));
+            const fieldsBetweenMoveFieldAndRoll = [];
+            for (let i = 17; i < outMoveFieldIndex; i++) {
+                if (_.find(sortedBoard[i].checkers, c => c.color === this.currentPlayer.color)) {
+                    _.remove(movesToReturn, m => m === outMove);
+                }
+            }
+        });
+    }
+
+    protected getState(store: Store<State>): State {
+        let state: State;
+        store.subscribe(s => state = s);
+        return state;
+    }
     private rollDicesInternal() {
         const dice1 = this.dice.roll();
         const dice2 = this.dice.roll();

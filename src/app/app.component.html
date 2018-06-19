@@ -304,4 +304,7 @@
 
 <game-history-component [history]="history"></game-history-component>
 
-<input type="button" value="(re)start game" (click)="restartGame()" />
+<input type="button" value="(re)start game" (click)="restartGame(mode)" />
+<select (change)="selectedModeChanged($event.target.value)">
+  <option *ngFor="let m of modes " [value]="m.value ">{{m.name}}</option>
+</select>

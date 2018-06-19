@@ -15,11 +15,11 @@ import { PlayAction } from "./playaction";
 import { Player } from "./player";
 
 export class GamerulesBackgammon extends GameRulesBase {
-    private _storeBackupBeforeMove: State[] = [];
+
     constructor(board: Board, player1: Player, player2: Player, dice: DiceService, store: Store<State>) {
         super(board, dice, GameMode.BACKGAMMON, player1, player2, store);
         this.initBoardPositions(this.board, player1, player2);
-        this._currentPlayer = this.getStartingPlayer();
+        this._currentPlayer = this.getStartingPlayer(true);
     }
 
     public getAllPossibleMoves(board: Board, player: Player, diceRolls: number[]): Move[] {
@@ -33,56 +33,6 @@ export class GamerulesBackgammon extends GameRulesBase {
         return this.getPossibleFieldMoves(board, player, diceRolls);
     }
 
-    public makeMove(move: Move, player: Player) {
-        if (player.color !== this._currentPlayer.color) {
-            return;
-        }
-        if (this._doubleRequestOpen) { return; }
-        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
-        if (_.find(possibleMoves, m => m.from === move.from && m.to === move.to)) {
-            this._storeBackupBeforeMove.push(_.cloneDeep(this.getState(this.store)));
-            this.executeMove(move, this.board);
-            this.store.dispatch(new MakeMoveAction({ move: move, board: _.cloneDeep(this.board), turn: _.cloneDeep(this.currentTurn) }));
-        } else {
-            this.checkIfMustSwitchPlayersOrGameOver();
-            console.log("wanted to make move but move not found ?! Color:" + player.colorString + ",From:" +
-                move.from + ",To:" + move.to + ",Roll:" + move.roll);
-        }
-    }
-    private getState(store: Store<State>): State {
-        let state: State;
-        store.subscribe(s => state = s);
-        return state;
-    }
-    public revertLastMove() {
-        if (!this._storeBackupBeforeMove || this._storeBackupBeforeMove.length === 0) { return; }
-        const lastMoveBackup = this._storeBackupBeforeMove.pop();
-        this.board = lastMoveBackup.board.board;
-        this._turnHistory[this._turnHistory.length - 1].moves.pop();
-        this._openDiceRolls = lastMoveBackup.board.rolls;
-        this.store.dispatch(new RevertMoveAction({ state: _.cloneDeep(lastMoveBackup.board) }));
-    }
-    public finishTurn(player: Player) {
-        const possibleMoves = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls);
-        if (possibleMoves && possibleMoves.length > 0) {
-
-        } else {
-
-        }
-        this.checkIfMustSwitchPlayersOrGameOver();
-    }
-
-    public getResult(): GameResult {
-        if (!this.isGameOver()) { return null; }
-        const result = new GameResult();
-        result.player1 = this.getPlayer1();
-        result.player2 = this.getPlayer2();
-        result.winner = this.currentPlayer;
-
-        result.history = this.history;
-        result.points = this.calculatePoints();
-        return result;
-    }
     protected calculatePoints(): number {
 
         let multiplier = 1;
@@ -120,7 +70,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         return false;
     }
 
-    private executeMove(move: Move, board: Board, testMove: boolean = false) {
+    protected executeMove(move: Move, board: Board, testMove: boolean) {
         const startField = board.getFieldByNumber(move.from);
         const targetField = board.getFieldByNumber(move.to);
         const idxCheckerToMove = startField.checkers.length - 1;
@@ -132,19 +82,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         const hitOpponent = this.ifOppenentCheckerOnTargetFieldMoveItToBar(targetField, board);
         targetField.checkers.push(checkerToMove[0]);
         if (!testMove) {
-            this.removeDiceRollFromOpenRolls(move.roll);
-            this.addMoveToHistory(move, hitOpponent);
-            this.store.dispatch(
-                new OpenDiceRollUpdateAction({ rolls: _.cloneDeep(this._openDiceRolls) }));
         }
-    }
-
-    private removeDiceRollFromOpenRolls(roll: number) {
-        const executedRoll = this._openDiceRolls.indexOf(roll);
-        if (executedRoll === -1) {
-            throw new Error("mit dem würfel is was hin, roll: " + roll);
-        }
-        this._openDiceRolls.splice(executedRoll, 1);
     }
 
     private ifOppenentCheckerOnTargetFieldMoveItToBar(targetField: Field, board: Board): boolean {
@@ -162,41 +100,7 @@ export class GamerulesBackgammon extends GameRulesBase {
         return false;
     }
 
-    private checkIfMustSwitchPlayersOrGameOver() {
-        if (!this.isAnyMovePossible()) {
-            this._storeBackupBeforeMove = [];
-            if (!this.isGameOver()) {
-                this.nextPlayerTurn(PlayAction.PLAY);
-            } else {
-                this.store.dispatch(new GameOverAction({ gameOver: true }));
-                console.log("game over! winner: " + this._currentPlayer.colorString);
-                console.log(this.board);
-            }
-        }
-    }
 
-    public async start() {
-        if (this._alreadyStarted) { return; }
-
-        this.store.dispatch(new SetBoardAction({
-            board: _.cloneDeep(this.board)
-        }));
-        this._alreadyStarted = true;
-        await Helper.timeout(1000);
-        this._currentPlayer.play(_.cloneDeep(this.board), this);
-    }
-
-
-    private isAnyMovePossible(): boolean {
-        if (this._openDiceRolls.length === 0) {
-            return false;
-        }
-        const possibleMovesLength = this.getAllPossibleMoves(this.board, this._currentPlayer, this._openDiceRolls).length;
-        if (possibleMovesLength === 0) {
-            console.log("zero moves possible");
-        }
-        return possibleMovesLength > 0;
-    }
 
     private getPossibleBarMoves(board: Board, player: Player, diceRolls: number[]): Move[] {
         const moves: Move[] = [];
@@ -220,70 +124,10 @@ export class GamerulesBackgammon extends GameRulesBase {
                 }
             }
         }
-
-
         this.removeMovesToOffWithHigherRollThanNeccessaryIfOtherLegalMovePossible(movesToReturn, board);
         this.ifOnlyOneOfTwoMovesCanBeMadeRemoveLowerRollMove(movesToReturn, board);
 
         return movesToReturn;
-    }
-
-    private ifOnlyOneOfTwoMovesCanBeMadeRemoveLowerRollMove(moves: Move[], board: Board) {
-        // züge aussortieren, die den zweiten zug unmöglich machen würden
-        if (moves.length !== 2) { return; }
-        const move1 = moves[0];
-        const move2 = moves[1];
-        const high = move1.roll > move2.roll ? move1 : move2;
-        const low = move1.roll > move2.roll ? move2 : move1;
-        let highThenLowPossible = true;
-        let lowThenHighPossible = true;
-        if (move1.roll === move2.roll) { return; }
-
-        let boardCopy = _.cloneDeep(board);
-        this.executeMove(high, boardCopy, true);
-        let possibleMovesAfterFirst = this.getAllPossibleMoves(boardCopy, this.currentPlayer, [low.roll]);
-        if (possibleMovesAfterFirst.length === 0) {
-            // high possible then low not
-            highThenLowPossible = false;
-        }
-
-        boardCopy = _.cloneDeep(board);
-        this.executeMove(low, boardCopy, true);
-        possibleMovesAfterFirst = this.getAllPossibleMoves(boardCopy, this.currentPlayer, [high.roll]);
-        if (possibleMovesAfterFirst.length === 0) {
-            // low possible then high not
-            lowThenHighPossible = false;
-        }
-
-        if (!highThenLowPossible && !lowThenHighPossible) {
-            // nur high spielen
-            _.remove(moves, m => m === low);
-        } else if (highThenLowPossible && !lowThenHighPossible) {
-            // nur high spielen
-            _.remove(moves, m => m === low);
-        } else if (!highThenLowPossible && lowThenHighPossible) {
-            // nur low spielen
-            _.remove(moves, m => m === high);
-        }
-    }
-
-    private removeMovesToOffWithHigherRollThanNeccessaryIfOtherLegalMovePossible(movesToReturn: Move[], board: Board) {
-        // raus ziehen nur erlaubt wenn direkt auf das off field rausgezogen werden kann
-        // oder wenn kein anderer stein mehr im endfeld ist, der auf einem feld ist höher als der roll
-        const outMovesWithHigherRolls = _.filter(movesToReturn, m => m.to === Board.offNumber &&
-            (((m.from < 6 && (m.roll > m.from))) ||
-                (m.from > 19 && (m.roll > 25 - m.from))));
-
-        outMovesWithHigherRolls.forEach(outMove => {
-            const sortedBoard = this.sortBoardFieldsByPlayingDirection(board, this.currentPlayer);
-            const outMoveFieldIndex = sortedBoard.indexOf(board.getFieldByNumber(outMove.from));
-            const fieldsBetweenMoveFieldAndRoll = [];
-            for (let i = 17; i < outMoveFieldIndex; i++) {
-                if (_.find(sortedBoard[i].checkers, c => c.color === this.currentPlayer.color)) {
-                    _.remove(movesToReturn, m => m === outMove);
-                }
-            }
-        });
     }
 
     private getPossibleMovesForField(sortedBoard: Field[], field: Field, player: Player, rolls: number[]): Move[] {
@@ -405,26 +249,6 @@ export class GamerulesBackgammon extends GameRulesBase {
         fourthField.checkers.push(player.checkers[12]);
         fourthField.checkers.push(player.checkers[13]);
         fourthField.checkers.push(player.checkers[14]);
-    }
-
-    protected getStartingPlayer(): Player {
-        let player1Roll = this.dice.roll();
-        let player2Roll = this.dice.roll();
-        let equalRoll = true;
-        while (equalRoll) {
-            player1Roll = this.dice.roll();
-            player2Roll = this.dice.roll();
-            equalRoll = player1Roll === player2Roll;
-        }
-        if (player1Roll > player2Roll) {
-            this._currentPlayer = this.player1;
-        } else {
-            this._currentPlayer = this.player2;
-        }
-        this._openDiceRolls = [player1Roll, player2Roll];
-        this.store.dispatch(new OpenDiceRollUpdateAction({ rolls: this._openDiceRolls }));
-        this.addPlayerTurn(this._openDiceRolls[0], this._openDiceRolls[1]);
-        return this._currentPlayer;
     }
 
 }

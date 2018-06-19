@@ -98,36 +98,8 @@ describe("GamerulesPlakato", () => {
         const result = rules.getResult();
         expect(result.points).toBe(2);
     }));
-    it("should return two points for winner of backgammon if checker on bar", (() => {
-        const boardWithState: any = new Board();
-        // tslint:disable-next-line:max-line-length
-        boardWithState.fields = [{ "number": 1, "checkers": [] }, { "number": 2, "checkers": [] }, { "number": 3, "checkers": [] }, { "number": 4, "checkers": [] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [] }, { "number": 18, "checkers": [] }, { "number": 19, "checkers": [] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [] }, { "number": 22, "checkers": [] },
-        { "number": 23, "checkers": [] },
-        { "number": 24, "checkers": [] }];
-        boardWithState.bar = { "number": 25, "checkers": [{ "color": 1, "idNumber": 0 }] };
-        // tslint:disable-next-line:max-line-length
-        boardWithState.off = { "number": 0, "checkers": [{ "color": 0, "idNumber": 0 }, { "color": 0, "idNumber": 1 }, { "color": 0, "idNumber": 2 }, { "color": 0, "idNumber": 3 }, { "color": 0, "idNumber": 4 }, { "color": 0, "idNumber": 5 }, { "color": 0, "idNumber": 6 }, { "color": 0, "idNumber": 7 }, { "color": 0, "idNumber": 8 }, { "color": 0, "idNumber": 9 }, { "color": 0, "idNumber": 10 }, { "color": 0, "idNumber": 11 }, { "color": 0, "idNumber": 12 }, { "color": 0, "idNumber": 13 }, { "color": 0, "idNumber": 14 }] };
-        rules = new GamerulesPlakato(new Board(), p1, p2, diceService, store);
-        rules["_currentPlayer"] = p1;
-        rules["board"] = boardWithState;
-        const result = rules.getResult();
-        expect(result.points).toBe(2);
-    }));
-    it("should return two points for winner of backgammon if checker in home sector", (() => {
-        const boardWithState: any = new Board();
-        // tslint:disable-next-line:max-line-length
-        boardWithState.fields = [{ "number": 1, "checkers": [{ "color": 1, "idNumber": 0 }] }, { "number": 2, "checkers": [] }, { "number": 3, "checkers": [] }, { "number": 4, "checkers": [] }, { "number": 5, "checkers": [] }, { "number": 6, "checkers": [] }, { "number": 7, "checkers": [] }, { "number": 8, "checkers": [] }, { "number": 9, "checkers": [] }, { "number": 10, "checkers": [] }, { "number": 11, "checkers": [] }, { "number": 12, "checkers": [] }, { "number": 13, "checkers": [] }, { "number": 14, "checkers": [] }, { "number": 15, "checkers": [] }, { "number": 16, "checkers": [] }, { "number": 17, "checkers": [] }, { "number": 18, "checkers": [] }, { "number": 19, "checkers": [] }, { "number": 20, "checkers": [] }, { "number": 21, "checkers": [] }, { "number": 22, "checkers": [] },
-        { "number": 23, "checkers": [] },
-        { "number": 24, "checkers": [] }];
-        boardWithState.bar = { "number": 25, "checkers": [] };
-        // tslint:disable-next-line:max-line-length
-        boardWithState.off = { "number": 0, "checkers": [{ "color": 0, "idNumber": 0 }, { "color": 0, "idNumber": 1 }, { "color": 0, "idNumber": 2 }, { "color": 0, "idNumber": 3 }, { "color": 0, "idNumber": 4 }, { "color": 0, "idNumber": 5 }, { "color": 0, "idNumber": 6 }, { "color": 0, "idNumber": 7 }, { "color": 0, "idNumber": 8 }, { "color": 0, "idNumber": 9 }, { "color": 0, "idNumber": 10 }, { "color": 0, "idNumber": 11 }, { "color": 0, "idNumber": 12 }, { "color": 0, "idNumber": 13 }, { "color": 0, "idNumber": 14 }] };
-        rules = new GamerulesPlakato(new Board(), p1, p2, diceService, store);
-        rules["_currentPlayer"] = p1;
-        rules["board"] = boardWithState;
-        const result = rules.getResult();
-        expect(result.points).toBe(2);
-    }));
+
+
     it("should enforce higher roll if only one move can be made 1", (() => {
         const boardWithState: any = new Board();
         boardWithState.fields = [
@@ -260,8 +232,8 @@ describe("GamerulesPlakato", () => {
         expect(canDouble).toBe(false);
     }));
 
-    it("should return pip count 167 on inital board", (() => {
+    it("should return pip count 360 on inital board", (() => {
         const result = rules.getPipCount(p1, board);
-        expect(result).toBe(167);
+        expect(result).toBe(360);
     }));
 });
