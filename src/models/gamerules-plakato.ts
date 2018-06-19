@@ -1,16 +1,17 @@
-import { GameRulesBase } from "./gamerulesbase";
-import { Board } from "./board";
-import { Player } from "./player";
-import { Move } from "./move";
-import { GameResult } from "./gameresult";
-import { DiceService } from "../services/dice.service";
-import { GameMode } from "./gamemode";
 import { Store } from "@ngrx/store";
 import { State } from "../app/reducers";
+
 import { CheckerColor } from "./checker";
 import * as _ from "lodash";
 import { Field } from "./field";
 import { OpenDiceRollUpdateAction, MakeMoveAction } from "../app/board.actions";
+import { GameRulesBase } from "./gamerulesbase";
+import { Player } from "./player";
+import { DiceService } from "../services/dice.service";
+import { GameMode } from "./gamemode";
+import { Board } from "./board";
+import { Move } from "./move";
+
 
 export class GamerulesPlakato extends GameRulesBase {
 
