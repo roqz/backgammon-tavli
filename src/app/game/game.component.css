@@ -1,0 +1,23 @@
+.info-box {
+  display: inline-block;
+  position: relative;
+  margin-left: 5px;
+  margin-right: 5px;
+  vertical-align: top;
+}
+
+.game-controls {
+  margin-top: 10px;
+}
+
+.game-controls>button {
+  margin: 3px;
+}
+
+.game-controls>span {
+  margin: 3px;
+}
+
+rect.point:hover {
+  fill-opacity: 0.1;
+}

@@ -1,5 +1,6 @@
 import { BrowserModule } from "@angular/platform-browser";
 import { NgModule, NO_ERRORS_SCHEMA } from "@angular/core";
+import { RouterModule, Routes } from "@angular/router";
 import { NgbModule } from "@ng-bootstrap/ng-bootstrap";
 
 import { AppComponent } from "./app.component";
@@ -12,18 +13,49 @@ import { EffectsModule } from "@ngrx/effects";
 import { AppEffects } from "./app.effects";
 import { GameHistoryComponent } from "./gamehistory/gamehistory.component";
 import { GameresultComponent } from "./gameresult/gameresult.component";
+import { SettingsModalComponent } from "./settings-modal/settings-modal.component";
+import { PageNotFoundComponent } from "./page-not-found/page-not-found.component";
+import { MainMenuComponent } from "./main-menu/main-menu.component";
+import { GameComponent } from "./game/game.component";
+import { GameControlsComponent } from './game-controls/game-controls.component';
 
+const appRoutes: Routes = [
+  { path: "game", component: GameComponent },
+  // { path: "hero/:id", component: HeroDetailComponent },
+  {
+    path: "menu",
+    component: MainMenuComponent,
+    data: { title: "Menu" }
+  },
+  {
+    path: "",
+    redirectTo: "/menu",
+    pathMatch: "full"
+  },
+  { path: "**", component: PageNotFoundComponent }
+];
 
 @NgModule({
   declarations: [
     AppComponent,
     DiceComponent,
     GameHistoryComponent,
-    GameresultComponent
+    GameresultComponent,
+    GameComponent,
+    MainMenuComponent,
+    PageNotFoundComponent,
+    SettingsModalComponent,
+    GameComponent,
+    GameControlsComponent
   ],
+  entryComponents: [SettingsModalComponent], // dynamisch erzeugte Komponenten müssen hier rein
   imports: [
     BrowserModule,
     NgbModule.forRoot(),
+    RouterModule.forRoot(
+      appRoutes,
+      { enableTracing: true } // <-- debugging purposes only
+    ),
     StoreModule.forRoot(reducers, { metaReducers }),
     !environment.production ? StoreDevtoolsModule.instrument() : [],
     EffectsModule.forRoot([AppEffects])
@@ -34,3 +66,4 @@ import { GameresultComponent } from "./gameresult/gameresult.component";
 
 })
 export class AppModule { }
+
