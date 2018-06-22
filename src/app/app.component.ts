@@ -1,4 +1,5 @@
-import { ChangeDetectorRef, Component, OnDestroy, Renderer } from "@angular/core";
+import { ChangeDetectorRef, Component, OnDestroy, Renderer, OnInit } from "@angular/core";
+import { NgbModal, ModalDismissReasons } from "@ng-bootstrap/ng-bootstrap";
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
 import { Subject, interval } from "rxjs";
@@ -26,13 +27,14 @@ import { State } from "./reducers";
 import { GamerulesFevga } from "../models/gamerules-fevga";
 import { GamerulesPlakato } from "../models/gamerules-plakato";
 import { GamerulesPortes } from "../models/gamerules-portes";
+import { LOCATION_INITIALIZED } from "@angular/common";
 
 @Component({
   selector: "app-root",
   templateUrl: "./app.component.html",
   styleUrls: ["./app.component.css"]
 })
-export class AppComponent implements OnDestroy {
+export class AppComponent implements OnDestroy, OnInit {
 
   private subscription: ISubscription;
   title = "Backgammon Tavli";
@@ -58,7 +60,7 @@ export class AppComponent implements OnDestroy {
     { name: "Plakato", value: GameMode.PLAKATO },
     { name: "Fevga", value: GameMode.FEVGA }
   ];
-  constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>) {
+  constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>, private modalService: NgbModal) {
     this.restartGame(this.mode);
   }
   private initStoreSubscriptions(store: Store<State>) {
@@ -137,6 +139,9 @@ export class AppComponent implements OnDestroy {
   }
   ngOnDestroy() {
     this.subscription.unsubscribe();
+  }
+  ngOnInit() {
+    // this.makeDraggable();
   }
   public get rules(): GameRulesBase {
     if (!this.game) { return null; }
@@ -547,4 +552,94 @@ export class AppComponent implements OnDestroy {
     return -120;
   }
 
+  private makeDraggable() {
+    const svg = document.getElementById("svgContainer") as any;
+    function svgPoint(element, x, y) {
+      const pt = svg.createSVGPoint();
+
+      pt.x = x;
+      pt.y = y;
+
+      return pt.matrixTransform(element.getScreenCTM().inverse());
+    }
+    function getMousePosition(evt) {
+      const CTM = svgPoint(svg, evt.clientX, evt.clientY);
+      console.log(CTM);
+      return {
+        x: (evt.clientX - CTM.e) / CTM.a,
+        y: (evt.clientY - CTM.f) / CTM.d
+      };
+    }
+
+    let selectedElement = null;
+    let mouseStart = null;
+    svg.addEventListener("mousemove", (evt) => {
+      if (selectedElement) {
+        evt.preventDefault();
+        console.log(selectedElement);
+        const mousePos = getMousePosition(evt);
+        let yDiff = mousePos.y - mouseStart.y;
+        if (yDiff < 0) { yDiff = yDiff * -1; }
+        let transformString = (selectedElement as HTMLElement).getAttribute("transform");
+        console.log(transformString);
+        const transformSplit = transformString.split(" ");
+        const x = transformSplit[transformSplit.length - 2];
+        let y = transformSplit[transformSplit.length - 1];
+        y = y.substring(0, y.length - 1);
+        console.log(x);
+        console.log(y);
+        console.log(evt.clientY);
+        const yTest = evt.clientY - 342;
+        // 604.896
+        // 28
+        // 578
+
+        // 0
+        // 180
+        console.log(mousePos.y);
+        transformString = `matrix(.945 0 0 .945 106.97099999999999 ${yTest})`;
+        this.renderer.setElementAttribute(selectedElement, "transform", transformString);
+      }
+    });
+    svg.addEventListener("mouseup", (evt) => {
+      selectedElement = null;
+      console.log("end drag");
+    });
+    svg.addEventListener("mouseleave", (evt) => {
+      selectedElement = null;
+      console.log("end drag");
+    });
+
+
+    svg.addEventListener("mousedown", (evt) => {
+      if (evt.target.classList.contains("draggable")) {
+        selectedElement = evt.target;
+        mouseStart = getMousePosition(evt);
+        console.log("selected drag");
+      }
+    });
+  }
+  /* UI  */
+  private navOpen = false;
+  private toggleNav() {
+    this.navOpen = !this.navOpen;
+  }
+  private async openSettingsModal(modalTemplate) {
+    try {
+      const result = await this.modalService.open(modalTemplate).result;
+      console.log(result);
+    } catch (error) {
+      const dismissReason = this.getDismissReason(error);
+      console.log(dismissReason);
+    }
+  }
+  private getDismissReason(reason: any): string {
+    if (reason === ModalDismissReasons.ESC) {
+      return "by pressing ESC";
+    } else if (reason === ModalDismissReasons.BACKDROP_CLICK) {
+      return "by clicking on a backdrop";
+    } else {
+      return `with: ${reason}`;
+    }
+  }
 }

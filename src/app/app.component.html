@@ -1,10 +1,48 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <a class="navbar-brand" href="#">Backgammon Tavli</a>
+  <i class="oi oi-wrench" (click)="openSettingsModal(settingsModal)"></i>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+    aria-expanded="false" aria-label="Toggle navigation" (click)="toggleNav()">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div [ngClass]="(navOpen==true)?'navbar-collapse':'collapse navbar-collapse'" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" href="#">Home
+          <span class="sr-only">(current)</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Link</a>
+      </li>
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true"
+          aria-expanded="false">
+          Dropdown
+        </a>
+        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <a class="dropdown-item" href="#">Action</a>
+          <a class="dropdown-item" href="#">Another action</a>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="#">Something else here</a>
+        </div>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link disabled" href="#">Disabled</a>
+      </li>
+    </ul>
+    <form class="form-inline my-2 my-lg-0">
+
+      <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+      <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+    </form>
+  </div>
+</nav>
 <!--The content below is only a placeholder and can be replaced.-->
-<div style="text-align:center">
-  <h1>
-    Welcome to {{ title }}!
-  </h1>
-</div>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="60%" height="50%" viewBox="0 0 705.712 604.896">
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="60%" height="50%" viewBox="0 0 705.712 604.896"
+  id="svgContainer">
   <defs>
     <linearGradient id="checkerGradientW">
       <stop offset="0" stop-color="#b7b4a5" />
@@ -253,7 +291,8 @@
     </g>
     <g *ngFor="let field of fields; index as idx">
       <circle *ngFor="let checker of field.checkers; index as idx" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(field, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field, idx)" [attr.id]="checker.id"></circle>
+        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field, idx)" [attr.id]="checker.id"
+        class="draggable"></circle>
     </g>
     <g>
       <circle *ngFor="let checker of barCheckers; index as idx" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(bar, checker, idx)"
@@ -291,20 +330,57 @@
   <gameresult [result]="game.getResult()"></gameresult>
 </div>
 <div>
-  <input type="button" value="roll" (click)="rollDiceClick()" *ngIf="rollDiceButtonEnabled" />
-  <input type="button" value="finish" (click)="finishTurnClick()" *ngIf="finishTurnButtonEnabled" />
-  <input type="button" value="revert" (click)="revertMoveClick()" *ngIf="revertMoveButtonEnabled" />
+  <button type="button" (click)="rollDiceClick()" *ngIf="rollDiceButtonEnabled" class="btn btn-primary">Roll</button>
+  <button type="button" (click)="finishTurnClick()" *ngIf="finishTurnButtonEnabled" class="btn btn-success">Finish</button>
+  <button type="button" (click)="revertMoveClick()" *ngIf="revertMoveButtonEnabled" class="btn btn-warning">Revert</button>
   <div *ngIf="autoFinishTick!=0">Auto finish in {{autoFinishTick}}
-    <input type="button" value="cancel" (click)="cancelAutoFinishClick()" />
+    <button type="button" (click)="cancelAutoFinishClick()" class="btn btn-secondary">Cancel</button>
   </div>
   <div *ngIf="autoRollTick!=0">Auto roll in {{autoRollTick}}
-    <input type="button" value="cancel" (click)="cancelAutoRollClick()" />
+    <button type="button" (click)="cancelAutoRollClick()" class="btn btn-secondary">Cancel</button>
   </div>
 </div>
 
 <game-history-component [history]="history"></game-history-component>
 
-<input type="button" value="(re)start game" (click)="restartGame(mode)" />
-<select (change)="selectedModeChanged($event.target.value)">
-  <option *ngFor="let m of modes " [value]="m.value ">{{m.name}}</option>
-</select>
+
+
+<div class="input-group">
+  <select class="custom-select" (change)="selectedModeChanged($event.target.value)">
+    <option *ngFor="let m of modes " [value]="m.value ">{{m.name}}</option>
+  </select>
+  <div class="input-group-append">
+    <button class="btn btn-outline-secondary" type="button" (click)="restartGame(mode)">(re)start game</button>
+  </div>
+</div>
+
+
+
+
+<!--Settings Modal-->
+<ng-template #settingsModal let-c="close" let-d="dismiss">
+  <div class="modal-header">
+    <h4 class="modal-title">Settings</h4>
+    <button type="button" class="close" aria-label="Close" (click)="d('Cross click')">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <form>
+      <div class="form-group">
+        <label for="dateOfBirth">Date of birth</label>
+        <div class="input-group">
+          <input id="dateOfBirth" class="form-control" placeholder="yyyy-mm-dd" name="dp" ngbDatepicker #dp="ngbDatepicker">
+          <div class="input-group-append">
+            <button class="btn btn-outline-secondary" (click)="dp.toggle()" type="button">
+              <i class="oi oi-calendar"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-dark" (click)="c('Save click')">Save</button>
+  </div>
+</ng-template>

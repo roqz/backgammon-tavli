@@ -28,7 +28,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 ## Open Features
 
-- implementation of backgammon variations Plakato, Portes
+- implementation of backgammon variation Portes
 
 
 - UI to select players and start games 
@@ -68,3 +68,4 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - game over endless loop fix
 - checker animation bugfixes -> sometimes wrong element is moved
 - implementation of backgammon variation Tavli
+- implementation of backgammon variation Plakato

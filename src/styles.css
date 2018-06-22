@@ -1,7 +1,6 @@
 /* You can add global styles to this file, and also import other style files */
 
-@import '~roboto-fontface/css/roboto/roboto-fontface.css';
-* {
-  font-size: 100%;
-  font-family: "Roboto-Regular";
-}
+@import "~bootstrap/dist/css/bootstrap.css";
+/* @import "./bootstrap-theme.css"; */
+
+@import "~@icon/open-iconic/open-iconic.css";
