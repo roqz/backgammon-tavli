@@ -391,10 +391,11 @@ export class GameComponent implements OnInit, OnDestroy {
     try {
       const el = document.getElementById(checker.id);
       await Helper.timeout(0); // wird benötigt, damit sicher das Binding mit dem neuen Board durch ist
+      const startField = this.board.getFieldByNumber(move.from);
       const destField = this.board.getFieldByNumber(move.to);
       const durationInSeconds = 0.5;
       this.renderer.setElementStyle(el, "transition", `${durationInSeconds}s linear`);
-      const transformString = this.getTransform(destField, checker, destField.checkers.length);
+      const transformString = this.getTransform(startField, el.getAttribute("cy"), destField, checker, destField.checkers.length);
       this.renderer.setElementAttribute(el, "transform", transformString);
       await Helper.timeout(durationInSeconds * 1000 + 200);
       this.renderer.setElementStyle(el, "transition", "");
@@ -443,9 +444,9 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   private getFill(checker: Checker): string {
-    let id = "B";
+    let id = "checkerGradientBlack";
     if (checker.color === CheckerColor.WHITE) {
-      id = "R";
+      id = "checkerGradientWhite";
     }
     return `url(#${id})`;
   }
@@ -459,17 +460,62 @@ export class GameComponent implements OnInit, OnDestroy {
     }
     return `url(#${id})`;
   }
-  private getTransform(field: Field, checker: Checker, index: number): string {
-    const xAxis = this.getXByField(field);
-    const yAxis = this.getYByField(field, index, checker);
-    return `matrix(.945 0 0 .945 ${xAxis} ${yAxis})`;
-  }
+  private getX(field: Field): number {
+    if (!field) { return 0; }
+    const xSpace = 19.252;
+    const startRight = 258;
+    const startLeft = 22;
+    switch (field.number) {
+      case 1:
+      case 24:
+        return startRight;
+      case 2:
+      case 23:
+        return startRight - xSpace;
+      case 3:
+      case 22:
+        return startRight - xSpace * 2;
+      case 4:
+      case 21:
+        return startRight - xSpace * 3;
+      case 5:
+      case 20:
+        return startRight - xSpace * 4;
+      case 6:
+      case 19:
+        return startRight - xSpace * 5;
 
-  private getYByField(field: Field, index: number, checker: Checker): number {
+      case 7:
+      case 18:
+        return startLeft + xSpace * 5;
+      case 8:
+      case 17:
+        return startLeft + xSpace * 4;
+      case 9:
+      case 16:
+        return startLeft + xSpace * 3;
+      case 10:
+      case 15:
+        return startLeft + xSpace * 2;
+      case 11:
+      case 14:
+        return startLeft + xSpace;
+      case 12:
+      case 13:
+        return startLeft;
+      case 25: // bar
+        return startLeft + xSpace * 6;
+      case 0: // off
+        return startRight + xSpace;
+    }
+
+    return -120;
+  }
+  private getY(field: Field, checker: Checker, index: number): number {
     if (!field || !checker) { return 0; }
     const ySpace = 19.252;
-    const startBottom = 200.778;
-    const startTop = 1.022;
+    const startBottom = 220;
+    const startTop = 20;
     if (index >= 5 && index < 10) {
       index = index - 4.5;
     } else if (index >= 10) {
@@ -486,6 +532,14 @@ export class GameComponent implements OnInit, OnDestroy {
     } else {
       return startTop + ySpace * index;
     }
+  }
+
+  private getTransform(startField: Field, startY: number, field: Field, checker: Checker, index: number): string {
+    const xAxisStart = this.getX(startField);
+
+    const xAxis = this.getX(field);
+    const yAxis = this.getY(field, checker, index);
+    return `translate(${xAxis - xAxisStart} ${yAxis - startY})`;
   }
 
   private getYOutsideByField(field: Field): number {

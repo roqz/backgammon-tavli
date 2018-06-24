@@ -1,172 +1,45 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="60%" height="50%" viewBox="0 0 705.712 604.896"
   id="svgContainer">
   <defs>
-    <linearGradient id="checkerGradientW">
-      <stop offset="0" stop-color="#b7b4a5" />
-      <stop offset="1" stop-color="#dedcae" />
+    <linearGradient id="checkerGradientBlack" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#080808;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4d4d4d;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="l">
-      <stop offset="0" stop-color="#a18445" />
-      <stop offset=".459" stop-color="#e4e0be" />
-      <stop offset="1" stop-color="#89753e" />
+    <linearGradient id="checkerGradientWhite" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#dedbc6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fbf9f5;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="h">
+
+    <linearGradient id="checkerGradientBorderBlack" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="100%" stop-color="#080808" />
+      <stop offset="0%" stop-color="#4a4a4a" />
+    </linearGradient>
+
+    <linearGradient id="checkerGradientBorderWhite" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b7b4a5" />
+      <stop offset="100%" stop-color="#dedcae" />
+    </linearGradient>
+    <linearGradient id="checkerGradientBorderSelected" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgb(153,218,255)" />
+      <stop offset="100%" stop-color="rgb(0,128,128)" />
+    </linearGradient>
+
+    <linearGradient id="fillBoard" gradientTransform="translate(-1 -1)" x1="6.115" y1="2.579" x2="247.418" y2="219.892">
+      <stop offset="0" stop-color="#906739" />
+      <stop offset="1" stop-color="#6d4f2c" />
+    </linearGradient>
+
+    <linearGradient id="fillScharnier" gradientTransform="translate(-6.677 1.816)" x1="382.196" y1="158.472" x2="384.652" y2="158.496">
       <stop offset="0" stop-color="#a18445" />
       <stop offset=".5" stop-color="#e4e0be" />
       <stop offset="1" stop-color="#89753e" />
     </linearGradient>
-    <linearGradient id="g">
-      <stop offset="0" stop-color="#e0ddca" />
-      <stop offset="1" stop-color="#fff" />
-    </linearGradient>
-    <linearGradient id="f">
-      <stop offset="0" stop-color="#dedbc6" />
-      <stop offset="1" stop-color="#fbf9f5" />
-    </linearGradient>
-    <linearGradient id="i">
-      <stop offset="0" stop-color="#080808" />
-      <stop offset="1" stop-color="#4d4d4d" />
-    </linearGradient>
-    <linearGradient id="checkerGradient">
-      <stop offset="0" stop-color="#080808" />
-      <stop offset="1" stop-color="#4a4a4a" />
-    </linearGradient>
-    <linearGradient id="selectedCheckerGradient">
-      <stop offset="0" stop-color="rgb(153,218,255)" />
-      <stop offset="1" stop-color="rgb(0,128,128)" />
-    </linearGradient>
-    <linearGradient id="a">
-      <stop offset="0" stop-color="#906739" />
-      <stop offset="1" stop-color="#6d4f2c" />
-    </linearGradient>
-    <linearGradient id="b">
-      <stop offset="0" />
-      <stop stop-color="#fff" offset="1" />
-    </linearGradient>
-    <linearGradient id="c">
-      <stop offset="0" stop-color="#fff" />
-      <stop offset=".22" stop-color="#fff" stop-opacity=".498" />
-      <stop offset=".5" stop-color="#fff" stop-opacity="0" />
-      <stop offset=".5" stop-color="#fff" stop-opacity="0" />
-      <stop offset="1" stop-color="#fff" stop-opacity="0" />
-    </linearGradient>
-    <linearGradient id="d">
-      <stop offset="0" stop-color="#fff" />
-      <stop offset=".22" stop-color="#fff" stop-opacity=".498" />
-      <stop offset=".5" stop-color="#fff" stop-opacity="0" />
-      <stop offset=".5" stop-color="#fff" stop-opacity="0" />
-      <stop offset="1" stop-color="#fff" stop-opacity="0" />
-    </linearGradient>
-    <linearGradient id="e">
-      <stop offset="0" stop-color="#fff" />
-      <stop offset=".22" stop-color="#fff" stop-opacity=".498" />
-      <stop offset=".5" stop-color="#fff" stop-opacity="0" />
-      <stop offset=".5" stop-color="#fff" stop-opacity="0" />
-      <stop offset="1" stop-color="#fff" stop-opacity="0" />
-    </linearGradient>
-    <linearGradient xlink:href="#a" id="m" gradientUnits="userSpaceOnUse" gradientTransform="translate(-1 -1)" x1="6.115" y1="2.579"
-      x2="247.418" y2="219.892" />
-    <linearGradient xlink:href="#i" id="n" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="o" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="p" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="q" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="r" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="s" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="t" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="u" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="v" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="w" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="x" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="y" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="z" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="A" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="B" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="C" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="D" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="E" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="F" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="G" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="H" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="I" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="J" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="K" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="L" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="M" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="N" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="O" gradientUnits="userSpaceOnUse" x1="171.193" y1="21.933" x2="149.5" y2="27.137"
-    />
-    <linearGradient xlink:href="#i" id="P" gradientUnits="userSpaceOnUse" x1="152.058" y1="13.923" x2="170.524" y2="15.244" />
-    <linearGradient xlink:href="#checkerGradient" id="checkerGradientBorderBlack" gradientUnits="userSpaceOnUse" x1="171.193"
-      y1="21.933" x2="149.5" y2="27.137" />
-    <linearGradient xlink:href="#f" id="R" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="checkerGradientBorderWhite" gradientUnits="userSpaceOnUse" x1="170.892"
-      y1="16.689" x2="149.5" y2="17.576" />
-    <linearGradient xlink:href="#selectedCheckerGradient" id="checkerGradientBorderSelected" gradientUnits="userSpaceOnUse" x1="170.892"
-      y1="16.689" x2="149.5" y2="17.576" />
 
-    <linearGradient xlink:href="#f" id="T" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="U" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="V" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="W" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="X" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="Y" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="Z" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="aa" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="ab" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="ac" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="ad" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="ae" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="af" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="ag" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="ah" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="ai" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="aj" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="ak" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="al" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="am" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="an" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="ao" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="ap" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="aq" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="ar" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="as" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#f" id="at" gradientUnits="userSpaceOnUse" x1="160" y1="20" x2="167.669" y2="26.418" />
-    <linearGradient xlink:href="#checkerGradientW" id="au" gradientUnits="userSpaceOnUse" x1="170.892" y1="16.689" x2="149.5"
-      y2="17.576" />
-    <linearGradient xlink:href="#h" id="av" gradientUnits="userSpaceOnUse" gradientTransform="translate(-6.677 1.816)" x1="382.196"
-      y1="158.472" x2="384.652" y2="158.496" />
-    <linearGradient xlink:href="#l" id="aw" gradientUnits="userSpaceOnUse" gradientTransform="translate(-6.677 1.816)" x1="382.196"
-      y1="158.472" x2="384.652" y2="158.496" />
   </defs>
   <g transform="scale(2.5204)" id="board" *ngIf="board">
     <path color="#000" fill="#164623" overflow="visible" d="M10 10h260v220H10z" />
-    <path d="M0 0v240h280V0H0zm10 10h120v220H10V10zm140 0h120v220H150V10z" color="#000" fill="url(#m)" overflow="visible" />
+    <path d="M0 0v240h280V0H0zm10 10h120v220H10V10zm140 0h120v220H150V10z" color="#000" fill="url(#fillBoard)" overflow="visible"
+    />
     <g fill="none" id="divider">
       <path d="M139.5 4.871v228.133" stroke="#774b1f" />
       <path d="M140.5 4.871v228.133" stroke="#b1875a" />
@@ -186,7 +59,7 @@
 
     <g color="#000" id="scharnierTop">
       <path fill="#5d3d21" overflow="visible" d="M137.546 15.287h5.107v11.13h-5.107z" />
-      <path fill="url(#av)" overflow="visible" d="M375.52 154.28h2.455v7.77h-2.455z" transform="translate(-399.621 -205.732) scale(1.43258)"
+      <path fill="url(#fillScharnier)" overflow="visible" d="M375.52 154.28h2.455v7.77h-2.455z" transform="translate(-399.621 -205.732) scale(1.43258)"
       />
     </g>
     <g fill="none" stroke-width=".5" id="scharnierDivider">
@@ -196,7 +69,7 @@
     <g id="scharnierBottom">
       <g color="#000">
         <path fill="#5d3d21" overflow="visible" d="M137.546 213.584h5.107v11.131h-5.107z" />
-        <path fill="url(#aw)" overflow="visible" d="M375.52 154.28h2.455v7.77h-2.455z" transform="translate(-399.621 -7.435) scale(1.43258)"
+        <path fill="url(#fillScharnier)" overflow="visible" d="M375.52 154.28h2.455v7.77h-2.455z" transform="translate(-399.621 -7.435) scale(1.43258)"
         />
       </g>
       <g fill="none" stroke-width=".5">
@@ -246,13 +119,18 @@
       <rect height="100" width="19" [attr.x]="getXByField(field)+142" [attr.y]="getYOutsideByField(field)" fill="azure" (click)="selectTargetField(field)"
         [attr.fill-opacity]="getRectFill(field)" class="point"></rect>
     </g>
-    <g *ngFor="let field of fields; index as idx">
+    <!-- <g *ngFor="let field of fields; index as idx">
       <circle *ngFor="let checker of field.checkers; index as idx" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(field, checker, idx)"
         [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field, idx)" [attr.id]="checker.id"
         class="draggable"></circle>
+    </g> -->
+    <g *ngFor="let field of fields; index as idx">
+      <circle *ngFor="let checker of field.checkers; index as idx" [attr.cx]="getX(field, checker, idx)" [attr.cy]="getY(field, checker, idx)"
+        r="9.2" [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field, idx)"
+        [attr.id]="checker.id" class="draggable"></circle>
     </g>
     <g>
-      <circle *ngFor="let checker of barCheckers; index as idx" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(bar, checker, idx)"
+      <circle *ngFor="let checker of barCheckers; index as idx" [attr.cx]="getX(bar, checker, idx)" [attr.cy]="getY(bar, checker, idx)" r="9.2"
         [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, bar, idx)" [attr.id]="checker.id"></circle>
     </g>
 
@@ -261,14 +139,13 @@
         (click)="selectTargetField(off)"></rect>
     </g>
     <g>
-      <circle *ngFor="let checker of offWhite; index as idx" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(off, checker, idx)"
+      <circle *ngFor="let checker of offWhite; index as idx" [attr.cx]="getX(off, checker, idx)" [attr.cy]="getY(off, checker, idx)" r="9.2"
         [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
     </g>
     <g>
-      <circle *ngFor="let checker of offBlack; index as idx" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(off, checker, idx)"
+      <circle *ngFor="let checker of offBlack; index as idx" [attr.cx]="getX(off, checker, idx)" [attr.cy]="getY(off, checker, idx)" r="9.2"
         [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
     </g>
-
   </g>
 </svg>
 <div class="info-box" *ngIf="currentTurn">

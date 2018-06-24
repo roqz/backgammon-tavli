@@ -17,11 +17,16 @@ import { SettingsModalComponent } from "./settings-modal/settings-modal.componen
 import { PageNotFoundComponent } from "./page-not-found/page-not-found.component";
 import { MainMenuComponent } from "./main-menu/main-menu.component";
 import { GameComponent } from "./game/game.component";
-import { GameControlsComponent } from './game-controls/game-controls.component';
+import { GameControlsComponent } from "./game-controls/game-controls.component";
+import { StartNewGameComponent } from "./start-new-game/start-new-game.component";
+import { GameStatisticsComponent } from "./game-statistics/game-statistics.component";
+import { SettingsComponent } from "./settings/settings.component";
 
 const appRoutes: Routes = [
   { path: "game", component: GameComponent },
-  // { path: "hero/:id", component: HeroDetailComponent },
+  { path: "newGame", component: StartNewGameComponent },
+  { path: "stats", component: GameStatisticsComponent },
+  { path: "settings", component: SettingsComponent },
   {
     path: "menu",
     component: MainMenuComponent,
@@ -46,7 +51,10 @@ const appRoutes: Routes = [
     PageNotFoundComponent,
     SettingsModalComponent,
     GameComponent,
-    GameControlsComponent
+    GameControlsComponent,
+    StartNewGameComponent,
+    GameStatisticsComponent,
+    SettingsComponent
   ],
   entryComponents: [SettingsModalComponent], // dynamisch erzeugte Komponenten müssen hier rein
   imports: [

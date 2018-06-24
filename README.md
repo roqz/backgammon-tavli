@@ -33,7 +33,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 - UI to select players and start games 
 - configurable colors and start positions
-- add routing 
+
 - computer AI
 - drag and drop 
 - statistics
@@ -69,3 +69,4 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - checker animation bugfixes -> sometimes wrong element is moved
 - implementation of backgammon variation Tavli
 - implementation of backgammon variation Plakato
+- add routing 
