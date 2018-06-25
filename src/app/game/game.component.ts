@@ -103,6 +103,7 @@ export class GameComponent implements OnInit, OnDestroy {
         this.board = state.board;
         this.cdRef.detectChanges();
         await Helper.timeout(0);
+        this.makeDraggable();
         break;
       case BoardActionTypes.DiceRoll:
         await this.showDiceRollAnimation(state.turn);
@@ -605,54 +606,33 @@ export class GameComponent implements OnInit, OnDestroy {
 
   private makeDraggable() {
     const svg = document.getElementById("svgContainer") as any;
-    function svgPoint(element, x, y) {
-      const pt = svg.createSVGPoint();
-
-      pt.x = x;
-      pt.y = y;
-
-      return pt.matrixTransform(element.getScreenCTM().inverse());
-    }
-    function getMousePosition(evt) {
-      const CTM = svgPoint(svg, evt.clientX, evt.clientY);
-      console.log(CTM);
-      return {
-        x: (evt.clientX - CTM.e) / CTM.a,
-        y: (evt.clientY - CTM.f) / CTM.d
-      };
-    }
-
     let selectedElement = null;
-    let mouseStart = null;
     svg.addEventListener("mousemove", (evt) => {
       if (selectedElement) {
         evt.preventDefault();
-        console.log(selectedElement);
-        const mousePos = getMousePosition(evt);
-        let yDiff = mousePos.y - mouseStart.y;
-        if (yDiff < 0) { yDiff = yDiff * -1; }
-        let transformString = (selectedElement as HTMLElement).getAttribute("transform");
-        console.log(transformString);
-        const transformSplit = transformString.split(" ");
-        const x = transformSplit[transformSplit.length - 2];
-        let y = transformSplit[transformSplit.length - 1];
-        y = y.substring(0, y.length - 1);
-        console.log(x);
-        console.log(y);
-        console.log(evt.clientY);
-        const yTest = evt.clientY - 342;
-        // 604.896
-        // 28
-        // 578
 
-        // 0
-        // 180
-        console.log(mousePos.y);
-        transformString = `matrix(.945 0 0 .945 106.97099999999999 ${yTest})`;
-        this.renderer.setElementAttribute(selectedElement, "transform", transformString);
+        // Umrechnen in lokale SVG Koordinaten. Das ist nötig, damit auch Transformationen beachtet werden
+        const position = svg.createSVGPoint();
+        (SVGElement as any).prototype.getTransformToElement = (SVGElement as any).prototype.getTransformToElement || function (elem) {
+          return elem.getScreenCTM().inverse().multiply(this.getScreenCTM());
+        };
+        position.x = evt.clientX;
+        position.y = evt.clientY;
+        const matrix = svg.getScreenCTM();
+        const correctPosition = position.matrixTransform(matrix.inverse());
+        const globalToLocal = selectedElement.getTransformToElement(svg).inverse();
+        const inObjectSpace = correctPosition.matrixTransform(globalToLocal);
+        this.renderer.setElementAttribute(selectedElement, "cy", inObjectSpace.y);
+        this.renderer.setElementAttribute(selectedElement, "cx", inObjectSpace.x);
       }
     });
     svg.addEventListener("mouseup", (evt) => {
+      // aktuelle koordinaten prüfen, ob am drop ort ein Feld ist 
+      // auf das der stein gezogen werden kann. wenn icht zurücksetzen  
+      const elements = document.querySelectorAll("rect:hover");
+      console.log(elements);
+      if (elements.length != 1) console.log("element nicht gefunden");
+      const fieldNumber = elements[0].id.replace("rect", "");
       selectedElement = null;
       console.log("end drag");
     });
@@ -665,7 +645,8 @@ export class GameComponent implements OnInit, OnDestroy {
     svg.addEventListener("mousedown", (evt) => {
       if (evt.target.classList.contains("draggable")) {
         selectedElement = evt.target;
-        mouseStart = getMousePosition(evt);
+        // select checker
+
         console.log("selected drag");
       }
     });
