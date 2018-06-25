@@ -3,7 +3,7 @@ import { Component, Input } from "@angular/core";
 @Component({
     selector: "[dice-component]",
     templateUrl: "./dice.component.html",
-    styleUrls: ["./dice.component.css"]
+    styleUrls: ["./dice.component.scss"]
 })
 export class DiceComponent {
     @Input() value: number;

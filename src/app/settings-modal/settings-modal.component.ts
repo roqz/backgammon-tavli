@@ -1,5 +1,4 @@
 import { Component, OnInit, Input } from "@angular/core";
-import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 
 
 @Component({
@@ -10,5 +9,5 @@ import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 export class SettingsModalComponent {
   @Input() name;
 
-  constructor(public activeModal: NgbActiveModal) { }
+  constructor() { }
 }

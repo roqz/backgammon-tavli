@@ -129,7 +129,7 @@
         class="draggable"></circle>
     </g> -->
     <g *ngFor="let field of fields; index as idx">
-      
+
     </g>
     <g>
       <circle *ngFor="let checker of barCheckers; index as idx" [attr.cx]="getX(bar, checker, idx)" [attr.cy]="getY(bar, checker, idx)"
@@ -167,17 +167,17 @@
   <gameresult [result]="game.getResult()"></gameresult>
 
   <div class="game-controls">
-    <button type="button" (click)="rollDiceClick()" *ngIf="rollDiceButtonEnabled" class="btn btn-primary">Roll</button>
-    <button type="button" (click)="finishTurnClick()" *ngIf="finishTurnButtonEnabled" class="btn btn-success">Finish</button>
-    <button type="button" (click)="revertMoveClick()" *ngIf="revertMoveButtonEnabled" class="btn btn-warning">Revert</button>
-    <span *ngIf="autoFinishTick!=0">
-      <button type="button" (click)="cancelAutoFinishClick()" class="btn btn-secondary">Cancel</button>
+    <button type="button" (click)="rollDiceClick()" *ngIf="rollDiceButtonEnabled" class="uk-button uk-button-primary">Roll</button>
+    <button type="button" (click)="finishTurnClick()" *ngIf="finishTurnButtonEnabled" class="uk-button uk-button-primary">Finish</button>
+    <button type="button" (click)="revertMoveClick()" *ngIf="revertMoveButtonEnabled" class="uk-button uk-button-danger">Revert</button>
+    <div *ngIf="autoFinishTick!=0">
       <span>Auto finish in {{autoFinishTick}}</span>
-    </span>
-    <span *ngIf="autoRollTick!=0">
-      <button type="button" (click)="cancelAutoRollClick()" class="btn btn-secondary">Cancel</button>
+      <button type="button" (click)="cancelAutoFinishClick()" class="uk-button uk-button-default">Cancel</button>
+    </div>
+    <div *ngIf="autoRollTick!=0">
       <span>Auto roll in {{autoRollTick}}</span>
-    </span>
+      <button type="button" (click)="cancelAutoRollClick()" class="uk-button uk-button-default">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -186,11 +186,11 @@
 
 
 
-<div class="input-group">
-  <select class="custom-select" (change)="selectedModeChanged($event.target.value)">
+<div class="uk-margin">
+  <select class="uk-select" (change)="selectedModeChanged($event.target.value)">
     <option *ngFor="let m of modes " [value]="m.value ">{{m.name}}</option>
   </select>
   <div class="input-group-append">
-    <button class="btn btn-outline-secondary" type="button" (click)="restartGame(mode)">(re)start game</button>
+    <button class="uk-button uk-button-default" type="button" (click)="restartGame(mode)">(re)start game</button>
   </div>
 </div>

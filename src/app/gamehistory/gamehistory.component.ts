@@ -4,7 +4,7 @@ import { Turn } from "../../models/turn";
 @Component({
     selector: "game-history-component",
     templateUrl: "./gamehistory.component.html",
-    styleUrls: ["./gamehistory.component.css"]
+    styleUrls: ["./gamehistory.component.scss"]
 })
 export class GameHistoryComponent {
     @Input() history: Turn[];

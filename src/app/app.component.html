@@ -1,47 +1,47 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <a class="navbar-brand" routerLink="/menu" routerLinkActive="active">Backgammon Tavli</a>
+<nav class="uk-navbar-container uk-margin" uk-navbar>
+  <div class="uk-navbar-left">
+    <a class="uk-navbar-toggle" uk-navbar-toggle-icon uk-toggle="target: #sidenav-slide"></a>
+    <a class="uk-navbar-item uk-logo" routerLink="/menu" routerLinkActive="active">Backgammon Tavli</a>
 
-  <i class="oi oi-wrench" (click)="openSettingsModal()"></i>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
-    aria-expanded="false" aria-label="Toggle navigation" (click)="toggleNav()">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-
-  <div [ngClass]="(navOpen==true)?'navbar-collapse':'collapse navbar-collapse'" id="navbarSupportedContent">
-    <ul class="navbar-nav mr-auto">
-      <li class="nav-item active">
-        <a class="nav-link" routerLink="/menu" routerLinkActive="active">Home
-          <span class="sr-only">(current)</span>
+    <ul class="uk-navbar-nav">
+      <li>
+        <a routerLink="/menu" routerLinkActive="active">
+          <span class="uk-icon uk-margin-small-right" uk-icon="icon: star"></span>
+          Backgammon Tavli
         </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" routerLink="/game" routerLinkActive="active">Game</a>
-      </li>
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true"
-          aria-expanded="false">
-          Dropdown
-        </a>
-        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-          <a class="dropdown-item" href="#">Action</a>
-          <a class="dropdown-item" href="#">Another action</a>
-          <div class="dropdown-divider"></div>
-          <a class="dropdown-item" href="#">Something else here</a>
-        </div>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link disabled" href="#">Disabled</a>
       </li>
     </ul>
-    <form class="form-inline my-2 my-lg-0">
 
-      <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
-      <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
-    </form>
+    <div class="uk-navbar-item">
+      <div>
+
+        <a (click)="openSettingsModal()">
+          <span class="uk-icon uk-margin-small-right" uk-icon="icon: settings"></span>
+        </a>
+      </div>
+    </div>
+
+    <div class="uk-navbar-item">
+      <form action="javascript:void(0)">
+        <input class="uk-input uk-form-width-small" type="text" placeholder="Input">
+        <button class="uk-button uk-button-default">Button</button>
+      </form>
+    </div>
+
   </div>
 </nav>
+<div id="sidenav-slide" uk-offcanvas="overlay: true">
+  <div class="uk-offcanvas-bar">
+
+    <button class="uk-offcanvas-close" type="button" uk-close></button>
+
+    <h3>Title</h3>
+
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+      Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+
+  </div>
+</div>
 <!--The content below is only a placeholder and can be replaced.-->
-
-
 
 <router-outlet></router-outlet>

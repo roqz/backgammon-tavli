@@ -27,10 +27,11 @@ import { GamerulesPlakato } from "../../models/gamerules-plakato";
 import { GamerulesFevga } from "../../models/gamerules-fevga";
 import { GamerulesPortes } from "../../models/gamerules-portes";
 
+declare var UIkit: any;
 @Component({
   selector: "game",
   templateUrl: "./game.component.html",
-  styleUrls: ["./game.component.css"]
+  styleUrls: ["./game.component.scss"]
 })
 export class GameComponent implements OnInit, OnDestroy {
   private subscription: ISubscription;
@@ -396,7 +397,7 @@ export class GameComponent implements OnInit, OnDestroy {
       const destField = this.board.getFieldByNumber(move.to);
       const durationInSeconds = 0.5;
       this.renderer.setElementStyle(el, "transition", `${durationInSeconds}s linear`);
-      const transformString = this.getTransform(startField, el.getAttribute("cy"), destField, checker, destField.checkers.length);
+      const transformString = this.getTransform(startField, el.getAttribute("cy") as any, destField, checker, destField.checkers.length);
       this.renderer.setElementAttribute(el, "transform", transformString);
       await Helper.timeout(durationInSeconds * 1000 + 200);
       this.renderer.setElementStyle(el, "transition", "");
@@ -629,11 +630,14 @@ export class GameComponent implements OnInit, OnDestroy {
     svg.addEventListener("mouseup", (evt) => {
       // aktuelle koordinaten prüfen, ob am drop ort ein Feld ist 
       // auf das der stein gezogen werden kann. wenn icht zurücksetzen  
+      selectedElement = null;
       const elements = document.querySelectorAll("rect:hover");
       console.log(elements);
-      if (elements.length != 1) console.log("element nicht gefunden");
-      const fieldNumber = elements[0].id.replace("rect", "");
-      selectedElement = null;
+      if (elements.length != 1) {
+        console.log("element nicht gefunden");
+      } else {
+        const fieldNumber = elements[0].id.replace("rect", "");
+      }
       console.log("end drag");
     });
     svg.addEventListener("mouseleave", (evt) => {

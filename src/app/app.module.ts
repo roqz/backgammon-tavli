@@ -1,7 +1,6 @@
 import { BrowserModule } from "@angular/platform-browser";
 import { NgModule, NO_ERRORS_SCHEMA } from "@angular/core";
 import { RouterModule, Routes } from "@angular/router";
-import { NgbModule } from "@ng-bootstrap/ng-bootstrap";
 
 import { AppComponent } from "./app.component";
 import { DiceComponent } from "./dice/dice.component";
@@ -59,10 +58,9 @@ const appRoutes: Routes = [
   entryComponents: [SettingsModalComponent], // dynamisch erzeugte Komponenten müssen hier rein
   imports: [
     BrowserModule,
-    NgbModule.forRoot(),
     RouterModule.forRoot(
       appRoutes,
-      { enableTracing: true } // <-- debugging purposes only
+      { enableTracing: false } // <-- debugging purposes only
     ),
     StoreModule.forRoot(reducers, { metaReducers }),
     !environment.production ? StoreDevtoolsModule.instrument() : [],

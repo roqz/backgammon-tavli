@@ -1,5 +1,4 @@
 import { ChangeDetectorRef, Component, OnDestroy, Renderer, OnInit } from "@angular/core";
-import { NgbModal, ModalDismissReasons } from "@ng-bootstrap/ng-bootstrap";
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
 import { Subject, interval } from "rxjs";
@@ -33,39 +32,29 @@ import { SettingsModalComponent } from "./settings-modal/settings-modal.componen
 @Component({
   selector: "app-root",
   templateUrl: "./app.component.html",
-  styleUrls: ["./app.component.css"]
+  styleUrls: ["./app.component.scss"]
 })
 export class AppComponent {
 
   title = "Backgammon Tavli";
 
-  constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>, private modalService: NgbModal) {
+  constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>) {
 
   }
 
   /* UI  */
-  private navOpen = false;
-  private toggleNav() {
-    this.navOpen = !this.navOpen;
-  }
+
   private async openSettingsModal() {
-    try {
-      const modal = this.modalService.open(SettingsModalComponent);
-      modal.componentInstance.name = "Tom";
-      const result = await modal.result;
-      console.log(result);
-    } catch (error) {
-      const dismissReason = this.getDismissReason(error);
-      console.log(dismissReason);
-    }
+    console.log("TODO MODAL");
+    // try {
+    //   const modal = this.modalService.open(SettingsModalComponent);
+    //   modal.componentInstance.name = "Tom";
+    //   const result = await modal.result;
+    //   console.log(result);
+    // } catch (error) {
+    //   const dismissReason = this.getDismissReason(error);
+    //   console.log(dismissReason);
+    // }
   }
-  private getDismissReason(reason: any): string {
-    if (reason === ModalDismissReasons.ESC) {
-      return "by pressing ESC";
-    } else if (reason === ModalDismissReasons.BACKDROP_CLICK) {
-      return "by clicking on a backdrop";
-    } else {
-      return `with: ${reason}`;
-    }
-  }
+
 }
