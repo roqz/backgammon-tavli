@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="60%" height="50%" viewBox="0 0 705.712 604.896"
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="60%" height="50%" viewBox="0 0 280 240"
   id="svgContainer">
   <defs>
     <linearGradient id="checkerGradientBlack" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -36,7 +36,7 @@
     </linearGradient>
 
   </defs>
-  <g transform="scale(2.5204)" id="board" *ngIf="board">
+  <g id="board" *ngIf="board">
     <path color="#000" fill="#164623" overflow="visible" d="M10 10h260v220H10z" />
     <path d="M0 0v240h280V0H0zm10 10h120v220H10V10zm140 0h120v220H150V10z" color="#000" fill="url(#fillBoard)" overflow="visible"
     />
@@ -123,18 +123,14 @@
         r="9.2" [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field, idx)"
         [attr.id]="checker.id" class="draggable"></circle>
     </g>
-    <!-- <g *ngFor="let field of fields; index as idx">
-      <circle *ngFor="let checker of field.checkers; index as idx" cx="160" cy="20" r="9.5" [attr.transform]="getTransform(field, checker, idx)"
-        [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, field, idx)" [attr.id]="checker.id"
-        class="draggable"></circle>
-    </g> -->
+
     <g *ngFor="let field of fields; index as idx">
 
     </g>
     <g>
       <circle *ngFor="let checker of barCheckers; index as idx" [attr.cx]="getX(bar, checker, idx)" [attr.cy]="getY(bar, checker, idx)"
         r="9.2" [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, bar, idx)"
-        [attr.id]="checker.id"></circle>
+        [attr.id]="checker.id" class="draggable"></circle>
     </g>
 
     <g>

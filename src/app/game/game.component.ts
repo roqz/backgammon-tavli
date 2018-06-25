@@ -397,7 +397,7 @@ export class GameComponent implements OnInit, OnDestroy {
       const destField = this.board.getFieldByNumber(move.to);
       const durationInSeconds = 0.5;
       this.renderer.setElementStyle(el, "transition", `${durationInSeconds}s linear`);
-      const transformString = this.getTransform(startField, el.getAttribute("cy") as any, destField, checker, destField.checkers.length);
+      const transformString = this.getTransform(el.getAttribute("cx") as any, el.getAttribute("cy") as any, destField, checker, destField.checkers.length);
       this.renderer.setElementAttribute(el, "transform", transformString);
       await Helper.timeout(durationInSeconds * 1000 + 200);
       this.renderer.setElementStyle(el, "transition", "");
@@ -536,12 +536,12 @@ export class GameComponent implements OnInit, OnDestroy {
     }
   }
 
-  private getTransform(startField: Field, startY: number, field: Field, checker: Checker, index: number): string {
-    const xAxisStart = this.getX(startField);
+  private getTransform(startX: number, startY: number, field: Field, checker: Checker, index: number): string {
+    // const xAxisStart = this.getX(startField);
 
     const xAxis = this.getX(field);
     const yAxis = this.getY(field, checker, index);
-    return `translate(${xAxis - xAxisStart} ${yAxis - startY})`;
+    return `translate(${xAxis - startX} ${yAxis - startY})`;
   }
 
   private getYOutsideByField(field: Field): number {
@@ -608,6 +608,10 @@ export class GameComponent implements OnInit, OnDestroy {
   private makeDraggable() {
     const svg = document.getElementById("svgContainer") as any;
     let selectedElement = null;
+    let startField = null;
+    let possibleMoves = null;
+    let startX = null;
+    let startY = null;
     svg.addEventListener("mousemove", (evt) => {
       if (selectedElement) {
         evt.preventDefault();
@@ -630,28 +634,71 @@ export class GameComponent implements OnInit, OnDestroy {
     svg.addEventListener("mouseup", (evt) => {
       // aktuelle koordinaten prüfen, ob am drop ort ein Feld ist 
       // auf das der stein gezogen werden kann. wenn icht zurücksetzen  
-      selectedElement = null;
-      const elements = document.querySelectorAll("rect:hover");
-      console.log(elements);
-      if (elements.length != 1) {
-        console.log("element nicht gefunden");
-      } else {
-        const fieldNumber = elements[0].id.replace("rect", "");
+
+      let elements = document.querySelectorAll("rect:hover");
+      const circleElements = document.querySelectorAll("circle:hover");
+      let rect = null;
+      if (elements.length === 1) {
+        rect = elements[0];
+      } else if (circleElements.length === 1) {
+        rect = circleElements[0].parentElement.children[0];
       }
-      console.log("end drag");
+      if (!rect) {
+        console.log("element nicht gefunden");
+        console.log(circleElements);
+      } else {
+        const fieldNumber = rect.id.replace("rect", "");
+        const targetField = this.board.getFieldByNumber(+fieldNumber);
+        if (_.find(possibleMoves, m => m.to === targetField.number)) {
+          this.selectTargetField(targetField);
+        } else {
+          // reset position
+          if (selectedElement) {
+            this.renderer.setElementAttribute(selectedElement, "cy", startY);
+            this.renderer.setElementAttribute(selectedElement, "cx", startX);
+          }
+        }
+
+      }
+      selectedElement = null;
+      startField = null;
+      possibleMoves = null;
+      startX = null;
+      startY = null;
     });
     svg.addEventListener("mouseleave", (evt) => {
+      if (selectedElement) {
+        this.renderer.setElementAttribute(selectedElement, "cy", startY);
+        this.renderer.setElementAttribute(selectedElement, "cx", startX);
+      }
       selectedElement = null;
-      console.log("end drag");
+      startField = null;
+      possibleMoves = null;
+      startX = null;
+      startY = null;
     });
 
 
     svg.addEventListener("mousedown", (evt) => {
       if (evt.target.classList.contains("draggable")) {
         selectedElement = evt.target;
-        // select checker
-
-        console.log("selected drag");
+        const checkerNumber = evt.target.id;
+        const checker = this.board.getCheckerById(checkerNumber);
+        const rect = evt.target.parentElement.children[0];
+        if (!rect) {
+          console.log("element nicht gefunden");
+        } else {
+          const fieldNumber = rect.nodeName === "rect" ? rect.id.replace("rect", "") : Board.barNumber;
+          startField = this.board.getFieldByNumber(+fieldNumber);
+          this.selectChecker(checker, startField);
+          possibleMoves = this.getPossibleMovesForSelectedField(startField);
+          if (!possibleMoves || possibleMoves.length === 0) {
+            console.log(possibleMoves);
+            console.log(fieldNumber);
+          }
+          startX = selectedElement.getAttribute("cx");
+          startY = selectedElement.getAttribute("cy");
+        }
       }
     });
   }

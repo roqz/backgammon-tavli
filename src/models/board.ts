@@ -1,5 +1,6 @@
 import { Field } from "./field";
 import * as _ from "lodash";
+import { Checker } from "./checker";
 
 export class Board {
     public static readonly barNumber = 25;
@@ -23,6 +24,14 @@ export class Board {
             throw new Error("Field not found with number " + number);
         }
         return field;
+    }
+    public getCheckerById(id: string): Checker {
+        const field: Field = _.find(this.fields, f => _.find(f.checkers, c => c.id === id)) as Field;
+        let checker = field != null ? _.find(field.checkers, c => c.id === id) : null;
+        if (checker) { return checker; }
+        checker = _.find(this.bar.checkers, c => c.id === id);
+        if (checker) { return checker; }
+        return _.find(this.off.checkers, c => c.id === id);
     }
 
     public getSectorOfField(fieldNumber: number): Field[] {
