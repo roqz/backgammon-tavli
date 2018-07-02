@@ -115,7 +115,14 @@
       <path d="M267.797 229.88l-9.626-96.26-9.626 96.26h19.252z" fill="#da251d" stroke-width=".24115788" id="bottomRight6"></path>
     </g>
 
-    <g *ngFor="let field of fields; index as idx">
+    <g class="barCheckersContainer">
+      <rect height="115" width="20" x="130" y="0" fill="azure" [attr.fill-opacity]="getRectFill(bar)" id="rect25"></rect>
+      <circle *ngFor="let checker of barCheckers; index as idx" [attr.cx]="getX(bar, checker, idx)+2" [attr.cy]="getY(bar, checker, idx)"
+        r="9.2" [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, bar, idx)"
+        [attr.id]="checker.id" class="draggable"></circle>
+    </g>
+
+    <g class="fieldCheckersContainer" *ngFor="let field of fields; index as idx">
       <rect height="100" width="19" [attr.x]="getXByField(field)+142" [attr.y]="getYOutsideByField(field)" fill="azure" (click)="selectTargetField(field)"
         [attr.fill-opacity]="getRectFill(field)" class="point" [attr.id]="'rect'+field.number">
       </rect>
@@ -124,24 +131,15 @@
         [attr.id]="checker.id" class="draggable"></circle>
     </g>
 
-    <g *ngFor="let field of fields; index as idx">
-
-    </g>
-    <g>
-      <circle *ngFor="let checker of barCheckers; index as idx" [attr.cx]="getX(bar, checker, idx)" [attr.cy]="getY(bar, checker, idx)"
-        r="9.2" [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, bar, idx)"
-        [attr.id]="checker.id" class="draggable"></circle>
-    </g>
-
-    <g>
+    <g class="offRectContainer">
       <rect height="250" width="19" [attr.x]="getXByField(off)+142" [attr.y]="getYOutsideByField(off)-140" fill="azure" [attr.fill-opacity]="getRectFill(off)"
         (click)="selectTargetField(off)"></rect>
     </g>
-    <g>
+    <g class="offCheckersContainer">
       <circle *ngFor="let checker of offWhite; index as idx" [attr.cx]="getX(off, checker, idx)" [attr.cy]="getY(off, checker, idx)"
         r="9.2" [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
     </g>
-    <g>
+    <g class="offCheckersContainer">
       <circle *ngFor="let checker of offBlack; index as idx" [attr.cx]="getX(off, checker, idx)" [attr.cy]="getY(off, checker, idx)"
         r="9.2" [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" [attr.id]="checker.id"></circle>
     </g>

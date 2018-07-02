@@ -1,31 +1,31 @@
-import { Component, OnInit, Renderer, ChangeDetectorRef, OnDestroy } from "@angular/core";
-import { ISubscription } from "rxjs/Subscription";
-import { Game } from "../../models/game";
-import { Board } from "../../models/board";
-import { Turn } from "../../models/turn";
-import { Player } from "../../models/player";
-import { AppSettings } from "../app.settings";
-import { Checker, CheckerColor } from "../../models/checker";
-import { Field } from "../../models/field";
-import { Move } from "../../models/move";
-import { GameMode } from "../../models/gamemode";
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, Renderer } from "@angular/core";
 import { Store } from "@ngrx/store";
-import { State } from "../reducers";
-import { concatMap, takeUntil } from "rxjs/operators";
-import { fromPromise } from "rxjs/observable/fromPromise";
-import { BoardState } from "../board.reducer";
-import { BoardActionTypes } from "../board.actions";
-import { Helper } from "../../helper/helper";
-import { PlayerHuman } from "../../models/player-human";
-import { GameRulesBase } from "../../models/gamerulesbase";
 import * as _ from "lodash";
 import { interval, Subject } from "rxjs";
+import { fromPromise } from "rxjs/observable/fromPromise";
+import { concatMap, takeUntil } from "rxjs/operators";
+import { ISubscription } from "rxjs/Subscription";
+import { Helper } from "../../helper/helper";
+import { Board } from "../../models/board";
+import { Checker, CheckerColor } from "../../models/checker";
+import { Field } from "../../models/field";
+import { Game } from "../../models/game";
+import { GameMode } from "../../models/gamemode";
 import { GamerulesBackgammon } from "../../models/gamerules-backgammon";
-import { DiceService } from "../../services/dice.service";
-import { PlayerComputer } from "../../models/player-computer";
-import { GamerulesPlakato } from "../../models/gamerules-plakato";
 import { GamerulesFevga } from "../../models/gamerules-fevga";
+import { GamerulesPlakato } from "../../models/gamerules-plakato";
 import { GamerulesPortes } from "../../models/gamerules-portes";
+import { GameRulesBase } from "../../models/gamerulesbase";
+import { Move } from "../../models/move";
+import { Player } from "../../models/player";
+import { PlayerComputer } from "../../models/player-computer";
+import { PlayerHuman } from "../../models/player-human";
+import { Turn } from "../../models/turn";
+import { DiceService } from "../../services/dice.service";
+import { AppSettings } from "../app.settings";
+import { BoardActionTypes } from "../board.actions";
+import { BoardState } from "../board.reducer";
+import { State } from "../reducers";
 
 declare var UIkit: any;
 @Component({
@@ -612,10 +612,11 @@ export class GameComponent implements OnInit, OnDestroy {
     let possibleMoves = null;
     let startX = null;
     let startY = null;
-    svg.addEventListener("mousemove", (evt) => {
+    const self = this;
+    function drag(evt) {
       if (selectedElement) {
         evt.preventDefault();
-
+        if (evt.touches) { evt = evt.touches[0]; }
         // Umrechnen in lokale SVG Koordinaten. Das ist nötig, damit auch Transformationen beachtet werden
         const position = svg.createSVGPoint();
         (SVGElement as any).prototype.getTransformToElement = (SVGElement as any).prototype.getTransformToElement || function (elem) {
@@ -627,15 +628,24 @@ export class GameComponent implements OnInit, OnDestroy {
         const correctPosition = position.matrixTransform(matrix.inverse());
         const globalToLocal = selectedElement.getTransformToElement(svg).inverse();
         const inObjectSpace = correctPosition.matrixTransform(globalToLocal);
-        this.renderer.setElementAttribute(selectedElement, "cy", inObjectSpace.y);
-        this.renderer.setElementAttribute(selectedElement, "cx", inObjectSpace.x);
+        self.renderer.setElementAttribute(selectedElement, "cy", inObjectSpace.y);
+        self.renderer.setElementAttribute(selectedElement, "cx", inObjectSpace.x);
       }
-    });
-    svg.addEventListener("mouseup", (evt) => {
-      // aktuelle koordinaten prüfen, ob am drop ort ein Feld ist 
-      // auf das der stein gezogen werden kann. wenn icht zurücksetzen  
-
-      let elements = document.querySelectorAll("rect:hover");
+    }
+    function endDrag(evt) {
+      // aktuelle koordinaten prüfen, ob am drop ort ein Feld ist
+      // auf das der stein gezogen werden kann. wenn icht zurücksetzen
+      if (evt.touches) {
+        const x = selectedElement.getAttribute("cx");
+        const y = selectedElement.getAttribute("cy");
+        // TODO per query selector alle rect boxen abfragen und die 
+        // koordinaten abgleichen auf überlappung siehe 
+        // https://greensock.com/svg-drag
+        // https://github.com/greensock/GreenSock-JS/blob/master/src/esm/Draggable.js
+        // hittest
+        console.log(elements);
+      }
+      const elements = document.querySelectorAll("rect:hover");
       const circleElements = document.querySelectorAll("circle:hover");
       let rect = null;
       if (elements.length === 1) {
@@ -644,54 +654,51 @@ export class GameComponent implements OnInit, OnDestroy {
         rect = circleElements[0].parentElement.children[0];
       }
       if (!rect) {
-        console.log("element nicht gefunden");
+        console.log("up element nicht gefunden");
         console.log(circleElements);
       } else {
         const fieldNumber = rect.id.replace("rect", "");
-        const targetField = this.board.getFieldByNumber(+fieldNumber);
+        const targetField = self.board.getFieldByNumber(+fieldNumber);
         if (_.find(possibleMoves, m => m.to === targetField.number)) {
-          this.selectTargetField(targetField);
+          self.selectTargetField(targetField);
         } else {
           // reset position
           if (selectedElement) {
-            this.renderer.setElementAttribute(selectedElement, "cy", startY);
-            this.renderer.setElementAttribute(selectedElement, "cx", startX);
+            self.renderer.setElementAttribute(selectedElement, "cy", startY);
+            self.renderer.setElementAttribute(selectedElement, "cx", startX);
           }
         }
-
       }
       selectedElement = null;
       startField = null;
       possibleMoves = null;
       startX = null;
       startY = null;
-    });
-    svg.addEventListener("mouseleave", (evt) => {
+    }
+    function cancelDrag(evt) {
       if (selectedElement) {
-        this.renderer.setElementAttribute(selectedElement, "cy", startY);
-        this.renderer.setElementAttribute(selectedElement, "cx", startX);
+        self.renderer.setElementAttribute(selectedElement, "cy", startY);
+        self.renderer.setElementAttribute(selectedElement, "cx", startX);
       }
       selectedElement = null;
       startField = null;
       possibleMoves = null;
       startX = null;
       startY = null;
-    });
-
-
-    svg.addEventListener("mousedown", (evt) => {
+    }
+    function startDrag(evt) {
       if (evt.target.classList.contains("draggable")) {
         selectedElement = evt.target;
         const checkerNumber = evt.target.id;
-        const checker = this.board.getCheckerById(checkerNumber);
+        const checker = self.board.getCheckerById(checkerNumber);
         const rect = evt.target.parentElement.children[0];
         if (!rect) {
           console.log("element nicht gefunden");
         } else {
           const fieldNumber = rect.nodeName === "rect" ? rect.id.replace("rect", "") : Board.barNumber;
-          startField = this.board.getFieldByNumber(+fieldNumber);
-          this.selectChecker(checker, startField);
-          possibleMoves = this.getPossibleMovesForSelectedField(startField);
+          startField = self.board.getFieldByNumber(+fieldNumber);
+          self.selectChecker(checker, startField);
+          possibleMoves = self.getPossibleMovesForSelectedField(startField);
           if (!possibleMoves || possibleMoves.length === 0) {
             console.log(possibleMoves);
             console.log(fieldNumber);
@@ -700,6 +707,15 @@ export class GameComponent implements OnInit, OnDestroy {
           startY = selectedElement.getAttribute("cy");
         }
       }
-    });
+    }
+    svg.addEventListener("mousemove", drag);
+    svg.addEventListener("mouseup", endDrag);
+    svg.addEventListener("mouseleave", cancelDrag);
+    svg.addEventListener("mousedown", startDrag);
+    svg.addEventListener("touchstart", startDrag);
+    svg.addEventListener("touchmove", drag);
+    svg.addEventListener("touchend", endDrag);
+    svg.addEventListener("touchleave", cancelDrag);
+    svg.addEventListener("touchcancel", cancelDrag);
   }
 }

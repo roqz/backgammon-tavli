@@ -50,6 +50,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 ## Implemented
 
+- drag and drop for checker movements
 - Game history with print to official backgammon notation 
 - Checker Move Animations
 - implementation of state handling with ngrx
