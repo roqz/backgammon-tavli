@@ -116,7 +116,7 @@
     </g>
 
     <g class="barCheckersContainer">
-      <rect height="115" width="20" x="130" y="0" fill="azure" [attr.fill-opacity]="getRectFill(bar)" id="rect25"></rect>
+      <rect height="115" width="20" x="130" y="0" fill="azure" [attr.fill-opacity]="getRectFill(bar)" id="rect25" class="point"></rect>
       <circle *ngFor="let checker of barCheckers; index as idx" [attr.cx]="getX(bar, checker, idx)+2" [attr.cy]="getY(bar, checker, idx)"
         r="9.2" [attr.fill]="getFill(checker)" [attr.stroke]="getBorder(checker)" (click)="selectChecker(checker, bar, idx)"
         [attr.id]="checker.id" class="draggable"></circle>
@@ -133,7 +133,7 @@
 
     <g class="offRectContainer">
       <rect height="250" width="19" [attr.x]="getXByField(off)+142" [attr.y]="getYOutsideByField(off)-140" fill="azure" [attr.fill-opacity]="getRectFill(off)"
-        (click)="selectTargetField(off)"></rect>
+        (click)="selectTargetField(off)" class="point"></rect>
     </g>
     <g class="offCheckersContainer">
       <circle *ngFor="let checker of offWhite; index as idx" [attr.cx]="getX(off, checker, idx)" [attr.cy]="getY(off, checker, idx)"

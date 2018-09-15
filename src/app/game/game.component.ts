@@ -397,7 +397,8 @@ export class GameComponent implements OnInit, OnDestroy {
       const destField = this.board.getFieldByNumber(move.to);
       const durationInSeconds = 0.5;
       this.renderer.setElementStyle(el, "transition", `${durationInSeconds}s linear`);
-      const transformString = this.getTransform(el.getAttribute("cx") as any, el.getAttribute("cy") as any, destField, checker, destField.checkers.length);
+      const transformString =
+        this.getTransform(el.getAttribute("cx") as any, el.getAttribute("cy") as any, destField, checker, destField.checkers.length);
       this.renderer.setElementAttribute(el, "transform", transformString);
       await Helper.timeout(durationInSeconds * 1000 + 200);
       this.renderer.setElementStyle(el, "transition", "");
@@ -604,6 +605,108 @@ export class GameComponent implements OnInit, OnDestroy {
 
     return -120;
   }
+  private _dummyElement = { style: {} };
+  private _doc: any = window.document ||
+    { createElement: function () { return this._dummyElement; } };
+  private _docElement = this._doc.documentElement || {};
+  private hitTest(obj1, obj2, threshold) {
+    if (obj1 === obj2) {
+      return false;
+    }
+    const r1 = this._parseRect(obj1, null);
+    const r2 = this._parseRect(obj2, null);
+    const isOutside = (r2.left > r1.right || r2.right < r1.left || r2.top > r1.bottom || r2.bottom < r1.top);
+    if (isOutside || !threshold) {
+      return !isOutside;
+    }
+    const isRatio = ((threshold + "").indexOf("%") !== -1);
+    threshold = parseFloat(threshold) || 0;
+    const leftOverlap = Math.max(r1.left, r2.left);
+    const topOverlap = Math.max(r1.top, r2.top);
+    const overlap = {
+      left: leftOverlap,
+      top: topOverlap,
+      width: Math.min(r1.right, r2.right) - leftOverlap,
+      height: Math.min(r1.bottom, r2.bottom) - topOverlap
+    };
+
+    if (overlap.width < 0 || overlap.height < 0) {
+      return false;
+    }
+    if (isRatio) {
+      threshold *= 0.01;
+      const area = overlap.width * overlap.height;
+      return (area >= r1.width * r1.height * threshold || area >= r2.width * r2.height * threshold);
+    }
+    return (overlap.width > threshold && overlap.height > threshold);
+  }
+  private _getDocScrollTop() {
+    return (window.pageYOffset != null) ? window.pageYOffset :
+      (this._doc.scrollTop != null) ? this._doc.scrollTop : this._docElement.scrollTop || this._doc.body.scrollTop || 0;
+  }
+  private _getDocScrollLeft() {
+    return (window.pageXOffset != null) ? window.pageXOffset :
+      (this._doc.scrollLeft != null) ? this._doc.scrollLeft : this._docElement.scrollLeft || this._doc.body.scrollLeft || 0;
+  }
+  private _unwrapElement(value) {
+    if (!value) {
+      return value;
+    }
+    if (typeof (value) === "string") {
+      // value = TweenLite.selector(value);
+    }
+    if (value.length && value !== window && value[0] && value[0].style && !value.nodeType) {
+      value = value[0];
+    }
+    return (value === window || (value.nodeType && value.style)) ? value : null;
+  }
+  private _parseRect(e, undefined) {
+    // accepts a DOM element, a mouse event, or a rectangle object
+    // and returns the corresponding rectangle with left, right, width, height, top, and bottom properties
+
+
+    if (e === window) {
+      return this.getWindowRect();
+    }
+    let r = (e.pageX != undefined) ?
+      this.getPageRect() :
+      (!e.nodeType && e.left != undefined && e.top != undefined) ? e :
+        this._unwrapElement(e).getBoundingClientRect();
+    if (r.right == undefined && r.width != undefined) {
+      r.right = r.left + r.width;
+      r.bottom = r.top + r.height;
+    } else if (r.width == undefined) {
+      // some browsers don't include width and height properties.
+      // We can't just set them directly on r because some browsers throw errors, so create a new generic object.
+      r = {
+        width: r.right - r.left,
+        height: r.bottom - r.top,
+        right: r.right,
+        left: r.left,
+        bottom: r.bottom,
+        top: r.top
+      };
+    }
+    return r;
+  }
+  private getWindowRect() {
+    const _tempRect: any = {};
+    _tempRect.left = _tempRect.top = 0;
+    _tempRect.width = _tempRect.right = this._docElement.clientWidth || e.innerWidth || this._doc.body.clientWidth || 0;
+    _tempRect.height = _tempRect.bottom =
+      ((e.innerHeight || 0) - 20 < this._docElement.clientHeight) ?
+        this._docElement.clientHeight :
+        e.innerHeight || this._doc.body.clientHeight || 0;
+    return _tempRect;
+  }
+  private getPageRect() {
+    return {
+      left: e.pageX - this._getDocScrollLeft(),
+      top: e.pageY - this._getDocScrollTop(),
+      right: e.pageX - this._getDocScrollLeft() + 1,
+      bottom: e.pageY - this._getDocScrollTop() + 1
+    };
+  }
 
   private makeDraggable() {
     const svg = document.getElementById("svgContainer") as any;
@@ -613,6 +716,14 @@ export class GameComponent implements OnInit, OnDestroy {
     let startX = null;
     let startY = null;
     const self = this;
+
+    function resetDragVariables() {
+      selectedElement = null;
+      startField = null;
+      possibleMoves = null;
+      startX = null;
+      startY = null;
+    }
     function drag(evt) {
       if (selectedElement) {
         evt.preventDefault();
@@ -631,33 +742,46 @@ export class GameComponent implements OnInit, OnDestroy {
         self.renderer.setElementAttribute(selectedElement, "cy", inObjectSpace.y);
         self.renderer.setElementAttribute(selectedElement, "cx", inObjectSpace.x);
       }
+
     }
     function endDrag(evt) {
       // aktuelle koordinaten prüfen, ob am drop ort ein Feld ist
       // auf das der stein gezogen werden kann. wenn icht zurücksetzen
+      if (!selectedElement) {
+        resetDragVariables();
+        return;
+      }
+      let targetRect = null;
       if (evt.touches) {
-        const x = selectedElement.getAttribute("cx");
-        const y = selectedElement.getAttribute("cy");
-        // TODO per query selector alle rect boxen abfragen und die 
-        // koordinaten abgleichen auf überlappung siehe 
+
+        // TODO per query selector alle rect boxen abfragen und die
+        // koordinaten abgleichen auf überlappung siehe
         // https://greensock.com/svg-drag
         // https://github.com/greensock/GreenSock-JS/blob/master/src/esm/Draggable.js
         // hittest
-        console.log(elements);
-      }
-      const elements = document.querySelectorAll("rect:hover");
-      const circleElements = document.querySelectorAll("circle:hover");
-      let rect = null;
-      if (elements.length === 1) {
-        rect = elements[0];
-      } else if (circleElements.length === 1) {
-        rect = circleElements[0].parentElement.children[0];
-      }
-      if (!rect) {
-        console.log("up element nicht gefunden");
-        console.log(circleElements);
+        // console.log(elements);
+        const rects = document.querySelectorAll("rect.point");
+        _.forEach(rects, r => {
+          if (self.hitTest(r, selectedElement, "50%")) {
+            targetRect = r;
+          }
+        });
       } else {
-        const fieldNumber = rect.id.replace("rect", "");
+        const elements = document.querySelectorAll("rect:hover");
+        const circleElements = document.querySelectorAll("circle:hover");
+        if (elements.length === 1) {
+          targetRect = elements[0];
+        } else if (circleElements.length === 1) {
+          targetRect = circleElements[0].parentElement.children[0];
+        }
+        if (!targetRect) {
+          console.log("up element nicht gefunden");
+          console.log(circleElements);
+        }
+      }
+
+      if (targetRect) {
+        const fieldNumber = targetRect.id.replace("rect", "");
         const targetField = self.board.getFieldByNumber(+fieldNumber);
         if (_.find(possibleMoves, m => m.to === targetField.number)) {
           self.selectTargetField(targetField);
@@ -669,22 +793,14 @@ export class GameComponent implements OnInit, OnDestroy {
           }
         }
       }
-      selectedElement = null;
-      startField = null;
-      possibleMoves = null;
-      startX = null;
-      startY = null;
+      resetDragVariables();
     }
     function cancelDrag(evt) {
       if (selectedElement) {
         self.renderer.setElementAttribute(selectedElement, "cy", startY);
         self.renderer.setElementAttribute(selectedElement, "cx", startX);
       }
-      selectedElement = null;
-      startField = null;
-      possibleMoves = null;
-      startX = null;
-      startY = null;
+      resetDragVariables();
     }
     function startDrag(evt) {
       if (evt.target.classList.contains("draggable")) {
@@ -699,10 +815,7 @@ export class GameComponent implements OnInit, OnDestroy {
           startField = self.board.getFieldByNumber(+fieldNumber);
           self.selectChecker(checker, startField);
           possibleMoves = self.getPossibleMovesForSelectedField(startField);
-          if (!possibleMoves || possibleMoves.length === 0) {
-            console.log(possibleMoves);
-            console.log(fieldNumber);
-          }
+
           startX = selectedElement.getAttribute("cx");
           startY = selectedElement.getAttribute("cy");
         }
@@ -718,4 +831,5 @@ export class GameComponent implements OnInit, OnDestroy {
     svg.addEventListener("touchleave", cancelDrag);
     svg.addEventListener("touchcancel", cancelDrag);
   }
+
 }
