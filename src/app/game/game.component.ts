@@ -666,10 +666,10 @@ export class GameComponent implements OnInit, OnDestroy {
 
 
     if (e === window) {
-      return this.getWindowRect();
+      return this.getWindowRect(e);
     }
     let r = (e.pageX != undefined) ?
-      this.getPageRect() :
+      this.getPageRect(e) :
       (!e.nodeType && e.left != undefined && e.top != undefined) ? e :
         this._unwrapElement(e).getBoundingClientRect();
     if (r.right == undefined && r.width != undefined) {
@@ -689,7 +689,7 @@ export class GameComponent implements OnInit, OnDestroy {
     }
     return r;
   }
-  private getWindowRect() {
+  private getWindowRect(e) {
     const _tempRect: any = {};
     _tempRect.left = _tempRect.top = 0;
     _tempRect.width = _tempRect.right = this._docElement.clientWidth || e.innerWidth || this._doc.body.clientWidth || 0;
@@ -699,7 +699,7 @@ export class GameComponent implements OnInit, OnDestroy {
         e.innerHeight || this._doc.body.clientHeight || 0;
     return _tempRect;
   }
-  private getPageRect() {
+  private getPageRect(e) {
     return {
       left: e.pageX - this._getDocScrollLeft(),
       top: e.pageY - this._getDocScrollTop(),

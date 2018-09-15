@@ -1,6 +1,6 @@
-import { Field } from "./field";
 import * as _ from "lodash";
 import { Checker } from "./checker";
+import { Field } from "./field";
 
 export class Board {
     public static readonly barNumber = 25;
