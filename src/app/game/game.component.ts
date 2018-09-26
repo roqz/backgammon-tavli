@@ -36,12 +36,12 @@ declare var UIkit: any;
 export class GameComponent implements OnInit, OnDestroy {
   private subscription: ISubscription;
   private game: Game;
-  private board: Board;
+  board: Board;
   private openRolls: number[];
-  private currentTurn: Turn;
+  currentTurn: Turn;
   private player1: Player;
   private player2: Player;
-  private history: Turn[];
+  history: Turn[];
   private _doublerCube = 1;
 
   // ab hier ui helper
@@ -50,8 +50,8 @@ export class GameComponent implements OnInit, OnDestroy {
   private moveStartField: Field;
   private moveEndField: Field;
   private possibleMovesForStartField: Move[];
-  private mode: GameMode = GameMode.BACKGAMMON;
-  private modes = [
+  mode: GameMode = GameMode.BACKGAMMON;
+  modes = [
     { name: "Backgammon", value: GameMode.BACKGAMMON },
     { name: "Portes", value: GameMode.PORTES },
     { name: "Plakato", value: GameMode.PLAKATO },
@@ -354,7 +354,7 @@ export class GameComponent implements OnInit, OnDestroy {
     return movesForStartFieldWithCurrentRolls;
   }
 
-  private restartGame(mode: GameMode) {
+  restartGame(mode: GameMode) {
     this.initStoreSubscriptions(this.store);
 
     let rules: GameRulesBase;
@@ -433,7 +433,7 @@ export class GameComponent implements OnInit, OnDestroy {
     //   el.removeChild(a);
   }
 
-  private selectedModeChanged(val: GameMode) {
+  selectedModeChanged(val: GameMode) {
     this.mode = +val;
   }
 

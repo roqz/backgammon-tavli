@@ -11,43 +11,43 @@ export class DiceComponent {
     @Input() y: number;
     @Input() color: string;
 
-    private showBottomRightDot(): string {
+    showBottomRightDot(): string {
         if (this.value === 2 || this.value === 3 || this.value === 4 || this.value === 5 || this.value === 6) {
             return "visible";
         }
         return "hidden";
     }
-    private showMiddleRightDot(): string {
+    showMiddleRightDot(): string {
         if (this.value === 6) {
             return "visible";
         }
         return "hidden";
     }
-    private showTopRightDot(): string {
+    showTopRightDot(): string {
         if (this.value === 4 || this.value === 5 || this.value === 6) {
             return "visible";
         }
         return "hidden";
     }
-    private showTopLeftDot(): string {
+    showTopLeftDot(): string {
         if (this.value === 2 || this.value === 3 || this.value === 4 || this.value === 5 || this.value === 6) {
             return "visible";
         }
         return "hidden";
     }
-    private showMiddleLeftDot(): string {
+    showMiddleLeftDot(): string {
         if (this.value === 6) {
             return "visible";
         }
         return "hidden";
     }
-    private showBottomLeftDot(): string {
+    showBottomLeftDot(): string {
         if (this.value === 4 || this.value === 5 || this.value === 6) {
             return "visible";
         }
         return "hidden";
     }
-    private showMiddleDot(): string {
+    showMiddleDot(): string {
         if (this.value === 1 || this.value === 3 || this.value === 5) {
             return "visible";
         }

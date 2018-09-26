@@ -13,7 +13,7 @@ export class StartNewGameComponent implements OnInit {
   ngOnInit() {
   }
 
-  private startGame() {
+   startGame() {
     this.router.navigate(["/game"]);
   }
 }

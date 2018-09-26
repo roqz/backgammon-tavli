@@ -10,6 +10,7 @@ import { State } from "./reducers";
 export class AppComponent {
 
   title = "Backgammon Tavli";
+  inputValue: string;
 
   constructor(public renderer: Renderer, private cdRef: ChangeDetectorRef, private store: Store<State>) {
 
@@ -18,7 +19,7 @@ export class AppComponent {
   /* UI  */
 
 
-  private async inputButtonClick(val: string) {
+  async inputButtonClick(val: string) {
     console.log("click " + val);
   }
 
