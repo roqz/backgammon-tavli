@@ -1,6 +1,6 @@
 # BackgammonTavli
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 1.7.3.
+[![Build Status](https://dev.azure.com/ThomasOstarek/backgammon-tavli/_apis/build/status/roqz.backgammon-tavli)](https://dev.azure.com/ThomasOstarek/backgammon-tavli/_build/latest?definitionId=1)
 
 ## Development server
 
