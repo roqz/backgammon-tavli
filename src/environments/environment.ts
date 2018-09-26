@@ -4,5 +4,13 @@
 // The list of which env maps to which file can be found in `.angular-cli.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  firebase: {
+    apiKey: "AIzaSyAZnglSgzt_KdnTHNJM_TxEqxKAa8oAsE8",
+    authDomain: "backgammon-tavli.firebaseapp.com",
+    databaseURL: "https://backgammon-tavli.firebaseio.com",
+    projectId: "backgammon-tavli",
+    storageBucket: "backgammon-tavli.appspot.com",
+    messagingSenderId: "266143530144"
+  }
 };

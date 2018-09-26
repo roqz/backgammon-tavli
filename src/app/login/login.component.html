@@ -1,0 +1,48 @@
+<h1 class="header">Login</h1>
+<div class="container">
+  <div class="row">
+    <div class="col">
+      <form [formGroup]="loginForm" class="uk-form-stacked">
+        <div class="uk-margin">
+          <label class="uk-form-label" for="form-stacked-email">Email address</label>
+          <div class="uk-form-controls">
+            <input type="email" class="uk-input" id="form-stacked-email" formControlName="email">
+          </div>
+
+        </div>
+        <div class="uk-margin">
+          <label class="uk-form-label" for="form-stacked-pw">Password</label>
+          <div class="uk-form-controls">
+            <input type="password" class="uk-input" id="form-stacked-pw" formControlName="password">
+          </div>
+
+          <label class="error">{{errorMessage}}</label>
+        </div>
+        <button type="submit" (click)="tryLogin(loginForm.value)" class="uk-button uk-button-default uk-width-1-1">Login</button>
+      </form>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <button type="button" class="uk-button uk-button-primary uk-width-1-1" (click)="tryFacebookLogin()">Login with
+        Facebook</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <button type="button" class="uk-button uk-button-primary uk-width-1-1" (click)="tryGoogleLogin()">Login with
+        Google</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <button type="button" class="uk-button uk-button-primary uk-width-1-1" (click)="tryTwitterLogin()">Login with
+        Twitter</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <p>No account yet? <a href="/register">Create an account</a></p>
+    </div>
+  </div>
+</div>

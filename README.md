@@ -35,7 +35,7 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 - configurable colors and start positions
 
 - computer AI
-- drag and drop 
+
 - statistics
 
 - game history notation at the moment with static board numbers (24 top right to 1 bottom right), must be from players view
@@ -43,13 +43,15 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 
 - create optional server/ multi-player mode with signal r
+- user accounts for stats
+- 
 - random numbers from server
 - server logic validation 
 - greenkeeper.io
 - Play Game from history 
 
 ## Implemented
-
+- drag and drop for touch devices
 - drag and drop for checker movements
 - Game history with print to official backgammon notation 
 - Checker Move Animations
