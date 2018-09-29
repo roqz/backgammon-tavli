@@ -1,0 +1,42 @@
+{
+  "name": "backgammon-tavli-server",
+  "version": "0.0.1",
+  "description": "Backend for backgammon tavli app",
+  "main": "dist/server.js",
+  "scripts": {
+    "build-ts": "tsc",
+    "start": "npm run serve",
+    "serve": "node dist/server.js",
+    "watch-node": "nodemon dist/server.js",
+    "watch-ts": "tsc -w",
+    "watch": "concurrently -k -p \"[{name}]\" -n \"TypeScript, Node\" -c \"yello.bold, cyan.bold\" \"npm run watch-ts\" \"npm run watch-node\"",
+    "test": "jest --forceExit --coverage ",
+    "watch-test": "npm run test -- --watchAll"
+  },
+  "repository": {
+    "type": "git",
+    "url": "backgammon-tavli"
+  },
+  "keywords": [
+    "backgammon"
+  ],
+  "author": "Thomas Ostarek",
+  "license": "ISC",
+  "dependencies": {
+    "concurrently": "^3.5.1",
+    "dotenv": "^6.0.0",
+    "express": "^4.16.3",
+    "firebase-admin": "6.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.16.0",
+    "@types/supertest": "^2.0.6",
+    "@types/jest": "23.3.2",
+    "jest": "^23.6.0",
+    "nodemon": "^1.18.4",
+    "supertest": "^3.3.0",
+    "ts-jest": "^23.10.2",
+    "tslint": "^5.11.0",
+    "typescript": "^3.1.1"
+  }
+}
