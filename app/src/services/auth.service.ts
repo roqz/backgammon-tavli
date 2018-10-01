@@ -66,4 +66,7 @@ export class AuthService {
         });
     }
 
+    public getUserToken() {
+        return this.afAuth.idToken;
+    }
 }

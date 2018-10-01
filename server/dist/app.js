@@ -15,6 +15,7 @@ const express_1 = __importDefault(require("express"));
 const firebase_admin_1 = __importDefault(require("firebase-admin"));
 const ping_controller_1 = __importDefault(require("./controllers/ping.controller"));
 require('dotenv').config();
+var cors = require('cors');
 class App {
     //Run configuration methods on the Express instance.
     constructor() {
@@ -25,6 +26,7 @@ class App {
     }
     // Configure Express middleware.
     middleware() {
+        this.express.use(cors());
         //   this.express.use(logger('dev'));
         //   this.express.use(bodyParser.json());
         //   this.express.use(bodyParser.urlencoded({ extended: false }));

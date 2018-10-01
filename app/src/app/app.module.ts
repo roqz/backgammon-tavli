@@ -1,3 +1,4 @@
+import { HttpClientModule } from "@angular/common/http";
 import { NgModule, NO_ERRORS_SCHEMA } from "@angular/core";
 import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { BrowserModule } from "@angular/platform-browser";
@@ -13,6 +14,8 @@ import { environment } from "../environments/environment";
 import { AuthGuard } from "../services/auth.guard";
 import { AuthService } from "../services/auth.service";
 import { NoAuthGuard } from "../services/noAuth.guard";
+import { PingService } from "../services/ping.service";
+import { SettingsService } from "../services/settings.service";
 import { UserService } from "../services/user.service";
 import { AppComponent } from "./app.component";
 import { AppEffects } from "./app.effects";
@@ -58,6 +61,7 @@ import { UserResolver } from "./user/user.resolver";
     BrowserModule,
     FormsModule,
     ReactiveFormsModule,
+    HttpClientModule,
     RouterModule.forRoot(
       appRoutes,
       { enableTracing: false } // <-- debugging purposes only
@@ -70,7 +74,7 @@ import { UserResolver } from "./user/user.resolver";
     AngularFireAuthModule,
     AngularFirestoreModule,
   ],
-  providers: [AuthGuard, NoAuthGuard, UserService, AuthService, UserResolver],
+  providers: [AuthGuard, NoAuthGuard, UserService, AuthService, UserResolver, SettingsService, PingService],
   bootstrap: [AppComponent],
   schemas: [NO_ERRORS_SCHEMA]
 

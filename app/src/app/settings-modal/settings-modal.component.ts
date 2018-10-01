@@ -1,13 +1,23 @@
-import { Component, OnInit, Input } from "@angular/core";
+import { Component, Injectable, Input } from "@angular/core";
+import { PingService } from "../../services/ping.service";
 
-
+@Injectable()
 @Component({
-  selector: "settings-modal",
-  templateUrl: './settings-modal.component.html'
+    selector: "settings-modal",
+    templateUrl: "./settings-modal.component.html"
 
 })
 export class SettingsModalComponent {
-  @Input() name;
+    @Input() name;
+    private serverConnection: any;
+    private serverConnectionError: any;
+    constructor(private pingService: PingService) { }
 
-  constructor() { }
+    public testServerConnection() {
+        this.pingService.ping().subscribe(answer => {
+            this.serverConnection = answer;
+            console.log(answer);
+        },
+            error => this.serverConnectionError = error);
+    }
 }

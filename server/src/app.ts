@@ -2,6 +2,7 @@ import express, { NextFunction, Request, Response } from "express";
 import admin from "firebase-admin";
 import PingController from "./controllers/ping.controller";
 require('dotenv').config();
+var cors = require('cors')
 
 class App {
 
@@ -18,6 +19,7 @@ class App {
 
     // Configure Express middleware.
     private middleware(): void {
+        this.express.use(cors());
         //   this.express.use(logger('dev'));
         //   this.express.use(bodyParser.json());
         //   this.express.use(bodyParser.urlencoded({ extended: false }));
