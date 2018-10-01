@@ -18,3 +18,9 @@ steps:
     ng build --prod
   displayName: 'npm install and build'
   workingDirectory: 'app'
+
+  - script: |
+    npm install
+    npm run build-ts
+  displayName: 'npm install and build'
+  workingDirectory: 'server'
