@@ -9,8 +9,8 @@ import { PingService } from "../../services/ping.service";
 })
 export class SettingsModalComponent {
     @Input() name;
-    private serverConnection: any;
-    private serverConnectionError: any;
+    public serverConnection: any;
+    public serverConnectionError: any;
     constructor(private pingService: PingService) { }
 
     public testServerConnection() {
