@@ -19,7 +19,7 @@ steps:
   displayName: 'npm install and build'
   workingDirectory: 'app'
 
-  - script: |
+- script: |
     npm install
     npm run build-ts
   displayName: 'npm install and build'
