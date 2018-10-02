@@ -4,7 +4,7 @@
   "description": "Backend for backgammon tavli app",
   "main": "dist/server.js",
   "scripts": {
-    "build-ts": "tsc",
+    "build-ts": "del-cli dist && tsc && cp web.config ./dist && cp -R ./node_modules ./dist",
     "start": "npm run serve",
     "serve": "node dist/server.js",
     "watch-node": "nodemon dist/server.js",
@@ -24,9 +24,9 @@
   "license": "ISC",
   "dependencies": {
     "concurrently": "^3.5.1",
+    "cors": "2.8.4",
     "dotenv": "^6.0.0",
     "express": "^4.16.3",
-    "cors": "2.8.4",
     "firebase-admin": "6.0.0"
   },
   "devDependencies": {
@@ -34,6 +34,7 @@
     "@types/supertest": "^2.0.6",
     "@types/jest": "23.3.2",
     "jest": "^23.6.0",
+    "del-cli": "1.1.0",
     "nodemon": "^1.18.4",
     "supertest": "^3.3.0",
     "ts-jest": "^23.10.2",
