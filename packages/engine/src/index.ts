@@ -6,3 +6,4 @@ export * from "./notation";
 export * from "./rng";
 export * from "./types";
 export * from "./variants";
+export * from "./xgid";

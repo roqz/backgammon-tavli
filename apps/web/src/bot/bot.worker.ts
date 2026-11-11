@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { chooseMoves, shouldDouble, shouldTake } from "@tavli/ai";
+import { chooseMoves, shouldAcceptResign, shouldDouble, shouldTake } from "@tavli/ai";
 import { cryptoRng } from "@tavli/engine";
 import type { BotEnvelope, BotReply } from "./protocol";
 
@@ -17,6 +17,9 @@ self.onmessage = (e: MessageEvent<BotEnvelope>) => {
         break;
       case "take":
         reply = { id, result: shouldTake(request.state, request.level, request.match) };
+        break;
+      case "accept-resign":
+        reply = { id, result: shouldAcceptResign(request.state) };
         break;
     }
   } catch (err) {

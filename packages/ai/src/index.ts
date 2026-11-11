@@ -1,3 +1,3 @@
 export * from "./bot";
-export { evaluate, isContact, winProbability } from "./evaluate";
+export { evaluate, gammonChances, isContact, winProbability } from "./evaluate";
 export * from "./weights";

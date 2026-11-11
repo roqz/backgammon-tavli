@@ -2,11 +2,13 @@ import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from
 import { DatabaseSync } from "node:sqlite";
 import type { GameResult, TurnRecord } from "@tavli/engine";
 import type {
+  AdminReport,
   FairnessReveal,
   LeaderboardEntry,
   MatchEndReason,
   MatchSummary,
   MatchVariantId,
+  ModerationInfo,
   ProfileResponse,
   PublicPlayer,
   RatingEntry,
@@ -55,6 +57,19 @@ CREATE TABLE IF NOT EXISTS sessions (
   last_used TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS sessions_player ON sessions(player_id);
+CREATE TABLE IF NOT EXISTS reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  reporter TEXT NOT NULL REFERENCES players(id),
+  reported TEXT NOT NULL REFERENCES players(id),
+  match_id TEXT,
+  reason TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  resolved_at TEXT,
+  resolution TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS reports_once ON reports(reporter, reported, coalesce(match_id, ''));
+CREATE INDEX IF NOT EXISTS reports_open ON reports(resolved_at, created_at);
 `;
 
 /** Columns added after the first release (applied once, idempotent). */
@@ -63,7 +78,12 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["players", "password_hash", "ALTER TABLE players ADD COLUMN password_hash TEXT"],
   ["players", "email", "ALTER TABLE players ADD COLUMN email TEXT"],
   ["matches", "fairness", "ALTER TABLE matches ADD COLUMN fairness TEXT"],
+  ["players", "banned_at", "ALTER TABLE players ADD COLUMN banned_at TEXT"],
+  ["players", "ban_reason", "ALTER TABLE players ADD COLUMN ban_reason TEXT"],
 ];
+
+/** How many reports one player may file per day. */
+export const REPORTS_PER_DAY = 10;
 
 /** Errors a client may see, with an HTTP status. */
 export class AccountError extends Error {
@@ -110,6 +130,8 @@ const hashToken = (token: string) => createHash("sha256").update(token).digest()
 export interface PlayerRow {
   readonly id: string;
   readonly name: string;
+  /** Set when a moderator banned the player from online play. */
+  readonly banned?: boolean;
 }
 
 /** A finished game inside a match, kept for replays. */
@@ -166,14 +188,14 @@ export class Store {
 
   /** Returns the player if the token matches (the guest token or a login session). */
   authenticate(id: string, token: string): PlayerRow | null {
-    const row = this.db.prepare("SELECT id, name, token_hash FROM players WHERE id = ?").get(id) as
-      | { id: string; name: string; token_hash: string }
+    const row = this.db.prepare("SELECT id, name, token_hash, banned_at FROM players WHERE id = ?").get(id) as
+      | { id: string; name: string; token_hash: string; banned_at: string | null }
       | undefined;
     if (!row) return null;
+    const player: PlayerRow = { id: row.id, name: row.name, banned: row.banned_at !== null };
     const actual = hashToken(token);
     const expected = Buffer.from(row.token_hash, "hex");
-    if (expected.length === actual.length && timingSafeEqual(expected, actual))
-      return { id: row.id, name: row.name };
+    if (expected.length === actual.length && timingSafeEqual(expected, actual)) return player;
     const key = actual.toString("hex");
     const session = this.db.prepare("SELECT player_id FROM sessions WHERE token_hash = ?").get(key) as
       | { player_id: string }
@@ -182,7 +204,7 @@ export class Store {
     this.db
       .prepare("UPDATE sessions SET last_used = ? WHERE token_hash = ?")
       .run(new Date().toISOString(), key);
-    return { id: row.id, name: row.name };
+    return player;
   }
 
   account(id: string): AccountRow | null {
@@ -208,10 +230,13 @@ export class Store {
   /** Checks credentials and opens a new session (one per device). */
   login(username: string, password: string): { id: string; token: string; name: string } {
     const row = this.db
-      .prepare("SELECT id, name, password_hash FROM players WHERE lower(username) = lower(?)")
-      .get(username) as { id: string; name: string; password_hash: string | null } | undefined;
+      .prepare("SELECT id, name, password_hash, banned_at FROM players WHERE lower(username) = lower(?)")
+      .get(username) as
+      | { id: string; name: string; password_hash: string | null; banned_at: string | null }
+      | undefined;
     const ok = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
     if (!row?.password_hash || !ok) throw new AccountError(401, "wrong username or password");
+    if (row.banned_at) throw new AccountError(403, "banned");
     const token = randomBytes(24).toString("base64url");
     const now = new Date().toISOString();
     this.db
@@ -344,7 +369,7 @@ export class Store {
       .prepare(
         `SELECT r.player_id, p.name, r.rating, r.matches, r.wins FROM ratings r
          JOIN players p ON p.id = r.player_id
-         WHERE r.variant = ? AND r.matches > 0 ORDER BY r.rating DESC LIMIT ?`,
+         WHERE r.variant = ? AND r.matches > 0 AND p.banned_at IS NULL ORDER BY r.rating DESC LIMIT ?`,
       )
       .all(variant, limit) as {
       player_id: string;
@@ -427,4 +452,97 @@ export class Store {
       | undefined;
     return row ? (JSON.parse(row.games) as StoredGame[]) : null;
   }
+
+  // ---- moderation ------------------------------------------------------------------------------
+
+  /**
+   * Files a report. Returns false if the reporter already reported this player for this match
+   * or has reached the daily limit.
+   */
+  addReport(r: NewReport): boolean {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const recent = this.db
+      .prepare("SELECT COUNT(*) AS n FROM reports WHERE reporter = ? AND created_at >= ?")
+      .get(r.reporter, since) as { n: number };
+    if (recent.n >= REPORTS_PER_DAY) return false;
+    const result = this.db
+      .prepare(
+        `INSERT OR IGNORE INTO reports (reporter, reported, match_id, reason, note, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(r.reporter, r.reported, r.matchId ?? null, r.reason, r.note ?? "", new Date().toISOString());
+    return Number(result.changes) > 0;
+  }
+
+  reports(open = true, limit = 100): AdminReport[] {
+    const rows = this.db
+      .prepare(
+        `SELECT r.id, r.reporter, a.name AS reporter_name, r.reported, b.name AS reported_name,
+                b.banned_at, r.match_id, r.reason, r.note, r.created_at, r.resolved_at, r.resolution,
+                (SELECT COUNT(*) FROM reports x WHERE x.reported = r.reported) AS total
+         FROM reports r JOIN players a ON a.id = r.reporter JOIN players b ON b.id = r.reported
+         WHERE (r.resolved_at IS NULL) = ? ORDER BY r.created_at DESC LIMIT ?`,
+      )
+      .all(open ? 1 : 0, limit) as Record<string, string | number | null>[];
+    return rows.map((x) => ({
+      id: Number(x.id),
+      reporter: { id: String(x.reporter), name: String(x.reporter_name) },
+      reported: { id: String(x.reported), name: String(x.reported_name), banned: x.banned_at !== null },
+      reportsAgainst: Number(x.total),
+      matchId: (x.match_id as string | null) ?? null,
+      reason: String(x.reason),
+      note: String(x.note ?? ""),
+      createdAt: String(x.created_at),
+      resolvedAt: (x.resolved_at as string | null) ?? null,
+      resolution: (x.resolution as string | null) ?? null,
+    }));
+  }
+
+  resolveReport(id: number, resolution: string): boolean {
+    const result = this.db
+      .prepare("UPDATE reports SET resolved_at = ?, resolution = ? WHERE id = ? AND resolved_at IS NULL")
+      .run(new Date().toISOString(), resolution, id);
+    return Number(result.changes) > 0;
+  }
+
+  /** Bans (or unbans with `reason = null`) a player; a ban also ends all login sessions. */
+  setBan(playerId: string, reason: string | null): boolean {
+    const result = this.db
+      .prepare("UPDATE players SET banned_at = ?, ban_reason = ? WHERE id = ?")
+      .run(reason === null ? null : new Date().toISOString(), reason, playerId);
+    if (reason !== null) this.db.prepare("DELETE FROM sessions WHERE player_id = ?").run(playerId);
+    return Number(result.changes) > 0;
+  }
+
+  moderationInfo(playerId: string): ModerationInfo | null {
+    const row = this.db
+      .prepare("SELECT id, name, username, created_at, banned_at, ban_reason FROM players WHERE id = ?")
+      .get(playerId) as Record<string, string | null> | undefined;
+    if (!row) return null;
+    const count = (sql: string) => (this.db.prepare(sql).get(playerId) as { n: number }).n;
+    return {
+      id: String(row.id),
+      name: String(row.name),
+      username: row.username ?? null,
+      createdAt: String(row.created_at),
+      bannedAt: row.banned_at ?? null,
+      banReason: row.ban_reason ?? null,
+      reportsAgainst: count("SELECT COUNT(*) AS n FROM reports WHERE reported = ?"),
+      reportsFiled: count("SELECT COUNT(*) AS n FROM reports WHERE reporter = ?"),
+      matches: count("SELECT COUNT(*) AS n FROM matches WHERE p0 = ?1 OR p1 = ?1"),
+      forfeits: count(
+        "SELECT COUNT(*) AS n FROM matches WHERE reason != 'won' AND ((p0 = ?1 AND winner = 1) OR (p1 = ?1 AND winner = 0))",
+      ),
+    };
+  }
 }
+
+export interface NewReport {
+  readonly reporter: string;
+  readonly reported: string;
+  readonly matchId?: string | null;
+  readonly reason: string;
+  readonly note?: string;
+}
+
+export type { AdminReport as ReportRow, ModerationInfo } from "@tavli/protocol";

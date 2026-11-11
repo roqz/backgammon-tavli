@@ -4,13 +4,14 @@ import {
   diceToPlay,
   type GameState,
   type Move,
+  maxResultLevel,
   moveGenerator,
   opponent,
   type Player,
   type Rng,
   type TurnOption,
 } from "@tavli/engine";
-import { evaluate, isContact, winProbability } from "./evaluate";
+import { evaluate, gammonChances, isContact, winProbability } from "./evaluate";
 import { type Weights, weightsFor } from "./weights";
 
 export type BotLevel = "easy" | "medium" | "hard";
@@ -144,4 +145,22 @@ export const shouldTake = (s: GameState, level: BotLevel, m: MatchContext = MONE
   }
   const pDoubler = winProbability(s.variant, s.board, s.turn);
   return 1 - pDoubler >= TAKE_ABOVE[level];
+};
+
+/**
+ * Should the bot accept the opponent's offer to resign (`s.resignOffer` must be set)?
+ * Accepts when the offered points are at least what playing on is expected to bring.
+ */
+export const shouldAcceptResign = (s: GameState): boolean => {
+  const offer = s.resignOffer;
+  if (!offer) return false;
+  const me = opponent(offer.player);
+  if (offer.level >= maxResultLevel(s, me)) return true;
+  // The offering player is on turn.
+  const pMe = 1 - winProbability(s.variant, s.board, offer.player);
+  const mine = gammonChances(s.variant, s.board, me);
+  const theirs = gammonChances(s.variant, s.board, offer.player);
+  const expected =
+    pMe * (1 + mine.gammon + mine.backgammon) - (1 - pMe) * (1 + theirs.gammon + theirs.backgammon);
+  return offer.level >= expected - 0.05;
 };

@@ -108,6 +108,16 @@ export interface GameState {
   readonly jacoby: boolean;
   readonly history: readonly TurnRecord[];
   readonly result: GameResult | null;
+  /**
+   * A player offered to resign at a given level; the opponent has to accept or reject before
+   * the game goes on. Optional so that stored states from older versions stay valid.
+   */
+  readonly resignOffer?: ResignOffer | null;
+}
+
+export interface ResignOffer {
+  readonly player: Player;
+  readonly level: ResultLevel;
 }
 
 export type GameAction =
@@ -124,7 +134,12 @@ export type GameAction =
   | { readonly type: "double" }
   | { readonly type: "take" }
   | { readonly type: "drop" }
-  | { readonly type: "resign"; readonly player: Player; readonly level: ResultLevel };
+  /** Immediate resignation (no answer needed). */
+  | { readonly type: "resign"; readonly player: Player; readonly level: ResultLevel }
+  /** The player on turn offers to resign at `level`; the opponent accepts or rejects. */
+  | { readonly type: "offer-resign"; readonly player: Player; readonly level: ResultLevel }
+  | { readonly type: "accept-resign" }
+  | { readonly type: "reject-resign" };
 
 export class IllegalActionError extends Error {
   constructor(message: string) {

@@ -24,11 +24,16 @@ test("two players: invite link, play, resign, verified dice, leaderboard", async
     .poll(async () => JSON.stringify(await bob.locator("ol li").allInnerTexts()))
     .toBe(JSON.stringify(await alice.locator("ol li").allInnerTexts()));
 
+  // quick messages
+  await alice.getByRole("button", { name: "Kurznachricht" }).click();
+  await alice.getByRole("button", { name: /Viel Glück/ }).click();
+  await expect(bob.getByRole("status").filter({ hasText: /Alice:\s*🍀 Viel Glück!/ })).toBeVisible();
+
   await bob
     .getByRole("button", { name: /Aufgeben/ })
     .first()
     .click();
-  await bob.locator("[role=dialog] button").first().click();
+  await bob.getByRole("button", { name: /Sofort aufgeben/ }).click();
   await expect(alice.getByText(/Alice gewinnt das Match/)).toBeVisible();
   await expect(alice.getByText(/Würfel nachgeprüft/)).toBeVisible();
   await expect(bob.getByText(/Würfel nachgeprüft/)).toBeVisible();

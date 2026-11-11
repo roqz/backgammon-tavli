@@ -67,3 +67,35 @@ test("hotseat game can be resigned and replayed from the statistics", async ({ p
   await expect(page.locator("input[type=range]")).toBeVisible();
   expect(await checkerCount(page)).toBe(30);
 });
+
+test("imports an XGID position; the computer rejects a single but accepts a gammon", async ({ page }) => {
+  // white (you) is still on the mid-point, black bears off its last two checkers next turn
+  const xgid = `XGID=${"-".repeat(13)}O${"-".repeat(10)}b-:0:0:1:00:0:0:0:0:10`;
+  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await page.getByRole("button", { name: /Stellung importieren/ }).click();
+  await page.getByLabel(/Stellung importieren/).fill(xgid);
+  await page.getByRole("button", { name: "Starten" }).click();
+  await expect(page.getByTestId("xgid")).toContainText(`${"-".repeat(13)}O${"-".repeat(10)}b-`);
+
+  await page.getByRole("button", { name: /Aufgeben/ }).click();
+  await page.getByRole("button", { name: /Aufgabe anbieten: Einfach/ }).click();
+  await expect(page.getByText("Aufgabe abgelehnt")).toBeVisible();
+
+  await page.getByRole("button", { name: /Aufgeben/ }).click();
+  await page.getByRole("button", { name: /Aufgabe anbieten: Gammon/ }).click();
+  await expect(page.getByText(/Gammon · \+2 Punkte/)).toBeVisible();
+});
+
+test("a mirrored board (home board left) can still be played by tapping", async ({ page }) => {
+  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await page.getByRole("button", { name: "Mensch (gleiches Gerät)" }).click();
+  await page.getByRole("button", { name: "Starten" }).click();
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("switch", { name: "Heimfeld links" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
+  expect(await tapMove(page)).toBe(true);
+  await expect(page.getByRole("button", { name: /Zurück/ })).toBeEnabled();
+  expect(await checkerCount(page)).toBe(30);
+});

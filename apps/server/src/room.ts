@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
-import { chooseMoves, shouldTake } from "@tavli/ai";
+import { chooseMoves, shouldAcceptResign, shouldTake } from "@tavli/ai";
 import {
   applyMatchAction,
   canConfirm,
@@ -11,6 +11,7 @@ import {
   type MatchAction,
   type MatchConfig,
   type MatchState,
+  maxResultLevel,
   opponent,
   type Player,
   playerToAct,
@@ -19,6 +20,7 @@ import {
 import {
   type ClientAction,
   diceFromDigest,
+  type EmoteId,
   type FairnessReveal,
   fairRollMessage,
   type MatchEndReason,
@@ -90,6 +92,9 @@ export class MatchRoom {
   private readonly rolls: Dice[] = [];
   private playing = false;
   private seedTimer: ReturnType<typeof setTimeout> | null = null;
+  /** History length when each seat last offered to resign: one offer per turn (no clock resets). */
+  private readonly lastOffer: [number, number] = [-1, -1];
+  private readonly lastEmote: [number, number] = [0, 0];
 
   constructor(
     readonly variant: MatchVariantId,
@@ -203,11 +208,22 @@ export class MatchRoom {
     if (this.ended) return this.sendTo(seat, { t: "error", message: "match is over" });
     let matchAction: MatchAction;
     if (action.type === "resign") {
-      matchAction = { type: "resign", player: seat, level: action.level };
+      // Resigning without the opponent's consent always concedes the highest possible result;
+      // smaller results need an accepted offer.
+      const g = this.match.game;
+      const level =
+        g.phase === "finished" ? action.level : Math.max(action.level, maxResultLevel(g, opponent(seat)));
+      matchAction = { type: "resign", player: seat, level: level as 1 | 2 | 3 };
     } else {
       if (playerToAct(this.match.game) !== seat)
         return this.sendTo(seat, { t: "error", message: "not your turn" });
-      matchAction = action.type === "roll" ? { type: "roll", dice: this.roll() } : action;
+      if (action.type === "offer-resign") {
+        const turnKey = this.match.results.length * 10_000 + this.match.game.history.length;
+        if (this.lastOffer[seat] === turnKey)
+          return this.sendTo(seat, { t: "error", message: "only one offer per turn" });
+        this.lastOffer[seat] = turnKey;
+        matchAction = { type: "offer-resign", player: seat, level: action.level };
+      } else matchAction = action.type === "roll" ? { type: "roll", dice: this.roll() } : action;
     }
     try {
       this.seats[seat].timeouts = 0;
@@ -262,7 +278,9 @@ export class MatchRoom {
     this.deadline = null;
     const actor = playerToAct(this.match.game);
     if (this.ended || actor === null || this.match.winner !== null) return;
-    const ms = this.match.game.phase === "cube-offered" ? this.deps.timings.cubeMs : this.deps.timings.turnMs;
+    const g = this.match.game;
+    const ms =
+      g.phase === "cube-offered" || g.resignOffer ? this.deps.timings.cubeMs : this.deps.timings.turnMs;
     this.deadline = Date.now() + ms;
     this.clock = setTimeout(() => this.timeout(actor), ms);
   }
@@ -276,6 +294,10 @@ export class MatchRoom {
     if (s.timeouts >= this.deps.timings.maxTimeouts) return this.forfeit(seat, "abandoned");
     const g = this.match.game;
     try {
+      if (g.resignOffer) {
+        this.advance({ type: shouldAcceptResign(g) ? "accept-resign" : "reject-resign" }, seat);
+        return;
+      }
       switch (g.phase) {
         case "rolling":
           this.advance(isClosedOut(g) ? { type: "pass" } : { type: "roll", dice: this.roll() }, seat);
@@ -300,6 +322,14 @@ export class MatchRoom {
     } catch (e) {
       this.deps.log?.(`room ${this.id}: timeout handling failed: ${String(e)}`);
     }
+  }
+
+  /** Quick message to both players (at most one every 1.5 s per seat). */
+  emote(seat: Player, id: EmoteId): void {
+    const now = Date.now();
+    if (this.ended || now - this.lastEmote[seat] < 1_500) return;
+    this.lastEmote[seat] = now;
+    this.broadcast({ t: "emote", seat, id });
   }
 
   // ---- end -----------------------------------------------------------------------------------

@@ -256,6 +256,21 @@ const de: Record<RulesTopic, RulesChapter> = {
         ],
       },
       {
+        title: "Aufgeben",
+        bullets: [
+          "Gegen den Computer und online bietest du die Aufgabe an, wenn du am Zug bist: einfach, Gammon/Mars oder Backgammon. Der Gegner nimmt an (das Spiel endet mit diesem Ergebnis) oder lehnt ab (es geht normal weiter). Online ist ein Angebot pro Zug möglich, die Antwortzeit beträgt 30 Sekunden.",
+          "Sofort aufgeben ohne Zustimmung gibt das höchste noch mögliche Ergebnis ab – kein Gammon mehr möglich, sobald du einen Stein abgetragen hast.",
+          "Der Computer nimmt ein Angebot an, wenn es mindestens so viele Punkte bringt, wie er beim Weiterspielen erwartet.",
+          "Am selben Gerät wählt der Aufgebende das Ergebnis direkt.",
+        ],
+      },
+      {
+        title: "Stellungen (XGID)",
+        bullets: [
+          "Backgammon- und Portes-Stellungen lassen sich als XGID kopieren (Seitenleiste) und beim neuen Spiel importieren – kompatibel mit eXtreme Gammon, GNU Backgammon und den meisten Analyseprogrammen.",
+        ],
+      },
+      {
         title: "Online",
         bullets: [
           "Der Server würfelt und prüft jeden Zug – Manipulation im Browser ist wirkungslos.",
@@ -264,6 +279,8 @@ const de: Record<RulesTopic, RulesChapter> = {
           "Nach einem Verbindungsabbruch hast du 90 Sekunden, um zurückzukehren.",
           "Rating nach der FIBS-Formel, getrennt pro Variante; neue Spieler gewinnen und verlieren anfangs schneller Punkte.",
           "Fair Play: Zwei Profile vom selben Gerät oder Netzwerk werden in der Gegnersuche nie gepaart; private Partien zwischen ihnen sind ungewertet. Gegen denselben Gegner zählen höchstens 3 gewertete Matches pro 24 Stunden.",
+          "Kurznachrichten: nur vorgegebene Emotes, kein freier Chat; in den Einstellungen ausblendbar.",
+          "Melden (⚑): Gegner lassen sich wegen Betrug, Beleidigung oder Verzögern melden; die Moderation prüft die Meldung und kann Profile sperren.",
         ],
       },
     ],
@@ -488,6 +505,21 @@ const en: Record<RulesTopic, RulesChapter> = {
         ],
       },
       {
+        title: "Resigning",
+        bullets: [
+          "Against the computer and online you offer to resign when it is your turn: single, gammon/mars or backgammon. The opponent accepts (the game ends with that result) or rejects (play goes on). Online one offer per turn is allowed, with 30 seconds to answer.",
+          "Resigning at once without consent concedes the highest result still possible – no gammon once you have borne off a checker.",
+          "The computer accepts an offer when it is worth at least the points it expects from playing on.",
+          "On a shared device the resigning player chooses the result directly.",
+        ],
+      },
+      {
+        title: "Positions (XGID)",
+        bullets: [
+          "Backgammon and Portes positions can be copied as XGID (side panel) and imported when starting a new game – compatible with eXtreme Gammon, GNU Backgammon and most analysis programs.",
+        ],
+      },
+      {
         title: "Online",
         bullets: [
           "The server rolls the dice and checks every move – tampering in the browser has no effect.",
@@ -496,6 +528,8 @@ const en: Record<RulesTopic, RulesChapter> = {
           "After a disconnect you have 90 seconds to come back.",
           "FIBS ratings per variant; new players gain and lose points faster at first.",
           "Fair play: two profiles from the same device or network are never paired by matchmaking; private games between them are unrated. At most 3 rated matches per 24 hours count against the same opponent.",
+          "Quick messages: predefined emotes only, no free chat; they can be hidden in the settings.",
+          "Report (⚑): opponents can be reported for cheating, abuse or stalling; moderators review reports and can ban profiles.",
         ],
       },
     ],

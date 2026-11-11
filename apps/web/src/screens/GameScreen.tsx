@@ -10,11 +10,11 @@ import {
   isClosedOut,
   legalMoves,
   type Move,
+  opponent,
   type PlayedMove,
   type Player,
   pipCount,
   playerToAct,
-  type ResultLevel,
 } from "@tavli/engine";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Board } from "../board/Board";
@@ -31,6 +31,15 @@ import { useGameSounds } from "../sound";
 import { type GameRecord, useArchive } from "../store/archive";
 import { useGame } from "../store/game";
 import { useSettings } from "../store/settings";
+import {
+  EmoteBubbles,
+  EmoteButton,
+  ReportDialog,
+  ResignDialog,
+  ResignOfferPrompt,
+  useResignRejected,
+  XgidBox,
+} from "./GameExtras";
 import { RulesDrawer } from "./RulesPanel";
 import { SettingsDrawer } from "./SettingsPanel";
 
@@ -89,7 +98,7 @@ function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
   // biome-ignore lint/correctness/useExhaustiveDependencies: openingSeq is an intentional trigger
   useEffect(() => {
     setPending(null);
-    if (!g || busy || match?.winner !== null) return;
+    if (!g || busy || match?.winner !== null || g.resignOffer) return;
     if (g.phase !== "opening" && !humanTurn) return;
     if (cancelledFor === g) return;
     let delay = -1;
@@ -171,7 +180,9 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
   const [forfeiting, setForfeiting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const portrait = usePortraitPhone();
+  const resignRejected = useResignRejected(match?.game);
   // Errors from the server fade out after a few seconds.
   useEffect(() => {
     if (!onlineError) return;
@@ -202,7 +213,9 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
   const safeLayout = layoutMatches(layout, g.board) ? layout : layoutFromBoard(g.board);
   const rules = getVariant(g.variant);
   const actor = playerToAct(g);
-  const humanToAct = actor !== null && players[actor].kind === "human";
+  const offer = g.resignOffer ?? null;
+  // While an offer to resign is open, only the answer is possible.
+  const humanToAct = actor !== null && players[actor].kind === "human" && !offer;
   const interactive = g.phase === "moving" && humanToAct && !busy;
   const name = (p: Player) => players[p].name;
   const noPlay = g.phase === "moving" && g.played.length === 0 && legalMoves(g).length === 0;
@@ -227,8 +240,15 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
       break;
   }
   if (thinking && actor !== null) status = `${name(actor)} ${t.thinking}`;
+  if (offer && g.phase !== "finished") {
+    status =
+      players[offer.player].kind === "human" && players[opponent(offer.player)].kind !== "human"
+        ? t.resignWaiting
+        : `${name(offer.player)} ${t.resignOffered}`;
+  }
   // Against the computer the board is always numbered from the human's side.
   const seat = humanSeat(players);
+  const opponentSeat: Player | null = online && onlineInfo ? opponent(onlineInfo.seat) : null;
 
   const activeHint = hint?.game === g ? hint.moves : null;
   const hintText = activeHint ? describeMoves(g, activeHint) : null;
@@ -241,7 +261,6 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
     }
   };
 
-  const resignLevels: ResultLevel[] = rules.backgammons ? [1, 2, 3] : [1, 2];
   const lengthLabel =
     match.config.length === 0
       ? t.unlimited
@@ -285,6 +304,18 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                 graceUntil={onlineInfo.opponentGraceUntil}
               />
             )}
+            {online && onlineInfo && !onlineInfo.end && <EmoteButton />}
+            {online && onlineInfo && (
+              <Button
+                variant="ghost"
+                className="px-3 py-1.5 text-lg"
+                onClick={() => setReporting(true)}
+                aria-label={t.report}
+                title={t.report}
+              >
+                ⚑
+              </Button>
+            )}
             <Button
               variant="ghost"
               className="px-3 py-1.5 text-lg"
@@ -319,9 +350,16 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
             hideDice={diceAnimating}
             viewer={seat ?? 0}
             rotated={portrait}
+            mirrored={settings.homeLeft}
             diceIntro={!settings.dice3d}
           />
           <EventBanner placement={portrait ? "middle" : "top"} />
+          {online && <EmoteBubbles />}
+          {resignRejected && (
+            <p className="pointer-events-none absolute inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-stone-900/90 px-4 py-1.5 text-sm text-amber-200 shadow-lg">
+              {t.resignRejected}
+            </p>
+          )}
           {diceAnimating && rollFx && (
             <Suspense fallback={null}>
               <Dice3D
@@ -334,6 +372,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                 pipColor={THEMES[settings.style].die.pip}
                 onDone={setDoneSeq}
                 rotated={portrait}
+                mirrored={settings.homeLeft}
               />
             </Suspense>
           )}
@@ -448,7 +487,9 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
           </ol>
         </div>
 
-        {g.phase !== "finished" && (
+        <XgidBox match={match} />
+
+        {g.phase !== "finished" && !offer && (
           <Button variant="ghost" className="text-sm" onClick={() => setResigning(true)}>
             🏳 {t.resign}
           </Button>
@@ -473,40 +514,25 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
       )}
 
       {resigning && g.phase !== "finished" && (
-        <Modal onClose={() => setResigning(false)}>
-          <p className="mb-4 text-lg text-stone-100">{t.resignConfirm}</p>
-          <p className="mb-3 text-sm text-stone-400">{name(seat ?? actor ?? g.turn)}</p>
-          <div className="flex flex-col gap-2">
-            {resignLevels.map((level) => (
-              <Button
-                key={level}
-                variant="danger"
-                onClick={() => {
-                  setResigning(false);
-                  dispatch({ type: "resign", player: seat ?? actor ?? g.turn, level });
-                }}
-              >
-                {[t.single, rules.backgammons ? t.gammon : t.mars, t.backgammon][level - 1]} (
-                {level * g.cube.value})
-              </Button>
-            ))}
-            {online && (
-              <Button
-                variant="ghost"
-                className="text-red-300"
-                onClick={() => {
-                  setResigning(false);
-                  setForfeiting(true);
-                }}
-              >
-                🏳 {t.forfeitMatch}
-              </Button>
-            )}
-            <Button variant="ghost" onClick={() => setResigning(false)}>
-              {t.cancel}
-            </Button>
-          </div>
-        </Modal>
+        <ResignDialog
+          g={g}
+          players={players}
+          me={seat ?? actor ?? g.turn}
+          online={online}
+          onClose={() => setResigning(false)}
+          onForfeit={() => setForfeiting(true)}
+        />
+      )}
+
+      <ResignOfferPrompt g={g} players={players} />
+
+      {reporting && onlineInfo && opponentSeat !== null && (
+        <ReportDialog
+          playerId={onlineInfo.players[opponentSeat].id}
+          playerName={onlineInfo.players[opponentSeat].name}
+          matchId={onlineInfo.matchId}
+          onClose={() => setReporting(false)}
+        />
       )}
 
       {forfeiting && (
@@ -608,6 +634,13 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                   : `🔁 ${t.rematch}`}
             </Button>
           </div>
+          <Button
+            variant="ghost"
+            className="mt-2 w-full text-xs text-stone-500"
+            onClick={() => setReporting(true)}
+          >
+            ⚑ {t.report}
+          </Button>
         </Modal>
       )}
 

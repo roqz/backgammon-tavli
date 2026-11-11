@@ -113,9 +113,9 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 ### Offen in Phase 1
 
-- XGID / GNUbg-ID Import/Export
+- ~~XGID Import/Export~~ (erledigt), GNUbg-ID
 - Regel-Feinheiten prüfen: Fevga-Startregel bei blockiertem Läufer (aktuell: andere Steine dürfen dann ziehen), Prime-Prüfung pro Einzelzug statt am Zugende, Plakoto-Mana-Ausnahmen
-- Aufgabe mit Annahme/Ablehnung (für Online-Modus)
+- ~~Aufgabe mit Annahme/Ablehnung~~ (erledigt)
 
 ### Phase 2 – Offline-MVP (`apps/web`) ✅
 
@@ -131,7 +131,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 ### Offen in Phase 2
 
 - Playwright-E2E-Tests ins Repo übernehmen (lokal per Headless-Edge geprüft)
-- Brett-Orientierung (Heimfeld links/rechts), Sounds, schönere Würfelwurf-Animation (3D kommt in Phase 4)
+- ~~Brett-Orientierung~~ (erledigt), Sounds, schönere Würfelwurf-Animation (3D kommt in Phase 4)
 - Hochformat auf dem Handy: Brett nutzt die Breite noch nicht optimal
 
 ### Phase 3 – Computergegner (`packages/ai`) ✅
@@ -212,14 +212,25 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Abzeichen „Ungewertet“ mit Grund im Spiel und im Ergebnis; Regeln im Handbuch beschrieben
 
 ### Weitere Punkte ✅
+
 - Nachweisbar faire Würfel (Commit-Reveal mit Client-Seeds, HMAC-SHA256, Prüfung im Browser)
 - Zugzeit-Uhr korrekt (Zeitbasis), WebSocket-Nachrichtenlimit, Passwort ändern
 - Handy im Hochformat: um 90° gedrehtes Brett mit ~45 % größeren Steinen, kompakte Kopfzeile
 - Playwright-E2E-Tests im Repo (lokales Spiel, Einstellungen/Regeln, Wiederholung, Online mit Einladung/Aufgabe/Würfelprüfung/Rangliste, Konto auf Zweitgerät, Hochformat) und als CI-Job
 
+### Aufgabe, Stellungen, Moderation ✅
+
+- Aufgabe mit Annahme/Ablehnung (Engine: `offer-resign`/`accept-resign`/`reject-resign`): gegen Computer und online wird angeboten, der Bot entscheidet über erwartete Punkte (Gewinn- und grobe Gammon-Chance); online ein Angebot pro Zug, Antwortzeit wie beim Verdoppeln, bei Zeitablauf entscheidet der Bot
+- Sofortige Aufgabe ohne Zustimmung gibt online und gegen den Computer das höchste noch mögliche Ergebnis ab (verhindert „einfach aufgeben“ kurz vor einem Gammon)
+- XGID-Export (Seitenleiste, inkl. Würfel, Würfel-Besitz, Matchstand, Crawford) und -Import beim neuen Spiel (Backgammon, Portes)
+- Brett-Orientierung: Heimfeld links (ganzes Brett gespiegelt, inkl. Ablage und 3D-Würfel)
+- Emotes im Online-Spiel (feste Liste, kein freier Chat, Rate-Limit, ausblendbar)
+- Melden von Gegnern (nur aus gemeinsamen Matches, je Match einmal, max. 10 pro Tag)
+- Moderation: `ADMIN_TOKEN` aktiviert die Admin-API (Meldungen, Spielerinfo, Sperren/Entsperren, Erledigt); Oberfläche unter `?admin`; gesperrte Profile werden getrennt, können sich nicht mehr anmelden und fehlen in der Rangliste
+
 ### Offen / nächste Schritte Online
 
-- Weitere Fair-Play-Signale: Zuggenauigkeit im Vergleich zum Bot (Bot-Nutzung), auffällige Aufgabe-Muster, Melden-Funktion
-- E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs), Passwort-ändern-UI
-- Admin/Moderation
-- Revanche-Button, Chat/Emotes, Turniere
+- Weitere Fair-Play-Signale: Zuggenauigkeit im Vergleich zum Bot (Bot-Nutzung), auffällige Aufgabe-Muster
+- E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)
+- Turniere
+- Gammon-Bewusstsein des Bots beim Ziehen, Match-Equity-Table

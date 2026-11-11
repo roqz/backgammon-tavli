@@ -18,6 +18,8 @@ export interface Dice3DProps {
   readonly onDone: (seq: number) => void;
   /** Board drawn turned by 90° (portrait phones): board (x, y) appears at (HEIGHT - y, x). */
   readonly rotated?: boolean;
+  /** Board mirrored left/right (home board on the left). */
+  readonly mirrored?: boolean;
 }
 
 const DURATION = 0.95;
@@ -144,7 +146,7 @@ function Die({
   return <mesh ref={ref} geometry={geometry} material={materials} castShadow />;
 }
 
-function Scene({ roll, faceColor, pipColor, onDone, rotated = false }: Dice3DProps) {
+function Scene({ roll, faceColor, pipColor, onDone, rotated = false, mirrored = false }: Dice3DProps) {
   const { size } = useThree();
   const scale = size.width / (rotated ? HEIGHT : WIDTH);
   const materials = useMemo(
@@ -166,10 +168,12 @@ function Scene({ roll, faceColor, pipColor, onDone, rotated = false }: Dice3DPro
   }, [roll.seq]);
 
   // Board coordinates (SVG units) -> scene coordinates centred on the board.
-  const toScene = (x: number, y: number) =>
-    rotated
+  const toScene = (bx: number, y: number) => {
+    const x = mirrored ? WIDTH - bx : bx;
+    return rotated
       ? new THREE.Vector2(HEIGHT - y - HEIGHT / 2, WIDTH / 2 - x)
       : new THREE.Vector2(x - WIDTH / 2, HEIGHT / 2 - y);
+  };
   const halfCenter = (half: 0 | 1) => (half === 0 ? RIGHT_X + 3 * POINT_W : LEFT_X + 3 * POINT_W);
   const gap = DIE_SIZE + 14;
   const byHalf: Record<0 | 1, number[]> = { 0: [], 1: [] };

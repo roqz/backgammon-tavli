@@ -187,6 +187,12 @@ export class Lobby {
       }
       case "rematch-decline":
         return this.declineRematch(id);
+      case "emote": {
+        const room = this.roomByPlayer.get(id);
+        const seat = room?.seatOf(id);
+        if (room && seat !== null && seat !== undefined) room.emote(seat, msg.id);
+        return;
+      }
     }
   }
 
@@ -195,6 +201,10 @@ export class Lobby {
     if (!player) {
       conn.send({ t: "error", message: "unknown player" });
       return conn.close(4001, "unauthorized");
+    }
+    if (player.banned) {
+      conn.send({ t: "error", message: "banned" });
+      return conn.close(4003, "banned");
     }
     // Only one connection per player: the newest wins.
     const old = this.connByPlayer.get(player.id);
@@ -457,6 +467,24 @@ export class Lobby {
   }
 
   /** Stops all rooms and timers (server shutdown). */
+  /** Ends a banned player's connection; a running match is forfeited after the grace period. */
+  kick(playerId: string): void {
+    this.removeFromQueues(playerId);
+    this.removeInvites(playerId);
+    const conn = this.connByPlayer.get(playerId);
+    if (!conn) return;
+    conn.send({ t: "error", message: "banned" });
+    conn.close(4003, "banned");
+  }
+
+  /** Whether both players sit in the same running or recently finished match. */
+  sharedMatch(a: string, b: string, matchId: string): boolean {
+    const room = this.roomByPlayer.get(a);
+    if (room?.id === matchId && room.seatOf(b) !== null) return true;
+    const done = this.finished.get(a);
+    return done?.matchId === matchId && done.opponentId === b;
+  }
+
   dispose(): void {
     clearInterval(this.sweepTimer);
     for (const room of new Set(this.roomByPlayer.values())) room.dispose();

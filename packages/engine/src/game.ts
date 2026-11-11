@@ -27,6 +27,8 @@ export interface NewGameOptions {
   readonly starter?: Player;
   /** Start from a custom position instead of the variant's initial setup. */
   readonly board?: Board;
+  /** Cube of a custom position (value and owner); default centred at 1. */
+  readonly cubeAt?: { readonly value: number; readonly owner: Player | null };
 }
 
 export const createGame = (opts: NewGameOptions): GameState => {
@@ -40,7 +42,11 @@ export const createGame = (opts: NewGameOptions): GameState => {
     remaining: [],
     played: [],
     undoStack: [],
-    cube: { value: 1, owner: null, enabled: (opts.cube ?? true) && rules.cube },
+    cube: {
+      value: opts.cubeAt?.value ?? 1,
+      owner: opts.cubeAt?.owner ?? null,
+      enabled: (opts.cube ?? true) && rules.cube,
+    },
     jacoby: opts.jacoby ?? false,
     history: [],
     result: null,
@@ -81,11 +87,28 @@ export const isClosedOut = (s: GameState): boolean => {
   return true;
 };
 
+/** A resignation can be offered by the player on turn while rolling or moving. */
+export const canOfferResign = (s: GameState, p: Player): boolean =>
+  !s.resignOffer && (s.phase === "rolling" || s.phase === "moving") && s.turn === p;
+
+/** Highest result the game can still end with for `winner` (1 once the loser has borne off). */
+export const maxResultLevel = (s: GameState, winner: Player): ResultLevel => {
+  const rules = getVariant(s.variant);
+  const loser = opponent(winner);
+  if (s.board.off[loser] > 0) return 1;
+  if (s.jacoby && s.cube.enabled && s.cube.value === 1) return 1;
+  return rules.backgammons ? 3 : 2;
+};
+
 export const canDouble = (s: GameState): boolean =>
-  s.phase === "rolling" && s.cube.enabled && (s.cube.owner === null || s.cube.owner === s.turn);
+  s.phase === "rolling" &&
+  !s.resignOffer &&
+  s.cube.enabled &&
+  (s.cube.owner === null || s.cube.owner === s.turn);
 
 /** The player who has to act next (for `cube-offered` that is the opponent of the doubler). */
 export const playerToAct = (s: GameState): Player | null => {
+  if (s.resignOffer && s.phase !== "finished") return opponent(s.resignOffer.player);
   switch (s.phase) {
     case "opening":
     case "finished":
@@ -155,6 +178,13 @@ export const applyAction = (s: GameState, action: GameAction): GameState => {
     throw new IllegalActionError(`${action.type} not allowed: ${why}`);
   };
   if (s.phase === "finished") illegal("game is finished");
+  if (
+    s.resignOffer &&
+    action.type !== "accept-resign" &&
+    action.type !== "reject-resign" &&
+    action.type !== "resign"
+  )
+    illegal("a resignation offer must be answered first");
 
   switch (action.type) {
     case "roll": {
@@ -256,9 +286,27 @@ export const applyAction = (s: GameState, action: GameAction): GameState => {
     }
 
     case "resign": {
-      return finish(s, opponent(action.player), action.level, "resign", [
+      return finish({ ...s, resignOffer: null }, opponent(action.player), action.level, "resign", [
         { kind: "resign", player: action.player, level: action.level },
       ]);
+    }
+
+    case "offer-resign": {
+      if (!canOfferResign(s, action.player)) illegal("only the player on turn may offer to resign");
+      return { ...s, resignOffer: { player: action.player, level: action.level } };
+    }
+
+    case "accept-resign": {
+      const offer = s.resignOffer;
+      if (!offer) illegal("no resignation offered");
+      return finish({ ...s, resignOffer: null }, opponent(offer!.player), offer!.level, "resign", [
+        { kind: "resign", player: offer!.player, level: offer!.level },
+      ]);
+    }
+
+    case "reject-resign": {
+      if (!s.resignOffer) illegal("no resignation offered");
+      return { ...s, resignOffer: null };
     }
   }
 };

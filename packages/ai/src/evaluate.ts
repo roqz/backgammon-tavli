@@ -271,3 +271,34 @@ export const isContact = (variant: VariantId, b: Board): boolean =>
  */
 const CONTACT_SCALE: Record<VariantId, number> = { backgammon: 24, portes: 28, plakoto: 58, fevga: 30 };
 const ON_ROLL_BONUS: Record<VariantId, number> = { backgammon: 3, portes: 2, plakoto: -1, fevga: 4 };
+
+/**
+ * Rough chance that `winner`, if they win, wins a gammon (and a backgammon): the loser still has
+ * to bring every checker home and bear one off before the winner has borne off all of theirs.
+ * Modelled as a race of those two pip counts; good enough for resignation decisions.
+ */
+export const gammonChances = (
+  variant: VariantId,
+  b: Board,
+  winner: Player,
+): { gammon: number; backgammon: number } => {
+  const rules = getVariant(variant);
+  const loser = opponent(winner);
+  if (b.off[loser] > 0) return { gammon: 0, backgammon: 0 };
+  const path = rules.paths[loser];
+  // Pips the loser needs to get all checkers into the home board (path index 18+), plus one bear-off.
+  let homePips = b.bar[loser] * 19;
+  let inWinnersHome = b.bar[loser];
+  for (let k = 0; k < 18; k++) {
+    const n = b.points[loser][path[k]!]!;
+    homePips += n * (18 - k);
+    if (k < 6) inWinnersHome += n;
+  }
+  const needLoser = homePips + 4;
+  const needWinner = pipCount(rules, b, winner) + 2 * (15 - b.off[winner]) * 0.3;
+  const mean = 8.17;
+  const sd = Math.max(Math.sqrt(((needLoser + needWinner) / mean) * 18.6) / mean, 0.5);
+  const gammon = phi((needLoser / mean - needWinner / mean) / sd);
+  const backgammon = rules.backgammons && inWinnersHome > 0 ? gammon * 0.25 : 0;
+  return { gammon, backgammon };
+};

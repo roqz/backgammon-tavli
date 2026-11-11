@@ -2,11 +2,13 @@ import { createMatch } from "@tavli/engine";
 import type {
   AccountResponse,
   ClientMessage,
+  EmoteId,
   LeaderboardEntry,
   MatchDetailResponse,
   MatchVariantId,
   ProfileResponse,
   RegisterResponse,
+  ReportReason,
   ServerMessage,
 } from "@tavli/protocol";
 import { type PlayerInfo, setRemoteSender, useGame } from "../store/game";
@@ -77,6 +79,7 @@ const onMessage = (msg: ServerMessage) => {
           fairCheck: null,
           unratedReason: msg.unratedReason,
           rematch: "none",
+          emote: null,
           end: null,
         },
       });
@@ -131,6 +134,12 @@ const onMessage = (msg: ServerMessage) => {
       if (info) set({ match: { ...info, rematch: "declined" } });
       break;
     }
+    case "emote": {
+      const info = online.match;
+      if (info)
+        set({ match: { ...info, emote: { seat: msg.seat, id: msg.id, seq: (info.emote?.seq ?? 0) + 1 } } });
+      break;
+    }
     case "error":
       set({ lastError: msg.message });
       break;
@@ -179,6 +188,11 @@ export const connect = (): void => {
       wanted = false;
       return;
     }
+    if (e.code === 4003) {
+      set({ status: "offline", lastError: "banned" });
+      wanted = false;
+      return;
+    }
     if (e.code === 4002) {
       set({ status: "offline", lastError: "replaced" });
       wanted = false;
@@ -218,6 +232,17 @@ export const requestRematch = () => {
   const info = useOnline.getState().match;
   if (!info?.end || !send({ t: "rematch" })) return;
   set({ match: { ...info, rematch: "requested" } });
+};
+
+export const sendEmote = (id: EmoteId) => send({ t: "emote", id });
+
+/** Reports an opponent of a match to the moderators; resolves to false for a repeated report. */
+export const reportPlayer = async (playerId: string, matchId: string, reason: ReportReason, note: string) => {
+  const r = await rest<{ duplicate: boolean }>("/api/reports", {
+    method: "POST",
+    body: JSON.stringify({ playerId, matchId, reason, note: note.trim() || undefined }),
+  });
+  return !r.duplicate;
 };
 
 /** Leaves the online match (forfeits if it is still running) and returns to local play. */

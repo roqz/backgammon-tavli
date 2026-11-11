@@ -63,6 +63,8 @@ export interface BoardProps {
   readonly viewer?: Player;
   /** Portrait phones: draw the board turned by 90° so it uses the screen height. */
   readonly rotated?: boolean;
+  /** Mirror left/right: home board and bear-off tray on the left. */
+  readonly mirrored?: boolean;
 }
 
 export interface OpeningRoll {
@@ -97,6 +99,7 @@ export function Board({
   diceIntro = true,
   viewer = 0,
   rotated = false,
+  mirrored = false,
 }: BoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   /** All board content; pointer positions are mapped through its (possibly rotated) transform. */
@@ -229,7 +232,17 @@ export function Board({
         </marker>
       </defs>
 
-      <g ref={rootRef} transform={rotated ? `translate(${HEIGHT} 0) rotate(90)` : undefined}>
+      <g
+        ref={rootRef}
+        transform={
+          [
+            rotated ? `translate(${HEIGHT} 0) rotate(90)` : "",
+            mirrored ? `translate(${WIDTH} 0) scale(-1 1)` : "",
+          ]
+            .join(" ")
+            .trim() || undefined
+        }
+      >
         {/* frame, felt, bar, tray */}
         <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={14} fill={theme.frame} />
         <rect x={LEFT_X} y={TOP_Y} width={6 * POINT_W} height={HEIGHT - 2 * FRAME} fill={theme.felt} />
@@ -286,11 +299,12 @@ export function Board({
               key={`n${phys}`}
               x={pointX(phys)}
               y={isTop(phys) ? FRAME / 2 : HEIGHT - FRAME / 2}
-              transform={
-                rotated
-                  ? `rotate(-90 ${pointX(phys)} ${isTop(phys) ? FRAME / 2 : HEIGHT - FRAME / 2})`
-                  : undefined
-              }
+              transform={upright(
+                pointX(phys),
+                isTop(phys) ? FRAME / 2 : HEIGHT - FRAME / 2,
+                rotated,
+                mirrored,
+              )}
               textAnchor="middle"
               dominantBaseline="central"
               fontSize={12}
@@ -378,9 +392,16 @@ export function Board({
               />
             )}
         </AnimatePresence>
-        <CubeView state={state} theme={theme} view={view} rotated={rotated} />
+        <CubeView state={state} theme={theme} view={view} rotated={rotated} mirrored={mirrored} />
         {hint && hint.length > 0 && (
-          <HintArrows moves={hint} layout={layout} player={turn} color={theme.highlight} view={view} />
+          <HintArrows
+            moves={hint}
+            layout={layout}
+            player={turn}
+            color={theme.highlight}
+            view={view}
+            mirrored={mirrored}
+          />
         )}
       </g>
     </svg>
@@ -538,16 +559,27 @@ function DiceLayer({
   );
 }
 
+/**
+ * Keeps a label at (x, y) readable inside the board group: undoes the 90° portrait rotation
+ * and the left/right mirror (the label stays at its mirrored position).
+ */
+const upright = (x: number, y: number, rotated: boolean, mirrored: boolean): string | undefined =>
+  [mirrored ? `translate(${2 * x} 0) scale(-1 1)` : "", rotated ? `rotate(-90 ${x} ${y})` : ""]
+    .join(" ")
+    .trim() || undefined;
+
 function CubeView({
   state,
   theme,
   view,
   rotated,
+  mirrored,
 }: {
   state: GameState;
   theme: BoardTheme;
   view: View;
   rotated: boolean;
+  mirrored: boolean;
 }) {
   // Tavli variants have no doubling cube by rule; in Backgammon it is always shown,
   // greyed out while unavailable (1-point match, Crawford game).
@@ -575,7 +607,7 @@ function CubeView({
         strokeWidth={offered ? 4 : 2}
       />
       <text
-        transform={rotated ? "rotate(-90)" : undefined}
+        transform={upright(0, 0, rotated, mirrored)}
         textAnchor="middle"
         dominantBaseline="central"
         fontSize={20}
@@ -595,12 +627,14 @@ function HintArrows({
   player,
   color,
   view,
+  mirrored,
 }: {
   moves: readonly Move[];
   layout: Layout;
   player: Player;
   color: string;
   view: View;
+  mirrored: boolean;
 }) {
   const counts = new Map<string, number>();
   const sizeOf = (slot: Slot) => counts.get(String(slot)) ?? stackAt(layout, slot).length;
@@ -638,6 +672,7 @@ function HintArrows({
             <text
               x={a.x}
               y={a.y}
+              transform={upright(a.x, a.y, false, mirrored)}
               textAnchor="middle"
               dominantBaseline="central"
               fontSize={13}

@@ -34,7 +34,14 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("drop") }),
   z.object({ type: z.literal("pass") }),
   z.object({ type: z.literal("resign"), level: z.union([z.literal(1), z.literal(2), z.literal(3)]) }),
+  z.object({ type: z.literal("offer-resign"), level: z.union([z.literal(1), z.literal(2), z.literal(3)]) }),
+  z.object({ type: z.literal("accept-resign") }),
+  z.object({ type: z.literal("reject-resign") }),
 ]);
+
+/** Predefined quick messages; there is no free-text chat, so nothing needs moderating. */
+export const EMOTES = ["hi", "gl", "gg", "nice", "lucky", "oops", "think", "thanks"] as const;
+export type EmoteId = (typeof EMOTES)[number];
 export type ClientAction = z.infer<typeof ClientActionSchema>;
 
 const matchSetup = {
@@ -62,6 +69,8 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
   /** Client contribution to the dice randomness, sent right after match-start. */
   z.object({ t: z.literal("seed"), value: z.string().regex(/^[0-9a-f]{16,64}$/) }),
   z.object({ t: z.literal("rematch-decline") }),
+  /** Quick message to the opponent during a match. */
+  z.object({ t: z.literal("emote"), id: z.enum(EMOTES) }),
   z.object({ t: z.literal("ping") }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -128,6 +137,8 @@ export type ServerMessage =
   | { readonly t: "rematch-offer" }
   /** The opponent declined or left; no rematch possible. */
   | { readonly t: "rematch-declined" }
+  /** A quick message from a seat (also echoed to the sender). */
+  | { readonly t: "emote"; readonly seat: Player; readonly id: EmoteId }
   | { readonly t: "error"; readonly message: string }
   | { readonly t: "pong" };
 
@@ -167,6 +178,51 @@ export interface ProfileResponse {
   readonly name: string;
   readonly ratings: readonly RatingEntry[];
   readonly recent: readonly MatchSummary[];
+}
+
+export const REPORT_REASONS = ["cheating", "abuse", "stalling", "other"] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+export const ReportSchema = z.object({
+  playerId: z.string().min(1).max(64),
+  matchId: z.string().min(1).max(64).optional(),
+  reason: z.enum(REPORT_REASONS),
+  note: z.string().trim().max(500).optional(),
+});
+
+export const BanSchema = z.object({
+  /** null lifts the ban. */
+  reason: z.string().trim().min(1).max(200).nullable(),
+});
+
+export const ResolveSchema = z.object({ resolution: z.string().trim().min(1).max(200) });
+
+/** A report as moderators see it. */
+export interface AdminReport {
+  readonly id: number;
+  readonly reporter: { readonly id: string; readonly name: string };
+  readonly reported: { readonly id: string; readonly name: string; readonly banned: boolean };
+  readonly reportsAgainst: number;
+  readonly matchId: string | null;
+  readonly reason: string;
+  readonly note: string;
+  readonly createdAt: string;
+  readonly resolvedAt: string | null;
+  readonly resolution: string | null;
+}
+
+export interface ModerationInfo {
+  readonly id: string;
+  readonly name: string;
+  readonly username: string | null;
+  readonly createdAt: string;
+  readonly bannedAt: string | null;
+  readonly banReason: string | null;
+  readonly reportsAgainst: number;
+  readonly reportsFiled: number;
+  readonly matches: number;
+  /** Matches lost by forfeit or abandonment. */
+  readonly forfeits: number;
 }
 
 export const NameSchema = z.object({ name: z.string().trim().min(1).max(NAME_MAX) });

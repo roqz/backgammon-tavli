@@ -1,5 +1,13 @@
 import { BOT_LEVELS, type BotLevel } from "@tavli/ai";
-import type { MatchConfig, MatchVariant } from "@tavli/engine";
+import {
+  gameFromXgid,
+  type MatchConfig,
+  type MatchStart,
+  type MatchVariant,
+  parseXgid,
+  type VariantId,
+  XGID_VARIANTS,
+} from "@tavli/engine";
 import { useState } from "react";
 import { Button, Card, Segmented } from "../components/ui";
 import { useT } from "../i18n";
@@ -85,10 +93,30 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   const [opponent, setOpponent] = useState<"bot" | "human">("bot");
   const [level, setLevel] = useState<BotLevel>("medium");
   const [seat, setSeat] = useState<0 | 1>(0);
+  const [xgidOpen, setXgidOpen] = useState(false);
+  const [xgid, setXgid] = useState("");
+  const [xgidError, setXgidError] = useState<string | null>(null);
+  const xgidPossible = XGID_VARIANTS.includes(variant as VariantId);
   const levelName: Record<BotLevel, string> = { easy: t.easy, medium: t.medium, hard: t.hard };
 
   const start = () => {
-    const config: MatchConfig = { variant, length, crawford: true, jacoby: length === 0 };
+    let config: MatchConfig = { variant, length, crawford: true, jacoby: length === 0 };
+    let from: MatchStart | undefined;
+    if (xgidPossible && xgidOpen && xgid.trim()) {
+      try {
+        const x = parseXgid(xgid);
+        const matchLength = x.length > 0 ? x.length : length;
+        config = { ...config, length: matchLength, jacoby: matchLength === 0 && x.jacoby };
+        from = {
+          game: gameFromXgid(x, variant as VariantId),
+          score: x.length > 0 ? x.score : [0, 0],
+          crawfordGame: x.crawford,
+        };
+      } catch (e) {
+        setXgidError(`${t.xgidInvalid}: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
+    }
     const human = (p: 0 | 1): PlayerInfo => ({
       name: names[p].trim() || (p === 0 ? t.playerWhite : t.playerBlack),
       kind: "human",
@@ -99,7 +127,12 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
         : seat === 0
           ? [{ ...human(0), name: names[0].trim() || t.you }, botPlayer()]
           : [botPlayer(), { ...human(1), name: names[0].trim() || t.you }];
-    startMatch(config, players);
+    try {
+      startMatch(config, players, from);
+    } catch (e) {
+      setXgidError(`${t.xgidInvalid}: ${e instanceof Error ? e.message : String(e)}`);
+      return;
+    }
     onStarted();
   };
 
@@ -173,6 +206,35 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
               ]}
             />
           </>
+        )}
+        {xgidPossible && (
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              className="w-fit text-sm text-stone-400 hover:text-amber-200"
+              aria-expanded={xgidOpen}
+              onClick={() => setXgidOpen((o) => !o)}
+            >
+              {xgidOpen ? "▾" : "▸"} {t.importXgid}
+            </button>
+            {xgidOpen && (
+              <>
+                <input
+                  aria-label={t.importXgid}
+                  className="rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 font-mono text-xs text-stone-100 outline-none focus:border-amber-400"
+                  placeholder="XGID=-b----E-C---eE---c-e----B-:0:0:1:00:0:0:0:0:10"
+                  value={xgid}
+                  spellCheck={false}
+                  onChange={(e) => {
+                    setXgid(e.target.value);
+                    setXgidError(null);
+                  }}
+                />
+                <p className="text-xs text-stone-500">{t.xgidHint}</p>
+                {xgidError && <p className="text-sm text-red-400">{xgidError}</p>}
+              </>
+            )}
+          </div>
         )}
         <div className="grid grid-cols-2 gap-3">
           {(opponent === "bot" ? ([0] as const) : ([0, 1] as const)).map((p) => (

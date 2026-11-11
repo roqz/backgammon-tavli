@@ -69,3 +69,6 @@ Caddy serves the web app and proxies `/api` and `/ws` to the server on the same 
 SQLite database lives in the `tavli-data` volume. Fair-play checks never pair two profiles from the same
 device or network in the public queue (set `ALLOW_SAME_NETWORK=1` for local testing). For a separately hosted frontend (e.g. GitHub
 Pages) set the repository variable `TAVLI_SERVER_URL` and `CORS_ORIGIN` on the server.
+
+Moderation: start the server with `ADMIN_TOKEN=<long random secret>` (at least 16 characters) to
+enable the admin API; open the app with `?admin` to review player reports and ban or unban profiles.

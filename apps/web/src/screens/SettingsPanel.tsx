@@ -116,6 +116,12 @@ export function SettingsPanel() {
           checked={s.showNumbers}
           onChange={(showNumbers) => s.update({ showNumbers })}
         />
+        <Toggle
+          label={t.homeLeft}
+          description={t.homeLeftHint}
+          checked={s.homeLeft}
+          onChange={(homeLeft) => s.update({ homeLeft })}
+        />
       </Section>
 
       <Section title={t.gameplay} icon="🎲">
@@ -182,6 +188,12 @@ export function SettingsPanel() {
       </Section>
 
       <Section title={t.onlineSection} icon="📡">
+        <Toggle
+          label={t.showEmotes}
+          description={t.showEmotesHint}
+          checked={s.showEmotes}
+          onChange={(showEmotes) => s.update({ showEmotes })}
+        />
         <ServerUrlField />
       </Section>
     </div>

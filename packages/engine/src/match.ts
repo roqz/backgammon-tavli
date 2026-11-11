@@ -52,14 +52,31 @@ const newGameFor = (
   });
 };
 
-export const createMatch = (config: MatchConfig): MatchState => {
+export interface MatchStart {
+  /** Start from this game (e.g. an imported position) instead of a fresh one. */
+  readonly game?: GameState;
+  readonly score?: readonly [number, number];
+  /** The first game is the Crawford game. */
+  readonly crawfordGame?: boolean;
+}
+
+export const createMatch = (config: MatchConfig, start: MatchStart = {}): MatchState => {
   if (!Number.isInteger(config.length) || config.length < 0) throw new Error("Invalid match length");
+  const score = start.score ?? [0, 0];
+  if (config.length > 0 && (score[0] >= config.length || score[1] >= config.length))
+    throw new Error("Score already reaches the match length");
+  const crawfordGame = start.crawfordGame ?? false;
+  const crawford: CrawfordState = crawfordGame
+    ? "crawford-game"
+    : config.length > 0 && (score[0] === config.length - 1 || score[1] === config.length - 1)
+      ? "done"
+      : "pending";
   return {
     config,
-    score: [0, 0],
+    score: [score[0], score[1]],
     results: [],
-    crawford: "pending",
-    game: newGameFor(config, 0, false),
+    crawford,
+    game: start.game ?? newGameFor(config, 0, crawfordGame),
     winner: null,
   };
 };

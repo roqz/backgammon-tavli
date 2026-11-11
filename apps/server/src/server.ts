@@ -1,6 +1,8 @@
+import { timingSafeEqual } from "node:crypto";
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import {
+  BanSchema,
   ClaimSchema,
   ClientMessageSchema,
   LoginSchema,
@@ -8,6 +10,8 @@ import {
   type MatchVariantId,
   NameSchema,
   PasswordChangeSchema,
+  ReportSchema,
+  ResolveSchema,
   type ServerMessage,
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
@@ -29,6 +33,8 @@ export interface ServerOptions {
   readonly messageRate?: { readonly perSecond: number; readonly burst: number };
   /** Behind a reverse proxy: take the client address from X-Forwarded-For. */
   readonly trustProxy?: boolean;
+  /** Enables the moderation API (header `X-Admin-Token`); at least 16 characters. */
+  readonly adminToken?: string;
   readonly log?: (msg: string) => void;
 }
 
@@ -116,8 +122,17 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     const { id, token } = credentials(req);
     const player = id && token ? store.authenticate(id, token) : null;
     if (!player) throw new HttpError(401, "unauthorized");
+    if (player.banned) throw new HttpError(403, "banned");
     return player;
   };
+  const adminToken = opts.adminToken && opts.adminToken.length >= 16 ? Buffer.from(opts.adminToken) : null;
+  const requireAdmin = (req: IncomingMessage) => {
+    const given = Buffer.from(String(req.headers["x-admin-token"] ?? ""));
+    if (!adminToken) throw new HttpError(404, "not found");
+    if (given.length !== adminToken.length || !timingSafeEqual(given, adminToken))
+      throw new HttpError(401, "unauthorized");
+  };
+  const allowAdmin = rateLimiter(60, 60_000);
   const allowLogin = rateLimiter(20, 60_000);
   /** Runs a store operation and maps account errors to HTTP errors. */
   const account = <T>(fn: () => T): T => {
@@ -129,12 +144,18 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     }
   };
 
+  const clientIpOf = (req: IncomingMessage): string => {
+    const forwarded = req.headers["x-forwarded-for"];
+    const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
+    return (opts.trustProxy && first) || req.socket.remoteAddress || "";
+  };
+
   const route = async (req: IncomingMessage, res: ServerResponse): Promise<unknown> => {
     const url = new URL(req.url ?? "/", "http://localhost");
     const path = url.pathname;
     if (req.method === "GET" && path === "/api/health") return { ok: true, rooms: lobby.activeRooms };
     if (req.method === "POST" && path === "/api/players") {
-      if (!allowRegister(req.socket.remoteAddress ?? "?")) throw new HttpError(429, "too many requests");
+      if (!allowRegister(clientIpOf(req))) throw new HttpError(429, "too many requests");
       const body = NameSchema.safeParse(await readJson(req));
       if (!body.success) throw new HttpError(400, "invalid name");
       res.statusCode = 201;
@@ -149,7 +170,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     }
     if (path.startsWith("/api/account")) {
       if (req.method === "POST" && path === "/api/account/login") {
-        if (!allowLogin(req.socket.remoteAddress ?? "?")) throw new HttpError(429, "too many requests");
+        if (!allowLogin(clientIpOf(req))) throw new HttpError(429, "too many requests");
         const body = LoginSchema.safeParse(await readJson(req));
         if (!body.success) throw new HttpError(400, "invalid request");
         return account(() => store.login(body.data.username, body.data.password));
@@ -172,6 +193,52 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         account(() => store.changePassword(player.id, body.data.oldPassword, body.data.newPassword));
         return { ok: true };
       }
+    }
+    if (req.method === "POST" && path === "/api/reports") {
+      const player = authPlayer(req);
+      const body = ReportSchema.safeParse(await readJson(req));
+      if (!body.success || body.data.playerId === player.id) throw new HttpError(400, "invalid report");
+      const { playerId, matchId, reason, note } = body.data;
+      // Only opponents of a (running or archived) match can be reported.
+      const archived = matchId ? store.matchSummary(matchId) : null;
+      const ids = archived?.players.map((p) => p.id) ?? [];
+      const together =
+        !!matchId &&
+        ((ids.includes(player.id) && ids.includes(playerId)) ||
+          lobby.sharedMatch(player.id, playerId, matchId));
+      if (!together) throw new HttpError(403, "you can only report opponents");
+      const filed = store.addReport({ reporter: player.id, reported: playerId, matchId, reason, note });
+      res.statusCode = filed ? 201 : 200;
+      return { ok: true, duplicate: !filed };
+    }
+    if (path.startsWith("/api/admin/")) {
+      if (!allowAdmin(clientIpOf(req))) throw new HttpError(429, "too many requests");
+      requireAdmin(req);
+      if (req.method === "GET" && path === "/api/admin/reports")
+        return store.reports(url.searchParams.get("status") !== "resolved");
+      let a = /^\/api\/admin\/reports\/(\d{1,12})\/resolve$/.exec(path);
+      if (req.method === "POST" && a) {
+        const body = ResolveSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid resolution");
+        if (!store.resolveReport(Number(a[1]), body.data.resolution)) throw new HttpError(404, "not found");
+        return { ok: true };
+      }
+      a = /^\/api\/admin\/players\/([\w-]{1,64})$/.exec(path);
+      if (req.method === "GET" && a) {
+        const info = store.moderationInfo(a[1]!);
+        if (!info) throw new HttpError(404, "not found");
+        return info;
+      }
+      a = /^\/api\/admin\/players\/([\w-]{1,64})\/ban$/.exec(path);
+      if (req.method === "POST" && a) {
+        const body = BanSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid ban");
+        if (!store.setBan(a[1]!, body.data.reason)) throw new HttpError(404, "not found");
+        if (body.data.reason !== null) lobby.kick(a[1]!);
+        log(`moderation: player ${a[1]} ${body.data.reason === null ? "unbanned" : "banned"}`);
+        return store.moderationInfo(a[1]!);
+      }
+      throw new HttpError(404, "not found");
     }
     if (req.method === "GET" && path === "/api/leaderboard") {
       const variant = url.searchParams.get("variant") ?? "backgammon";
@@ -197,7 +264,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
 
   const http = createHttpServer(async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", cors);
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Admin-Token");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
     if (req.method === "OPTIONS") {
       res.statusCode = 204;
@@ -222,12 +289,6 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   });
 
-  const clientIp = (req: IncomingMessage): string => {
-    const forwarded = req.headers["x-forwarded-for"];
-    const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
-    return (opts.trustProxy && first) || req.socket.remoteAddress || "";
-  };
-
   const alive = new WeakMap<WebSocket, boolean>();
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     const conn: Conn = {
@@ -237,7 +298,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       close: (code, reason) => ws.close(code, reason),
     };
     alive.set(ws, true);
-    lobby.connect(conn, clientIp(req));
+    lobby.connect(conn, clientIpOf(req));
     ws.on("pong", () => alive.set(ws, true));
     // Token bucket per connection: bursts are fine, floods are dropped and finally disconnected.
     const rate = opts.messageRate ?? { perSecond: MSG_PER_SECOND, burst: MSG_BURST };

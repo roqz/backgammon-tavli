@@ -7,6 +7,7 @@ import {
   type GameState,
   type MatchAction,
   type MatchConfig,
+  type MatchStart,
   type MatchState,
   type Move,
   type PlayedMove,
@@ -47,6 +48,8 @@ const toClientAction = (a: MatchAction): ClientAction | null => {
       return { type: "roll" };
     case "resign":
       return { type: "resign", level: a.level };
+    case "offer-resign":
+      return { type: "offer-resign", level: a.level };
     case "next-game":
       return null; // the server starts the next game itself
     default:
@@ -67,7 +70,8 @@ interface GameStore {
   rollFx: DiceThrow | null;
   /** True while a multi-step move is being animated; blocks input. */
   busy: boolean;
-  startMatch: (config: MatchConfig, players: readonly [PlayerInfo, PlayerInfo]) => void;
+  /** `start` begins from a given game and score (e.g. an imported XGID position). */
+  startMatch: (config: MatchConfig, players: readonly [PlayerInfo, PlayerInfo], start?: MatchStart) => void;
   dispatch: (action: MatchAction) => void;
   roll: () => void;
   /** Plays moves one after another so each step animates; `stepDelay` in ms. */
@@ -154,8 +158,8 @@ export const useGame = create<GameStore>()(
       rollFx: null,
       busy: false,
 
-      startMatch: (config, players) => {
-        const match = createMatch(config);
+      startMatch: (config, players, start) => {
+        const match = createMatch(config, start);
         set({
           mode: "local",
           match,

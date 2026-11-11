@@ -16,6 +16,10 @@ export interface Settings {
   sound: boolean;
   /** Animated 3D dice throw (loads three.js on demand). */
   dice3d: boolean;
+  /** Mirror the board horizontally: the own home board is drawn bottom left. */
+  homeLeft: boolean;
+  /** Show the opponent's quick messages in online games. */
+  showEmotes: boolean;
 }
 
 interface SettingsStore extends Settings {
@@ -38,6 +42,8 @@ export const useSettings = create<SettingsStore>()(
       autoConfirmDelay: true,
       sound: true,
       dice3d: true,
+      homeLeft: false,
+      showEmotes: true,
       update: (patch) => set(patch),
     }),
     { name: "tavli.settings", version: 1 },

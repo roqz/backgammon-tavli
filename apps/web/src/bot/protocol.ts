@@ -14,7 +14,9 @@ export type BotRequest =
       readonly state: GameState;
       readonly level: BotLevel;
       readonly match: MatchContext;
-    };
+    }
+  /** Answer the opponent's offer to resign (`state.resignOffer`). */
+  | { readonly kind: "accept-resign"; readonly state: GameState };
 
 export type BotResponse<R extends BotRequest> = R extends { kind: "moves" } ? Move[] : boolean;
 

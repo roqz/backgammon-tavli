@@ -7,6 +7,8 @@ const server = await startServer({
   dbPath: env.DB_PATH ?? "./tavli.db",
   corsOrigin: env.CORS_ORIGIN ?? "*",
   trustProxy: env.TRUST_PROXY === "1" || env.TRUST_PROXY === "true",
+  // Moderation API (reports, bans); disabled unless set.
+  adminToken: env.ADMIN_TOKEN,
   // Allow pairing players from the same network (local testing, LAN events).
   fairPlay: { blockSameNetwork: env.ALLOW_SAME_NETWORK !== "1" },
   log: (msg) => console.log(`[${new Date().toISOString()}] ${msg}`),

@@ -8,7 +8,15 @@ import {
   type VariantId,
 } from "@tavli/engine";
 import { describe, expect, it } from "vitest";
-import { chooseMoves, evaluate, shouldDouble, shouldTake, winProbability } from "../src";
+import {
+  chooseMoves,
+  evaluate,
+  gammonChances,
+  shouldAcceptResign,
+  shouldDouble,
+  shouldTake,
+  winProbability,
+} from "../src";
 import { duel, playGame } from "./selfplay";
 
 const VARIANTS: VariantId[] = ["backgammon", "portes", "plakoto", "fevga"];
@@ -109,4 +117,26 @@ describe("strength", () => {
     const r = duel("plakoto", "medium", "easy", 30, seededRng(77));
     expect(r.aWins / r.games).toBeGreaterThan(0.55);
   }, 60_000);
+});
+
+describe("resignation offers", () => {
+  const rules = getVariant("backgammon");
+  const offer = (spec: Parameters<typeof boardFromSpec>[1], level: 1 | 2 | 3): GameState => {
+    const g = createGame({ variant: "backgammon", starter: 1, board: boardFromSpec(rules, spec) });
+    return applyAction(g, { type: "offer-resign", player: 1, level });
+  };
+
+  it("accepts a single game when no gammon is possible", () => {
+    // white is far ahead, but black has already borne off a checker
+    expect(shouldAcceptResign(offer({ white: { 1: 2 }, black: { 24: 1, 1: 13 }, off: [13, 1] }, 1))).toBe(
+      true,
+    );
+  });
+
+  it("refuses a single game when a gammon is likely and accepts the gammon", () => {
+    const spec = { white: { 1: 2, 2: 2 }, black: { 13: 15 }, off: [11, 0] as const };
+    expect(gammonChances("backgammon", boardFromSpec(rules, spec), 0).gammon).toBeGreaterThan(0.8);
+    expect(shouldAcceptResign(offer(spec, 1))).toBe(false);
+    expect(shouldAcceptResign(offer(spec, 2))).toBe(true);
+  });
 });

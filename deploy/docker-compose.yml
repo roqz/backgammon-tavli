@@ -13,6 +13,8 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       # Behind Caddy: client addresses come from X-Forwarded-For (fair-play checks)
       TRUST_PROXY: "1"
+      # Moderation API (reports, bans): set a long random secret to enable it
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
     volumes:
       - tavli-data:/data
     expose:

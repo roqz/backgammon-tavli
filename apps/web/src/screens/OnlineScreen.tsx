@@ -141,7 +141,9 @@ function PlayPanel() {
           </Button>
         </div>
       </Card>
-      {lastError && <p className="text-center text-sm text-red-400">{lastError}</p>}
+      {lastError && (
+        <p className="text-center text-sm text-red-400">{lastError === "banned" ? t.banned : lastError}</p>
+      )}
     </div>
   );
 }

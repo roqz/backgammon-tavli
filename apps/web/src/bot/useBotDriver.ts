@@ -42,6 +42,11 @@ export function useBotDriver(): boolean {
       try {
         await sleep(THINK_PAUSE_MS);
         if (!stillCurrent()) return;
+        if (game.resignOffer) {
+          const accept = await askBot({ kind: "accept-resign", state: game });
+          if (stillCurrent()) dispatch({ type: accept ? "accept-resign" : "reject-resign" });
+          return;
+        }
         switch (game.phase) {
           case "rolling": {
             if (isClosedOut(game)) {

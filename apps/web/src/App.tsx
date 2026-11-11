@@ -2,6 +2,7 @@ import { MotionConfig } from "motion/react";
 import { useEffect, useState } from "react";
 import { joinInvite } from "./online/client";
 import { useOnline } from "./online/store";
+import { AdminScreen } from "./screens/AdminScreen";
 import { GameScreen } from "./screens/GameScreen";
 import { Menu, NewGame, SettingsScreen } from "./screens/MenuScreens";
 import { OnlineScreen } from "./screens/OnlineScreen";
@@ -11,7 +12,7 @@ import { StatsScreen } from "./screens/StatsScreen";
 import type { GameRecord } from "./store/archive";
 import { useGame } from "./store/game";
 
-type Screen = "menu" | "new" | "game" | "settings" | "stats" | "replay" | "online" | "rules";
+type Screen = "menu" | "new" | "game" | "settings" | "stats" | "replay" | "online" | "rules" | "admin";
 
 /** Invite links look like `…/?join=ABC234`. */
 const takeJoinCode = (): string | null => {
@@ -26,7 +27,10 @@ const takeJoinCode = (): string | null => {
 export function App() {
   const hasGame = useGame((s) => s.match !== null && s.match.winner === null);
   const onlineMatchId = useOnline((s) => s.match?.matchId ?? null);
-  const [screen, setScreen] = useState<Screen>("menu");
+  // The moderation screen is only reachable through `?admin`.
+  const [screen, setScreen] = useState<Screen>(() =>
+    new URL(location.href).searchParams.has("admin") ? "admin" : "menu",
+  );
   const [replay, setReplay] = useState<{ records: readonly GameRecord[]; back: Screen } | null>(null);
   const openReplay = (records: GameRecord | readonly GameRecord[], back: Screen) => {
     setReplay({ records: Array.isArray(records) ? records : [records as GameRecord], back });
@@ -62,6 +66,9 @@ export function App() {
         )}
         {screen === "new" && <NewGame onBack={() => setScreen("menu")} onStarted={() => setScreen("game")} />}
         {screen === "rules" && <RulesScreen onBack={() => setScreen("menu")} />}
+        {screen === "admin" && (
+          <AdminScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "admin")} />
+        )}
         {screen === "settings" && <SettingsScreen onBack={() => setScreen(hasGame ? "game" : "menu")} />}
         {screen === "online" && (
           <OnlineScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "online")} />

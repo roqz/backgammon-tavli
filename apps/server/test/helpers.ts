@@ -9,8 +9,10 @@ export const start = (
   fairPlay: Parameters<typeof startServer>[0]["fairPlay"] = {},
   // generous by default: test bots act much faster than people
   messageRate: Parameters<typeof startServer>[0]["messageRate"] = { perSecond: 10_000, burst: 10_000 },
+  extra: Partial<Parameters<typeof startServer>[0]> = {},
 ) =>
   startServer({
+    ...extra,
     fairPlay: { blockSameNetwork: false, ...fairPlay },
     messageRate,
     matchmaking: { sweepMs: 50, ...matchmaking },

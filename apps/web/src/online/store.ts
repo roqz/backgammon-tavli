@@ -1,5 +1,5 @@
 import type { Player } from "@tavli/engine";
-import type { MatchEndReason, MatchVariantId, PublicPlayer, UnratedReason } from "@tavli/protocol";
+import type { EmoteId, MatchEndReason, MatchVariantId, PublicPlayer, UnratedReason } from "@tavli/protocol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -41,6 +41,8 @@ export interface OnlineMatchInfo {
   readonly fairCommit: string;
   readonly mySeed: string | null;
   fairCheck: "pending" | "ok" | "failed" | null;
+  /** Latest quick message per seat (with a counter so repeats re-trigger the bubble). */
+  emote: { readonly seat: Player; readonly id: EmoteId; readonly seq: number } | null;
   /** Rematch negotiation after the match ended. */
   rematch: "none" | "requested" | "offered" | "declined";
   end: {
