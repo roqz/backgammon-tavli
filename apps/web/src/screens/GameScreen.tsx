@@ -1,4 +1,5 @@
 import {
+  applyMoveUnchecked,
   canConfirm,
   canDouble,
   canUndo,
@@ -7,19 +8,27 @@ import {
   type GameState,
   getVariant,
   legalMoves,
+  type Move,
+  type PlayedMove,
   type Player,
   pipCount,
   playerToAct,
   type ResultLevel,
 } from "@tavli/engine";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Board } from "../board/Board";
 import { THEMES } from "../board/themes";
+import { askBot } from "../bot/client";
 import { humanSeat, useBotDriver } from "../bot/useBotDriver";
 import { Button, Modal } from "../components/ui";
-import { useT } from "../i18n";
+import { turnText, useT } from "../i18n";
+import { useGameSounds } from "../sound";
+import { type GameRecord, useArchive } from "../store/archive";
 import { useGame } from "../store/game";
 import { useSettings } from "../store/settings";
+
+/** three.js is only loaded when the 3D dice are used. */
+const Dice3D = lazy(() => import("../dice3d/Dice3D"));
 
 type T = ReturnType<typeof useT>;
 
@@ -73,14 +82,27 @@ function useAutoActions() {
   }, [g, busy, autoRoll, autoConfirm, roll, dispatch, match?.winner, openingSeq, humanTurn]);
 }
 
-export function GameScreen({ onMenu }: { onMenu: () => void }) {
+export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay: (r: GameRecord) => void }) {
   const t = useT();
   const settings = useSettings();
   const { match, players, layout, opening, busy, roll, dispatch, playChain, leave } = useGame();
   const [resigning, setResigning] = useState(false);
   const historyRef = useRef<HTMLOListElement>(null);
   useAutoActions();
+  useGameSounds();
   const thinking = useBotDriver();
+  const rollFx = useGame((s) => s.rollFx);
+  const [doneSeq, setDoneSeq] = useState(() => useGame.getState().rollFx?.seq ?? 0);
+  const diceAnimating = settings.dice3d && rollFx !== null && rollFx.seq !== doneSeq;
+  const [hint, setHint] = useState<{ game: GameState; moves: Move[] } | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+
+  // Safety net: never keep the 2D dice hidden if the 3D animation fails to load or finish.
+  useEffect(() => {
+    if (!diceAnimating || !rollFx) return;
+    const id = setTimeout(() => setDoneSeq(rollFx.seq), 2500);
+    return () => clearTimeout(id);
+  }, [diceAnimating, rollFx]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new history entries
   useEffect(() => {
@@ -119,6 +141,17 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
   // Against the computer the board is always numbered from the human's side.
   const seat = humanSeat(players);
 
+  const activeHint = hint?.game === g ? hint.moves : null;
+  const hintText = activeHint ? describeMoves(g, activeHint) : null;
+  const askHint = async () => {
+    setHintLoading(true);
+    try {
+      setHint({ game: g, moves: await askBot({ kind: "moves", state: g, level: "hard" }) });
+    } finally {
+      setHintLoading(false);
+    }
+  };
+
   const resignLevels: ResultLevel[] = rules.backgammons ? [1, 2, 3] : [1, 2];
   const lengthLabel = match.config.length === 0 ? t.unlimited : `${match.config.length} ${t.points}`;
 
@@ -140,7 +173,7 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
           <div className="w-16" />
         </div>
 
-        <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+        <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
           <Board
             state={g}
             layout={layout}
@@ -149,7 +182,19 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
             openingDice={opening}
             numbersFor={settings.showNumbers ? (seat ?? actor ?? 0) : null}
             onMoves={(chain) => void playChain(chain)}
+            hint={activeHint}
+            hideDice={diceAnimating}
           />
+          {diceAnimating && rollFx && (
+            <Suspense fallback={null}>
+              <Dice3D
+                roll={rollFx}
+                faceColor={THEMES[settings.style].die.fill}
+                pipColor={THEMES[settings.style].die.pip}
+                onDone={setDoneSeq}
+              />
+            </Suspense>
+          )}
         </div>
 
         {/* status + controls */}
@@ -178,6 +223,13 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
             )}
             {g.phase === "moving" && humanToAct && (
               <>
+                <Button
+                  variant="ghost"
+                  disabled={busy || hintLoading || legalMoves(g).length === 0}
+                  onClick={() => void askHint()}
+                >
+                  💡 {t.hint}
+                </Button>
                 <Button disabled={!canUndo(g) || busy} onClick={() => dispatch({ type: "undo" })}>
                   ↶ {t.undo}
                 </Button>
@@ -192,7 +244,12 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
             )}
           </div>
         </div>
-        {g.phase === "moving" && g.played.length === 0 && !noPlay && (
+        {hintText && (
+          <p className="text-center text-sm text-amber-200">
+            💡 {t.suggestion}: <span className="font-mono">{hintText}</span>
+          </p>
+        )}
+        {!hintText && g.phase === "moving" && g.played.length === 0 && !noPlay && (
           <p className="text-center text-sm text-stone-500">{t.rulesHint}</p>
         )}
       </div>
@@ -228,7 +285,7 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
               // biome-ignore lint/suspicious/noArrayIndexKey: history is append-only
               <li key={i} className="flex items-center gap-2 py-0.5 text-stone-300">
                 <Checker player={rec.player} />
-                {formatTurn(g.variant, rec)}
+                {turnText(t, g.variant, rec)}
               </li>
             ))}
           </ol>
@@ -295,9 +352,14 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
             {match.score[0]} : {match.score[1]}
           </p>
           {match.winner === null ? (
-            <Button variant="primary" className="w-full" onClick={() => dispatch({ type: "next-game" })}>
-              {t.nextGame}
-            </Button>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={onMenu}>
+                {t.toMenu}
+              </Button>
+              <Button variant="primary" className="flex-[2]" onClick={() => dispatch({ type: "next-game" })}>
+                {t.nextGame}
+              </Button>
+            </div>
           ) : (
             <Button
               variant="primary"
@@ -310,8 +372,31 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
               {t.toMenu}
             </Button>
           )}
+          <Button
+            variant="ghost"
+            className="mt-2 w-full text-sm"
+            onClick={() => {
+              const record = useArchive.getState().records[0];
+              if (record) onReplay(record);
+            }}
+          >
+            ▶ {t.watchGame}
+          </Button>
         </Modal>
       )}
     </div>
   );
 }
+
+/** Notation of suggested moves including hits, e.g. "13/7* 8/7". */
+const describeMoves = (g: GameState, moves: readonly Move[]): string => {
+  const rules = getVariant(g.variant);
+  let board = g.board;
+  const played: PlayedMove[] = moves.map((m) => {
+    const r = applyMoveUnchecked(rules, board, g.turn, m);
+    board = r.board;
+    return { ...m, hit: r.hit };
+  });
+  const text = formatTurn(g.variant, { kind: "move", player: g.turn, dice: g.dice ?? [0, 0], moves: played });
+  return text.slice(text.indexOf(":") + 2);
+};

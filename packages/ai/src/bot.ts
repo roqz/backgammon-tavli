@@ -11,6 +11,7 @@ import {
   type TurnOption,
 } from "@tavli/engine";
 import { evaluate, isContact, winProbability } from "./evaluate";
+import { type Weights, weightsFor } from "./weights";
 
 export type BotLevel = "easy" | "medium" | "hard";
 
@@ -28,11 +29,11 @@ const ROLLS: readonly { dice: number[]; weight: number }[] = (() => {
 const WIN = 10_000;
 const HARD_CANDIDATES = 6;
 
-const scoreOption = (s: GameState, p: Player, o: TurnOption): number =>
-  o.end ? WIN : evaluate(s.variant, o.board, p);
+const scoreOption = (s: GameState, p: Player, o: TurnOption, w: Weights): number =>
+  o.end ? WIN : evaluate(s.variant, o.board, p, p, w);
 
 /** Expected value for `p` after playing `option`, assuming the opponent replies with its best 1-ply move. */
-const twoPly = (s: GameState, p: Player, option: TurnOption): number => {
+const twoPly = (s: GameState, p: Player, option: TurnOption, w: Weights): number => {
   if (option.end) return WIN;
   const opp = opponent(p);
   const gen = moveGenerator(s.variant, opp);
@@ -40,9 +41,9 @@ const twoPly = (s: GameState, p: Player, option: TurnOption): number => {
   for (const roll of ROLLS) {
     const replies = gen.turnOptions(option.board, roll.dice);
     let best = Number.NEGATIVE_INFINITY;
-    if (replies.length === 0) best = evaluate(s.variant, option.board, opp);
+    if (replies.length === 0) best = evaluate(s.variant, option.board, opp, opp, w);
     for (const r of replies) {
-      const v = r.end ? WIN : evaluate(s.variant, r.board, opp);
+      const v = r.end ? WIN : evaluate(s.variant, r.board, opp, opp, w);
       if (v > best) best = v;
       if (best >= WIN) break;
     }
@@ -62,7 +63,12 @@ const gaussian = (rng: Rng): number => {
  * - medium: best 1-ply evaluation
  * - hard:   2-ply expectimax over the best candidates
  */
-export const chooseMoves = (s: GameState, level: BotLevel, rng: Rng): Move[] => {
+export const chooseMoves = (
+  s: GameState,
+  level: BotLevel,
+  rng: Rng,
+  w: Weights = weightsFor(s.variant),
+): Move[] => {
   if (s.phase !== "moving") return [];
   const p = s.turn;
   const options = moveGenerator(s.variant, p).turnOptions(s.board, s.remaining);
@@ -74,7 +80,7 @@ export const chooseMoves = (s: GameState, level: BotLevel, rng: Rng): Move[] => 
 
   const scored = options.map((o) => ({
     o,
-    v: scoreOption(s, p, o) + (level === "easy" ? gaussian(rng) * 10 : 0),
+    v: scoreOption(s, p, o, w) + (level === "easy" ? gaussian(rng) * 10 : 0),
   }));
   scored.sort((a, b) => b.v - a.v);
   if (level !== "hard" || scored[0]!.o.end) return pick(scored[0]!.o);
@@ -82,7 +88,7 @@ export const chooseMoves = (s: GameState, level: BotLevel, rng: Rng): Move[] => 
   let best = scored[0]!;
   let bestValue = Number.NEGATIVE_INFINITY;
   for (const c of scored.slice(0, HARD_CANDIDATES)) {
-    const v = twoPly(s, p, c.o);
+    const v = twoPly(s, p, c.o, w);
     if (v > bestValue) {
       bestValue = v;
       best = c;

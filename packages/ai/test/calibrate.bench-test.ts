@@ -8,8 +8,6 @@ import { describe, it } from "vitest";
 import { evaluate, isContact } from "../src";
 import { playGame } from "./selfplay";
 
-declare const console: { log: (...args: unknown[]) => void };
-
 const VARIANTS: VariantId[] = ["backgammon", "portes", "plakoto", "fevga"];
 const GAMES = 150;
 

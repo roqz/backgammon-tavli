@@ -7,6 +7,7 @@ import {
   type VariantId,
   type VariantRules,
 } from "@tavli/engine";
+import { DEFAULT_WEIGHTS, type Weights, weightsFor } from "./weights";
 
 /**
  * Heuristic position evaluation in "pip-like" units from `p`'s point of view.
@@ -17,9 +18,15 @@ import {
  * - Plakoto: race, pinned checkers, pin exposure (incl. losing the "mana"), blocks
  * - Fevga: race, blocking points and walls in front of the opponent
  */
-export const evaluate = (variant: VariantId, b: Board, p: Player, mover: Player = p): number => {
+export const evaluate = (
+  variant: VariantId,
+  b: Board,
+  p: Player,
+  mover: Player = p,
+  w: Weights = weightsFor(variant),
+): number => {
   const rules = getVariant(variant);
-  const ctx = new Ctx(rules, b, mover);
+  const ctx = new Ctx(rules, b, mover, w);
   return side(ctx, p) - side(ctx, opponent(p));
 };
 
@@ -39,6 +46,7 @@ class Ctx {
     readonly b: Board,
     /** The player who has just moved (the opponent is on roll). */
     readonly mover: Player,
+    readonly w: Weights,
   ) {
     const view = (p: Player) => rules.paths[p].map((abs) => b.points[p][abs]!);
     const pinView = (p: Player) => rules.paths[p].map((abs) => b.pinned[abs] === p);
@@ -114,10 +122,11 @@ const longestRun = (held: boolean[], from: number, to: number): { len: number; e
 
 const side = (ctx: Ctx, p: Player): number => {
   const { b } = ctx;
-  const v = -ctx.pips[p] + b.off[p] * 0.5;
+  const { w } = ctx;
+  const v = -ctx.pips[p] + b.off[p] * w.offBonus;
   if (!ctx.contact) {
     // Pure race: pips plus a little wastage on the deepest points.
-    return v - 0.3 * (ctx.own[p][23]! + ctx.own[p][22]!);
+    return v - w.raceWastage * (ctx.own[p][23]! + ctx.own[p][22]!);
   }
   switch (ctx.rules.blots) {
     case "hit":
@@ -129,28 +138,29 @@ const side = (ctx: Ctx, p: Player): number => {
   }
 };
 
-const madePointValue = (k: number): number => {
-  if (k >= 18) return k === 19 || k === 20 ? 4.5 : 3.5; // home board, 5- and 4-point best
-  if (k === 17) return 3; // bar point
-  if (k >= 12) return 1.5;
-  if (k <= 5) return 2.5; // anchor in opponent's home
-  return 1;
+const madePointValue = (w: Weights, k: number): number => {
+  if (k >= 18) return k === 19 || k === 20 ? w.pointHomeBest : w.pointHome; // 5- and 4-point best
+  if (k === 17) return w.pointBar;
+  if (k >= 12) return w.pointOuter;
+  if (k <= 5) return w.anchor; // anchor in opponent's home
+  return w.pointOther;
 };
 
 const hitFeatures = (ctx: Ctx, p: Player): number => {
   const o = opponent(p);
   const mine = ctx.own[p];
   const oppHere = ctx.oppInMyCoords(p);
+  const { w } = ctx;
   let v = 0;
   const made = mine.map((n) => n >= 2);
   for (let k = 0; k < 24; k++) {
     const n = mine[k]!;
-    if (n >= 2) v += madePointValue(k);
-    if (n > 3) v -= 0.4 * (n - 3);
+    if (n >= 2) v += madePointValue(w, k);
+    if (n > 3) v -= w.stack * (n - 3);
     if (n === 1 && p === ctx.mover) {
       const risk = shotChance(shooters(ctx, p, k));
       // Being hit costs the pips travelled plus tempo.
-      v -= risk * (k + 1 + 8);
+      v -= w.blotScale * risk * (k + 1 + w.blotTempo);
     }
   }
   // Prime in front of opposing checkers that still have to pass.
@@ -158,17 +168,18 @@ const hitFeatures = (ctx: Ctx, p: Player): number => {
   if (run.len >= 2) {
     let trapped = 0;
     for (let k2 = run.end + 1; k2 <= 24; k2++) trapped += oppHere[k2]!;
-    if (trapped > 0) v += PRIME_BONUS[Math.min(run.len, 7)]! * 1.5;
+    if (trapped > 0) v += PRIME_BONUS[Math.min(run.len, 7)]! * w.prime;
   }
   // Own checkers on the bar against the opponent's home board (= my path 0..5).
   const oppHomeMade = ctx.own[o].slice(18).filter((n) => n >= 2).length;
-  v -= ctx.b.bar[p] * (4 + 2.5 * oppHomeMade);
+  v -= ctx.b.bar[p] * (w.barBase + w.barPerPoint * oppHomeMade);
   return v;
 };
 
 const pinFeatures = (ctx: Ctx, p: Player): number => {
   const mine = ctx.own[p];
   const pinned = ctx.pins[p];
+  const { w } = ctx;
   let v = 0;
   const held: boolean[] = [];
   for (let k = 0; k < 24; k++) {
@@ -176,25 +187,28 @@ const pinFeatures = (ctx: Ctx, p: Player): number => {
     const isPinned = pinned[k]!;
     held.push(n >= 2 && !isPinned);
     if (isPinned) {
-      v -= 14 + (24 - k) * 0.8; // a trapped checker far from home is a disaster
+      v -= w.pinnedBase + (24 - k) * w.pinnedPerPip; // a trapped checker far from home is a disaster
       continue;
     }
-    if (n >= 2) v += k >= 18 ? 3 : k >= 12 ? 2 : 1.5;
-    if (n > 4 && k > 0) v -= 0.3 * (n - 4);
+    if (n >= 2) v += k >= 18 ? w.pinPointHome : k >= 12 ? w.pinPointOuter : w.pinPointOther;
+    if (n > 4 && k > 0) v -= w.pinStack * (n - 4);
     if (n === 1 && p === ctx.mover) {
       const risk = shotChance(shooters(ctx, p, k));
       // Last checker on the starting point: being pinned there loses a double game (mana).
-      v -= k === 0 && ctx.rules.manaRule ? risk * 80 : risk * (12 + (24 - k) * 0.6);
+      v -=
+        k === 0 && ctx.rules.manaRule
+          ? risk * w.manaRisk
+          : risk * (w.pinRiskBase + (24 - k) * w.pinRiskPerPip);
     }
   }
   const run = longestRun(held, 0, 23);
-  if (run.len >= 2) v += PRIME_BONUS[Math.min(run.len, 7)]! * 1.2;
+  if (run.len >= 2) v += PRIME_BONUS[Math.min(run.len, 7)]! * w.pinPrime;
   return v;
 };
 
 const fevgaFeatures = (ctx: Ctx, p: Player): number => {
   const o = opponent(p);
-  const { rules } = ctx;
+  const { rules, w } = ctx;
   const mine = ctx.own[p];
   // Opponent's rearmost path index: points beyond it still block opposing checkers.
   const oppRear = ctx.rearIndex(o);
@@ -207,14 +221,14 @@ const fevgaFeatures = (ctx: Ctx, p: Player): number => {
     const j = ctx.idx(o, abs); // where this point lies on the opponent's path
     if (j > oppRear && j < 24) {
       heldOnOppPath[j] = true;
-      v += j >= 12 && j < 18 ? 2 : 1.2; // blocking the opponent's way home hurts most
+      v += j >= 12 && j < 18 ? w.blockHome : w.blockOther; // blocking the way home hurts most
     }
-    if (n > 3 && k > 0) v -= 0.3 * (n - 3);
+    if (n > 3 && k > 0) v -= w.fevStack * (n - 3);
   }
   const run = longestRun(heldOnOppPath, 0, 23);
-  if (run.len >= 2) v += PRIME_BONUS[Math.min(run.len, 6)]! * 1.2;
+  if (run.len >= 2) v += PRIME_BONUS[Math.min(run.len, 6)]! * w.fevPrime;
   // Checkers still on the start point are slow to develop.
-  v -= Math.max(0, mine[0]! - 10) * 0.6;
+  v -= Math.max(0, mine[0]! - 10) * w.startPenalty;
   return v;
 };
 
@@ -234,7 +248,7 @@ const phi = (x: number): number => {
 export const winProbability = (variant: VariantId, b: Board, p: Player): number => {
   const rules = getVariant(variant);
   const o = opponent(p);
-  const ctx = new Ctx(rules, b, o);
+  const ctx = new Ctx(rules, b, o, weightsFor(variant));
   if (!ctx.contact) {
     const mean = 8.17;
     const varPerRoll = 18.6;
@@ -249,7 +263,7 @@ export const winProbability = (variant: VariantId, b: Board, p: Player): number 
 };
 
 export const isContact = (variant: VariantId, b: Board): boolean =>
-  new Ctx(getVariant(variant), b, 0).contact;
+  new Ctx(getVariant(variant), b, 0, DEFAULT_WEIGHTS).contact;
 
 /**
  * Logistic calibration of evaluation -> win probability for contact positions, fitted on

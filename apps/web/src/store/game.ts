@@ -21,6 +21,8 @@ import {
   layoutMatches,
   undoMoveInLayout,
 } from "../board/layout";
+import type { DiceThrow } from "../dice3d/Dice3D";
+import { useArchive } from "./archive";
 
 export interface PlayerInfo {
   readonly name: string;
@@ -34,6 +36,8 @@ interface GameStore {
   players: readonly [PlayerInfo, PlayerInfo];
   layout: Layout;
   opening: OpeningRoll | null;
+  /** Latest throw for the 3D dice animation. */
+  rollFx: DiceThrow | null;
   /** True while a multi-step move is being animated; blocks input. */
   busy: boolean;
   startMatch: (config: MatchConfig, players: readonly [PlayerInfo, PlayerInfo]) => void;
@@ -79,6 +83,7 @@ export const useGame = create<GameStore>()(
       ],
       layout: {},
       opening: null,
+      rollFx: null,
       busy: false,
 
       startMatch: (config, players) => {
@@ -91,13 +96,39 @@ export const useGame = create<GameStore>()(
         if (!match) return;
         const after = applyMatchAction(match, action);
         set({ match: after, layout: nextLayout(layout, match.game, after.game, action) });
+        const result = after.game.result;
+        if (result && !match.game.result) {
+          useArchive.getState().add({
+            variant: after.game.variant,
+            players: get().players,
+            matchLength: after.config.length,
+            result,
+            history: after.game.history,
+          });
+        }
       },
 
       roll: () => {
         const { match, opening } = get();
         if (!match) return;
         const dice = rollDice(cryptoRng);
-        if (match.game.phase === "opening") set({ opening: { dice, seq: (opening?.seq ?? 0) + 1 } });
+        const isOpening = match.game.phase === "opening";
+        if (isOpening) set({ opening: { dice, seq: (opening?.seq ?? 0) + 1 } });
+        const half = match.game.turn;
+        set((s) => ({
+          rollFx: {
+            seq: (s.rollFx?.seq ?? 0) + 1,
+            dice: isOpening
+              ? [
+                  { value: dice[0], half: 0 },
+                  { value: dice[1], half: 1 },
+                ]
+              : [
+                  { value: dice[0], half },
+                  { value: dice[1], half },
+                ],
+          },
+        }));
         get().dispatch({ type: "roll", dice });
       },
 

@@ -1,3 +1,4 @@
+import { formatTurn, type TurnRecord, type VariantId } from "@tavli/engine";
 import { useSettings } from "./store/settings";
 
 const de = {
@@ -68,6 +69,37 @@ const de = {
   cancel: "Abbrechen",
   rulesHint: "Tippe einen Stein an und dann das Ziel – oder ziehe ihn.",
   abandon: "Spiel verlassen",
+  stats: "Statistik",
+  replay: "Wiederholung",
+  watch: "Ansehen",
+  watchGame: "Partie ansehen",
+  toStart: "Zum Anfang",
+  previous: "Zurück",
+  next: "Weiter",
+  toEnd: "Zum Ende",
+  play: "Abspielen",
+  pause: "Pause",
+  gamesShort: "Spiele",
+  winsShort: "Siege",
+  winRate: "Siegquote",
+  gammons: "Gammons / Mars",
+  streak: "Siegesserie",
+  vsComputer: "Spiele gg. Computer",
+  byOpponent: "Nach Gegner",
+  byVariant: "Nach Variante",
+  recentGames: "Letzte Partien",
+  noGames: "Noch keine Partien gespielt.",
+  clearArchive: "Archiv löschen",
+  clearArchiveConfirm: "Alle gespeicherten Partien und Statistiken löschen?",
+  hotseatGames: "Partien Mensch gegen Mensch (nicht in der Statistik)",
+  hint: "Tipp",
+  suggestion: "Vorschlag",
+  sound: "Soundeffekte",
+  dice3d: "3D-Würfel",
+  histDouble: "Verdoppelt auf",
+  histTake: "Angenommen",
+  histDrop: "Abgelehnt",
+  histResign: "Gibt auf",
 };
 
 type Dict = typeof de;
@@ -140,9 +172,56 @@ const en: Dict = {
   cancel: "Cancel",
   rulesHint: "Tap a checker, then its destination – or drag it.",
   abandon: "Leave game",
+  stats: "Statistics",
+  replay: "Replay",
+  watch: "Watch",
+  watchGame: "Watch game",
+  toStart: "To start",
+  previous: "Previous",
+  next: "Next",
+  toEnd: "To end",
+  play: "Play",
+  pause: "Pause",
+  gamesShort: "Games",
+  winsShort: "Wins",
+  winRate: "Win rate",
+  gammons: "Gammons",
+  streak: "Win streak",
+  vsComputer: "Games vs computer",
+  byOpponent: "By opponent",
+  byVariant: "By variant",
+  recentGames: "Recent games",
+  noGames: "No games played yet.",
+  clearArchive: "Clear archive",
+  clearArchiveConfirm: "Delete all saved games and statistics?",
+  hotseatGames: "human vs human games (not in statistics)",
+  hint: "Hint",
+  suggestion: "Suggestion",
+  sound: "Sound effects",
+  dice3d: "3D dice",
+  histDouble: "Doubles to",
+  histTake: "Takes",
+  histDrop: "Passes",
+  histResign: "Resigns",
 };
 
 export const DICTS = { de, en };
 export type Lang = keyof typeof DICTS;
 
 export const useT = (): Dict => DICTS[useSettings((s) => s.lang)];
+
+/** History line with localized cube/resign records; moves keep standard notation. */
+export const turnText = (t: Dict, variant: VariantId, rec: TurnRecord): string => {
+  switch (rec.kind) {
+    case "double":
+      return `${t.histDouble} ${rec.to}`;
+    case "take":
+      return t.histTake;
+    case "drop":
+      return t.histDrop;
+    case "resign":
+      return `${t.histResign} (${[t.single, t.gammon, t.backgammon][rec.level - 1]})`;
+    default:
+      return formatTurn(variant, rec);
+  }
+};

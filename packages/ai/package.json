@@ -12,12 +12,15 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "bench": "vitest run -c vitest.bench.config.ts"
+    "bench": "vitest run -c vitest.bench.config.ts",
+    "tune": "tsx scripts/tune.ts"
   },
   "dependencies": {
     "@tavli/engine": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
   }

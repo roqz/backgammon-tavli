@@ -51,6 +51,10 @@ export interface BoardProps {
   /** Show point numbers from this player's perspective. */
   readonly numbersFor: Player | null;
   readonly onMoves: (chain: Move[]) => void;
+  /** Suggested moves to draw as arrows. */
+  readonly hint?: readonly Move[] | null;
+  /** Hide the 2D dice (while the 3D throw animation runs). */
+  readonly hideDice?: boolean;
 }
 
 export interface OpeningRoll {
@@ -72,7 +76,17 @@ const POINT_INDICES = Array.from({ length: 24 }, (_, i) => i);
 
 const slotOfFrom = (p: Player, f: From): Slot => (f === "bar" ? barSlot(p) : f);
 
-export function Board({ state, layout, theme, interactive, openingDice, numbersFor, onMoves }: BoardProps) {
+export function Board({
+  state,
+  layout,
+  theme,
+  interactive,
+  openingDice,
+  numbersFor,
+  onMoves,
+  hint,
+  hideDice,
+}: BoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selected, setSelected] = useState<From | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -184,7 +198,20 @@ export function Board({ state, layout, theme, interactive, openingDice, numbersF
       onPointerUp={onPointerUp}
       onPointerCancel={() => setDrag(null)}
     >
-      <defs>{theme.defs}</defs>
+      <defs>
+        {theme.defs}
+        <marker
+          id="hint-arrow"
+          viewBox="0 0 10 10"
+          refX="6"
+          refY="5"
+          markerWidth="4"
+          markerHeight="4"
+          orient="auto"
+        >
+          <path d="M0,0 L10,5 L0,10 z" fill={theme.highlight} />
+        </marker>
+      </defs>
 
       {/* frame, felt, bar, tray */}
       <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={14} fill={theme.frame} />
@@ -308,8 +335,11 @@ export function Board({ state, layout, theme, interactive, openingDice, numbersF
         );
       })}
 
-      <DiceLayer state={state} theme={theme} openingDice={openingDice} />
+      {!hideDice && <DiceLayer state={state} theme={theme} openingDice={openingDice} />}
       <CubeView state={state} theme={theme} />
+      {hint && hint.length > 0 && (
+        <HintArrows moves={hint} layout={layout} player={turn} color={theme.highlight} />
+      )}
     </svg>
   );
 }
@@ -492,5 +522,68 @@ function CubeView({ state, theme }: { state: GameState; theme: BoardTheme }) {
         {offered ? value * 2 : value === 1 ? 64 : value}
       </text>
     </motion.g>
+  );
+}
+
+/** Arrows for suggested moves, drawn from the top of the source stack to the destination. */
+function HintArrows({
+  moves,
+  layout,
+  player,
+  color,
+}: {
+  moves: readonly Move[];
+  layout: Layout;
+  player: Player;
+  color: string;
+}) {
+  const counts = new Map<string, number>();
+  const sizeOf = (slot: Slot) => counts.get(String(slot)) ?? stackAt(layout, slot).length;
+  const offPos: Pos = {
+    x: TRAY_X + TRAY_W / 2,
+    y: player === 0 ? (MID_Y + BOTTOM_Y) / 2 : (TOP_Y + MID_Y) / 2,
+  };
+  return (
+    <g style={{ pointerEvents: "none" }} opacity={0.9}>
+      {moves.map((m, i) => {
+        const fromSlot = slotOfFrom(player, m.from);
+        const n = sizeOf(fromSlot);
+        const a = checkerPos(fromSlot, Math.max(0, n - 1), Math.max(1, n));
+        counts.set(String(fromSlot), Math.max(0, n - 1));
+        let b = offPos;
+        if (m.to !== "off") {
+          const k = sizeOf(m.to);
+          b = checkerPos(m.to, k, k + 1);
+          counts.set(String(m.to), k + 1);
+        }
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the step number is part of the arrow's identity
+          <g key={`${i}-${String(m.from)}-${String(m.to)}`}>
+            <line
+              x1={a.x}
+              y1={a.y}
+              x2={b.x}
+              y2={b.y}
+              stroke={color}
+              strokeWidth={6}
+              strokeLinecap="round"
+              markerEnd="url(#hint-arrow)"
+            />
+            <circle cx={a.x} cy={a.y} r={11} fill={color} />
+            <text
+              x={a.x}
+              y={a.y}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={13}
+              fontWeight={700}
+              fill="#1c1917"
+            >
+              {i + 1}
+            </text>
+          </g>
+        );
+      })}
+    </g>
   );
 }

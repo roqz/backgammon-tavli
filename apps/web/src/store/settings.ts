@@ -9,6 +9,9 @@ export interface Settings {
   showNumbers: boolean;
   autoRoll: boolean;
   autoConfirm: boolean;
+  sound: boolean;
+  /** Animated 3D dice throw (loads three.js on demand). */
+  dice3d: boolean;
 }
 
 interface SettingsStore extends Settings {
@@ -27,6 +30,8 @@ export const useSettings = create<SettingsStore>()(
       showNumbers: true,
       autoRoll: true,
       autoConfirm: false,
+      sound: true,
+      dice3d: true,
       update: (patch) => set(patch),
     }),
     { name: "tavli.settings", version: 1 },

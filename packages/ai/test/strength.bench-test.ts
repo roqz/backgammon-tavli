@@ -5,8 +5,6 @@
 import { seededRng, type VariantId } from "@tavli/engine";
 import { describe, it } from "vitest";
 
-declare const console: { log: (...args: unknown[]) => void };
-
 import type { BotLevel } from "../src";
 import { duel } from "./selfplay";
 

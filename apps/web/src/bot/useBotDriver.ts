@@ -2,10 +2,12 @@ import type { MatchContext } from "@tavli/ai";
 import { canConfirm, canDouble, playerToAct } from "@tavli/engine";
 import { useEffect, useState } from "react";
 import { useGame } from "../store/game";
+import { useSettings } from "../store/settings";
 import { askBot } from "./client";
 
 const THINK_PAUSE_MS = 450;
 const BOT_STEP_MS = 420;
+const DICE_SETTLE_MS = 550;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -53,6 +55,9 @@ export function useBotDriver(): boolean {
             break;
           }
           case "moving": {
+            // Let the 3D dice land before the computer starts moving.
+            if (useSettings.getState().dice3d) await sleep(DICE_SETTLE_MS);
+            if (!stillCurrent()) return;
             const moves = await askBot({ kind: "moves", state: game, level });
             if (!stillCurrent()) return;
             setThinking(false);
