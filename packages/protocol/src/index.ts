@@ -107,6 +107,8 @@ export type ServerMessage =
       readonly opening: Dice | null;
       /** Epoch ms when the player to act runs out of time (null = no clock). */
       readonly deadline: number | null;
+      /** Server clock (epoch ms) when the message was sent, to correct client clock skew. */
+      readonly serverTime: number;
     }
   | { readonly t: "opponent"; readonly connected: boolean; readonly graceUntil: number | null }
   | {

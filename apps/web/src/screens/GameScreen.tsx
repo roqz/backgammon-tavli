@@ -272,7 +272,9 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
           <div className="flex items-center gap-2">
             {online && onlineInfo && (
               <OnlineStatus
-                deadline={onlineInfo.end ? null : onlineInfo.deadline}
+                deadline={
+                  onlineInfo.end || !onlineInfo.deadline ? null : onlineInfo.deadline - onlineInfo.clockOffset
+                }
                 opponentConnected={onlineInfo.opponentConnected}
                 graceUntil={onlineInfo.opponentGraceUntil}
               />

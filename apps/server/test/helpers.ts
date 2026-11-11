@@ -6,9 +6,12 @@ export const start = (
   timings: Parameters<typeof startServer>[0]["timings"] = {},
   matchmaking: Parameters<typeof startServer>[0]["matchmaking"] = {},
   fairPlay: Parameters<typeof startServer>[0]["fairPlay"] = {},
+  // generous by default: test bots act much faster than people
+  messageRate: Parameters<typeof startServer>[0]["messageRate"] = { perSecond: 10_000, burst: 10_000 },
 ) =>
   startServer({
     fairPlay: { blockSameNetwork: false, ...fairPlay },
+    messageRate,
     matchmaking: { sweepMs: 50, ...matchmaking },
     port: 0,
     host: "127.0.0.1",

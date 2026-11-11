@@ -10,7 +10,16 @@ import {
 import { useEffect, useState } from "react";
 import { Button, Card, Modal } from "../components/ui";
 import { useT } from "../i18n";
-import { claimAccount, connect, fetchMatch, fetchProfile, login, logout, register } from "../online/client";
+import {
+  changePassword,
+  claimAccount,
+  connect,
+  fetchMatch,
+  fetchProfile,
+  login,
+  logout,
+  register,
+} from "../online/client";
 import { useOnline } from "../online/store";
 import type { GameRecord } from "../store/archive";
 
@@ -221,6 +230,7 @@ function AccountCard() {
           </Button>
         </div>
       )}
+      {profile.username && <PasswordChange />}
       {confirmLogout && (
         <Modal onClose={() => setConfirmLogout(false)}>
           <p className="mb-2 text-stone-100">{t.logout}?</p>
@@ -236,6 +246,76 @@ function AccountCard() {
         </Modal>
       )}
     </Card>
+  );
+}
+
+function PasswordChange() {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [oldPw, setOldPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [state, setState] = useState<{ ok?: boolean; error?: string }>({});
+  const submit = async () => {
+    setState({});
+    try {
+      await changePassword(oldPw, newPw);
+      setOldPw("");
+      setNewPw("");
+      setState({ ok: true });
+    } catch (e) {
+      setState({ error: errorText(e) });
+    }
+  };
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="self-start text-sm text-stone-400 underline"
+        onClick={() => setOpen(true)}
+      >
+        {t.changePassword}
+      </button>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-stone-800 p-3">
+      <label className="flex flex-col gap-1 text-sm text-stone-400">
+        {t.currentPassword}
+        <input
+          className={input}
+          type="password"
+          autoComplete="current-password"
+          value={oldPw}
+          onChange={(e) => setOldPw(e.target.value)}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-stone-400">
+        {t.newPassword}
+        <input
+          className={input}
+          type="password"
+          autoComplete="new-password"
+          value={newPw}
+          onChange={(e) => setNewPw(e.target.value)}
+        />
+        <span className="text-xs text-stone-500">{t.passwordRules}</span>
+      </label>
+      {state.error && <p className="text-sm text-red-400">{state.error}</p>}
+      {state.ok && <p className="text-sm text-emerald-400">✓ {t.passwordChanged}</p>}
+      <div className="flex gap-2">
+        <Button className="flex-1" onClick={() => setOpen(false)}>
+          {t.cancel}
+        </Button>
+        <Button
+          variant="primary"
+          className="flex-1"
+          disabled={!oldPw || newPw.length < PASSWORD_MIN}
+          onClick={() => void submit()}
+        >
+          {t.changePassword}
+        </Button>
+      </div>
+    </div>
   );
 }
 

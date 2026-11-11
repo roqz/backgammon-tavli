@@ -296,7 +296,15 @@ export class MatchRoom {
   // ---- messaging -----------------------------------------------------------------------------
 
   private stateMessage(action: MatchAction | null, by: Player | null, opening: Dice | null): ServerMessage {
-    return { t: "state", match: this.match, action, by, opening, deadline: this.deadline };
+    return {
+      t: "state",
+      match: this.match,
+      action,
+      by,
+      opening,
+      deadline: this.deadline,
+      serverTime: Date.now(),
+    };
   }
 
   private sendStart(seat: Player): void {

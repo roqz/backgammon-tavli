@@ -337,6 +337,22 @@ describe("online server", () => {
     expect(detail.games[0]!.result).toMatchObject({ winner: 0, points: 3, reason: "resign" });
   });
 
+  it("throttles message floods and reports server time in states", async () => {
+    await server.close();
+    server = await start({}, {}, {}, { perSecond: 10, burst: 40 });
+    const { a, b } = await pair();
+    const slow = a.next("error", (m) => m.message === "slow down");
+    for (let i = 0; i < 100; i++) a.send({ t: "ping" });
+    await slow;
+    // after a short pause the connection is usable again
+    await new Promise((r) => setTimeout(r, 300));
+    a.send({ t: "queue", variant: "backgammon", length: 1 });
+    await a.next("queued");
+    b.send({ t: "queue", variant: "backgammon", length: 1 });
+    const s = await a.next("state");
+    expect(Math.abs(s.serverTime - Date.now())).toBeLessThan(2000);
+  });
+
   it("lets a bot act when the clock runs out", async () => {
     await server.close();
     server = await start({ turnMs: 150 });

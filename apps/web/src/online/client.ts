@@ -63,6 +63,7 @@ const onMessage = (msg: ServerMessage) => {
           variant: msg.config.variant as MatchVariantId,
           length: msg.config.length,
           deadline: null,
+          clockOffset: 0,
           opponentConnected: true,
           opponentGraceUntil: null,
           rated: msg.rated,
@@ -81,7 +82,7 @@ const onMessage = (msg: ServerMessage) => {
     }
     case "state": {
       const info = online.match;
-      if (info) set({ match: { ...info, deadline: msg.deadline } });
+      if (info) set({ match: { ...info, deadline: msg.deadline, clockOffset: msg.serverTime - Date.now() } });
       useGame.getState().applyRemote(msg.match, msg.action, msg.by, msg.opening);
       break;
     }
@@ -273,6 +274,9 @@ export const logout = async () => {
   disconnect();
   set({ profile: null, match: null, lobby: { kind: "idle" } });
 };
+
+export const changePassword = (oldPassword: string, newPassword: string) =>
+  rest("/api/account/password", { method: "POST", body: JSON.stringify({ oldPassword, newPassword }) });
 
 export const syncAccount = async () => {
   const acc = await rest<AccountResponse>("/api/account");

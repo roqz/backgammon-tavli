@@ -30,6 +30,8 @@ export interface OnlineMatchInfo {
   readonly variant: MatchVariantId;
   readonly length: number;
   deadline: number | null;
+  /** serverTime - local time, measured with every state message. */
+  clockOffset: number;
   opponentConnected: boolean;
   opponentGraceUntil: number | null;
   /** Whether the result changes ratings (fair-play checks on the server). */

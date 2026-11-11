@@ -25,6 +25,8 @@ export interface ServerOptions {
   readonly randomSeats?: boolean;
   readonly matchmaking?: Partial<MatchmakingOptions>;
   readonly fairPlay?: Partial<FairPlayOptions>;
+  /** Per-connection message limit (token bucket). */
+  readonly messageRate?: { readonly perSecond: number; readonly burst: number };
   /** Behind a reverse proxy: take the client address from X-Forwarded-For. */
   readonly trustProxy?: boolean;
   readonly log?: (msg: string) => void;
@@ -40,6 +42,9 @@ export const DEFAULT_TIMINGS: RoomTimings = {
 
 const MAX_BODY = 4_096;
 const HEARTBEAT_MS = 30_000;
+const MSG_PER_SECOND = 10;
+const MSG_BURST = 40;
+const MSG_DROP_LIMIT = 200;
 
 class HttpError extends Error {
   constructor(
@@ -233,7 +238,20 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     alive.set(ws, true);
     lobby.connect(conn, clientIp(req));
     ws.on("pong", () => alive.set(ws, true));
+    // Token bucket per connection: bursts are fine, floods are dropped and finally disconnected.
+    const rate = opts.messageRate ?? { perSecond: MSG_PER_SECOND, burst: MSG_BURST };
+    let tokens = rate.burst;
+    let last = Date.now();
+    let dropped = 0;
     ws.on("message", (data) => {
+      const now = Date.now();
+      tokens = Math.min(rate.burst, tokens + ((now - last) / 1000) * rate.perSecond);
+      last = now;
+      if (tokens < 1) {
+        if (++dropped > MSG_DROP_LIMIT) return ws.close(4008, "rate limit");
+        return conn.send({ t: "error", message: "slow down" });
+      }
+      tokens -= 1;
       let parsed: unknown;
       try {
         parsed = JSON.parse(data.toString());
