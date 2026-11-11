@@ -110,7 +110,19 @@ describe("backgammon – move rules", () => {
     let s = position(BG, { white: { 8: 2, 1: 13 }, black: { 21: 1, 1: 14 } }, 0, [4, 4]);
     s = play(s, mv(BG, 0, 8, 4, 4), mv(BG, 0, 8, 4, 4), mv(BG, 0, 4, "off", 4), mv(BG, 0, 4, "off", 4));
     s = applyAction(s, { type: "confirm" });
-    expect(formatHistory(s)).toEqual(["White: 44: 8/4* 8/4 4/off(2)"]);
+    expect(formatHistory(s)).toEqual(["White: 44: 8/4*/off 8/off"]);
+  });
+
+  it("joins moves of the same checker and groups repeated chains", () => {
+    const start = { white: { 24: 2, 13: 5, 8: 3, 6: 5 }, black: { 24: 2, 13: 5, 8: 3, 6: 5 } };
+    let s = position(BG, start, 0, [6, 5]);
+    s = applyAction(play(s, mv(BG, 0, 24, 18, 6), mv(BG, 0, 18, 13, 5)), { type: "confirm" });
+    expect(formatHistory(s)).toEqual(["White: 65: 24/13"]);
+
+    let d = position(BG, start, 0, [3, 3]);
+    d = play(d, mv(BG, 0, 24, 21, 3), mv(BG, 0, 24, 21, 3), mv(BG, 0, 21, 18, 3), mv(BG, 0, 21, 18, 3));
+    d = applyAction(d, { type: "confirm" });
+    expect(formatHistory(d)).toEqual(["White: 33: 24/18(2)"]);
   });
 
   it("plays as many dice of a double as possible", () => {

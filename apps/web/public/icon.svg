@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Backgammon &amp; Tavli">
+  <title>Backgammon &amp; Tavli</title>
+  <rect width="512" height="512" rx="96" fill="#3b2a1a"/>
+  <rect x="40" y="40" width="432" height="432" rx="40" fill="#1f4d36"/>
+  <g fill="#e8dcc0">
+    <path d="M72 72h56l-28 170z"/><path d="M200 72h56l-28 170z"/><path d="M328 72h56l-28 170z"/>
+    <path d="M136 440h56l-28-170z"/><path d="M264 440h56l-28-170z"/><path d="M392 440h56l-28-170z"/>
+  </g>
+  <g fill="#8b2e1f">
+    <path d="M136 72h56l-28 170z"/><path d="M264 72h56l-28 170z"/><path d="M392 72h56l-28 170z"/>
+    <path d="M72 440h56l-28-170z"/><path d="M200 440h56l-28-170z"/><path d="M328 440h56l-28-170z"/>
+  </g>
+  <circle cx="200" cy="256" r="58" fill="#f5efe0" stroke="#b9a77f" stroke-width="10"/>
+  <circle cx="312" cy="256" r="58" fill="#2a1d14" stroke="#5a4433" stroke-width="10"/>
+</svg>

@@ -11,6 +11,7 @@ human vs. human and human vs. computer, with online play planned.
 | Path              | Content                                                                         |
 | ----------------- | ------------------------------------------------------------------------------- |
 | `packages/engine` | Pure, deterministic rules engine: all four variants, cube, match play, notation |
+| `apps/web`        | React 19 + Vite PWA: SVG board (classic / modern), tap & drag moves, hotseat    |
 | `legacy/`         | Old Angular 6 / Express implementation (reference only)                         |
 
 ## Development
@@ -19,6 +20,7 @@ Requires Node.js ≥ 22 and pnpm (`corepack enable`).
 
 ```sh
 pnpm install
+pnpm --filter @tavli/web dev   # web app on http://localhost:5173
 pnpm test        # run all tests
 pnpm typecheck
 pnpm lint        # Biome; `pnpm format` to fix

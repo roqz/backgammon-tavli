@@ -116,3 +116,20 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - XGID / GNUbg-ID Import/Export
 - Regel-Feinheiten prüfen: Fevga-Startregel bei blockiertem Läufer (aktuell: andere Steine dürfen dann ziehen), Prime-Prüfung pro Einzelzug statt am Zugende, Plakoto-Mana-Ausnahmen
 - Aufgabe mit Annahme/Ablehnung (für Online-Modus)
+
+### Phase 2 – Offline-MVP (`apps/web`) ✅
+
+- React 19, Vite, Tailwind 4, Zustand (Spielstand + Einstellungen in localStorage, Partie fortsetzbar), Motion für Animationen
+- SVG-Brett mit den Stilen _Klassisch_ (Holz, Filz) und _Modern_ (flach); Punktnummern aus Sicht des Spielers am Zug
+- Ziehen per Tippen (Stein → Ziel) und per Drag & Drop (Maus und Touch); Ziele über mehrere Würfel werden als Kette angeboten (z. B. 24/13 mit 6-5)
+- Stein-Identitäten für flüssige Animationen (Schlagen, Bar, Abtragen, Undo); gepinnte Plakoto-Steine liegen sichtbar unten
+- Mensch gegen Mensch am selben Gerät, neues Spiel mit Variante/Tavli-Rotation, Matchlänge und Namen
+- Verdopplungswürfel mit Annehmen/Aufgeben-Dialog, Aufgeben (einfach/Gammon/Backgammon), Ergebnis- und Match-Dialog, Crawford-Anzeige
+- Automatisch würfeln (nur wenn Verdoppeln nicht möglich ist), automatisches Passen bei „kein Zug“, optional automatisch beenden
+- Deutsch/Englisch, PWA (installierbar, offline via Service Worker), GitHub-Pages-Workflow
+
+### Offen in Phase 2
+
+- Playwright-E2E-Tests ins Repo übernehmen (lokal per Headless-Edge geprüft)
+- Brett-Orientierung (Heimfeld links/rechts), Sounds, schönere Würfelwurf-Animation (3D kommt in Phase 4)
+- Hochformat auf dem Handy: Brett nutzt die Breite noch nicht optimal
