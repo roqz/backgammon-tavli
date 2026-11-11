@@ -255,7 +255,10 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
   const askHint = async () => {
     setHintLoading(true);
     try {
-      setHint({ game: g, moves: await askBot({ kind: "moves", state: g, level: "hard" }) });
+      setHint({
+        game: g,
+        moves: await askBot({ kind: "moves", state: g, level: "hard" }),
+      });
     } finally {
       setHintLoading(false);
     }

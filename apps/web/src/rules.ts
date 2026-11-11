@@ -260,7 +260,7 @@ const de: Record<RulesTopic, RulesChapter> = {
         bullets: [
           "Gegen den Computer und online bietest du die Aufgabe an, wenn du am Zug bist: einfach, Gammon/Mars oder Backgammon. Der Gegner nimmt an (das Spiel endet mit diesem Ergebnis) oder lehnt ab (es geht normal weiter). Online ist ein Angebot pro Zug möglich, die Antwortzeit beträgt 30 Sekunden.",
           "Sofort aufgeben ohne Zustimmung gibt das höchste noch mögliche Ergebnis ab – kein Gammon mehr möglich, sobald du einen Stein abgetragen hast.",
-          "Der Computer nimmt ein Angebot an, wenn es mindestens so viele Punkte bringt, wie er beim Weiterspielen erwartet.",
+          "Der Computer nimmt ein Angebot an, wenn es mindestens so viel bringt, wie er beim Weiterspielen erwartet – im Match gemessen an der Chance, das Match zu gewinnen.",
           "Am selben Gerät wählt der Aufgebende das Ergebnis direkt.",
         ],
       },
@@ -509,7 +509,7 @@ const en: Record<RulesTopic, RulesChapter> = {
         bullets: [
           "Against the computer and online you offer to resign when it is your turn: single, gammon/mars or backgammon. The opponent accepts (the game ends with that result) or rejects (play goes on). Online one offer per turn is allowed, with 30 seconds to answer.",
           "Resigning at once without consent concedes the highest result still possible – no gammon once you have borne off a checker.",
-          "The computer accepts an offer when it is worth at least the points it expects from playing on.",
+          "The computer accepts an offer when it is worth at least what it expects from playing on – in a match measured by the chance to win the match.",
           "On a shared device the resigning player chooses the result directly.",
         ],
       },

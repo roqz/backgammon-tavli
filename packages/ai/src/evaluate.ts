@@ -245,10 +245,13 @@ const phi = (x: number): number => {
  * Races use a normal approximation of the number of rolls needed; contact positions map the
  * heuristic evaluation through a logistic curve.
  */
-export const winProbability = (variant: VariantId, b: Board, p: Player): number => {
-  const rules = getVariant(variant);
+export const winProbability = (variant: VariantId, b: Board, p: Player): number =>
+  onRollWins(new Ctx(getVariant(variant), b, opponent(p), weightsFor(variant)), p);
+
+/** Win chance of `p`, who is on roll (the context's mover must be the opponent). */
+const onRollWins = (ctx: Ctx, p: Player): number => {
+  const variant = ctx.rules.id;
   const o = opponent(p);
-  const ctx = new Ctx(rules, b, o, weightsFor(variant));
   if (!ctx.contact) {
     const mean = 8.17;
     const varPerRoll = 18.6;
@@ -273,32 +276,100 @@ const CONTACT_SCALE: Record<VariantId, number> = { backgammon: 24, portes: 28, p
 const ON_ROLL_BONUS: Record<VariantId, number> = { backgammon: 3, portes: 2, plakoto: -1, fevga: 4 };
 
 /**
+ * Probabilities of a position's results from `p`'s point of view: the win chance and, for
+ * each side, how often its wins are gammons / backgammons (conditional on winning).
+ */
+export interface Outcomes {
+  readonly win: number;
+  readonly gammonWin: number;
+  readonly backgammonWin: number;
+  readonly gammonLoss: number;
+  readonly backgammonLoss: number;
+}
+
+/** Result probabilities for `p` with `onRoll` to move next. */
+export const outcomes = (
+  variant: VariantId,
+  b: Board,
+  p: Player,
+  onRoll: Player,
+  w: Weights = weightsFor(variant),
+): Outcomes => {
+  const ctx = new Ctx(getVariant(variant), b, opponent(onRoll), w);
+  const onRollWin = onRollWins(ctx, onRoll);
+  const mine = gammonsFor(ctx, p);
+  const theirs = gammonsFor(ctx, opponent(p));
+  return {
+    win: onRoll === p ? onRollWin : 1 - onRollWin,
+    gammonWin: mine.gammon,
+    backgammonWin: mine.backgammon,
+    gammonLoss: theirs.gammon,
+    backgammonLoss: theirs.backgammon,
+  };
+};
+
+/**
  * Rough chance that `winner`, if they win, wins a gammon (and a backgammon): the loser still has
  * to bring every checker home and bear one off before the winner has borne off all of theirs.
- * Modelled as a race of those two pip counts; good enough for resignation decisions.
+ * Modelled as a race of those two pip counts.
  */
 export const gammonChances = (
   variant: VariantId,
   b: Board,
   winner: Player,
-): { gammon: number; backgammon: number } => {
-  const rules = getVariant(variant);
+): { gammon: number; backgammon: number } =>
+  gammonsFor(new Ctx(getVariant(variant), b, winner, DEFAULT_WEIGHTS), winner);
+
+/** Inputs of the gammon model: the race to get home (z-score) and how many checkers are still out. */
+export const gammonFeatures = (
+  variant: VariantId,
+  b: Board,
+  winner: Player,
+): { z: number; outside: number; inHome: number } | null =>
+  gammonInputs(new Ctx(getVariant(variant), b, winner, DEFAULT_WEIGHTS), winner);
+
+const gammonInputs = (ctx: Ctx, winner: Player): { z: number; outside: number; inHome: number } | null => {
   const loser = opponent(winner);
-  if (b.off[loser] > 0) return { gammon: 0, backgammon: 0 };
-  const path = rules.paths[loser];
+  const b = ctx.b;
+  if (b.off[loser] > 0) return null;
+  const view = ctx.own[loser];
   // Pips the loser needs to get all checkers into the home board (path index 18+), plus one bear-off.
   let homePips = b.bar[loser] * 19;
+  let outside = b.bar[loser];
   let inWinnersHome = b.bar[loser];
   for (let k = 0; k < 18; k++) {
-    const n = b.points[loser][path[k]!]!;
+    const n = view[k]!;
     homePips += n * (18 - k);
+    outside += n;
     if (k < 6) inWinnersHome += n;
   }
   const needLoser = homePips + 4;
-  const needWinner = pipCount(rules, b, winner) + 2 * (15 - b.off[winner]) * 0.3;
+  const needWinner = ctx.pips[winner] + 2 * (15 - b.off[winner]) * 0.3;
   const mean = 8.17;
   const sd = Math.max(Math.sqrt(((needLoser + needWinner) / mean) * 18.6) / mean, 0.5);
-  const gammon = phi((needLoser / mean - needWinner / mean) / sd);
-  const backgammon = rules.backgammons && inWinnersHome > 0 ? gammon * 0.25 : 0;
+  return { z: (needLoser - needWinner) / mean / sd, outside: outside / 15, inHome: inWinnersHome / 15 };
+};
+
+/**
+ * Logistic gammon model per variant, P(gammon | win) = σ(a + b·z + c·outside), fitted on
+ * medium-vs-medium self-play without cube (test/gammon.bench-test.ts, two seeds averaged; checked
+ * on held-out games: predicted and actual gammon rates agree within a few percent per decile).
+ */
+const GAMMON_MODEL: Record<VariantId, { a: number; b: number; c: number }> = {
+  backgammon: { a: -1.3, b: 0.58, c: 2.89 },
+  portes: { a: -1.09, b: 0.62, c: 2.75 },
+  plakoto: { a: -0.42, b: 0.53, c: 1.15 },
+  fevga: { a: 0.36, b: 0.79, c: -0.2 },
+};
+
+const gammonsFor = (ctx: Ctx, winner: Player): { gammon: number; backgammon: number } => {
+  const x = gammonInputs(ctx, winner);
+  if (!x) return { gammon: 0, backgammon: 0 };
+  const m = GAMMON_MODEL[ctx.rules.id];
+  // All of the loser's checkers are home: it is a plain race of one bear-off against the
+  // winner's whole bear-off, where the normal approximation is accurate (the logistic fit has
+  // a small floor that would wrongly keep a gammon "possible").
+  const gammon = x.outside === 0 ? phi(x.z) : 1 / (1 + Math.exp(-(m.a + m.b * x.z + m.c * x.outside)));
+  const backgammon = ctx.rules.backgammons && x.inHome > 0 ? gammon * 0.25 : 0;
   return { gammon, backgammon };
 };

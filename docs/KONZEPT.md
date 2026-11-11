@@ -153,7 +153,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 ### Offen in Phase 3 / Ausblick Phase 5
 
 - Bewertungsgewichte per Selbstspiel optimieren (z. B. Hill-Climbing/CMA-ES) – größter Hebel vor einem neuronalen Netz
-- Gammon-Bewusstsein im Spiel (nicht nur beim Verdoppeln), Match-Equity-Table für Verdoppel-Entscheidungen
+- ~~Gammon-Bewusstsein im Spiel, Match-Equity-Table~~ (erledigt, siehe „Gammons und Matchstand“)
 - Hinweis-Funktion („bester Zug“) für Menschen auf Basis desselben Bots
 
 ### Phase 4 – Feinschliff ✅
@@ -233,4 +233,13 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Weitere Fair-Play-Signale: Zuggenauigkeit im Vergleich zum Bot (Bot-Nutzung), auffällige Aufgabe-Muster
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)
 - Turniere
-- Gammon-Bewusstsein des Bots beim Ziehen, Match-Equity-Table
+
+### Gammons und Matchstand im Bot ✅
+
+- Gammon-Modell je Variante: P(Gammon | Sieg) = σ(a + b·z + c·Anteil draußen), z = Wettlauf „Verlierer bringt alle Steine heim und trägt einen ab“ gegen „Gewinner trägt alles ab“; per logistischer Regression auf Selbstspiel ohne Würfel gefittet und auf neuen Partien geprüft (Vorhersage und Ergebnis je Dezil auf wenige Prozent gleich); alle Steine des Verlierers daheim: exakte Rennformel
+- Mittel/Stark ziehen nach erwarteten Punkten (Gewinn-, Gammon-, Backgammon-Chancen beider Seiten, Jacoby beachtet) statt nach reiner Bewertung. Selbstspiel ohne Würfel, je 400 Partien, gegen „nur Sieg“: Backgammon +0,15 ± 0,06, Portes +0,10 ± 0,06, Fevga +0,13 ± 0,06, Plakoto ±0 Punkte pro Partie
+- Match-Equity-Table: Pre-Crawford bis 7-away nach Kazaross XG2, sonst berechnet (Gammonrate 27 %, Pre-Crawford-Spiele zählen doppelt, Crawford-Spiel ohne Würfel, danach verdoppelt der Zurückliegende sofort, Free Drop ergibt sich; Tavli ohne Würfel mit gemessener Mars-Rate je Variante)
+- Verdoppeln/Annehmen nach Matchstand: No Double / Double-Take / Double-Pass mit Matchgewinnchancen, Take-Punkt mit Würfelbesitz (TP = TP_tot · (1 − x · TP_Redouble), x = 0,68 Kontakt / 0,8 Rennen; Geldspiel ≈ 21 %), verdoppelt kurz vor dem Pass-Punkt, „too good“ spielt weiter. 5-Punkte-Matches, Würfelentscheidungen nach Matchstand gegen Geldspiel-Logik: 52,8 % ± 1,4 (1 200 Matches, zwei Seeds: 55,0 % und 50,5 %) – ein kleiner, noch nicht ganz gesicherter Vorteil; Stark gegen Mittel weiter 57,5 % (mit Würfel) bzw. 55,0 % (ohne), je 160 Partien
+- Aufgabe-Angebote entscheidet der Bot ebenfalls nach Matchgewinnchance (z. B. nimmt er „einfach“ an, wenn das das Match gewinnt)
+- Bewusst **nicht** übernommen: Züge nach Matchgewinnchance gewichten (voll oder nur „tote Gammons“) – im Selbstspiel 2–4 % weniger Matchgewinne (Kontrollläufe mit identischen Bots ±2 %); vermutlich gleicht der Gammon-Term Schwächen der Gewinnschätzung aus. Erst mit einer besseren Bewertung (z. B. neuronales Netz) wieder prüfen
+- Benchmarks: `test/gammon.bench-test.ts` (Fit und Kalibrierung), `test/equity.bench-test.ts` (A/B Gammons, A/B Würfel nach Matchstand, Kontrolle mit `AB_MODE=none`)

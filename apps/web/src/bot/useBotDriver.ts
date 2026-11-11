@@ -43,7 +43,7 @@ export function useBotDriver(): boolean {
         await sleep(THINK_PAUSE_MS);
         if (!stillCurrent()) return;
         if (game.resignOffer) {
-          const accept = await askBot({ kind: "accept-resign", state: game });
+          const accept = await askBot({ kind: "accept-resign", state: game, match: ctx });
           if (stillCurrent()) dispatch({ type: accept ? "accept-resign" : "reject-resign" });
           return;
         }

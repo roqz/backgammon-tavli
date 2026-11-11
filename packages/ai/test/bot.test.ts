@@ -12,9 +12,11 @@ import {
   chooseMoves,
   evaluate,
   gammonChances,
+  matchEquity,
   shouldAcceptResign,
   shouldDouble,
   shouldTake,
+  utilityFor,
   winProbability,
 } from "../src";
 import { duel, playGame } from "./selfplay";
@@ -138,5 +140,45 @@ describe("resignation offers", () => {
     expect(gammonChances("backgammon", boardFromSpec(rules, spec), 0).gammon).toBeGreaterThan(0.8);
     expect(shouldAcceptResign(offer(spec, 1))).toBe(false);
     expect(shouldAcceptResign(offer(spec, 2))).toBe(true);
+  });
+});
+
+describe("match equity table", () => {
+  it("is consistent: even scores 50 %, complementary, more needed = worse", () => {
+    for (let a = 1; a <= 11; a++) {
+      expect(matchEquity(a, a)).toBeCloseTo(0.5, 9);
+      for (let b = 1; b <= 11; b++) {
+        expect(matchEquity(a, b) + matchEquity(b, a)).toBeCloseTo(1, 9);
+        if (b > 1) expect(matchEquity(a, b)).toBeGreaterThan(matchEquity(a, b - 1));
+      }
+    }
+  });
+
+  it("computed Crawford values agree with the published table", () => {
+    expect(matchEquity(1, 2)).toBeCloseTo(0.68, 1);
+    expect(matchEquity(1, 5)).toBeCloseTo(0.84, 1);
+    expect(matchEquity(1, 7)).toBeCloseTo(0.91, 1);
+  });
+
+  it("post-Crawford: an even-away trailer is as well off as one point closer (the trailer doubles at once)", () => {
+    expect(matchEquity(1, 2, "post")).toBeCloseTo(0.5, 9);
+    expect(matchEquity(1, 4, "post")).toBeCloseTo(matchEquity(1, 3, "post"), 9);
+  });
+
+  it("gammons are worthless when a single game already wins the match", () => {
+    const s = createGame({ variant: "backgammon", starter: 0 });
+    const u = utilityFor(s, 0, { length: 5, score: [4, 3], crawford: "crawford-game" });
+    expect(u(1)).toBe(1);
+    expect(u(2)).toBe(1);
+    expect(u(-2)).toBeLessThan(u(-1));
+  });
+
+  it("accepts a single-game resignation that wins the match despite likely gammons", () => {
+    const rules = getVariant("backgammon");
+    const spec = { white: { 1: 2, 2: 2 }, black: { 13: 15 }, off: [11, 0] as const };
+    const g = createGame({ variant: "backgammon", starter: 1, board: boardFromSpec(rules, spec) });
+    const offered = applyAction(g, { type: "offer-resign", player: 1, level: 1 });
+    expect(shouldAcceptResign(offered)).toBe(false); // money: play on for the gammon
+    expect(shouldAcceptResign(offered, { length: 5, score: [4, 2], crawford: "crawford-game" })).toBe(true);
   });
 });

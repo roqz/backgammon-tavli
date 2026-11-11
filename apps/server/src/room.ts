@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
-import { chooseMoves, shouldAcceptResign, shouldTake } from "@tavli/ai";
+import { chooseMoves, type MatchContext, shouldAcceptResign, shouldTake } from "@tavli/ai";
 import {
   applyMatchAction,
   canConfirm,
@@ -295,7 +295,10 @@ export class MatchRoom {
     const g = this.match.game;
     try {
       if (g.resignOffer) {
-        this.advance({ type: shouldAcceptResign(g) ? "accept-resign" : "reject-resign" }, seat);
+        this.advance(
+          { type: shouldAcceptResign(g, this.matchContext()) ? "accept-resign" : "reject-resign" },
+          seat,
+        );
         return;
       }
       switch (g.phase) {
@@ -303,7 +306,7 @@ export class MatchRoom {
           this.advance(isClosedOut(g) ? { type: "pass" } : { type: "roll", dice: this.roll() }, seat);
           break;
         case "cube-offered":
-          this.advance({ type: shouldTake(g, "medium") ? "take" : "drop" }, seat);
+          this.advance({ type: shouldTake(g, "medium", this.matchContext()) ? "take" : "drop" }, seat);
           break;
         case "moving": {
           for (const move of chooseMoves(g, "medium", this.rng)) {
@@ -322,6 +325,12 @@ export class MatchRoom {
     } catch (e) {
       this.deps.log?.(`room ${this.id}: timeout handling failed: ${String(e)}`);
     }
+  }
+
+  /** Score and Crawford state for match-aware bot decisions on timeouts. */
+  private matchContext(): MatchContext {
+    const m = this.match;
+    return { length: m.config.length, score: m.score, crawford: m.crawford };
   }
 
   /** Quick message to both players (at most one every 1.5 s per seat). */

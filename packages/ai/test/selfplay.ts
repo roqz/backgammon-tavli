@@ -16,8 +16,9 @@ export const playGame = (
   levels: readonly [BotLevel, BotLevel],
   rng: Rng,
   onState?: (s: GameState) => void,
+  cube = true,
 ): GameResult => {
-  let s = createGame({ variant });
+  let s = createGame({ variant, cube });
   for (let guard = 0; guard < 4000; guard++) {
     onState?.(s);
     switch (s.phase) {

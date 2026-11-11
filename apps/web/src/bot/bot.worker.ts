@@ -10,7 +10,10 @@ self.onmessage = (e: MessageEvent<BotEnvelope>) => {
   try {
     switch (request.kind) {
       case "moves":
-        reply = { id, result: chooseMoves(request.state, request.level, cryptoRng) };
+        reply = {
+          id,
+          result: chooseMoves(request.state, request.level, cryptoRng),
+        };
         break;
       case "double":
         reply = { id, result: shouldDouble(request.state, request.level, request.match) };
@@ -19,7 +22,7 @@ self.onmessage = (e: MessageEvent<BotEnvelope>) => {
         reply = { id, result: shouldTake(request.state, request.level, request.match) };
         break;
       case "accept-resign":
-        reply = { id, result: shouldAcceptResign(request.state) };
+        reply = { id, result: shouldAcceptResign(request.state, request.match) };
         break;
     }
   } catch (err) {

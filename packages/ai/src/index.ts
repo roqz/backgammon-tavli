@@ -1,3 +1,5 @@
 export * from "./bot";
-export { evaluate, gammonChances, isContact, winProbability } from "./evaluate";
+export { expectedUtility, gammonsCount, MONEY, type Utility, utilityFor } from "./equity";
+export { evaluate, gammonChances, isContact, type Outcomes, outcomes, winProbability } from "./evaluate";
+export * from "./met";
 export * from "./weights";
