@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Board } from "../board/Board";
 import { THEMES } from "../board/themes";
+import { humanSeat, useBotDriver } from "../bot/useBotDriver";
 import { Button, Modal } from "../components/ui";
 import { useT } from "../i18n";
 import { useGame } from "../store/game";
@@ -44,14 +45,18 @@ function Checker({ player }: { player: Player }) {
 
 /** Automatic actions: auto-roll, passing on "no play", optional auto-confirm. */
 function useAutoActions() {
-  const { match, busy, roll, dispatch, opening } = useGame();
+  const { match, busy, roll, dispatch, opening, players } = useGame();
   const { autoRoll, autoConfirm } = useSettings();
   const g = match?.game;
   // A tied opening roll leaves the game state unchanged, so the roll counter re-triggers the effect.
   const openingSeq = opening?.seq;
+  // Computer players act on their own (see useBotDriver).
+  const actor = g ? playerToAct(g) : null;
+  const humanTurn = actor !== null && players[actor].kind === "human";
   // biome-ignore lint/correctness/useExhaustiveDependencies: openingSeq is an intentional trigger
   useEffect(() => {
     if (!g || busy || match?.winner !== null) return;
+    if (g.phase !== "opening" && !humanTurn) return;
     let delay = -1;
     let act: () => void = () => {};
     if ((g.phase === "opening" || (g.phase === "rolling" && !canDouble(g))) && autoRoll) {
@@ -65,7 +70,7 @@ function useAutoActions() {
     if (delay < 0) return;
     const id = setTimeout(act, delay);
     return () => clearTimeout(id);
-  }, [g, busy, autoRoll, autoConfirm, roll, dispatch, match?.winner, openingSeq]);
+  }, [g, busy, autoRoll, autoConfirm, roll, dispatch, match?.winner, openingSeq, humanTurn]);
 }
 
 export function GameScreen({ onMenu }: { onMenu: () => void }) {
@@ -75,6 +80,7 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
   const [resigning, setResigning] = useState(false);
   const historyRef = useRef<HTMLOListElement>(null);
   useAutoActions();
+  const thinking = useBotDriver();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new history entries
   useEffect(() => {
@@ -109,6 +115,9 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
       status = g.result ? `${name(g.result.winner)} ${t.wins}` : "";
       break;
   }
+  if (thinking && actor !== null) status = `${name(actor)} ${t.thinking}`;
+  // Against the computer the board is always numbered from the human's side.
+  const seat = humanSeat(players);
 
   const resignLevels: ResultLevel[] = rules.backgammons ? [1, 2, 3] : [1, 2];
   const lengthLabel = match.config.length === 0 ? t.unlimited : `${match.config.length} ${t.points}`;
@@ -138,7 +147,7 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
             theme={THEMES[settings.style]}
             interactive={interactive}
             openingDice={opening}
-            numbersFor={settings.showNumbers ? (actor ?? 0) : null}
+            numbersFor={settings.showNumbers ? (seat ?? actor ?? 0) : null}
             onMoves={(chain) => void playChain(chain)}
           />
         </div>
@@ -252,7 +261,7 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
       {resigning && g.phase !== "finished" && (
         <Modal onClose={() => setResigning(false)}>
           <p className="mb-4 text-lg text-stone-100">{t.resignConfirm}</p>
-          <p className="mb-3 text-sm text-stone-400">{name(actor ?? g.turn)}</p>
+          <p className="mb-3 text-sm text-stone-400">{name(seat ?? actor ?? g.turn)}</p>
           <div className="flex flex-col gap-2">
             {resignLevels.map((level) => (
               <Button
@@ -260,7 +269,7 @@ export function GameScreen({ onMenu }: { onMenu: () => void }) {
                 variant="danger"
                 onClick={() => {
                   setResigning(false);
-                  dispatch({ type: "resign", player: actor ?? g.turn, level });
+                  dispatch({ type: "resign", player: seat ?? actor ?? g.turn, level });
                 }}
               >
                 {[t.single, rules.backgammons ? t.gammon : t.mars, t.backgammon][level - 1]} (

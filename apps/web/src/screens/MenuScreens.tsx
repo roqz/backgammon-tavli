@@ -1,8 +1,9 @@
+import { BOT_LEVELS, type BotLevel } from "@tavli/ai";
 import type { MatchConfig, MatchVariant } from "@tavli/engine";
 import { useState } from "react";
 import { Button, Card, Segmented, Toggle } from "../components/ui";
 import { useT } from "../i18n";
-import { useGame } from "../store/game";
+import { type PlayerInfo, useGame } from "../store/game";
 import { useSettings } from "../store/settings";
 
 export function Menu({
@@ -54,16 +55,31 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   const startMatch = useGame((s) => s.startMatch);
   const [variant, setVariant] = useState<MatchVariant>("backgammon");
   const [length, setLength] = useState(DEFAULT_LENGTH.backgammon);
-  const [names, setNames] = useState<[string, string]>([t.playerWhite, t.playerBlack]);
+  const [names, setNames] = useState<[string, string]>([t.you, t.playerBlack]);
+  const [opponent, setOpponent] = useState<"bot" | "human">("bot");
+  const [level, setLevel] = useState<BotLevel>("medium");
+  const [seat, setSeat] = useState<0 | 1>(0);
+  const levelName: Record<BotLevel, string> = { easy: t.easy, medium: t.medium, hard: t.hard };
 
   const start = () => {
     const config: MatchConfig = { variant, length, crawford: true, jacoby: length === 0 };
-    startMatch(config, [
-      { name: names[0].trim() || t.playerWhite, kind: "human" },
-      { name: names[1].trim() || t.playerBlack, kind: "human" },
-    ]);
+    const human = (p: 0 | 1): PlayerInfo => ({
+      name: names[p].trim() || (p === 0 ? t.playerWhite : t.playerBlack),
+      kind: "human",
+    });
+    const players: [PlayerInfo, PlayerInfo] =
+      opponent === "human"
+        ? [human(0), human(1)]
+        : seat === 0
+          ? [{ ...human(0), name: names[0].trim() || t.you }, botPlayer()]
+          : [botPlayer(), { ...human(1), name: names[0].trim() || t.you }];
+    startMatch(config, players);
     onStarted();
   };
+
+  function botPlayer(): PlayerInfo {
+    return { name: `${t.computer} (${levelName[level]})`, kind: "bot", level };
+  }
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 p-4 sm:p-6">
@@ -103,17 +119,39 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
         />
         <Segmented
           label={t.opponent}
-          value="human"
-          onChange={() => {}}
+          value={opponent}
+          onChange={(o) => {
+            setOpponent(o);
+            setNames(o === "bot" ? [t.you, t.playerBlack] : [t.playerWhite, t.playerBlack]);
+          }}
           options={[
+            { value: "bot", label: t.computer },
             { value: "human", label: t.humanLocal },
-            { value: "bot", label: `${t.computer} (${t.comingSoon})`, disabled: true },
           ]}
         />
+        {opponent === "bot" && (
+          <>
+            <Segmented
+              label={t.level}
+              value={level}
+              onChange={setLevel}
+              options={BOT_LEVELS.map((l) => ({ value: l, label: levelName[l] }))}
+            />
+            <Segmented
+              label={t.playAs}
+              value={seat}
+              onChange={setSeat}
+              options={[
+                { value: 0, label: t.playerWhite },
+                { value: 1, label: t.playerBlack },
+              ]}
+            />
+          </>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          {([0, 1] as const).map((p) => (
+          {(opponent === "bot" ? ([0] as const) : ([0, 1] as const)).map((p) => (
             <label key={p} className="flex flex-col gap-1 text-sm text-stone-400">
-              {p === 0 ? t.playerWhite : t.playerBlack}
+              {opponent === "bot" ? t.name : p === 0 ? t.playerWhite : t.playerBlack}
               <input
                 className="rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-stone-100 outline-none focus:border-amber-400"
                 value={names[p]}

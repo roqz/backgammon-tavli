@@ -133,3 +133,25 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Playwright-E2E-Tests ins Repo übernehmen (lokal per Headless-Edge geprüft)
 - Brett-Orientierung (Heimfeld links/rechts), Sounds, schönere Würfelwurf-Animation (3D kommt in Phase 4)
 - Hochformat auf dem Handy: Brett nutzt die Breite noch nicht optimal
+
+### Phase 3 – Computergegner (`packages/ai`) ✅
+
+- Bewertungsfunktion je Variante (Backgammon/Portes: Rennen, Blot-Risiko, Punkte, Primes, Anker, Bar; Plakoto: gepinnte Steine, Pin-Risiko inkl. Mana; Fevga: Blockaden vor dem Gegner)
+- Blot-/Pin-Risiko zählt nur für die Seite, die gerade gezogen hat – das war entscheidend, damit die 2-Zug-Suche hilft
+- Stufen: _Einsteiger_ (1-Zug mit Rauschen und Zufallszügen), _Mittel_ (beste 1-Zug-Bewertung), _Stark_ (2-Zug-Expectimax über die besten Kandidaten)
+- Verdoppeln/Annehmen über Gewinnwahrscheinlichkeit: Rennformel (Normalapproximation) bzw. logistische Kurve, je Variante per Selbstspiel kalibriert; match-bewusst (toter Würfel, Post-Crawford)
+- Läuft im Web Worker; Mensch-gegen-Computer mit Stärke- und Farbwahl im Dialog „Neues Spiel“
+- Benchmarks: `pnpm --filter @tavli/ai bench` (Stärke) bzw. `… bench -t calibrate` (Kalibrierung)
+
+| Variante   | Mittel vs. Einsteiger | Stark vs. Mittel   |
+| ---------- | --------------------- | ------------------ |
+| Backgammon | 93 %                  | 61 % (100 Partien) |
+| Portes     | 93 %                  | 57 % (100 Partien) |
+| Plakoto    | 92 %                  | 63 % (24 Partien)  |
+| Fevga      | 87 %                  | 58 % (24 Partien)  |
+
+### Offen in Phase 3 / Ausblick Phase 5
+
+- Bewertungsgewichte per Selbstspiel optimieren (z. B. Hill-Climbing/CMA-ES) – größter Hebel vor einem neuronalen Netz
+- Gammon-Bewusstsein im Spiel (nicht nur beim Verdoppeln), Match-Equity-Table für Verdoppel-Entscheidungen
+- Hinweis-Funktion („bester Zug“) für Menschen auf Basis desselben Bots

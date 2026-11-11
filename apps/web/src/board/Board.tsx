@@ -248,10 +248,9 @@ export function Board({ state, layout, theme, interactive, openingDice, numbersF
       {interactive &&
         drag === null &&
         [...sources].map((k) => {
-          if (k === "bar") return null;
-          const abs = Number(k);
-          const n = stackAt(layout, abs).length;
-          const top = checkerPos(abs, n - 1, n);
+          const slot: Slot = k === "bar" ? barSlot(turn) : Number(k);
+          const n = stackAt(layout, slot).length;
+          const top = checkerPos(slot, n - 1, n);
           return (
             <circle
               key={`src${k}`}

@@ -178,6 +178,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@tavli/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@tavli/engine':
         specifier: workspace:*
         version: link:../../packages/engine
@@ -218,6 +221,19 @@ importers:
       vite-plugin-pwa:
         specifier: ^2.0.0
         version: 2.0.0(vite@8.3.7(jiti@2.7.0)(terser@5.51.2))(workbox-build@7.4.1)(workbox-window@7.4.1)
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(vite@8.3.7(jiti@2.7.0)(terser@5.51.2))
+
+  packages/ai:
+    dependencies:
+      '@tavli/engine':
+        specifier: workspace:*
+        version: link:../engine
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(vite@8.3.7(jiti@2.7.0)(terser@5.51.2))

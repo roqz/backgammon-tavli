@@ -8,11 +8,12 @@ human vs. human and human vs. computer, with online play planned.
 
 ## Structure
 
-| Path              | Content                                                                         |
-| ----------------- | ------------------------------------------------------------------------------- |
-| `packages/engine` | Pure, deterministic rules engine: all four variants, cube, match play, notation |
-| `apps/web`        | React 19 + Vite PWA: SVG board (classic / modern), tap & drag moves, hotseat    |
-| `legacy/`         | Old Angular 6 / Express implementation (reference only)                         |
+| Path              | Content                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| `packages/engine` | Pure, deterministic rules engine: all four variants, cube, match play, notation            |
+| `packages/ai`     | Computer opponents: heuristic evaluation per variant, 1-/2-ply search, cube decisions      |
+| `apps/web`        | React 19 + Vite PWA: SVG board (classic / modern), tap & drag moves, hotseat, vs. computer |
+| `legacy/`         | Old Angular 6 / Express implementation (reference only)                                    |
 
 ## Development
 

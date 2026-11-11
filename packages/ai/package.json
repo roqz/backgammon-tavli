@@ -1,0 +1,24 @@
+{
+  "name": "@tavli/ai",
+  "version": "0.1.0",
+  "description": "Computer opponents for Backgammon and Tavli: heuristic evaluation, expectimax search and cube decisions",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "bench": "vitest run -c vitest.bench.config.ts"
+  },
+  "dependencies": {
+    "@tavli/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

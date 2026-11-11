@@ -1,3 +1,4 @@
+import type { BotLevel } from "@tavli/ai";
 import {
   applyMatchAction,
   createMatch,
@@ -24,6 +25,8 @@ import {
 export interface PlayerInfo {
   readonly name: string;
   readonly kind: "human" | "bot";
+  /** Strength when `kind` is `bot`. */
+  readonly level?: BotLevel;
 }
 
 interface GameStore {
@@ -36,7 +39,8 @@ interface GameStore {
   startMatch: (config: MatchConfig, players: readonly [PlayerInfo, PlayerInfo]) => void;
   dispatch: (action: MatchAction) => void;
   roll: () => void;
-  playChain: (chain: readonly Move[]) => Promise<void>;
+  /** Plays moves one after another so each step animates; `stepDelay` in ms. */
+  playChain: (chain: readonly Move[], stepDelay?: number) => Promise<void>;
   leave: () => void;
 }
 
@@ -97,12 +101,12 @@ export const useGame = create<GameStore>()(
         get().dispatch({ type: "roll", dice });
       },
 
-      playChain: async (chain) => {
+      playChain: async (chain, stepDelay = STEP_DELAY_MS) => {
         if (get().busy) return;
         set({ busy: true });
         try {
           for (let i = 0; i < chain.length; i++) {
-            if (i > 0) await sleep(STEP_DELAY_MS);
+            if (i > 0) await sleep(stepDelay);
             get().dispatch({ type: "move", move: chain[i]! });
           }
         } finally {

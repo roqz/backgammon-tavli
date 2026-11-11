@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@tavli/ai": "workspace:*",
     "@tavli/engine": "workspace:*",
     "motion": "^14.12.0",
     "react": "^19.3.1",
