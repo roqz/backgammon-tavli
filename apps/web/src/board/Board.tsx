@@ -61,6 +61,8 @@ export interface BoardProps {
   readonly diceIntro?: boolean;
   /** Perspective: this player's home board is drawn bottom right. */
   readonly viewer?: Player;
+  /** Portrait phones: draw the board turned by 90° so it uses the screen height. */
+  readonly rotated?: boolean;
 }
 
 export interface OpeningRoll {
@@ -94,8 +96,11 @@ export function Board({
   hideDice,
   diceIntro = true,
   viewer = 0,
+  rotated = false,
 }: BoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  /** All board content; pointer positions are mapped through its (possibly rotated) transform. */
+  const rootRef = useRef<SVGGElement>(null);
   const rules = getVariant(state.variant);
   const view = useMemo(() => makeView(rules.paths, viewer), [rules, viewer]);
   const screen = view.toScreen;
@@ -125,7 +130,7 @@ export function Board({
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
-    const p = pt.matrixTransform(svg.getScreenCTM()!.inverse());
+    const p = pt.matrixTransform((rootRef.current ?? svg).getScreenCTM()!.inverse());
     return { x: p.x, y: p.y };
   };
 
@@ -200,7 +205,7 @@ export function Board({
   return (
     <svg
       ref={svgRef}
-      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      viewBox={rotated ? `0 0 ${HEIGHT} ${WIDTH}` : `0 0 ${WIDTH} ${HEIGHT}`}
       className="block h-auto w-full touch-none select-none"
       role="img"
       aria-label="Spielbrett"
@@ -224,145 +229,160 @@ export function Board({
         </marker>
       </defs>
 
-      {/* frame, felt, bar, tray */}
-      <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={14} fill={theme.frame} />
-      <rect x={LEFT_X} y={TOP_Y} width={6 * POINT_W} height={HEIGHT - 2 * FRAME} fill={theme.felt} />
-      <rect x={RIGHT_X} y={TOP_Y} width={6 * POINT_W} height={HEIGHT - 2 * FRAME} fill={theme.felt} />
-      <rect x={BAR_X} y={0} width={BAR_W} height={HEIGHT} fill={theme.bar} />
-      <rect x={BAR_X + BAR_W / 2 - 1} y={0} width={2} height={HEIGHT} fill="#000" opacity={0.25} />
-      <rect x={TRAY_X} y={TOP_Y} width={TRAY_W} height={MID_Y - TOP_Y - 6} rx={6} fill={theme.tray} />
-      <rect x={TRAY_X} y={MID_Y + 6} width={TRAY_W} height={BOTTOM_Y - MID_Y - 6} rx={6} fill={theme.tray} />
-
-      {/* points */}
-      {POINT_INDICES.map((phys) => (
-        <path key={`pt${phys}`} d={pointPath(phys)} fill={phys % 2 === 0 ? theme.pointA : theme.pointB} />
-      ))}
-
-      {/* highlights */}
-      {POINT_INDICES.map((abs) =>
-        targetPoints.has(String(abs)) ? (
-          <path
-            key={`hl${abs}`}
-            d={pointPath(screen(abs) as number)}
-            fill={theme.highlight}
-            opacity={0.55}
-            className="animate-pulse"
-          />
-        ) : null,
-      )}
-      {typeof activeSlot === "number" && (
-        <path d={pointPath(screen(activeSlot) as number)} fill={theme.selected} opacity={0.45} />
-      )}
-      {targetPoints.has("off") && (
+      <g ref={rootRef} transform={rotated ? `translate(${HEIGHT} 0) rotate(90)` : undefined}>
+        {/* frame, felt, bar, tray */}
+        <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={14} fill={theme.frame} />
+        <rect x={LEFT_X} y={TOP_Y} width={6 * POINT_W} height={HEIGHT - 2 * FRAME} fill={theme.felt} />
+        <rect x={RIGHT_X} y={TOP_Y} width={6 * POINT_W} height={HEIGHT - 2 * FRAME} fill={theme.felt} />
+        <rect x={BAR_X} y={0} width={BAR_W} height={HEIGHT} fill={theme.bar} />
+        <rect x={BAR_X + BAR_W / 2 - 1} y={0} width={2} height={HEIGHT} fill="#000" opacity={0.25} />
+        <rect x={TRAY_X} y={TOP_Y} width={TRAY_W} height={MID_Y - TOP_Y - 6} rx={6} fill={theme.tray} />
         <rect
           x={TRAY_X}
-          y={view.side(turn) === 0 ? MID_Y + 6 : TOP_Y}
+          y={MID_Y + 6}
           width={TRAY_W}
           height={BOTTOM_Y - MID_Y - 6}
           rx={6}
-          fill={theme.highlight}
-          opacity={0.45}
-          className="animate-pulse"
+          fill={theme.tray}
         />
-      )}
 
-      {/* point numbers */}
-      {numbersFor !== null &&
-        POINT_INDICES.map((phys) => (
-          <text
-            key={`n${phys}`}
-            x={pointX(phys)}
-            y={isTop(phys) ? TOP_Y - 4 : BOTTOM_Y + 13}
-            textAnchor="middle"
-            fontSize={12}
-            fill={theme.label}
-            opacity={0.85}
-          >
-            {ownPoint(rules, numbersFor, view.fromScreen(phys) as number)}
-          </text>
+        {/* points */}
+        {POINT_INDICES.map((phys) => (
+          <path key={`pt${phys}`} d={pointPath(phys)} fill={phys % 2 === 0 ? theme.pointA : theme.pointB} />
         ))}
 
-      {/* movable sources */}
-      {interactive &&
-        drag === null &&
-        [...sources].map((k) => {
-          const slot: Slot = k === "bar" ? barSlot(turn) : Number(k);
-          const n = stackAt(layout, slot).length;
-          const top = checkerPos(screen(slot), n - 1, n);
-          return (
-            <circle
-              key={`src${k}`}
-              cx={top.x}
-              cy={top.y}
-              r={CHECKER_R + 4}
-              fill="none"
-              stroke={theme.selected}
-              strokeWidth={2}
-              strokeDasharray="4 4"
-              opacity={0.8}
+        {/* highlights */}
+        {POINT_INDICES.map((abs) =>
+          targetPoints.has(String(abs)) ? (
+            <path
+              key={`hl${abs}`}
+              d={pointPath(screen(abs) as number)}
+              fill={theme.highlight}
+              opacity={0.55}
+              className="animate-pulse"
             />
+          ) : null,
+        )}
+        {typeof activeSlot === "number" && (
+          <path d={pointPath(screen(activeSlot) as number)} fill={theme.selected} opacity={0.45} />
+        )}
+        {targetPoints.has("off") && (
+          <rect
+            x={TRAY_X}
+            y={view.side(turn) === 0 ? MID_Y + 6 : TOP_Y}
+            width={TRAY_W}
+            height={BOTTOM_Y - MID_Y - 6}
+            rx={6}
+            fill={theme.highlight}
+            opacity={0.45}
+            className="animate-pulse"
+          />
+        )}
+
+        {/* point numbers */}
+        {numbersFor !== null &&
+          POINT_INDICES.map((phys) => (
+            <text
+              key={`n${phys}`}
+              x={pointX(phys)}
+              y={isTop(phys) ? FRAME / 2 : HEIGHT - FRAME / 2}
+              transform={
+                rotated
+                  ? `rotate(-90 ${pointX(phys)} ${isTop(phys) ? FRAME / 2 : HEIGHT - FRAME / 2})`
+                  : undefined
+              }
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={12}
+              fill={theme.label}
+              opacity={0.85}
+            >
+              {ownPoint(rules, numbersFor, view.fromScreen(phys) as number)}
+            </text>
+          ))}
+
+        {/* movable sources */}
+        {interactive &&
+          drag === null &&
+          [...sources].map((k) => {
+            const slot: Slot = k === "bar" ? barSlot(turn) : Number(k);
+            const n = stackAt(layout, slot).length;
+            const top = checkerPos(screen(slot), n - 1, n);
+            return (
+              <circle
+                key={`src${k}`}
+                cx={top.x}
+                cy={top.y}
+                r={CHECKER_R + 4}
+                fill="none"
+                stroke={theme.selected}
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                opacity={0.8}
+              />
+            );
+          })}
+
+        {/* checkers */}
+        {checkers.map(({ id, slot, i, n }) => {
+          const owner = checkerOwner(id);
+          const look = theme.checkers[owner];
+          const isDragged = drag?.id === id && drag.moved;
+          const pos = isDragged ? drag.cur : checkerPos(screen(slot), i, n);
+          const off = slot === "off0" || slot === "off1";
+          const pinnedBelow =
+            typeof slot === "number" && i === 0 && n > 1 && state.board.pinned[slot] === owner;
+          return (
+            <motion.g
+              key={id}
+              initial={false}
+              animate={{ x: pos.x, y: pos.y }}
+              transition={isDragged ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 26 }}
+              style={{ pointerEvents: "none" }}
+              filter="url(#cl-shadow)"
+            >
+              {off ? (
+                <rect
+                  x={-CHECKER_R}
+                  y={-OFF_CHIP_H / 2 + 1}
+                  width={CHECKER_R * 2}
+                  height={OFF_CHIP_H - 2}
+                  rx={3}
+                  fill={look.fill}
+                  stroke={look.edge}
+                />
+              ) : (
+                <>
+                  <circle r={CHECKER_R} fill={look.fill} stroke={look.edge} strokeWidth={2} />
+                  <circle r={CHECKER_R * 0.62} fill="none" stroke={look.ring} strokeWidth={2} opacity={0.8} />
+                  {pinnedBelow && <circle r={CHECKER_R * 0.25} fill={theme.highlight} opacity={0.9} />}
+                  {activeSlot === slot && i === n - 1 && (
+                    <circle r={CHECKER_R + 2} fill="none" stroke={theme.selected} strokeWidth={3} />
+                  )}
+                </>
+              )}
+            </motion.g>
           );
         })}
 
-      {/* checkers */}
-      {checkers.map(({ id, slot, i, n }) => {
-        const owner = checkerOwner(id);
-        const look = theme.checkers[owner];
-        const isDragged = drag?.id === id && drag.moved;
-        const pos = isDragged ? drag.cur : checkerPos(screen(slot), i, n);
-        const off = slot === "off0" || slot === "off1";
-        const pinnedBelow =
-          typeof slot === "number" && i === 0 && n > 1 && state.board.pinned[slot] === owner;
-        return (
-          <motion.g
-            key={id}
-            initial={false}
-            animate={{ x: pos.x, y: pos.y }}
-            transition={isDragged ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 26 }}
-            style={{ pointerEvents: "none" }}
-            filter="url(#cl-shadow)"
-          >
-            {off ? (
-              <rect
-                x={-CHECKER_R}
-                y={-OFF_CHIP_H / 2 + 1}
-                width={CHECKER_R * 2}
-                height={OFF_CHIP_H - 2}
-                rx={3}
-                fill={look.fill}
-                stroke={look.edge}
+        <AnimatePresence>
+          {!hideDice &&
+            ((state.phase === "opening" && openingDice) || (state.phase === "moving" && state.dice)) && (
+              <DiceLayer
+                key={state.phase === "opening" ? `open${openingDice?.seq}` : `roll${state.history.length}`}
+                state={state}
+                theme={theme}
+                openingDice={openingDice}
+                intro={diceIntro}
+                view={view}
               />
-            ) : (
-              <>
-                <circle r={CHECKER_R} fill={look.fill} stroke={look.edge} strokeWidth={2} />
-                <circle r={CHECKER_R * 0.62} fill="none" stroke={look.ring} strokeWidth={2} opacity={0.8} />
-                {pinnedBelow && <circle r={CHECKER_R * 0.25} fill={theme.highlight} opacity={0.9} />}
-                {activeSlot === slot && i === n - 1 && (
-                  <circle r={CHECKER_R + 2} fill="none" stroke={theme.selected} strokeWidth={3} />
-                )}
-              </>
             )}
-          </motion.g>
-        );
-      })}
-
-      <AnimatePresence>
-        {!hideDice &&
-          ((state.phase === "opening" && openingDice) || (state.phase === "moving" && state.dice)) && (
-            <DiceLayer
-              key={state.phase === "opening" ? `open${openingDice?.seq}` : `roll${state.history.length}`}
-              state={state}
-              theme={theme}
-              openingDice={openingDice}
-              intro={diceIntro}
-              view={view}
-            />
-          )}
-      </AnimatePresence>
-      <CubeView state={state} theme={theme} view={view} />
-      {hint && hint.length > 0 && (
-        <HintArrows moves={hint} layout={layout} player={turn} color={theme.highlight} view={view} />
-      )}
+        </AnimatePresence>
+        <CubeView state={state} theme={theme} view={view} rotated={rotated} />
+        {hint && hint.length > 0 && (
+          <HintArrows moves={hint} layout={layout} player={turn} color={theme.highlight} view={view} />
+        )}
+      </g>
     </svg>
   );
 }
@@ -518,7 +538,17 @@ function DiceLayer({
   );
 }
 
-function CubeView({ state, theme, view }: { state: GameState; theme: BoardTheme; view: View }) {
+function CubeView({
+  state,
+  theme,
+  view,
+  rotated,
+}: {
+  state: GameState;
+  theme: BoardTheme;
+  view: View;
+  rotated: boolean;
+}) {
   // Tavli variants have no doubling cube by rule; in Backgammon it is always shown,
   // greyed out while unavailable (1-point match, Crawford game).
   if (!getVariant(state.variant).cube) return null;
@@ -545,6 +575,7 @@ function CubeView({ state, theme, view }: { state: GameState; theme: BoardTheme;
         strokeWidth={offered ? 4 : 2}
       />
       <text
+        transform={rotated ? "rotate(-90)" : undefined}
         textAnchor="middle"
         dominantBaseline="central"
         fontSize={20}

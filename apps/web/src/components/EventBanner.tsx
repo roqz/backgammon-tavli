@@ -26,7 +26,7 @@ export interface GameEvent {
 }
 
 /** Time the 3D dice need to land; roll-related banners wait for it. */
-export const DICE_LAND_MS = 950;
+export const DICE_LAND_MS = 1_100;
 /** How long "no play" / "closed out" stay visible. */
 export const BLOCKED_VISIBLE_MS = 2200;
 /** Auto-passing on "no play" waits until the banner was readable. */
@@ -218,7 +218,11 @@ function useGameEvents(): GameEvent | null {
 }
 
 /** Game-style announcement overlay, centred over the board. */
-export function EventBanner() {
+/**
+ * @param placement "top": upper part of the board (landscape: the dice lie in the middle);
+ *   "middle": on the bar (portrait board: the dice lie in the two halves).
+ */
+export function EventBanner({ placement = "top" }: { placement?: "top" | "middle" }) {
   const event = useGameEvents();
   const style = useSettings((s) => s.style);
   const look = event?.player !== undefined ? THEMES[style].checkers[event.player] : null;
@@ -231,8 +235,9 @@ export function EventBanner() {
     : null;
   return (
     <div
-      // Upper part of the board, away from the dice in the middle.
-      className="pointer-events-none absolute inset-x-0 top-[14%] flex justify-center"
+      className={`pointer-events-none absolute inset-x-0 flex justify-center ${
+        placement === "top" ? "top-[14%]" : "top-1/2 -translate-y-1/2"
+      }`}
       aria-live="assertive"
     >
       <AnimatePresence>

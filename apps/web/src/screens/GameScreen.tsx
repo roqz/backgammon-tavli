@@ -171,6 +171,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
   const [forfeiting, setForfeiting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const portrait = usePortraitPhone();
   // Errors from the server fade out after a few seconds.
   useEffect(() => {
     if (!onlineError) return;
@@ -251,10 +252,15 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         {/* header */}
         <div className="flex items-center justify-between gap-2 px-1">
-          <Button variant="ghost" onClick={onMenu} className="px-3 py-1.5 text-sm">
-            ← {t.toMenu}
+          <Button
+            variant="ghost"
+            onClick={onMenu}
+            className="shrink-0 px-3 py-1.5 text-sm"
+            aria-label={t.toMenu}
+          >
+            ← <span className="hidden sm:inline">{t.toMenu}</span>
           </Button>
-          <div className="text-center text-sm text-stone-400">
+          <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
             <span className="font-semibold text-stone-200">{rules.name}</span> · {t.game}{" "}
             {match.results.length + (g.phase === "finished" ? 0 : 1)} · {lengthLabel}
             {online && onlineInfo && !onlineInfo.rated && (
@@ -312,9 +318,10 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
             hint={activeHint}
             hideDice={diceAnimating}
             viewer={seat ?? 0}
+            rotated={portrait}
             diceIntro={!settings.dice3d}
           />
-          <EventBanner />
+          <EventBanner placement={portrait ? "middle" : "top"} />
           {diceAnimating && rollFx && (
             <Suspense fallback={null}>
               <Dice3D
@@ -326,6 +333,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                 faceColor={THEMES[settings.style].die.fill}
                 pipColor={THEMES[settings.style].die.pip}
                 onDone={setDoneSeq}
+                rotated={portrait}
               />
             </Suspense>
           )}
@@ -660,6 +668,19 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
       />
     </div>
   );
+}
+
+/** Phones held upright: the board is drawn rotated to use the screen height. */
+function usePortraitPhone(): boolean {
+  const query = "(orientation: portrait) and (max-width: 700px)";
+  const [match, setMatch] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = () => setMatch(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return match;
 }
 
 /** Turn clock and opponent connection state in online matches. */
