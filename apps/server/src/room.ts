@@ -180,8 +180,10 @@ export class MatchRoom {
       opening = dice;
     }
     const gameJustEnded = this.match.game.result !== null && before.game.result === null;
-    if (gameJustEnded)
-      this.games.push({ variant: this.match.game.variant, history: this.match.game.history });
+    if (gameJustEnded) {
+      const g = this.match.game;
+      this.games.push({ variant: g.variant, history: g.history, result: g.result });
+    }
     this.scheduleClock();
     this.broadcast(this.stateMessage(action, by, opening));
 

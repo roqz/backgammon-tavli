@@ -1,7 +1,6 @@
 import type { MatchContext } from "@tavli/ai";
 import { canConfirm, canDouble, isClosedOut, playerToAct } from "@tavli/engine";
 import { useEffect, useState } from "react";
-import { BLOCKED_VISIBLE_MS, noPlayDelay } from "../components/EventBanner";
 import { useGame } from "../store/game";
 import { useSettings } from "../store/settings";
 import { askBot } from "./client";
@@ -9,6 +8,8 @@ import { askBot } from "./client";
 const THINK_PAUSE_MS = 450;
 const BOT_STEP_MS = 420;
 const DICE_SETTLE_MS = 550;
+/** The computer does not wait for the full banner time when it cannot move. */
+const BOT_NO_PLAY_MS = 1_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -44,7 +45,7 @@ export function useBotDriver(): boolean {
         switch (game.phase) {
           case "rolling": {
             if (isClosedOut(game)) {
-              await sleep(BLOCKED_VISIBLE_MS - THINK_PAUSE_MS);
+              await sleep(BOT_NO_PLAY_MS);
               if (stillCurrent()) dispatch({ type: "pass" });
               break;
             }
@@ -68,7 +69,7 @@ export function useBotDriver(): boolean {
             if (!stillCurrent()) return;
             setThinking(false);
             if (moves.length > 0) await playChain(moves, BOT_STEP_MS);
-            else await sleep(noPlayDelay(useSettings.getState().dice3d)); // let the human read "no play"
+            else await sleep(BOT_NO_PLAY_MS); // short pause so the "no play" banner is noticed
             await sleep(350);
             const after = useGame.getState().match?.game;
             if (!cancelled && after?.phase === "moving" && after.turn === actor && canConfirm(after)) {

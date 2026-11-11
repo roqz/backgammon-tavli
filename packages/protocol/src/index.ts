@@ -156,3 +156,42 @@ export const encode = (m: ServerMessage | ClientMessage): string => JSON.stringi
 
 export const isVariantId = (v: string): v is VariantId =>
   v === "backgammon" || v === "portes" || v === "plakoto" || v === "fevga";
+
+// ---- accounts ---------------------------------------------------------------------------------
+
+export const USERNAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/;
+export const PASSWORD_MIN = 8;
+
+export const ClaimSchema = z.object({
+  username: z.string().regex(USERNAME_PATTERN),
+  password: z.string().min(PASSWORD_MIN).max(200),
+  email: z.union([z.email().max(200), z.literal("")]).optional(),
+});
+
+export const LoginSchema = z.object({
+  username: z.string().min(1).max(40),
+  password: z.string().min(1).max(200),
+});
+
+export const PasswordChangeSchema = z.object({
+  oldPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(PASSWORD_MIN).max(200),
+});
+
+export interface AccountResponse {
+  readonly id: string;
+  readonly name: string;
+  /** null for guest profiles without login. */
+  readonly username: string | null;
+  readonly email: string | null;
+}
+
+export interface StoredGameResponse {
+  readonly variant: VariantId;
+  readonly history: readonly import("@tavli/engine").TurnRecord[];
+  readonly result?: import("@tavli/engine").GameResult | null;
+}
+
+export interface MatchDetailResponse extends MatchSummary {
+  readonly games: readonly StoredGameResponse[];
+}

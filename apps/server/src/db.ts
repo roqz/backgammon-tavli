@@ -1,6 +1,6 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import type { TurnRecord } from "@tavli/engine";
+import type { GameResult, TurnRecord } from "@tavli/engine";
 import type {
   LeaderboardEntry,
   MatchEndReason,
@@ -47,7 +47,61 @@ CREATE TABLE IF NOT EXISTS matches (
 CREATE INDEX IF NOT EXISTS matches_p0 ON matches(p0, ended_at);
 CREATE INDEX IF NOT EXISTS matches_p1 ON matches(p1, ended_at);
 CREATE INDEX IF NOT EXISTS ratings_board ON ratings(variant, rating);
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,
+  player_id TEXT NOT NULL REFERENCES players(id),
+  created_at TEXT NOT NULL,
+  last_used TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sessions_player ON sessions(player_id);
 `;
+
+/** Columns added after the first release (applied once, idempotent). */
+const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
+  ["players", "username", "ALTER TABLE players ADD COLUMN username TEXT"],
+  ["players", "password_hash", "ALTER TABLE players ADD COLUMN password_hash TEXT"],
+  ["players", "email", "ALTER TABLE players ADD COLUMN email TEXT"],
+];
+
+/** Errors a client may see, with an HTTP status. */
+export class AccountError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 32 };
+
+export const hashPassword = (password: string): string => {
+  const salt = randomBytes(16);
+  const hash = scryptSync(password, salt, SCRYPT.keylen, { N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p });
+  return ["scrypt", SCRYPT.N, SCRYPT.r, SCRYPT.p, salt.toString("base64"), hash.toString("base64")].join("$");
+};
+
+export const verifyPassword = (password: string, stored: string): boolean => {
+  const [algo, n, r, p, salt, hash] = stored.split("$");
+  if (algo !== "scrypt" || !salt || !hash) return false;
+  const expected = Buffer.from(hash, "base64");
+  const actual = scryptSync(password, Buffer.from(salt, "base64"), expected.length, {
+    N: Number(n),
+    r: Number(r),
+    p: Number(p),
+  });
+  return timingSafeEqual(expected, actual);
+};
+
+/** Dummy hash so failed logins for unknown users cost the same time as wrong passwords. */
+const DUMMY_HASH = hashPassword("dummy-password-for-timing");
+
+export interface AccountRow {
+  readonly id: string;
+  readonly name: string;
+  readonly username: string | null;
+  readonly email: string | null;
+}
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest();
 
@@ -60,6 +114,8 @@ export interface PlayerRow {
 export interface StoredGame {
   readonly variant: string;
   readonly history: readonly TurnRecord[];
+  /** Missing for a game cut short by a forfeit. */
+  readonly result?: GameResult | null;
 }
 
 export interface FinishedMatch {
@@ -84,6 +140,11 @@ export class Store {
     this.db = new DatabaseSync(path);
     this.db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
     this.db.exec(SCHEMA);
+    for (const [table, column, ddl] of MIGRATIONS) {
+      const cols = this.db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+      if (!cols.some((c) => c.name === column)) this.db.exec(ddl);
+    }
+    this.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS players_username ON players(lower(username))");
   }
 
   close(): void {
@@ -99,16 +160,75 @@ export class Store {
     return { id, token, name };
   }
 
-  /** Returns the player if the token matches. */
+  /** Returns the player if the token matches (the guest token or a login session). */
   authenticate(id: string, token: string): PlayerRow | null {
     const row = this.db.prepare("SELECT id, name, token_hash FROM players WHERE id = ?").get(id) as
       | { id: string; name: string; token_hash: string }
       | undefined;
     if (!row) return null;
-    const expected = Buffer.from(row.token_hash, "hex");
     const actual = hashToken(token);
-    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
+    const expected = Buffer.from(row.token_hash, "hex");
+    if (expected.length === actual.length && timingSafeEqual(expected, actual))
+      return { id: row.id, name: row.name };
+    const key = actual.toString("hex");
+    const session = this.db.prepare("SELECT player_id FROM sessions WHERE token_hash = ?").get(key) as
+      | { player_id: string }
+      | undefined;
+    if (session?.player_id !== id) return null;
+    this.db
+      .prepare("UPDATE sessions SET last_used = ? WHERE token_hash = ?")
+      .run(new Date().toISOString(), key);
     return { id: row.id, name: row.name };
+  }
+
+  account(id: string): AccountRow | null {
+    const row = this.db.prepare("SELECT id, name, username, email FROM players WHERE id = ?").get(id) as
+      | AccountRow
+      | undefined;
+    return row ?? null;
+  }
+
+  /** Turns a guest profile into an account with username and password (ratings stay). */
+  claimAccount(id: string, username: string, password: string, email: string | null): AccountRow {
+    const current = this.account(id);
+    if (!current) throw new AccountError(404, "unknown player");
+    if (current.username) throw new AccountError(409, "account already exists");
+    const taken = this.db.prepare("SELECT 1 FROM players WHERE lower(username) = lower(?)").get(username);
+    if (taken) throw new AccountError(409, "username taken");
+    this.db
+      .prepare("UPDATE players SET username = ?, password_hash = ?, email = ? WHERE id = ?")
+      .run(username, hashPassword(password), email, id);
+    return this.account(id)!;
+  }
+
+  /** Checks credentials and opens a new session (one per device). */
+  login(username: string, password: string): { id: string; token: string; name: string } {
+    const row = this.db
+      .prepare("SELECT id, name, password_hash FROM players WHERE lower(username) = lower(?)")
+      .get(username) as { id: string; name: string; password_hash: string | null } | undefined;
+    const ok = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
+    if (!row || !row.password_hash || !ok) throw new AccountError(401, "wrong username or password");
+    const token = randomBytes(24).toString("base64url");
+    const now = new Date().toISOString();
+    this.db
+      .prepare("INSERT INTO sessions (token_hash, player_id, created_at, last_used) VALUES (?, ?, ?, ?)")
+      .run(hashToken(token).toString("hex"), row.id, now, now);
+    return { id: row.id, token, name: row.name };
+  }
+
+  /** Ends a login session (the guest token of the first device stays valid). */
+  logout(token: string): void {
+    this.db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(token).toString("hex"));
+  }
+
+  changePassword(id: string, oldPassword: string, newPassword: string): void {
+    const row = this.db.prepare("SELECT password_hash FROM players WHERE id = ?").get(id) as
+      | { password_hash: string | null }
+      | undefined;
+    if (!row?.password_hash || !verifyPassword(oldPassword, row.password_hash)) {
+      throw new AccountError(401, "wrong password");
+    }
+    this.db.prepare("UPDATE players SET password_hash = ? WHERE id = ?").run(hashPassword(newPassword), id);
   }
 
   rename(id: string, name: string): void {

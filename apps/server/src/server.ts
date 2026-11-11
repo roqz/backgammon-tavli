@@ -1,14 +1,17 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import {
+  ClaimSchema,
   ClientMessageSchema,
+  LoginSchema,
   MATCH_VARIANTS,
   type MatchVariantId,
   NameSchema,
+  PasswordChangeSchema,
   type ServerMessage,
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
-import { Store } from "./db";
+import { AccountError, Store } from "./db";
 import { Lobby, type MatchmakingOptions } from "./lobby";
 import type { Conn, RoomTimings } from "./room";
 
@@ -95,11 +98,25 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
   const allowRegister = rateLimiter(10, 60_000);
   const cors = opts.corsOrigin ?? "*";
 
-  const authPlayer = (req: IncomingMessage) => {
+  const credentials = (req: IncomingMessage) => {
     const [id, token] = (req.headers.authorization ?? "").replace(/^Bearer /, "").split(".");
+    return { id: id ?? "", token: token ?? "" };
+  };
+  const authPlayer = (req: IncomingMessage) => {
+    const { id, token } = credentials(req);
     const player = id && token ? store.authenticate(id, token) : null;
     if (!player) throw new HttpError(401, "unauthorized");
     return player;
+  };
+  const allowLogin = rateLimiter(20, 60_000);
+  /** Runs a store operation and maps account errors to HTTP errors. */
+  const account = <T>(fn: () => T): T => {
+    try {
+      return fn();
+    } catch (e) {
+      if (e instanceof AccountError) throw new HttpError(e.status, e.message);
+      throw e;
+    }
   };
 
   const route = async (req: IncomingMessage, res: ServerResponse): Promise<unknown> => {
@@ -119,6 +136,32 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       if (!body.success) throw new HttpError(400, "invalid name");
       store.rename(player.id, body.data.name);
       return { id: player.id, name: body.data.name };
+    }
+    if (path.startsWith("/api/account")) {
+      if (req.method === "POST" && path === "/api/account/login") {
+        if (!allowLogin(req.socket.remoteAddress ?? "?")) throw new HttpError(429, "too many requests");
+        const body = LoginSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        return account(() => store.login(body.data.username, body.data.password));
+      }
+      const player = authPlayer(req);
+      if (req.method === "GET" && path === "/api/account") return store.account(player.id);
+      if (req.method === "POST" && path === "/api/account/claim") {
+        const body = ClaimSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid username, password or email");
+        const { username, password, email } = body.data;
+        return account(() => store.claimAccount(player.id, username, password, email || null));
+      }
+      if (req.method === "POST" && path === "/api/account/logout") {
+        store.logout(credentials(req).token);
+        return { ok: true };
+      }
+      if (req.method === "POST" && path === "/api/account/password") {
+        const body = PasswordChangeSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid password");
+        account(() => store.changePassword(player.id, body.data.oldPassword, body.data.newPassword));
+        return { ok: true };
+      }
     }
     if (req.method === "GET" && path === "/api/leaderboard") {
       const variant = url.searchParams.get("variant") ?? "backgammon";

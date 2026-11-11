@@ -231,7 +231,8 @@ export function EventBanner() {
     : null;
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      // Upper part of the board, away from the dice in the middle.
+      className="pointer-events-none absolute inset-x-0 top-[14%] flex justify-center"
       aria-live="assertive"
     >
       <AnimatePresence>

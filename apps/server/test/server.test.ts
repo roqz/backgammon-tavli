@@ -1,5 +1,12 @@
 import { legalMoves, playerToAct } from "@tavli/engine";
-import type { LeaderboardEntry, ProfileResponse, ServerMessage } from "@tavli/protocol";
+import type {
+  AccountResponse,
+  LeaderboardEntry,
+  MatchDetailResponse,
+  ProfileResponse,
+  RegisterResponse,
+  ServerMessage,
+} from "@tavli/protocol";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ratingChange, winProbability } from "../src/rating";
 import type { RunningServer } from "../src/server";
@@ -256,6 +263,78 @@ describe("online server", () => {
     await declined;
     a.send({ t: "rematch" });
     await a.next("rematch-declined");
+  });
+
+  it("upgrades a guest to an account and logs in from another device", async () => {
+    const guest = await register(server, "Dana");
+    const auth = { Authorization: `Bearer ${guest.id}.${guest.token}` };
+    const acc = await api<AccountResponse>(server, "/api/account/claim", {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ username: "dana_1", password: "correct horse" }),
+    });
+    expect(acc).toMatchObject({ id: guest.id, username: "dana_1" });
+    // second device
+    const login = await api<RegisterResponse>(server, "/api/account/login", {
+      method: "POST",
+      body: JSON.stringify({ username: "DANA_1", password: "correct horse" }),
+    });
+    expect(login.id).toBe(guest.id);
+    expect(login.token).not.toBe(guest.token);
+    const device2 = await TestClient.connect(server, login);
+    clients.push(device2);
+    expect(device2.last("welcome")?.player.id).toBe(guest.id);
+    // logout revokes the session token, the first device keeps working
+    await api(server, "/api/account/logout", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${login.id}.${login.token}` },
+    });
+    await expect(
+      api(server, "/api/account", { headers: { Authorization: `Bearer ${login.id}.${login.token}` } }),
+    ).rejects.toThrow(/401/);
+    expect((await api<AccountResponse>(server, "/api/account", { headers: auth })).username).toBe("dana_1");
+  });
+
+  it("rejects wrong passwords, taken usernames and weak passwords", async () => {
+    const a = await register(server, "Eve");
+    const b = await register(server, "Finn");
+    const claim = (p: RegisterResponse, username: string, password: string) =>
+      api(server, "/api/account/claim", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${p.id}.${p.token}` },
+        body: JSON.stringify({ username, password }),
+      });
+    await claim(a, "eve", "long enough");
+    await expect(claim(b, "EVE", "long enough")).rejects.toThrow(/409/);
+    await expect(claim(b, "finn", "short")).rejects.toThrow(/400/);
+    await expect(claim(a, "eve2", "long enough")).rejects.toThrow(/409/);
+    await expect(
+      api(server, "/api/account/login", {
+        method: "POST",
+        body: JSON.stringify({ username: "eve", password: "nope" }),
+      }),
+    ).rejects.toThrow(/401/);
+    await expect(
+      api(server, "/api/account/login", {
+        method: "POST",
+        body: JSON.stringify({ username: "nobody", password: "x" }),
+      }),
+    ).rejects.toThrow(/401/);
+  });
+
+  it("serves finished games with results for replays", async () => {
+    const { a, b, pa } = await pair();
+    a.send({ t: "queue", variant: "backgammon", length: 3 });
+    await a.next("queued");
+    b.send({ t: "queue", variant: "backgammon", length: 3 });
+    await a.next("state");
+    const end = a.next("match-end");
+    b.send({ t: "action", action: { type: "resign", level: 3 } }); // 3 points: match over
+    await end;
+    const profile = await api<ProfileResponse>(server, `/api/players/${pa.id}`);
+    const detail = await api<MatchDetailResponse>(server, `/api/matches/${profile.recent[0]!.id}`);
+    expect(detail.games).toHaveLength(1);
+    expect(detail.games[0]!.result).toMatchObject({ winner: 0, points: 3, reason: "resign" });
   });
 
   it("lets a bot act when the clock runs out", async () => {
