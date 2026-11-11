@@ -59,6 +59,8 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
   z.object({ t: z.literal("leave") }),
   /** Ask for (or accept) a rematch after the match ended. */
   z.object({ t: z.literal("rematch") }),
+  /** Client contribution to the dice randomness, sent right after match-start. */
+  z.object({ t: z.literal("seed"), value: z.string().regex(/^[0-9a-f]{16,64}$/) }),
   z.object({ t: z.literal("rematch-decline") }),
   z.object({ t: z.literal("ping") }),
 ]);
@@ -96,6 +98,7 @@ export type ServerMessage =
       /** Whether the result will change ratings. */
       readonly rated: boolean;
       readonly unratedReason: UnratedReason | null;
+      readonly fairness: FairnessCommit;
     }
   | {
       readonly t: "state";
@@ -118,6 +121,8 @@ export type ServerMessage =
       readonly score: readonly [number, number];
       /** Rating change per seat (0 when unrated). */
       readonly ratingDelta: readonly [number, number];
+      /** Server seed and all rolls, to verify the dice. */
+      readonly fairness: FairnessReveal;
     }
   /** The opponent wants a rematch. */
   | { readonly t: "rematch-offer" }
@@ -208,4 +213,45 @@ export interface StoredGameResponse {
 
 export interface MatchDetailResponse extends MatchSummary {
   readonly games: readonly StoredGameResponse[];
+  readonly fairness?: FairnessReveal | null;
 }
+
+// ---- provably fair dice ------------------------------------------------------------------------
+//
+// The server commits to a secret seed (sends sha256(seed) at match start), both clients then send
+// a random seed of their own, and every roll is derived as
+//   HMAC-SHA256(key = serverSeed, message = "<clientSeed0>:<clientSeed1>:<rollIndex>")
+// At the end of the match the server reveals its seed and all rolls, so clients can verify that
+// no roll was chosen or changed by the server.
+
+export interface FairnessCommit {
+  /** Hex sha256 of the server seed. */
+  readonly commit: string;
+}
+
+export interface FairnessReveal extends FairnessCommit {
+  /** Hex server seed. */
+  readonly serverSeed: string;
+  readonly clientSeeds: readonly [string, string];
+  /** Every roll of the match in order (opening rolls, re-rolled ties and timeout rolls included). */
+  readonly rolls: readonly (readonly [number, number])[];
+}
+
+export const fairRollMessage = (clientSeeds: readonly [string, string], index: number, extra = ""): string =>
+  `${clientSeeds[0]}:${clientSeeds[1]}:${index}${extra}`;
+
+/**
+ * Maps digest bytes to two dice without bias (bytes >= 252 are skipped).
+ * Returns null in the astronomically unlikely case that fewer than two bytes qualify.
+ */
+export const diceFromDigest = (bytes: Uint8Array): [number, number] | null => {
+  const out: number[] = [];
+  for (const b of bytes) {
+    if (b >= 252) continue;
+    out.push((b % 6) + 1);
+    if (out.length === 2) return [out[0]!, out[1]!];
+  }
+  return null;
+};
+
+export const SeedSchema = z.string().regex(/^[0-9a-f]{16,64}$/);

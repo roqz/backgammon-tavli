@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { ClientMessage, RegisterResponse, ServerMessage } from "@tavli/protocol";
 import { WebSocket } from "ws";
 import { type RunningServer, startServer } from "../src/server";
@@ -17,7 +18,15 @@ export const start = (
     host: "127.0.0.1",
     dbPath: ":memory:",
     randomSeats: false,
-    timings: { turnMs: 5_000, cubeMs: 5_000, graceMs: 2_000, nextGameMs: 50, maxTimeouts: 3, ...timings },
+    timings: {
+      turnMs: 5_000,
+      cubeMs: 5_000,
+      graceMs: 2_000,
+      nextGameMs: 50,
+      maxTimeouts: 3,
+      seedWaitMs: 1_000,
+      ...timings,
+    },
   });
 
 export const api = async <T>(server: RunningServer, path: string, init?: RequestInit): Promise<T> => {
@@ -38,10 +47,15 @@ type Msg<T extends ServerMessage["t"]> = Extract<ServerMessage, { t: T }>;
 export class TestClient {
   readonly messages: ServerMessage[] = [];
   private waiters: { pred: (m: ServerMessage) => boolean; resolve: (m: ServerMessage) => void }[] = [];
+  /** Send a dice seed automatically after match-start (like the real client). */
+  autoSeed = true;
   private constructor(readonly ws: WebSocket) {
     ws.on("message", (data) => {
       const msg = JSON.parse(data.toString()) as ServerMessage;
       this.messages.push(msg);
+      if (msg.t === "match-start" && this.autoSeed) {
+        this.send({ t: "seed", value: randomBytes(16).toString("hex") });
+      }
       this.waiters = this.waiters.filter((w) => {
         if (!w.pred(msg)) return true;
         w.resolve(msg);

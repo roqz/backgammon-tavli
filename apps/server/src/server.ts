@@ -38,6 +38,7 @@ export const DEFAULT_TIMINGS: RoomTimings = {
   graceMs: 90_000,
   nextGameMs: 4_000,
   maxTimeouts: 3,
+  seedWaitMs: 3_000,
 };
 
 const MAX_BODY = 4_096;
@@ -189,7 +190,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       const summary = store.matchSummary(m[1]!);
       const games = store.matchGames(m[1]!);
       if (!summary || !games) throw new HttpError(404, "not found");
-      return { ...summary, games };
+      return { ...summary, games, fairness: store.matchFairness(m[1]!) };
     }
     throw new HttpError(404, "not found");
   };

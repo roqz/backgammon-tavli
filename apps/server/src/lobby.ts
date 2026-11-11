@@ -179,6 +179,12 @@ export class Lobby {
       }
       case "rematch":
         return this.rematch(conn, id);
+      case "seed": {
+        const room = this.roomByPlayer.get(id);
+        const seat = room?.seatOf(id);
+        if (room && seat !== null && seat !== undefined) room.seed(seat, msg.value);
+        return;
+      }
       case "rematch-decline":
         return this.declineRematch(id);
     }

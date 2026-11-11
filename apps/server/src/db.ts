@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from
 import { DatabaseSync } from "node:sqlite";
 import type { GameResult, TurnRecord } from "@tavli/engine";
 import type {
+  FairnessReveal,
   LeaderboardEntry,
   MatchEndReason,
   MatchSummary,
@@ -61,6 +62,7 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["players", "username", "ALTER TABLE players ADD COLUMN username TEXT"],
   ["players", "password_hash", "ALTER TABLE players ADD COLUMN password_hash TEXT"],
   ["players", "email", "ALTER TABLE players ADD COLUMN email TEXT"],
+  ["matches", "fairness", "ALTER TABLE matches ADD COLUMN fairness TEXT"],
 ];
 
 /** Errors a client may see, with an HTTP status. */
@@ -130,6 +132,8 @@ export interface FinishedMatch {
   readonly startedAt: string;
   /** Rated matches change ratings; matches abandoned before the first move are not. */
   readonly rated: boolean;
+  /** Seeds and rolls to verify the dice later. */
+  readonly fairness?: FairnessReveal;
 }
 
 /** Persistence on SQLite (node:sqlite): guest players, per-variant FIBS ratings, match archive. */
@@ -295,8 +299,8 @@ export class Store {
       this.db
         .prepare(
           `INSERT INTO matches (id, variant, length, p0, p1, winner, score0, score1, reason,
-            rating_delta0, rating_delta1, games, started_at, ended_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            rating_delta0, rating_delta1, games, started_at, ended_at, fairness)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           m.id,
@@ -313,6 +317,7 @@ export class Store {
           JSON.stringify(m.games),
           m.startedAt,
           new Date().toISOString(),
+          m.fairness ? JSON.stringify(m.fairness) : null,
         );
       this.db.exec("COMMIT");
     } catch (e) {
@@ -407,6 +412,13 @@ export class Store {
       reason: m.reason,
       endedAt: m.ended_at,
     };
+  }
+
+  matchFairness(id: string): FairnessReveal | null {
+    const row = this.db.prepare("SELECT fairness FROM matches WHERE id = ?").get(id) as
+      | { fairness: string | null }
+      | undefined;
+    return row?.fairness ? (JSON.parse(row.fairness) as FairnessReveal) : null;
   }
 
   matchGames(id: string): StoredGame[] | null {

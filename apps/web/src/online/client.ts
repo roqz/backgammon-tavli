@@ -10,6 +10,7 @@ import type {
   ServerMessage,
 } from "@tavli/protocol";
 import { type PlayerInfo, setRemoteSender, useGame } from "../store/game";
+import { newClientSeed, verifyDice } from "./fairness";
 import { httpUrl, useOnline, wsUrl } from "./store";
 
 export type MatchLength = 1 | 3 | 5 | 7;
@@ -51,6 +52,10 @@ const onMessage = (msg: ServerMessage) => {
       set({ lobby: { kind: "idle" } });
       break;
     case "match-start": {
+      // Contribute to the dice randomness once per match (not again after a reconnect).
+      const sameMatch = online.match?.matchId === msg.matchId;
+      const seed = sameMatch ? null : newClientSeed();
+      if (seed) send({ t: "seed", value: seed });
       const players = msg.players.map(
         (p, seat): PlayerInfo => ({ name: p.name, kind: seat === msg.seat ? "human" : "remote" }),
       ) as unknown as [PlayerInfo, PlayerInfo];
@@ -67,6 +72,9 @@ const onMessage = (msg: ServerMessage) => {
           opponentConnected: true,
           opponentGraceUntil: null,
           rated: msg.rated,
+          fairCommit: msg.fairness.commit,
+          mySeed: sameMatch ? (online.match?.mySeed ?? null) : seed,
+          fairCheck: null,
           unratedReason: msg.unratedReason,
           rematch: "none",
           end: null,
@@ -99,9 +107,17 @@ const onMessage = (msg: ServerMessage) => {
           match: {
             ...info,
             deadline: null,
+            fairCheck: "pending",
             end: { winner: msg.winner, reason: msg.reason, ratingDelta: msg.ratingDelta },
           },
         });
+        const game = useGame.getState().match?.game;
+        void verifyDice(info.fairCommit, msg.fairness, info.mySeed, game ? [game.history] : [])
+          .catch(() => false)
+          .then((ok) => {
+            const cur = useOnline.getState().match;
+            if (cur?.matchId === info.matchId) set({ match: { ...cur, fairCheck: ok ? "ok" : "failed" } });
+          });
       }
       break;
     }

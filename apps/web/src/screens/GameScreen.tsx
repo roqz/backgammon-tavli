@@ -551,6 +551,24 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
               {onlineInfo.end.ratingDelta[onlineInfo.seat].toFixed(1)}
             </span>
           </p>
+          {onlineInfo.fairCheck && (
+            <p
+              className={`mb-3 text-center text-sm ${
+                onlineInfo.fairCheck === "failed"
+                  ? "text-red-400"
+                  : onlineInfo.fairCheck === "ok"
+                    ? "text-emerald-400"
+                    : "text-stone-500"
+              }`}
+              title={t.diceVerifiedHint}
+            >
+              {onlineInfo.fairCheck === "ok"
+                ? `🎲 ✓ ${t.diceVerified}`
+                : onlineInfo.fairCheck === "failed"
+                  ? `⚠ ${t.diceCheckFailed}`
+                  : t.diceChecking}
+            </p>
+          )}
           {onlineInfo.rematch === "offered" && (
             <p className="mb-3 rounded-lg bg-amber-400/15 px-3 py-2 text-center text-amber-200">
               🔁 {t.rematchOffered}
@@ -655,11 +673,13 @@ function OnlineStatus({
   graceUntil: number | null;
 }) {
   const t = useT();
-  const [now, setNow] = useState(() => Date.now());
+  // The interval only triggers re-renders; the time itself is always read fresh.
+  const [, setTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 500);
+    const id = setInterval(() => setTick((x) => x + 1), 250);
     return () => clearInterval(id);
   }, []);
+  const now = Date.now();
   const fmt = (ms: number) => {
     const s = Math.max(0, Math.ceil(ms / 1000));
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;

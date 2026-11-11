@@ -37,6 +37,10 @@ export interface OnlineMatchInfo {
   /** Whether the result changes ratings (fair-play checks on the server). */
   readonly rated: boolean;
   readonly unratedReason: UnratedReason | null;
+  /** Provably fair dice: published commitment, our seed and the verification result. */
+  readonly fairCommit: string;
+  readonly mySeed: string | null;
+  fairCheck: "pending" | "ok" | "failed" | null;
   /** Rematch negotiation after the match ended. */
   rematch: "none" | "requested" | "offered" | "declined";
   end: {

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { chooseMoves, shouldTake } from "@tavli/ai";
 import {
   applyMatchAction,
@@ -15,15 +15,17 @@ import {
   type Player,
   playerToAct,
   type Rng,
-  rollDice,
 } from "@tavli/engine";
-import type {
-  ClientAction,
-  MatchEndReason,
-  MatchVariantId,
-  PublicPlayer,
-  ServerMessage,
-  UnratedReason,
+import {
+  type ClientAction,
+  diceFromDigest,
+  type FairnessReveal,
+  fairRollMessage,
+  type MatchEndReason,
+  type MatchVariantId,
+  type PublicPlayer,
+  type ServerMessage,
+  type UnratedReason,
 } from "@tavli/protocol";
 import type { FinishedMatch, StoredGame } from "./db";
 
@@ -43,6 +45,8 @@ export interface RoomTimings {
   readonly nextGameMs: number;
   /** After this many consecutive timeouts the player forfeits. */
   readonly maxTimeouts: number;
+  /** How long to wait for the clients' dice seeds before playing without them. */
+  readonly seedWaitMs: number;
 }
 
 export interface Seat {
@@ -79,6 +83,13 @@ export class MatchRoom {
   private readonly games: StoredGame[] = [];
   private moved = false;
   private readonly rng: Rng;
+  /** Provably fair dice: secret seed, its public commitment, the clients' seeds and all rolls. */
+  private readonly serverSeed = randomBytes(32);
+  readonly commit = createHash("sha256").update(this.serverSeed).digest("hex");
+  private readonly clientSeeds: [string | null, string | null] = [null, null];
+  private readonly rolls: Dice[] = [];
+  private playing = false;
+  private seedTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     readonly variant: MatchVariantId,
@@ -104,10 +115,52 @@ export class MatchRoom {
     return null;
   }
 
-  /** Called once both players are connected. */
+  /** Called once both players are connected: publish the commitment, then wait for the client seeds. */
   start(): void {
     for (const s of [0, 1] as Player[]) this.sendStart(s);
+    this.seedTimer = setTimeout(() => this.beginPlay(), this.deps.timings.seedWaitMs);
+  }
+
+  /** A client's contribution to the dice randomness (accepted once, before the first roll). */
+  seed(seat: Player, value: string): void {
+    if (this.playing || this.clientSeeds[seat] !== null) return;
+    this.clientSeeds[seat] = value;
+    if (this.clientSeeds[0] !== null && this.clientSeeds[1] !== null) this.beginPlay();
+  }
+
+  private beginPlay(): void {
+    if (this.playing || this.ended) return;
+    if (this.seedTimer) clearTimeout(this.seedTimer);
+    this.seedTimer = null;
+    this.playing = true;
     this.advance(null, null);
+  }
+
+  private seeds(): [string, string] {
+    return [this.clientSeeds[0] ?? "", this.clientSeeds[1] ?? ""];
+  }
+
+  /** Next roll, derived from the committed server seed and both client seeds. */
+  private roll(): Dice {
+    const index = this.rolls.length;
+    let dice: [number, number] | null = null;
+    for (let extra = ""; !dice; extra += "+") {
+      const digest = createHmac("sha256", this.serverSeed)
+        .update(fairRollMessage(this.seeds(), index, extra))
+        .digest();
+      dice = diceFromDigest(digest);
+    }
+    this.rolls.push(dice);
+    return dice;
+  }
+
+  fairnessReveal(): FairnessReveal {
+    return {
+      commit: this.commit,
+      serverSeed: this.serverSeed.toString("hex"),
+      clientSeeds: this.seeds(),
+      rolls: this.rolls,
+    };
   }
 
   // ---- connections ---------------------------------------------------------------------------
@@ -154,7 +207,7 @@ export class MatchRoom {
     } else {
       if (playerToAct(this.match.game) !== seat)
         return this.sendTo(seat, { t: "error", message: "not your turn" });
-      matchAction = action.type === "roll" ? { type: "roll", dice: rollDice(this.rng) } : action;
+      matchAction = action.type === "roll" ? { type: "roll", dice: this.roll() } : action;
     }
     try {
       this.seats[seat].timeouts = 0;
@@ -177,7 +230,7 @@ export class MatchRoom {
     if (this.match.game.phase === "opening") {
       let dice: Dice;
       do {
-        dice = rollDice(this.rng);
+        dice = this.roll();
         this.match = applyMatchAction(this.match, { type: "roll", dice });
       } while (this.match.game.phase === "opening");
       opening = dice;
@@ -225,7 +278,7 @@ export class MatchRoom {
     try {
       switch (g.phase) {
         case "rolling":
-          this.advance(isClosedOut(g) ? { type: "pass" } : { type: "roll", dice: rollDice(this.rng) }, seat);
+          this.advance(isClosedOut(g) ? { type: "pass" } : { type: "roll", dice: this.roll() }, seat);
           break;
         case "cube-offered":
           this.advance({ type: shouldTake(g, "medium") ? "take" : "drop" }, seat);
@@ -262,6 +315,7 @@ export class MatchRoom {
     this.ended = true;
     if (this.clock) clearTimeout(this.clock);
     if (this.nextGameTimer) clearTimeout(this.nextGameTimer);
+    if (this.seedTimer) clearTimeout(this.seedTimer);
     for (const s of this.seats) if (s.graceTimer) clearTimeout(s.graceTimer);
     this.deadline = null;
     const winner = this.match.winner ?? 0;
@@ -281,8 +335,16 @@ export class MatchRoom {
       startedAt: this.startedAt,
       // Leaving before anybody moved is not rated.
       rated: (this.deps.rating?.rated ?? true) && (this.moved || reason === "won"),
+      fairness: this.fairnessReveal(),
     });
-    this.broadcast({ t: "match-end", winner, reason, score: this.match.score, ratingDelta });
+    this.broadcast({
+      t: "match-end",
+      winner,
+      reason,
+      score: this.match.score,
+      ratingDelta,
+      fairness: this.fairnessReveal(),
+    });
   }
 
   /** Stops timers without persisting (server shutdown). */
@@ -290,6 +352,7 @@ export class MatchRoom {
     this.ended = true;
     if (this.clock) clearTimeout(this.clock);
     if (this.nextGameTimer) clearTimeout(this.nextGameTimer);
+    if (this.seedTimer) clearTimeout(this.seedTimer);
     for (const s of this.seats) if (s.graceTimer) clearTimeout(s.graceTimer);
   }
 
@@ -316,6 +379,7 @@ export class MatchRoom {
       config: this.config,
       rated: this.deps.rating?.rated ?? true,
       unratedReason: this.deps.rating?.reason ?? null,
+      fairness: { commit: this.commit },
     });
   }
 

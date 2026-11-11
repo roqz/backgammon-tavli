@@ -102,6 +102,11 @@ const de = {
   histDouble: "Verdoppelt auf",
   online: "Online spielen",
   unrated: "Ungewertet",
+  diceVerified: "Würfel nachgeprüft",
+  diceVerifiedHint:
+    "Der Server hatte sich vorab auf seinen Zufallswert festgelegt; alle Würfe wurden im Browser nachgerechnet.",
+  diceCheckFailed: "Würfel konnten nicht bestätigt werden",
+  diceChecking: "Würfel werden geprüft …",
   unratedReason: {
     "same-device": "gleiches Gerät",
     "same-network": "gleiches Netzwerk",
@@ -301,6 +306,11 @@ const en: Dict = {
   histDouble: "Doubles to",
   online: "Play online",
   unrated: "Unrated",
+  diceVerified: "Dice verified",
+  diceVerifiedHint:
+    "The server committed to its random seed in advance; every roll was recomputed in your browser.",
+  diceCheckFailed: "Dice could not be verified",
+  diceChecking: "Verifying dice …",
   unratedReason: {
     "same-device": "same device",
     "same-network": "same network",

@@ -1,3 +1,4 @@
+import { createHash, createHmac } from "node:crypto";
 import { legalMoves, playerToAct } from "@tavli/engine";
 import type {
   AccountResponse,
@@ -7,6 +8,7 @@ import type {
   RegisterResponse,
   ServerMessage,
 } from "@tavli/protocol";
+import { diceFromDigest, fairRollMessage } from "@tavli/protocol";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ratingChange, winProbability } from "../src/rating";
 import type { RunningServer } from "../src/server";
@@ -352,6 +354,39 @@ describe("online server", () => {
     const s = await a.next("state");
     expect(Math.abs(s.serverTime - Date.now())).toBeLessThan(2000);
   });
+
+  it("derives every roll from the committed seed and both client seeds", async () => {
+    const { a, b } = await pair();
+    a.send({ t: "queue", variant: "plakoto", length: 1 });
+    await a.next("queued");
+    const startMsg = a.next("match-start");
+    b.send({ t: "queue", variant: "plakoto", length: 1 });
+    const { fairness } = await startMsg;
+    await a.next("state");
+    const end = a.next("match-end", () => true, 20_000);
+    const final = await autoplay([a, b], (s) => s.match.winner !== null);
+    const reveal = (await end).fairness;
+    // commitment matches the revealed seed
+    expect(createHash("sha256").update(Buffer.from(reveal.serverSeed, "hex")).digest("hex")).toBe(
+      fairness.commit,
+    );
+    expect(reveal.clientSeeds.every((s) => s.length === 32)).toBe(true);
+    // every roll is reproducible
+    reveal.rolls.forEach((roll, i) => {
+      const digest = createHmac("sha256", Buffer.from(reveal.serverSeed, "hex"))
+        .update(fairRollMessage(reveal.clientSeeds, i))
+        .digest();
+      expect(diceFromDigest(digest)).toEqual(roll);
+    });
+    // the dice played in the game appear in the roll log, in order
+    const played = final.match.game.history.flatMap((r) => (r.kind === "move" ? [r.dice.join("")] : []));
+    let cursor = 0;
+    for (const d of played) {
+      while (cursor < reveal.rolls.length && reveal.rolls[cursor]!.join("") !== d) cursor++;
+      expect(cursor).toBeLessThan(reveal.rolls.length);
+      cursor++;
+    }
+  }, 30_000);
 
   it("lets a bot act when the clock runs out", async () => {
     await server.close();

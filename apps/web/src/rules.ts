@@ -259,6 +259,7 @@ const de: Record<RulesTopic, RulesChapter> = {
         title: "Online",
         bullets: [
           "Der Server würfelt und prüft jeden Zug – Manipulation im Browser ist wirkungslos.",
+          "Nachweisbar faire Würfel: Zu Matchbeginn legt sich der Server per Hash auf einen geheimen Zufallswert fest, beide Browser steuern eigene Zufallswerte bei, und jeder Wurf wird daraus per HMAC-SHA256 abgeleitet. Am Ende legt der Server alles offen und die App rechnet jeden Wurf nach („Würfel nachgeprüft“).",
           "Zugzeit: 60 Sekunden (Antwort auf eine Verdopplung: 30 Sekunden). Läuft sie ab, zieht der Computer für dich; nach drei Zeitüberschreitungen ist das Match verloren.",
           "Nach einem Verbindungsabbruch hast du 90 Sekunden, um zurückzukehren.",
           "Rating nach der FIBS-Formel, getrennt pro Variante; neue Spieler gewinnen und verlieren anfangs schneller Punkte.",
@@ -490,6 +491,7 @@ const en: Record<RulesTopic, RulesChapter> = {
         title: "Online",
         bullets: [
           "The server rolls the dice and checks every move – tampering in the browser has no effect.",
+          "Provably fair dice: at match start the server commits to a secret seed by its hash, both browsers add their own random seeds, and every roll is derived via HMAC-SHA256. At the end the server reveals everything and the app recomputes each roll (“Dice verified”).",
           "Time per turn: 60 seconds (answering a double: 30 seconds). When it runs out the computer moves for you; three timeouts lose the match.",
           "After a disconnect you have 90 seconds to come back.",
           "FIBS ratings per variant; new players gain and lose points faster at first.",
