@@ -92,9 +92,14 @@ export function useBotDriver(): boolean {
   return thinking;
 }
 
-/** The human player's colour in a human-vs-computer match (null in hotseat or bot-vs-bot). */
+/**
+ * The local human's colour when playing against the computer or an online opponent
+ * (null in hotseat or bot-vs-bot).
+ */
 export const humanSeat = (players: readonly [{ kind: string }, { kind: string }]) => {
-  if (players[0].kind === "human" && players[1].kind === "bot") return 0;
-  if (players[1].kind === "human" && players[0].kind === "bot") return 1;
+  const h0 = players[0].kind === "human";
+  const h1 = players[1].kind === "human";
+  if (h0 && !h1) return 0;
+  if (h1 && !h0) return 1;
   return null;
 };

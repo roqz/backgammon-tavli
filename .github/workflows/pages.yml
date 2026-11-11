@@ -26,6 +26,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @tavli/web build
+        env:
+          # Repository variable with the public game server URL, e.g. https://tavli.example.com
+          VITE_SERVER_URL: ${{ vars.TAVLI_SERVER_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: apps/web/dist

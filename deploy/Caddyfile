@@ -1,0 +1,18 @@
+# DOMAIN=tavli.example.com gives automatic HTTPS (Let's Encrypt); compose defaults to ":80" (plain HTTP).
+{$DOMAIN} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy server:2567
+	}
+	handle /ws {
+		reverse_proxy server:2567
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		header /sw.js Cache-Control "no-cache"
+		file_server
+	}
+}

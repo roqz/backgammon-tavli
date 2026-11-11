@@ -44,3 +44,25 @@ authoritative server.
 ## License
 
 [AGPL-3.0-or-later](LICENSE)
+
+## Online play
+
+`apps/server` is the authoritative game server (WebSocket + REST, SQLite via `node:sqlite`):
+matchmaking per variant/length, private invite links, reconnects, turn clock, FIBS ratings and a
+leaderboard. Players are guests identified by a token stored in the browser.
+
+```sh
+pnpm --filter @tavli/server dev   # ws://localhost:2567/ws, REST under /api
+pnpm --filter @tavli/web dev      # the app uses http://localhost:2567 when served from localhost
+```
+
+### Self-hosting (Docker)
+
+```sh
+cd deploy
+DOMAIN=tavli.example.com docker compose up -d --build   # HTTPS via Caddy / Let's Encrypt
+```
+
+Caddy serves the web app and proxies `/api` and `/ws` to the server on the same domain. The
+SQLite database lives in the `tavli-data` volume. For a separately hosted frontend (e.g. GitHub
+Pages) set the repository variable `TAVLI_SERVER_URL` and `CORS_ORIGIN` on the server.

@@ -44,7 +44,11 @@ export const computeStats = (records: readonly GameRecord[]) => {
       if (won) streak++;
       else streakOpen = false;
     }
-    for (const t of [total, tallyOf(byOpponent, bot.level ?? "medium"), tallyOf(byVariant, r.variant)]) {
+    for (const t of [
+      total,
+      tallyOf(byOpponent, bot.kind === "remote" ? "online" : (bot.level ?? "medium")),
+      tallyOf(byVariant, r.variant),
+    ]) {
       t.played++;
       if (won) {
         t.won++;
@@ -137,9 +141,12 @@ export function StatsScreen({ onBack, onReplay }: { onBack: () => void; onReplay
           <Table
             t={t}
             title={t.byOpponent}
-            rows={(["easy", "medium", "hard"] as const)
+            rows={(["easy", "medium", "hard", "online"] as const)
               .filter((l) => stats.byOpponent.has(l))
-              .map((l) => [`${t.computer} (${levelName[l]})`, stats.byOpponent.get(l)!])}
+              .map((l) => [
+                l === "online" ? `🌐 ${t.online}` : `${t.computer} (${levelName[l]})`,
+                stats.byOpponent.get(l)!,
+              ])}
           />
           <Table
             t={t}

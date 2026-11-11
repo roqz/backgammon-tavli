@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.turbo
+**/coverage
+.git
+legacy
+packages/ai/tuning
+*.db
+*.db-*

@@ -1,0 +1,38 @@
+# Self-hosted deployment (e.g. on a small Linux VPS):
+#   cd deploy && DOMAIN=tavli.example.com docker compose up -d --build
+# Without DOMAIN the app is served on http://localhost (port 80).
+name: tavli
+
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/server.Dockerfile
+    restart: unless-stopped
+    environment:
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    volumes:
+      - tavli-data:/data
+    expose:
+      - "2567"
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      DOMAIN: ${DOMAIN:-:80}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  tavli-data:
+  caddy-data:
+  caddy-config:

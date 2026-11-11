@@ -3,6 +3,8 @@ import type { MatchConfig, MatchVariant } from "@tavli/engine";
 import { useState } from "react";
 import { Button, Card, Segmented, Toggle } from "../components/ui";
 import { useT } from "../i18n";
+import { disconnect } from "../online/client";
+import { useOnline } from "../online/store";
 import { type PlayerInfo, useGame } from "../store/game";
 import { useSettings } from "../store/settings";
 
@@ -11,15 +13,19 @@ export function Menu({
   onResume,
   onSettings,
   onStats,
+  onOnline,
 }: {
   onNew: () => void;
   onResume: () => void;
   onSettings: () => void;
   onStats: () => void;
+  onOnline: () => void;
 }) {
   const t = useT();
   const match = useGame((s) => s.match);
-  const canResume = match !== null && match.winner === null;
+  const mode = useGame((s) => s.mode);
+  const onlineActive = useOnline((s) => s.match !== null && s.match.end === null);
+  const canResume = mode === "local" && match !== null && match.winner === null;
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-8 p-6">
       <div className="text-center">
@@ -28,14 +34,25 @@ export function Menu({
         <p className="mt-2 text-stone-400">{t.tagline}</p>
       </div>
       <div className="flex w-full flex-col gap-3">
-        {canResume && (
+        {onlineActive ? (
           <Button variant="primary" className="py-4 text-lg" onClick={onResume}>
-            {t.resume}
+            🌐 {t.resumeOnline}
           </Button>
+        ) : (
+          <>
+            {canResume && (
+              <Button variant="primary" className="py-4 text-lg" onClick={onResume}>
+                {t.resume}
+              </Button>
+            )}
+            <Button variant={canResume ? "secondary" : "primary"} className="py-4 text-lg" onClick={onNew}>
+              {t.newGame}
+            </Button>
+            <Button className="py-4 text-lg" onClick={onOnline}>
+              🌐 {t.online}
+            </Button>
+          </>
         )}
-        <Button variant={canResume ? "secondary" : "primary"} className="py-4 text-lg" onClick={onNew}>
-          {t.newGame}
-        </Button>
         <Button variant="ghost" onClick={onStats}>
           📊 {t.stats}
         </Button>
@@ -174,6 +191,32 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   );
 }
 
+function ServerUrlField() {
+  const t = useT();
+  const { serverUrl, set } = useOnline();
+  const [value, setValue] = useState(serverUrl);
+  return (
+    <Card className="order-last flex flex-col gap-2">
+      <label className="flex flex-col gap-1 text-sm text-stone-400">
+        {t.serverUrl}
+        <input
+          className="rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 font-mono text-sm text-stone-100 outline-none focus:border-amber-400"
+          value={value}
+          placeholder="https://tavli.example.com"
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => {
+            const url = value.trim().replace(/\/$/, "");
+            if (url !== serverUrl) {
+              disconnect();
+              set({ serverUrl: url, profile: null });
+            }
+          }}
+        />
+      </label>
+    </Card>
+  );
+}
+
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const t = useT();
   const s = useSettings();
@@ -185,6 +228,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         </Button>
         <h1 className="text-2xl font-bold text-amber-100">{t.settings}</h1>
       </div>
+      <ServerUrlField />
       <Card className="flex flex-col gap-5">
         <Segmented
           label={t.style}

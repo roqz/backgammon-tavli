@@ -224,6 +224,9 @@ importers:
       '@tavli/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@tavli/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       motion:
         specifier: ^14.12.0
         version: 14.12.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)

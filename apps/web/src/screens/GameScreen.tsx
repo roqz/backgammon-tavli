@@ -24,6 +24,8 @@ import { humanSeat, useBotDriver } from "../bot/useBotDriver";
 import { BLOCKED_VISIBLE_MS, EventBanner, noPlayDelay } from "../components/EventBanner";
 import { Button, Modal } from "../components/ui";
 import { turnText, useT } from "../i18n";
+import { leaveMatch } from "../online/client";
+import { useOnline } from "../online/store";
 import { useGameSounds } from "../sound";
 import { type GameRecord, useArchive } from "../store/archive";
 import { useGame } from "../store/game";
@@ -160,6 +162,16 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
   const { countdown, cancel: cancelCountdown } = useAutoActions();
   useGameSounds();
   const thinking = useBotDriver();
+  const online = useGame((s) => s.mode) === "online";
+  const onlineInfo = useOnline((s) => s.match);
+  const onlineError = useOnline((s) => s.lastError);
+  const [forfeiting, setForfeiting] = useState(false);
+  // Errors from the server fade out after a few seconds.
+  useEffect(() => {
+    if (!onlineError) return;
+    const id = setTimeout(() => useOnline.getState().set({ lastError: null }), 4000);
+    return () => clearTimeout(id);
+  }, [onlineError]);
   const rollFx = useGame((s) => s.rollFx);
   const [doneSeq, setDoneSeq] = useState(() => useGame.getState().rollFx?.seq ?? 0);
   const diceAnimating = settings.dice3d && rollFx !== null && rollFx.seq !== doneSeq;
@@ -239,7 +251,15 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
               <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-300">{t.crawford}</span>
             )}
           </div>
-          <div className="w-16" />
+          {online && onlineInfo ? (
+            <OnlineStatus
+              deadline={onlineInfo.end ? null : onlineInfo.deadline}
+              opponentConnected={onlineInfo.opponentConnected}
+              graceUntil={onlineInfo.opponentGraceUntil}
+            />
+          ) : (
+            <div className="w-16" />
+          )}
         </div>
 
         <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
@@ -300,13 +320,15 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
             )}
             {g.phase === "moving" && humanToAct && (
               <>
-                <Button
-                  variant="ghost"
-                  disabled={busy || hintLoading || legalMoves(g).length === 0}
-                  onClick={() => void askHint()}
-                >
-                  💡 {t.hint}
-                </Button>
+                {!online && (
+                  <Button
+                    variant="ghost"
+                    disabled={busy || hintLoading || legalMoves(g).length === 0}
+                    onClick={() => void askHint()}
+                  >
+                    💡 {t.hint}
+                  </Button>
+                )}
                 <Button disabled={!canUndo(g) || busy} onClick={() => dispatch({ type: "undo" })}>
                   ↶ {t.undo}
                 </Button>
@@ -327,6 +349,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
             )}
           </div>
         </div>
+        {online && onlineError && <p className="text-center text-sm text-red-400">⚠ {onlineError}</p>}
         {hintText && (
           <p className="text-center text-sm text-amber-200">
             💡 {t.suggestion}: <span className="font-mono">{hintText}</span>
@@ -416,6 +439,18 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                 {level * g.cube.value})
               </Button>
             ))}
+            {online && (
+              <Button
+                variant="ghost"
+                className="text-red-300"
+                onClick={() => {
+                  setResigning(false);
+                  setForfeiting(true);
+                }}
+              >
+                🏳 {t.forfeitMatch}
+              </Button>
+            )}
             <Button variant="ghost" onClick={() => setResigning(false)}>
               {t.cancel}
             </Button>
@@ -423,7 +458,64 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
         </Modal>
       )}
 
-      {g.phase === "finished" && g.result && (
+      {forfeiting && (
+        <Modal onClose={() => setForfeiting(false)}>
+          <p className="mb-4 text-stone-100">{t.forfeitConfirm}</p>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={() => setForfeiting(false)}>
+              {t.cancel}
+            </Button>
+            <Button
+              variant="danger"
+              className="flex-1"
+              onClick={() => {
+                setForfeiting(false);
+                leaveMatch();
+                onMenu();
+              }}
+            >
+              {t.forfeitMatch}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {online && onlineInfo?.end && (
+        <Modal>
+          <p className="mb-1 text-2xl font-bold text-amber-200">
+            {name(onlineInfo.end.winner)} {t.winsMatch}
+          </p>
+          {onlineInfo.end.reason !== "won" && (
+            <p className="mb-2 text-stone-300">
+              {onlineInfo.end.reason === "forfeit" ? t.reasonForfeit : t.reasonAbandoned}
+            </p>
+          )}
+          <p className="mb-3 text-3xl font-bold tabular-nums text-stone-100">
+            {match.score[0]} : {match.score[1]}
+          </p>
+          <p className="mb-5 text-stone-300">
+            {t.ratingChange}:{" "}
+            <span
+              className={`font-bold ${onlineInfo.end.ratingDelta[onlineInfo.seat] >= 0 ? "text-emerald-300" : "text-red-300"}`}
+            >
+              {onlineInfo.end.ratingDelta[onlineInfo.seat] >= 0 ? "+" : ""}
+              {onlineInfo.end.ratingDelta[onlineInfo.seat].toFixed(1)}
+            </span>
+          </p>
+          <Button
+            variant="primary"
+            className="w-full"
+            onClick={() => {
+              leaveMatch();
+              onMenu();
+            }}
+          >
+            {t.toMenu}
+          </Button>
+        </Modal>
+      )}
+
+      {g.phase === "finished" && g.result && !(online && onlineInfo?.end) && (
         <Modal>
           <p className="mb-1 text-2xl font-bold text-amber-200">
             {name(g.result.winner)} {match.winner !== null ? t.winsMatch : t.wins}
@@ -434,7 +526,12 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
           <p className="mb-5 text-3xl font-bold tabular-nums text-stone-100">
             {match.score[0]} : {match.score[1]}
           </p>
-          {match.winner === null ? (
+          {online && match.winner === null ? (
+            <p className="flex items-center justify-center gap-2 text-stone-400">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+              {t.nextGameSoon}
+            </p>
+          ) : online ? null : match.winner === null ? (
             <div className="flex gap-2">
               <Button className="flex-1" onClick={onMenu}>
                 {t.toMenu}
@@ -457,7 +554,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
           )}
           <Button
             variant="ghost"
-            className="mt-2 w-full text-sm"
+            className={`mt-2 w-full text-sm ${online ? "hidden" : ""}`}
             onClick={() => {
               const record = useArchive.getState().records[0];
               if (record) onReplay(record);
@@ -466,6 +563,44 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
             ▶ {t.watchGame}
           </Button>
         </Modal>
+      )}
+    </div>
+  );
+}
+
+/** Turn clock and opponent connection state in online matches. */
+function OnlineStatus({
+  deadline,
+  opponentConnected,
+  graceUntil,
+}: {
+  deadline: number | null;
+  opponentConnected: boolean;
+  graceUntil: number | null;
+}) {
+  const t = useT();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, []);
+  const fmt = (ms: number) => {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  };
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      {!opponentConnected && (
+        <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-300">
+          ⚠ {t.opponentAway} {graceUntil ? fmt(graceUntil - now) : ""}
+        </span>
+      )}
+      {deadline && (
+        <span
+          className={`rounded-full px-2 py-0.5 font-mono tabular-nums ${deadline - now < 10_000 ? "bg-red-500/25 text-red-200" : "bg-stone-800 text-stone-300"}`}
+        >
+          ⏱ {fmt(deadline - now)}
+        </span>
       )}
     </div>
   );

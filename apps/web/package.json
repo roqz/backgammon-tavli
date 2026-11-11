@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@tavli/protocol": "workspace:*",
     "@react-three/fiber": "^9.8.2",
     "@tavli/ai": "workspace:*",
     "@tavli/engine": "workspace:*",

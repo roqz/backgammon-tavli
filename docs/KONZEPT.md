@@ -177,3 +177,23 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Ereignis-Banner über dem Brett (kein Zug möglich inkl. Grund, nur n von m Würfeln spielbar, ausgesperrt, Anwurf, Pasch, geschlagen/eingeklemmt, Verdopplung, Crawford); würfelbezogene Banner erscheinen erst, wenn die 3D-Würfel liegen
 - Ausgesperrt (Bar gegen geschlossenes Heimfeld): Zug entfällt ohne Würfeln (Engine-Aktion `pass`)
 - Ruhiger Übergang 3D → 2D-Würfel, Ausblenden statt Flackern; realistischerer synthetischer Würfelsound
+
+### Phase 5 – Online-Modus ✅ (Basis)
+
+- Entscheidung: eigener schlanker WebSocket-Server (`ws` + `node:http`) statt Colyseus – wir übertragen nur kleine JSON-Nachrichten, die State-Sync von Colyseus würde nicht genutzt
+- `packages/protocol`: zod-validierte Client-Nachrichten, typisierte Server-Nachrichten und REST-Typen
+- `apps/server`: autoritativer Server – würfelt kryptografisch sicher, prüft jede Aktion mit der Engine
+  - Matchmaking-Warteschlange je Variante/Länge, private Einladungen per Code/Link
+  - Reconnect mit Karenzzeit (90 s), sonst Aufgabe; Zugzeit 60 s (Verdopplung 30 s), bei Ablauf zieht ein Bot, nach 3 Zeitüberschreitungen Aufgabe
+  - Gast-Profile mit Token (kein Passwort), FIBS-Rating je Variante mit Erfahrungsfaktor, Rangliste, Profile, Match-Archiv – SQLite über `node:sqlite`
+  - Integrationstests mit echten WebSocket-Clients
+- Web: Online-Lobby (Profil, Gegner suchen, Freund einladen, Code eingeben, Rangliste), Spiel über den Server mit denselben Animationen, Zugzeit-Uhr, Gegnerstatus, Match aufgeben, Rating-Änderung am Ende; lokale Partie bleibt während Online-Spielen erhalten
+- Deployment: `deploy/docker-compose.yml` mit Server und Caddy (liefert App aus, proxyt `/api` und `/ws`, automatisches HTTPS); GitHub-Pages-Variante über Repo-Variable `TAVLI_SERVER_URL`
+
+### Offen / nächste Schritte Online
+
+- Brett für Schwarz drehen (eigenes Heimfeld unten rechts) – auch offline relevant
+- Matchmaking nach Rating-Fenster, Schutz gegen Spiele gegen sich selbst/Smurfing
+- Echte Accounts (E-Mail/OAuth, Better Auth) mit Übernahme des Gast-Profils, Profilseite, Online-Replays aus dem Server-Archiv
+- Nachweisbar faire Würfel (Commit-Reveal), Rate-Limits für WebSocket-Nachrichten, Admin/Moderation
+- Revanche-Button, Chat/Emotes, Turniere
