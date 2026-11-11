@@ -134,6 +134,16 @@ export class Store {
     return { id: playerId, name: p?.name ?? "?", rating: Math.round(this.rating(playerId, variant).rating) };
   }
 
+  /** Sets a rating directly (administration and tests). */
+  setRating(playerId: string, variant: MatchVariantId, rating: number): void {
+    this.db
+      .prepare(
+        `INSERT INTO ratings (player_id, variant, rating, experience, matches, wins) VALUES (?, ?, ?, 0, 0, 0)
+         ON CONFLICT(player_id, variant) DO UPDATE SET rating = excluded.rating`,
+      )
+      .run(playerId, variant, rating);
+  }
+
   /** Stores a finished match and updates both ratings atomically. Returns the rating deltas per seat. */
   saveMatch(m: FinishedMatch): [number, number] {
     const loser = m.winner === 0 ? 1 : 0;

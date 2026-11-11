@@ -2,8 +2,12 @@ import type { ClientMessage, RegisterResponse, ServerMessage } from "@tavli/prot
 import { WebSocket } from "ws";
 import { type RunningServer, startServer } from "../src/server";
 
-export const start = (timings: Parameters<typeof startServer>[0]["timings"] = {}) =>
+export const start = (
+  timings: Parameters<typeof startServer>[0]["timings"] = {},
+  matchmaking: Parameters<typeof startServer>[0]["matchmaking"] = {},
+) =>
   startServer({
+    matchmaking: { sweepMs: 50, ...matchmaking },
     port: 0,
     host: "127.0.0.1",
     dbPath: ":memory:",

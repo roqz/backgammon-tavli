@@ -9,7 +9,7 @@ import {
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
 import { Store } from "./db";
-import { Lobby } from "./lobby";
+import { Lobby, type MatchmakingOptions } from "./lobby";
 import type { Conn, RoomTimings } from "./room";
 
 export interface ServerOptions {
@@ -20,6 +20,7 @@ export interface ServerOptions {
   readonly corsOrigin?: string;
   readonly timings?: Partial<RoomTimings>;
   readonly randomSeats?: boolean;
+  readonly matchmaking?: Partial<MatchmakingOptions>;
   readonly log?: (msg: string) => void;
 }
 
@@ -89,6 +90,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     timings: { ...DEFAULT_TIMINGS, ...opts.timings },
     log,
     randomSeats: opts.randomSeats,
+    matchmaking: opts.matchmaking,
   });
   const allowRegister = rateLimiter(10, 60_000);
   const cors = opts.corsOrigin ?? "*";

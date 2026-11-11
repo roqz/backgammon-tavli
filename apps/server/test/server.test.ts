@@ -188,6 +188,76 @@ describe("online server", () => {
     expect(await end).toMatchObject({ winner: 0, reason: "abandoned" });
   });
 
+  it("pairs close ratings at once and distant ratings only after waiting", async () => {
+    await server.close();
+    server = await start({}, { baseWindow: 100, growthPerSecond: 500 });
+    const { a, b, pa, pb } = await pair();
+    server.store.setRating(pa.id, "backgammon", 1500);
+    server.store.setRating(pb.id, "backgammon", 1900);
+    a.send({ t: "queue", variant: "backgammon", length: 1 });
+    await a.next("queued");
+    const queuedAt = Date.now();
+    b.send({ t: "queue", variant: "backgammon", length: 1 });
+    await b.next("queued"); // 400 apart: not paired immediately
+    await a.next("match-start", () => true, 3000); // windows grow by 500/s
+    expect(Date.now() - queuedAt).toBeGreaterThan(300);
+  });
+
+  it("prefers the closest rating among waiting players", async () => {
+    await server.close();
+    server = await start({}, { baseWindow: 150, growthPerSecond: 0 });
+    const p = await Promise.all(["Low", "High", "New"].map((n) => register(server, n)));
+    server.store.setRating(p[0]!.id, "portes", 1450);
+    server.store.setRating(p[1]!.id, "portes", 1650); // 200 apart: Low and High never meet
+    server.store.setRating(p[2]!.id, "portes", 1560); // within reach of both, closer to High
+    const [low, high, fresh] = await Promise.all(p.map((x) => TestClient.connect(server, x)));
+    clients.push(low!, high!, fresh!);
+    low!.send({ t: "queue", variant: "portes", length: 3 });
+    await low!.next("queued");
+    high!.send({ t: "queue", variant: "portes", length: 3 });
+    await high!.next("queued");
+    const started = high!.next("match-start");
+    fresh!.send({ t: "queue", variant: "portes", length: 3 });
+    const m = await started;
+    expect(m.players.map((x) => x.id).sort()).toEqual([p[1]!.id, p[2]!.id].sort());
+  });
+
+  it("starts a rematch with swapped colours when both agree", async () => {
+    const { a, b, pa } = await pair();
+    a.send({ t: "queue", variant: "backgammon", length: 1 });
+    await a.next("queued");
+    b.send({ t: "queue", variant: "backgammon", length: 1 });
+    const first = await a.next("match-start");
+    const endA = a.next("match-end");
+    const endB = b.next("match-end");
+    b.send({ t: "action", action: { type: "resign", level: 1 } });
+    await Promise.all([endA, endB]);
+    const offer = b.next("rematch-offer");
+    a.send({ t: "rematch" });
+    await offer;
+    const second = a.next("match-start", (m) => m.matchId !== first.matchId);
+    b.send({ t: "rematch" });
+    const started = await second;
+    expect(started.players[1].id).toBe(pa.id); // Alice was white, now black
+    expect(started.seat).toBe(1);
+  });
+
+  it("notifies the opponent when a rematch is declined", async () => {
+    const { a, b } = await pair();
+    a.send({ t: "queue", variant: "backgammon", length: 1 });
+    await a.next("queued");
+    b.send({ t: "queue", variant: "backgammon", length: 1 });
+    await a.next("match-start");
+    const endA = a.next("match-end");
+    b.send({ t: "action", action: { type: "resign", level: 1 } });
+    await endA;
+    const declined = a.next("rematch-declined");
+    b.send({ t: "rematch-decline" });
+    await declined;
+    a.send({ t: "rematch" });
+    await a.next("rematch-declined");
+  });
+
   it("lets a bot act when the clock runs out", async () => {
     await server.close();
     server = await start({ turnMs: 150 });

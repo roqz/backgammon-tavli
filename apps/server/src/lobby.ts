@@ -15,11 +15,50 @@ interface PrivateInvite {
   readonly createdAt: number;
 }
 
+interface QueueEntry {
+  readonly playerId: string;
+  readonly rating: number;
+  readonly since: number;
+}
+
+/** What is needed to offer a rematch after a match ended. */
+interface FinishedPairing {
+  readonly matchId: string;
+  readonly opponentId: string;
+  readonly variant: MatchVariantId;
+  readonly length: number;
+  /** Player ids by seat in the finished match. */
+  readonly seats: readonly [string, string];
+}
+
+/**
+ * Rating-based matchmaking: two waiting players are paired when their rating difference fits
+ * into the larger of their search windows; a window starts at `baseWindow` and grows with the
+ * waiting time, so nobody waits forever but close ratings are preferred.
+ */
+export interface MatchmakingOptions {
+  readonly baseWindow: number;
+  readonly growthPerSecond: number;
+  /** How often waiting players are re-checked as their windows grow. */
+  readonly sweepMs: number;
+}
+
+export const DEFAULT_MATCHMAKING: MatchmakingOptions = {
+  baseWindow: 100,
+  growthPerSecond: 10,
+  sweepMs: 2_000,
+};
+
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
 const CODE_LENGTH = 6;
 const INVITE_TTL_MS = 30 * 60_000;
+const REMATCH_TTL_MS = 5 * 60_000;
 
 const queueKey = (variant: MatchVariantId, length: number) => `${variant}:${length}`;
+const parseKey = (key: string) => {
+  const [variant, length] = key.split(":");
+  return { variant: variant as MatchVariantId, length: Number(length) };
+};
 
 const configFor = (variant: MatchVariantId, length: number): MatchConfig => ({
   variant,
@@ -30,23 +69,31 @@ const configFor = (variant: MatchVariantId, length: number): MatchConfig => ({
 export interface LobbyOptions {
   readonly store: Store;
   readonly timings: RoomTimings;
+  readonly matchmaking?: Partial<MatchmakingOptions>;
   readonly log?: (msg: string) => void;
   /** Deterministic seat assignment for tests. */
   readonly randomSeats?: boolean;
 }
 
 /**
- * Connections, matchmaking queues, private invites and the mapping from players to their
- * running match. A player has at most one connection and one match at a time.
+ * Connections, matchmaking queues, private invites, rematch offers and the mapping from players
+ * to their running match. A player has at most one connection and one match at a time.
  */
 export class Lobby {
   private readonly sessions = new Map<Conn, Session>();
   private readonly connByPlayer = new Map<string, Conn>();
-  private readonly queues = new Map<string, string[]>();
+  private readonly queues = new Map<string, QueueEntry[]>();
   private readonly invites = new Map<string, PrivateInvite>();
   private readonly roomByPlayer = new Map<string, MatchRoom>();
+  private readonly finished = new Map<string, FinishedPairing & { endedAt: number }>();
+  private readonly rematchOffers = new Map<string, Set<string>>();
+  private readonly mm: MatchmakingOptions;
+  private readonly sweepTimer: ReturnType<typeof setInterval>;
 
-  constructor(private readonly opts: LobbyOptions) {}
+  constructor(private readonly opts: LobbyOptions) {
+    this.mm = { ...DEFAULT_MATCHMAKING, ...opts.matchmaking };
+    this.sweepTimer = setInterval(() => this.sweep(), this.mm.sweepMs);
+  }
 
   get activeRooms(): number {
     return new Set(this.roomByPlayer.values()).size;
@@ -64,6 +111,7 @@ export class Lobby {
     this.connByPlayer.delete(id);
     this.removeFromQueues(id);
     this.removeInvites(id);
+    this.declineRematch(id);
     const room = this.roomByPlayer.get(id);
     const seat = room?.seatOf(id);
     if (room && seat !== null && seat !== undefined) room.disconnect(seat);
@@ -100,8 +148,12 @@ export class Lobby {
         const seat = room?.seatOf(id);
         if (room && seat !== null && seat !== undefined) room.leave(seat);
         this.roomByPlayer.delete(id);
-        return;
+        return this.declineRematch(id);
       }
+      case "rematch":
+        return this.rematch(conn, id);
+      case "rematch-decline":
+        return this.declineRematch(id);
     }
   }
 
@@ -136,28 +188,79 @@ export class Lobby {
     return false;
   }
 
+  // ---- matchmaking ---------------------------------------------------------------------------
+
+  private window(e: QueueEntry, now: number): number {
+    return this.mm.baseWindow + (this.mm.growthPerSecond * (now - e.since)) / 1000;
+  }
+
+  private canPair(a: QueueEntry, b: QueueEntry, now: number): boolean {
+    return Math.abs(a.rating - b.rating) <= Math.max(this.window(a, now), this.window(b, now));
+  }
+
+  /** Best waiting partner for an entry (closest rating within the windows). */
+  private partnerFor(entry: QueueEntry, waiting: readonly QueueEntry[], now: number): QueueEntry | null {
+    let best: QueueEntry | null = null;
+    for (const w of waiting) {
+      if (w.playerId === entry.playerId || !this.connByPlayer.has(w.playerId) || !this.canPair(entry, w, now))
+        continue;
+      if (!best || Math.abs(w.rating - entry.rating) < Math.abs(best.rating - entry.rating)) best = w;
+    }
+    return best;
+  }
+
   private queue(conn: Conn, id: string, variant: MatchVariantId, length: number): void {
     if (this.busy(conn, id)) return;
     this.removeFromQueues(id);
     this.removeInvites(id);
+    this.declineRematch(id);
     const key = queueKey(variant, length);
     const waiting = this.queues.get(key) ?? [];
-    const opponentId = waiting.find((p) => p !== id && this.connByPlayer.has(p));
-    if (opponentId) {
+    const entry: QueueEntry = {
+      playerId: id,
+      rating: this.opts.store.rating(id, variant).rating,
+      since: Date.now(),
+    };
+    const partner = this.partnerFor(entry, waiting, entry.since);
+    if (partner) {
       this.queues.set(
         key,
-        waiting.filter((p) => p !== opponentId),
+        waiting.filter((w) => w !== partner),
       );
-      return this.startMatch(variant, length, opponentId, id);
+      return this.startMatch(variant, length, partner.playerId, id);
     }
-    this.queues.set(key, [...waiting, id]);
+    this.queues.set(key, [...waiting, entry]);
     conn.send({ t: "queued", variant, length });
   }
+
+  /** Pairs waiting players whose windows have grown enough, longest waiting first. */
+  private sweep(): void {
+    const now = Date.now();
+    for (const [key, list] of this.queues) {
+      let waiting = list.filter((w) => this.connByPlayer.has(w.playerId));
+      const { variant, length } = parseKey(key);
+      for (const entry of [...waiting].sort((a, b) => a.since - b.since)) {
+        if (!waiting.includes(entry)) continue;
+        const partner = this.partnerFor(
+          entry,
+          waiting.filter((w) => w !== entry),
+          now,
+        );
+        if (!partner) continue;
+        waiting = waiting.filter((w) => w !== entry && w !== partner);
+        this.startMatch(variant, length, entry.playerId, partner.playerId);
+      }
+      this.queues.set(key, waiting);
+    }
+  }
+
+  // ---- private invites -----------------------------------------------------------------------
 
   private createInvite(conn: Conn, id: string, variant: MatchVariantId, length: number): void {
     if (this.busy(conn, id)) return;
     this.removeFromQueues(id);
     this.removeInvites(id);
+    this.declineRematch(id);
     this.pruneInvites();
     let code: string;
     do {
@@ -178,12 +281,56 @@ export class Lobby {
     if (invite.hostId === id) return conn.send({ t: "error", message: "cannot join your own invite" });
     this.invites.delete(code);
     this.removeFromQueues(id);
+    this.declineRematch(id);
     this.startMatch(invite.variant, invite.length, invite.hostId, id);
   }
 
-  private startMatch(variant: MatchVariantId, length: number, a: string, b: string): void {
+  // ---- rematch -------------------------------------------------------------------------------
+
+  private rematch(conn: Conn, id: string): void {
+    if (this.busy(conn, id)) return;
+    const mine = this.finished.get(id);
+    const theirs = mine ? this.finished.get(mine.opponentId) : undefined;
+    if (!mine || Date.now() - mine.endedAt > REMATCH_TTL_MS || theirs?.matchId !== mine.matchId) {
+      this.finished.delete(id);
+      return conn.send({ t: "rematch-declined" });
+    }
+    const accepted = this.rematchOffers.get(mine.matchId) ?? new Set<string>();
+    accepted.add(id);
+    this.rematchOffers.set(mine.matchId, accepted);
+    if (!accepted.has(mine.opponentId)) {
+      this.connByPlayer.get(mine.opponentId)?.send({ t: "rematch-offer" });
+      return;
+    }
+    this.rematchOffers.delete(mine.matchId);
+    this.finished.delete(id);
+    this.finished.delete(mine.opponentId);
+    // Same settings, colours swapped.
+    this.startMatch(mine.variant, mine.length, mine.seats[1], mine.seats[0], true);
+  }
+
+  private declineRematch(id: string): void {
+    const mine = this.finished.get(id);
+    if (!mine) return;
+    this.finished.delete(id);
+    this.rematchOffers.delete(mine.matchId);
+    if (this.finished.get(mine.opponentId)?.matchId === mine.matchId) {
+      this.finished.delete(mine.opponentId);
+      this.connByPlayer.get(mine.opponentId)?.send({ t: "rematch-declined" });
+    }
+  }
+
+  // ---- rooms ---------------------------------------------------------------------------------
+
+  private startMatch(
+    variant: MatchVariantId,
+    length: number,
+    a: string,
+    b: string,
+    fixedSeats = false,
+  ): void {
     const { store, timings, log } = this.opts;
-    const swap = this.opts.randomSeats !== false && randomInt(2) === 1;
+    const swap = !fixedSeats && this.opts.randomSeats !== false && randomInt(2) === 1;
     const ids: [string, string] = swap ? [b, a] : [a, b];
     const room = new MatchRoom(
       variant,
@@ -193,8 +340,18 @@ export class Lobby {
         timings,
         log,
         onEnd: (r, result) => {
-          for (const s of r.seats)
+          const endedAt = Date.now();
+          for (const [seat, s] of r.seats.entries()) {
             if (this.roomByPlayer.get(s.player.id) === r) this.roomByPlayer.delete(s.player.id);
+            this.finished.set(s.player.id, {
+              matchId: r.id,
+              opponentId: r.seats[seat === 0 ? 1 : 0].player.id,
+              variant,
+              length,
+              seats: [r.seats[0].player.id, r.seats[1].player.id],
+              endedAt,
+            });
+          }
           try {
             return store.saveMatch(result);
           } catch (e) {
@@ -215,10 +372,10 @@ export class Lobby {
 
   private removeFromQueues(id: string): void {
     for (const [key, list] of this.queues) {
-      if (list.includes(id))
+      if (list.some((e) => e.playerId === id))
         this.queues.set(
           key,
-          list.filter((p) => p !== id),
+          list.filter((e) => e.playerId !== id),
         );
     }
   }
@@ -233,8 +390,9 @@ export class Lobby {
       if (now - inv.createdAt > INVITE_TTL_MS) this.invites.delete(code);
   }
 
-  /** Stops all rooms (server shutdown). */
+  /** Stops all rooms and timers (server shutdown). */
   dispose(): void {
+    clearInterval(this.sweepTimer);
     for (const room of new Set(this.roomByPlayer.values())) room.dispose();
     this.roomByPlayer.clear();
   }

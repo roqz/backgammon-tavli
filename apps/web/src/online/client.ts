@@ -63,6 +63,7 @@ const onMessage = (msg: ServerMessage) => {
           deadline: null,
           opponentConnected: true,
           opponentGraceUntil: null,
+          rematch: "none",
           end: null,
         },
       });
@@ -97,6 +98,16 @@ const onMessage = (msg: ServerMessage) => {
           },
         });
       }
+      break;
+    }
+    case "rematch-offer": {
+      const info = online.match;
+      if (info) set({ match: { ...info, rematch: info.rematch === "requested" ? "requested" : "offered" } });
+      break;
+    }
+    case "rematch-declined": {
+      const info = online.match;
+      if (info) set({ match: { ...info, rematch: "declined" } });
       break;
     }
     case "error":
@@ -181,10 +192,18 @@ export const joinInvite = (code: string) => {
   }
 };
 
+/** Asks for (or accepts) a rematch with the same opponent and settings. */
+export const requestRematch = () => {
+  const info = useOnline.getState().match;
+  if (!info?.end || !send({ t: "rematch" })) return;
+  set({ match: { ...info, rematch: "requested" } });
+};
+
 /** Leaves the online match (forfeits if it is still running) and returns to local play. */
 export const leaveMatch = () => {
   const m = useOnline.getState().match;
   if (m && !m.end) send({ t: "leave" });
+  if (m?.end) send({ t: "rematch-decline" });
   set({ match: null });
   useGame.getState().endOnline();
 };

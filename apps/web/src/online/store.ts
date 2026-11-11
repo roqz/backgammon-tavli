@@ -30,6 +30,8 @@ export interface OnlineMatchInfo {
   deadline: number | null;
   opponentConnected: boolean;
   opponentGraceUntil: number | null;
+  /** Rematch negotiation after the match ended. */
+  rematch: "none" | "requested" | "offered" | "declined";
   end: {
     readonly winner: Player;
     readonly reason: MatchEndReason;

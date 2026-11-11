@@ -25,7 +25,7 @@ import { humanSeat, useBotDriver } from "../bot/useBotDriver";
 import { BLOCKED_VISIBLE_MS, EventBanner, noPlayDelay } from "../components/EventBanner";
 import { Button, Modal } from "../components/ui";
 import { turnText, useT } from "../i18n";
-import { leaveMatch } from "../online/client";
+import { leaveMatch, requestRematch } from "../online/client";
 import { useOnline } from "../online/store";
 import { useGameSounds } from "../sound";
 import { type GameRecord, useArchive } from "../store/archive";
@@ -239,7 +239,10 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
   };
 
   const resignLevels: ResultLevel[] = rules.backgammons ? [1, 2, 3] : [1, 2];
-  const lengthLabel = match.config.length === 0 ? t.unlimited : `${match.config.length} ${t.points}`;
+  const lengthLabel =
+    match.config.length === 0
+      ? t.unlimited
+      : `${match.config.length} ${match.config.length === 1 ? t.point : t.points}`;
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-2 sm:p-4 lg:flex-row lg:items-start">
@@ -521,16 +524,37 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
               {onlineInfo.end.ratingDelta[onlineInfo.seat].toFixed(1)}
             </span>
           </p>
-          <Button
-            variant="primary"
-            className="w-full"
-            onClick={() => {
-              leaveMatch();
-              onMenu();
-            }}
-          >
-            {t.toMenu}
-          </Button>
+          {onlineInfo.rematch === "offered" && (
+            <p className="mb-3 rounded-lg bg-amber-400/15 px-3 py-2 text-center text-amber-200">
+              🔁 {t.rematchOffered}
+            </p>
+          )}
+          {onlineInfo.rematch === "declined" && (
+            <p className="mb-3 text-center text-sm text-stone-400">{t.rematchDeclined}</p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              className="flex-1"
+              onClick={() => {
+                leaveMatch();
+                onMenu();
+              }}
+            >
+              {t.toMenu}
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-[2]"
+              disabled={onlineInfo.rematch === "requested" || onlineInfo.rematch === "declined"}
+              onClick={requestRematch}
+            >
+              {onlineInfo.rematch === "requested"
+                ? t.rematchWaiting
+                : onlineInfo.rematch === "offered"
+                  ? `🔁 ${t.rematchAccept}`
+                  : `🔁 ${t.rematch}`}
+            </Button>
+          </div>
         </Modal>
       )}
 

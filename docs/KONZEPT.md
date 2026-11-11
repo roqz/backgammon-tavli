@@ -190,10 +190,16 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Web: Online-Lobby (Profil, Gegner suchen, Freund einladen, Code eingeben, Rangliste), Spiel über den Server mit denselben Animationen, Zugzeit-Uhr, Gegnerstatus, Match aufgeben, Rating-Änderung am Ende; lokale Partie bleibt während Online-Spielen erhalten
 - Deployment: `deploy/docker-compose.yml` mit Server und Caddy (liefert App aus, proxyt `/api` und `/ws`, automatisches HTTPS); GitHub-Pages-Variante über Repo-Variable `TAVLI_SERVER_URL`
 
+### Phase 5b ✅
+
+- Brett-Perspektive: der eigene Startpunkt liegt immer oben rechts, das Heimfeld unten rechts (Schwarz: vertikal gespiegelt, Fevga: 180° gedreht) – online, gegen den Bot und in Wiederholungen
+- Rating-Matchmaking: Suchfenster ±100, wächst um 10 Punkte pro Sekunde Wartezeit; der nächstliegende Gegner im Fenster wird bevorzugt
+- Revanche nach Matchende mit getauschten Farben (beide müssen zustimmen; Ablehnen, neue Suche oder Verbindungsende ziehen zurück)
+- Einstellungen auch im laufenden Spiel (Seitenleiste), neu gestaltet; Fix: leeres Brett nach Neuladen + Fortsetzen
+
 ### Offen / nächste Schritte Online
 
-- Brett für Schwarz drehen (eigenes Heimfeld unten rechts) – auch offline relevant
-- Matchmaking nach Rating-Fenster, Schutz gegen Spiele gegen sich selbst/Smurfing
+- Schutz gegen Spiele gegen sich selbst/Smurfing (z. B. Mindestalter des Profils, IP-Heuristik)
 - Echte Accounts (E-Mail/OAuth, Better Auth) mit Übernahme des Gast-Profils, Profilseite, Online-Replays aus dem Server-Archiv
 - Nachweisbar faire Würfel (Commit-Reveal), Rate-Limits für WebSocket-Nachrichten, Admin/Moderation
 - Revanche-Button, Chat/Emotes, Turniere

@@ -51,6 +51,9 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
   z.object({ t: z.literal("action"), action: ClientActionSchema }),
   /** Leave the current match (forfeit if it is still running). */
   z.object({ t: z.literal("leave") }),
+  /** Ask for (or accept) a rematch after the match ended. */
+  z.object({ t: z.literal("rematch") }),
+  z.object({ t: z.literal("rematch-decline") }),
   z.object({ t: z.literal("ping") }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -102,6 +105,10 @@ export type ServerMessage =
       /** Rating change per seat (0 when unrated). */
       readonly ratingDelta: readonly [number, number];
     }
+  /** The opponent wants a rematch. */
+  | { readonly t: "rematch-offer" }
+  /** The opponent declined or left; no rematch possible. */
+  | { readonly t: "rematch-declined" }
   | { readonly t: "error"; readonly message: string }
   | { readonly t: "pong" };
 
