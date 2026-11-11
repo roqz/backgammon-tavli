@@ -43,7 +43,13 @@ const matchSetup = {
 };
 
 export const ClientMessageSchema = z.discriminatedUnion("t", [
-  z.object({ t: z.literal("hello"), playerId: z.string().min(1).max(64), token: z.string().min(1).max(128) }),
+  z.object({
+    t: z.literal("hello"),
+    playerId: z.string().min(1).max(64),
+    token: z.string().min(1).max(128),
+    /** Random id stored per browser; used to keep one person from playing against themselves. */
+    deviceId: z.string().min(8).max(64).optional(),
+  }),
   z.object({ t: z.literal("queue"), ...matchSetup }),
   z.object({ t: z.literal("unqueue") }),
   z.object({ t: z.literal("create"), ...matchSetup }),
@@ -66,6 +72,9 @@ export interface PublicPlayer {
   readonly rating: number;
 }
 
+/** Why a match does not change ratings. */
+export type UnratedReason = "same-device" | "same-network" | "repeat-opponent";
+
 export type MatchEndReason = "won" | "forfeit" | "abandoned";
 
 export type ServerMessage =
@@ -84,6 +93,9 @@ export type ServerMessage =
       readonly seat: Player;
       readonly players: readonly [PublicPlayer, PublicPlayer];
       readonly config: MatchConfig;
+      /** Whether the result will change ratings. */
+      readonly rated: boolean;
+      readonly unratedReason: UnratedReason | null;
     }
   | {
       readonly t: "state";

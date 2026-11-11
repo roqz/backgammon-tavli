@@ -11,6 +11,8 @@ services:
     restart: unless-stopped
     environment:
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      # Behind Caddy: client addresses come from X-Forwarded-For (fair-play checks)
+      TRUST_PROXY: "1"
     volumes:
       - tavli-data:/data
     expose:

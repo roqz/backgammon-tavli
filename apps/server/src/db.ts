@@ -322,6 +322,18 @@ export class Store {
     return deltas;
   }
 
+  /** Rated matches between two players since a point in time (anti-farming limit). */
+  ratedMatchesBetween(a: string, b: string, sinceIso: string): number {
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM matches
+         WHERE ((p0 = ? AND p1 = ?) OR (p0 = ? AND p1 = ?))
+           AND ended_at >= ? AND (rating_delta0 != 0 OR rating_delta1 != 0)`,
+      )
+      .get(a, b, b, a, sinceIso) as { n: number };
+    return row.n;
+  }
+
   leaderboard(variant: MatchVariantId, limit = 50): LeaderboardEntry[] {
     const rows = this.db
       .prepare(

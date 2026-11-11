@@ -204,9 +204,16 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Handbuch: vollständiges Regelwerk aller Varianten (wie in der Engine umgesetzt, inkl. Auslegungen) plus App/Notation/Online-Regeln – im Spiel als Seitenleiste (öffnet beim Kapitel der laufenden Variante) und im Menü
 - Ereignis-Banner oben auf dem Brett statt über den Würfeln; der Computer wartet bei „kein Zug“/„ausgesperrt“ nur noch ~1 s
 
+### Fair Play ✅
+
+- Geräte-ID je Browser: zwei Profile vom selben Gerät werden in der öffentlichen Suche nie gepaart, private Partien zwischen ihnen sind ungewertet
+- Gleiches Netzwerk (IP, hinter Caddy über X-Forwarded-For; nur im Speicher, nicht in der Datenbank): ebenso; abschaltbar mit `ALLOW_SAME_NETWORK=1` (lokale Tests, LAN-Abende)
+- Höchstens 3 gewertete Matches pro Spielerpaar in 24 Stunden, weitere sind ungewertet
+- Abzeichen „Ungewertet“ mit Grund im Spiel und im Ergebnis; Regeln im Handbuch beschrieben
+
 ### Offen / nächste Schritte Online
 
-- Schutz gegen Spiele gegen sich selbst/Smurfing (z. B. Mindestalter des Profils, IP-Heuristik)
+- Weitere Fair-Play-Signale: Zuggenauigkeit im Vergleich zum Bot (Bot-Nutzung), auffällige Aufgabe-Muster, Melden-Funktion
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs), Passwort-ändern-UI
 - Nachweisbar faire Würfel (Commit-Reveal), Rate-Limits für WebSocket-Nachrichten, Admin/Moderation
 - Revanche-Button, Chat/Emotes, Turniere

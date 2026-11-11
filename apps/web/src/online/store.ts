@@ -1,5 +1,5 @@
 import type { Player } from "@tavli/engine";
-import type { MatchEndReason, MatchVariantId, PublicPlayer } from "@tavli/protocol";
+import type { MatchEndReason, MatchVariantId, PublicPlayer, UnratedReason } from "@tavli/protocol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -32,6 +32,9 @@ export interface OnlineMatchInfo {
   deadline: number | null;
   opponentConnected: boolean;
   opponentGraceUntil: number | null;
+  /** Whether the result changes ratings (fair-play checks on the server). */
+  readonly rated: boolean;
+  readonly unratedReason: UnratedReason | null;
   /** Rematch negotiation after the match ended. */
   rematch: "none" | "requested" | "offered" | "declined";
   end: {
@@ -57,6 +60,8 @@ export const DEFAULT_SERVER_URL: string = resolveDefaultServer();
 
 interface OnlineStore {
   serverUrl: string;
+  /** Random per-browser id, lets the server recognise two profiles of the same person. */
+  deviceId: string;
   profile: Profile | null;
   status: ConnectionStatus;
   lobby: LobbyState;
@@ -71,6 +76,7 @@ export const useOnline = create<OnlineStore>()(
   persist(
     (set) => ({
       serverUrl: DEFAULT_SERVER_URL,
+      deviceId: newDeviceId(),
       profile: null,
       status: "offline",
       lobby: { kind: "idle" },
@@ -82,10 +88,16 @@ export const useOnline = create<OnlineStore>()(
     {
       name: "tavli.online",
       version: 1,
-      partialize: (s) => ({ serverUrl: s.serverUrl, profile: s.profile }),
+      partialize: (s) => ({ serverUrl: s.serverUrl, profile: s.profile, deviceId: s.deviceId }),
     },
   ),
 );
+
+function newDeviceId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
 
 export const httpUrl = (server: string, path: string) => `${server.replace(/\/$/, "")}${path}`;
 export const wsUrl = (server: string) => `${server.replace(/\/$/, "").replace(/^http/, "ws")}/ws`;

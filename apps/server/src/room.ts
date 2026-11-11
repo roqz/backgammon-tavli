@@ -23,6 +23,7 @@ import type {
   MatchVariantId,
   PublicPlayer,
   ServerMessage,
+  UnratedReason,
 } from "@tavli/protocol";
 import type { FinishedMatch, StoredGame } from "./db";
 
@@ -58,6 +59,8 @@ export interface RoomDeps {
   /** Persists the match and returns rating deltas per seat. */
   readonly onEnd: (room: MatchRoom, result: FinishedMatch) => [number, number];
   readonly log?: (msg: string) => void;
+  /** Whether the match may change ratings at all (fair-play checks done by the lobby). */
+  readonly rating?: { readonly rated: boolean; readonly reason: UnratedReason | null };
 }
 
 /**
@@ -277,7 +280,7 @@ export class MatchRoom {
       games,
       startedAt: this.startedAt,
       // Leaving before anybody moved is not rated.
-      rated: this.moved || reason === "won",
+      rated: (this.deps.rating?.rated ?? true) && (this.moved || reason === "won"),
     });
     this.broadcast({ t: "match-end", winner, reason, score: this.match.score, ratingDelta });
   }
@@ -303,6 +306,8 @@ export class MatchRoom {
       seat,
       players: [this.seats[0].player, this.seats[1].player],
       config: this.config,
+      rated: this.deps.rating?.rated ?? true,
+      unratedReason: this.deps.rating?.reason ?? null,
     });
   }
 

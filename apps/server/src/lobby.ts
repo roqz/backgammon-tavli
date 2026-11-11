@@ -1,11 +1,14 @@
 import { randomInt } from "node:crypto";
 import type { MatchConfig } from "@tavli/engine";
-import type { ClientMessage, MatchVariantId } from "@tavli/protocol";
+import type { ClientMessage, MatchVariantId, UnratedReason } from "@tavli/protocol";
 import type { Store } from "./db";
 import { type Conn, MatchRoom, type RoomTimings } from "./room";
 
 interface Session {
   playerId: string | null;
+  /** Remote address (kept in memory only). */
+  readonly ip: string;
+  deviceId: string | null;
 }
 
 interface PrivateInvite {
@@ -43,6 +46,24 @@ export interface MatchmakingOptions {
   readonly sweepMs: number;
 }
 
+/**
+ * Protection against playing against oneself (rating farming):
+ * - the same device (browser id) is never paired in the public queue, private games are unrated;
+ * - the same network (IP) likewise, unless disabled (e.g. for tests or LAN events);
+ * - only a limited number of rated matches per pair of players within a time window.
+ */
+export interface FairPlayOptions {
+  readonly blockSameNetwork: boolean;
+  readonly maxRatedPerPair: number;
+  readonly pairWindowMs: number;
+}
+
+export const DEFAULT_FAIR_PLAY: FairPlayOptions = {
+  blockSameNetwork: true,
+  maxRatedPerPair: 3,
+  pairWindowMs: 24 * 60 * 60_000,
+};
+
 export const DEFAULT_MATCHMAKING: MatchmakingOptions = {
   baseWindow: 100,
   growthPerSecond: 10,
@@ -70,6 +91,7 @@ export interface LobbyOptions {
   readonly store: Store;
   readonly timings: RoomTimings;
   readonly matchmaking?: Partial<MatchmakingOptions>;
+  readonly fairPlay?: Partial<FairPlayOptions>;
   readonly log?: (msg: string) => void;
   /** Deterministic seat assignment for tests. */
   readonly randomSeats?: boolean;
@@ -88,10 +110,12 @@ export class Lobby {
   private readonly finished = new Map<string, FinishedPairing & { endedAt: number }>();
   private readonly rematchOffers = new Map<string, Set<string>>();
   private readonly mm: MatchmakingOptions;
+  private readonly fair: FairPlayOptions;
   private readonly sweepTimer: ReturnType<typeof setInterval>;
 
   constructor(private readonly opts: LobbyOptions) {
     this.mm = { ...DEFAULT_MATCHMAKING, ...opts.matchmaking };
+    this.fair = { ...DEFAULT_FAIR_PLAY, ...opts.fairPlay };
     this.sweepTimer = setInterval(() => this.sweep(), this.mm.sweepMs);
   }
 
@@ -99,8 +123,8 @@ export class Lobby {
     return new Set(this.roomByPlayer.values()).size;
   }
 
-  connect(conn: Conn): void {
-    this.sessions.set(conn, { playerId: null });
+  connect(conn: Conn, ip = ""): void {
+    this.sessions.set(conn, { playerId: null, ip, deviceId: null });
   }
 
   disconnect(conn: Conn): void {
@@ -121,7 +145,10 @@ export class Lobby {
     const session = this.sessions.get(conn);
     if (!session) return;
     if (msg.t === "ping") return conn.send({ t: "pong" });
-    if (msg.t === "hello") return this.hello(conn, session, msg.playerId, msg.token);
+    if (msg.t === "hello") {
+      session.deviceId = msg.deviceId ?? null;
+      return this.hello(conn, session, msg.playerId, msg.token);
+    }
     const id = session.playerId;
     if (!id) return conn.send({ t: "error", message: "say hello first" });
 
@@ -188,6 +215,33 @@ export class Lobby {
     return false;
   }
 
+  // ---- fair play -----------------------------------------------------------------------------
+
+  private sessionOf(playerId: string): Session | undefined {
+    const conn = this.connByPlayer.get(playerId);
+    return conn ? this.sessions.get(conn) : undefined;
+  }
+
+  /** Same browser or (optionally) same network: very likely the same person. */
+  private sameOrigin(a: string, b: string): UnratedReason | null {
+    const sa = this.sessionOf(a);
+    const sb = this.sessionOf(b);
+    if (!sa || !sb) return null;
+    if (sa.deviceId && sa.deviceId === sb.deviceId) return "same-device";
+    if (this.fair.blockSameNetwork && sa.ip && sa.ip === sb.ip) return "same-network";
+    return null;
+  }
+
+  private ratingPolicy(a: string, b: string): { rated: boolean; reason: UnratedReason | null } {
+    const origin = this.sameOrigin(a, b);
+    if (origin) return { rated: false, reason: origin };
+    const since = new Date(Date.now() - this.fair.pairWindowMs).toISOString();
+    if (this.opts.store.ratedMatchesBetween(a, b, since) >= this.fair.maxRatedPerPair) {
+      return { rated: false, reason: "repeat-opponent" };
+    }
+    return { rated: true, reason: null };
+  }
+
   // ---- matchmaking ---------------------------------------------------------------------------
 
   private window(e: QueueEntry, now: number): number {
@@ -204,6 +258,8 @@ export class Lobby {
     for (const w of waiting) {
       if (w.playerId === entry.playerId || !this.connByPlayer.has(w.playerId) || !this.canPair(entry, w, now))
         continue;
+      // Never pair one person with themselves in the public queue.
+      if (this.sameOrigin(entry.playerId, w.playerId)) continue;
       if (!best || Math.abs(w.rating - entry.rating) < Math.abs(best.rating - entry.rating)) best = w;
     }
     return best;
@@ -332,6 +388,7 @@ export class Lobby {
     const { store, timings, log } = this.opts;
     const swap = !fixedSeats && this.opts.randomSeats !== false && randomInt(2) === 1;
     const ids: [string, string] = swap ? [b, a] : [a, b];
+    const rating = this.ratingPolicy(a, b);
     const room = new MatchRoom(
       variant,
       configFor(variant, length),
@@ -339,6 +396,7 @@ export class Lobby {
       {
         timings,
         log,
+        rating,
         onEnd: (r, result) => {
           const endedAt = Date.now();
           for (const [seat, s] of r.seats.entries()) {
@@ -366,7 +424,9 @@ export class Lobby {
       const conn = this.connByPlayer.get(pid);
       if (conn) room.attach(seat as 0 | 1, conn);
     }
-    log?.(`match ${room.id} started: ${variant}/${length}`);
+    log?.(
+      `match ${room.id} started: ${variant}/${length}${rating.rated ? "" : ` (unrated: ${rating.reason})`}`,
+    );
     room.start();
   }
 

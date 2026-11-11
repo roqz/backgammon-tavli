@@ -351,3 +351,84 @@ describe("online server", () => {
     expect(moved.action).not.toBeNull();
   });
 });
+
+describe("fair play", () => {
+  let server: RunningServer;
+  const clients: TestClient[] = [];
+  afterEach(async () => {
+    await Promise.all(clients.splice(0).map((c) => c.close()));
+    await server.close();
+  });
+
+  const connectTwo = async (deviceA?: string, deviceB?: string) => {
+    const pa = await register(server, "Ann");
+    const pb = await register(server, "Ben");
+    const a = await TestClient.connect(server, pa, deviceA);
+    const b = await TestClient.connect(server, pb, deviceB);
+    clients.push(a, b);
+    return { a, b };
+  };
+
+  /** True if no match starts within the given time. */
+  const staysQueued = (c: TestClient, ms: number) =>
+    c
+      .next("match-start", () => true, ms)
+      .then(
+        () => false,
+        () => true,
+      );
+
+  it("never pairs two profiles of the same device in the public queue", async () => {
+    server = await start({}, { growthPerSecond: 100_000 });
+    const { a, b } = await connectTwo("device-shared-1", "device-shared-1");
+    a.send({ t: "queue", variant: "backgammon", length: 1 });
+    await a.next("queued");
+    b.send({ t: "queue", variant: "backgammon", length: 1 });
+    await b.next("queued");
+    expect(await staysQueued(a, 400)).toBe(true);
+  });
+
+  it("plays private games between the same device unrated", async () => {
+    server = await start();
+    const { a, b } = await connectTwo("device-shared-2", "device-shared-2");
+    a.send({ t: "create", variant: "backgammon", length: 1 });
+    const { code } = await a.next("room-created");
+    const started = a.next("match-start");
+    b.send({ t: "join", code });
+    expect(await started).toMatchObject({ rated: false, unratedReason: "same-device" });
+    const end = a.next("match-end");
+    b.send({ t: "action", action: { type: "resign", level: 1 } });
+    expect((await end).ratingDelta).toEqual([0, 0]);
+  });
+
+  it("does not pair players from the same network when that check is on", async () => {
+    server = await start({}, { growthPerSecond: 100_000 }, { blockSameNetwork: true });
+    const { a, b } = await connectTwo("device-a-3", "device-b-3");
+    a.send({ t: "queue", variant: "portes", length: 1 });
+    await a.next("queued");
+    b.send({ t: "queue", variant: "portes", length: 1 });
+    await b.next("queued");
+    expect(await staysQueued(a, 400)).toBe(true);
+  });
+
+  it("limits rated matches against the same opponent", async () => {
+    server = await start({}, {}, { maxRatedPerPair: 1 });
+    const { a, b } = await connectTwo("device-a-4", "device-b-4");
+    a.send({ t: "queue", variant: "backgammon", length: 1 });
+    await a.next("queued");
+    const first = a.next("match-start");
+    b.send({ t: "queue", variant: "backgammon", length: 1 });
+    expect((await first).rated).toBe(true);
+    let end = a.next("match-end");
+    b.send({ t: "action", action: { type: "resign", level: 1 } });
+    expect((await end).ratingDelta[0]).toBeGreaterThan(0);
+    // Rematch: the pair already had its rated match today.
+    const second = a.next("match-start", (m) => !m.rated);
+    a.send({ t: "rematch" });
+    b.send({ t: "rematch" });
+    expect(await second).toMatchObject({ rated: false, unratedReason: "repeat-opponent" });
+    end = a.next("match-end");
+    b.send({ t: "action", action: { type: "resign", level: 1 } });
+    expect((await end).ratingDelta).toEqual([0, 0]);
+  });
+});

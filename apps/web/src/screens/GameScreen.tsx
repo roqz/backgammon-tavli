@@ -257,6 +257,14 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
           <div className="text-center text-sm text-stone-400">
             <span className="font-semibold text-stone-200">{rules.name}</span> · {t.game}{" "}
             {match.results.length + (g.phase === "finished" ? 0 : 1)} · {lengthLabel}
+            {online && onlineInfo && !onlineInfo.rated && (
+              <span
+                className="ml-2 rounded bg-stone-700 px-1.5 py-0.5 text-stone-200"
+                title={onlineInfo.unratedReason ? t.unratedReason[onlineInfo.unratedReason] : undefined}
+              >
+                {t.unrated}
+              </span>
+            )}
             {match.crawford === "crawford-game" && (
               <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-300">{t.crawford}</span>
             )}
@@ -526,7 +534,13 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
           <p className="mb-3 text-3xl font-bold tabular-nums text-stone-100">
             {match.score[0]} : {match.score[1]}
           </p>
-          <p className="mb-5 text-stone-300">
+          {!onlineInfo.rated && (
+            <p className="mb-5 text-sm text-stone-400">
+              {t.unrated}
+              {onlineInfo.unratedReason ? ` – ${t.unratedReason[onlineInfo.unratedReason]}` : ""}
+            </p>
+          )}
+          <p className={`mb-5 text-stone-300 ${onlineInfo.rated ? "" : "hidden"}`}>
             {t.ratingChange}:{" "}
             <span
               className={`font-bold ${onlineInfo.end.ratingDelta[onlineInfo.seat] >= 0 ? "text-emerald-300" : "text-red-300"}`}

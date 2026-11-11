@@ -12,7 +12,7 @@ import {
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
 import { AccountError, Store } from "./db";
-import { Lobby, type MatchmakingOptions } from "./lobby";
+import { type FairPlayOptions, Lobby, type MatchmakingOptions } from "./lobby";
 import type { Conn, RoomTimings } from "./room";
 
 export interface ServerOptions {
@@ -24,6 +24,9 @@ export interface ServerOptions {
   readonly timings?: Partial<RoomTimings>;
   readonly randomSeats?: boolean;
   readonly matchmaking?: Partial<MatchmakingOptions>;
+  readonly fairPlay?: Partial<FairPlayOptions>;
+  /** Behind a reverse proxy: take the client address from X-Forwarded-For. */
+  readonly trustProxy?: boolean;
   readonly log?: (msg: string) => void;
 }
 
@@ -94,6 +97,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     log,
     randomSeats: opts.randomSeats,
     matchmaking: opts.matchmaking,
+    fairPlay: opts.fairPlay,
   });
   const allowRegister = rateLimiter(10, 60_000);
   const cors = opts.corsOrigin ?? "*";
@@ -212,8 +216,14 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   });
 
+  const clientIp = (req: IncomingMessage): string => {
+    const forwarded = req.headers["x-forwarded-for"];
+    const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
+    return (opts.trustProxy && first) || req.socket.remoteAddress || "";
+  };
+
   const alive = new WeakMap<WebSocket, boolean>();
-  wss.on("connection", (ws: WebSocket) => {
+  wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     const conn: Conn = {
       send: (msg: ServerMessage) => {
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -221,7 +231,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       close: (code, reason) => ws.close(code, reason),
     };
     alive.set(ws, true);
-    lobby.connect(conn);
+    lobby.connect(conn, clientIp(req));
     ws.on("pong", () => alive.set(ws, true));
     ws.on("message", (data) => {
       let parsed: unknown;

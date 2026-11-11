@@ -64,5 +64,6 @@ DOMAIN=tavli.example.com docker compose up -d --build   # HTTPS via Caddy / Let'
 ```
 
 Caddy serves the web app and proxies `/api` and `/ws` to the server on the same domain. The
-SQLite database lives in the `tavli-data` volume. For a separately hosted frontend (e.g. GitHub
+SQLite database lives in the `tavli-data` volume. Fair-play checks never pair two profiles from the same
+device or network in the public queue (set `ALLOW_SAME_NETWORK=1` for local testing). For a separately hosted frontend (e.g. GitHub
 Pages) set the repository variable `TAVLI_SERVER_URL` and `CORS_ORIGIN` on the server.

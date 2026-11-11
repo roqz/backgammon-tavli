@@ -5,8 +5,10 @@ import { type RunningServer, startServer } from "../src/server";
 export const start = (
   timings: Parameters<typeof startServer>[0]["timings"] = {},
   matchmaking: Parameters<typeof startServer>[0]["matchmaking"] = {},
+  fairPlay: Parameters<typeof startServer>[0]["fairPlay"] = {},
 ) =>
   startServer({
+    fairPlay: { blockSameNetwork: false, ...fairPlay },
     matchmaking: { sweepMs: 50, ...matchmaking },
     port: 0,
     host: "127.0.0.1",
@@ -45,7 +47,11 @@ export class TestClient {
     });
   }
 
-  static async connect(server: RunningServer, player?: RegisterResponse): Promise<TestClient> {
+  static async connect(
+    server: RunningServer,
+    player?: RegisterResponse,
+    deviceId?: string,
+  ): Promise<TestClient> {
     const ws = new WebSocket(`ws://127.0.0.1:${server.port}/ws`);
     await new Promise<void>((resolve, reject) => {
       ws.once("open", () => resolve());
@@ -53,7 +59,7 @@ export class TestClient {
     });
     const c = new TestClient(ws);
     if (player) {
-      c.send({ t: "hello", playerId: player.id, token: player.token });
+      c.send({ t: "hello", playerId: player.id, token: player.token, deviceId });
       await c.next("welcome");
     }
     return c;

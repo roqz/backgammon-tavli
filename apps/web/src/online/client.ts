@@ -65,6 +65,8 @@ const onMessage = (msg: ServerMessage) => {
           deadline: null,
           opponentConnected: true,
           opponentGraceUntil: null,
+          rated: msg.rated,
+          unratedReason: msg.unratedReason,
           rematch: "none",
           end: null,
         },
@@ -140,7 +142,7 @@ export const connect = (): void => {
   const socket = new WebSocket(wsUrl(serverUrl));
   ws = socket;
   socket.onopen = () => {
-    send({ t: "hello", playerId: profile.id, token: profile.token });
+    send({ t: "hello", playerId: profile.id, token: profile.token, deviceId: useOnline.getState().deviceId });
     if (pingTimer) clearInterval(pingTimer);
     pingTimer = setInterval(() => send({ t: "ping" }), 25_000);
   };
