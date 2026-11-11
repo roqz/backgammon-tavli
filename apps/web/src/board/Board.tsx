@@ -458,8 +458,10 @@ function DiceLayer({
 }
 
 function CubeView({ state, theme }: { state: GameState; theme: BoardTheme }) {
-  if (!state.cube.enabled && state.cube.value === 1) return null;
-  const { value, owner } = state.cube;
+  // Tavli variants have no doubling cube by rule; in Backgammon it is always shown,
+  // greyed out while unavailable (1-point match, Crawford game).
+  if (!getVariant(state.variant).cube) return null;
+  const { value, owner, enabled } = state.cube;
   const size = 44;
   const x = BAR_X + BAR_W / 2;
   const y = owner === null ? MID_Y : owner === 0 ? BOTTOM_Y - size / 2 - 4 : TOP_Y + size / 2 + 4;
@@ -467,7 +469,7 @@ function CubeView({ state, theme }: { state: GameState; theme: BoardTheme }) {
   return (
     <motion.g
       initial={false}
-      animate={{ x, y, scale: offered ? 1.25 : 1 }}
+      animate={{ x, y, scale: offered ? 1.25 : 1, opacity: enabled ? 1 : 0.35 }}
       transition={{ type: "spring", stiffness: 220, damping: 20 }}
       style={{ pointerEvents: "none" }}
     >
