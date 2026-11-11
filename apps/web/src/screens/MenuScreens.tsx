@@ -13,12 +13,14 @@ export function Menu({
   onSettings,
   onStats,
   onOnline,
+  onRules,
 }: {
   onNew: () => void;
   onResume: () => void;
   onSettings: () => void;
   onStats: () => void;
   onOnline: () => void;
+  onRules: () => void;
 }) {
   const t = useT();
   const match = useGame((s) => s.match);
@@ -52,6 +54,9 @@ export function Menu({
             </Button>
           </>
         )}
+        <Button variant="ghost" onClick={onRules}>
+          📖 {t.rules}
+        </Button>
         <Button variant="ghost" onClick={onStats}>
           📊 {t.stats}
         </Button>

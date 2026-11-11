@@ -16,10 +16,12 @@ import {
   joinInvite,
   type MatchLength,
   queue,
-  register,
+  syncAccount,
   unqueue,
 } from "../online/client";
 import { useOnline } from "../online/store";
+import type { GameRecord } from "../store/archive";
+import { AuthForm, PlayerSheet, ProfileTab } from "./OnlineProfile";
 
 const variantName = (v: MatchVariantId, tavli: string) => (v === "tavli" ? tavli : getVariant(v).name);
 
@@ -45,44 +47,6 @@ function StatusPill() {
       <span className={`h-2 w-2 rounded-full ${color}`} />
       {label}
     </span>
-  );
-}
-
-function ProfileForm() {
-  const t = useT();
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const submit = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await register(name.trim());
-      connect();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Card className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1 text-sm text-stone-400">
-        {t.yourName}
-        <input
-          className="rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-stone-100 outline-none focus:border-amber-400"
-          value={name}
-          maxLength={24}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && name.trim() && void submit()}
-        />
-      </label>
-      <p className="text-xs text-stone-500">{t.profileHint}</p>
-      {error && <p className="text-sm text-red-400">{error}</p>}
-      <Button variant="primary" disabled={!name.trim() || busy} onClick={() => void submit()}>
-        {t.createProfile}
-      </Button>
-    </Card>
   );
 }
 
@@ -182,13 +146,14 @@ function PlayPanel() {
   );
 }
 
-function LeaderboardPanel() {
+function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => void }) {
   const t = useT();
   const profile = useOnline((s) => s.profile);
   const [variant, setVariant] = useState<MatchVariantId>("backgammon");
   const [rows, setRows] = useState<LeaderboardEntry[] | null>(null);
   const [mine, setMine] = useState<RatingEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
 
   useEffect(() => {
     setRows(null);
@@ -230,35 +195,57 @@ function LeaderboardPanel() {
         {rows && rows.length > 0 && (
           <ol className="mt-3 divide-y divide-stone-800 text-sm">
             {rows.map((r, i) => (
-              <li
-                key={r.playerId}
-                className={`flex items-center gap-3 py-2 ${r.playerId === profile?.id ? "text-amber-200" : "text-stone-200"}`}
-              >
-                <span className="w-6 text-right text-stone-500 tabular-nums">{i + 1}</span>
-                <span className="min-w-0 flex-1 truncate">
-                  {r.name} {r.playerId === profile?.id && t.you2}
-                </span>
-                <span className="text-xs text-stone-500 tabular-nums">
-                  {r.wins}/{r.matches}
-                </span>
-                <span className="w-12 text-right font-semibold tabular-nums">{r.rating}</span>
+              <li key={r.playerId}>
+                <button
+                  type="button"
+                  onClick={() => setSelected(r)}
+                  className={`flex w-full items-center gap-3 rounded py-2 text-left hover:bg-stone-800/60 ${r.playerId === profile?.id ? "text-amber-200" : "text-stone-200"}`}
+                >
+                  <span className="w-6 text-right text-stone-500 tabular-nums">{i + 1}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {r.name} {r.playerId === profile?.id && t.you2}
+                  </span>
+                  <span className="text-xs text-stone-500 tabular-nums">
+                    {r.wins}/{r.matches}
+                  </span>
+                  <span className="w-12 text-right font-semibold tabular-nums">{r.rating}</span>
+                </button>
               </li>
             ))}
           </ol>
         )}
       </Card>
+      {selected && (
+        <PlayerSheet
+          playerId={selected.playerId}
+          name={selected.name}
+          onClose={() => setSelected(null)}
+          onReplay={onReplay}
+        />
+      )}
     </div>
   );
 }
 
-export function OnlineScreen({ onBack }: { onBack: () => void }) {
+export function OnlineScreen({
+  onBack,
+  onReplay,
+}: {
+  onBack: () => void;
+  onReplay: (records: GameRecord[]) => void;
+}) {
   const t = useT();
   const { profile, serverUrl } = useOnline();
-  const [tab, setTab] = useState<"play" | "ranking">("play");
+  const [tab, setTab] = useState<"play" | "ranking" | "profile">("play");
 
+  // Connect and refresh account data once per profile (not on every profile field change).
+  const profileId = profile?.id;
   useEffect(() => {
-    if (profile && serverUrl) connect();
-  }, [profile, serverUrl]);
+    if (profileId && serverUrl) {
+      connect();
+      syncAccount().catch(() => {});
+    }
+  }, [profileId, serverUrl]);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 p-4 sm:p-6">
@@ -274,7 +261,7 @@ export function OnlineScreen({ onBack }: { onBack: () => void }) {
           <p className="text-stone-300">{t.noServer}</p>
         </Card>
       ) : !profile ? (
-        <ProfileForm />
+        <AuthForm />
       ) : (
         <>
           <p className="text-sm text-stone-400">
@@ -287,9 +274,12 @@ export function OnlineScreen({ onBack }: { onBack: () => void }) {
             options={[
               { value: "play", label: t.playTab },
               { value: "ranking", label: t.leaderboard },
+              { value: "profile", label: t.profileTab },
             ]}
           />
-          {tab === "play" ? <PlayPanel /> : <LeaderboardPanel />}
+          {tab === "play" && <PlayPanel />}
+          {tab === "ranking" && <LeaderboardPanel onReplay={onReplay} />}
+          {tab === "profile" && <ProfileTab onReplay={onReplay} />}
         </>
       )}
     </div>

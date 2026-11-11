@@ -197,9 +197,16 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Revanche nach Matchende mit getauschten Farben (beide müssen zustimmen; Ablehnen, neue Suche oder Verbindungsende ziehen zurück)
 - Einstellungen auch im laufenden Spiel (Seitenleiste), neu gestaltet; Fix: leeres Brett nach Neuladen + Fortsetzen
 
+### Phase 5c ✅
+
+- Konten: Gastprofil per Benutzername + Passwort (scrypt) sichern, Rating und Partien bleiben; Anmeldung auf weiteren Geräten mit eigener Sitzung je Gerät, Abmelden beendet die Sitzung; Passwort ändern (API)
+- Online-Replays: Partien jedes Matches vom Server (mit Ergebnis je Spiel), abrufbar im eigenen Profil und über Spielerprofile aus der Rangliste; Wiederholung mit Spielauswahl
+- Handbuch: vollständiges Regelwerk aller Varianten (wie in der Engine umgesetzt, inkl. Auslegungen) plus App/Notation/Online-Regeln – im Spiel als Seitenleiste (öffnet beim Kapitel der laufenden Variante) und im Menü
+- Ereignis-Banner oben auf dem Brett statt über den Würfeln; der Computer wartet bei „kein Zug“/„ausgesperrt“ nur noch ~1 s
+
 ### Offen / nächste Schritte Online
 
 - Schutz gegen Spiele gegen sich selbst/Smurfing (z. B. Mindestalter des Profils, IP-Heuristik)
-- Echte Accounts (E-Mail/OAuth, Better Auth) mit Übernahme des Gast-Profils, Profilseite, Online-Replays aus dem Server-Archiv
+- E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs), Passwort-ändern-UI
 - Nachweisbar faire Würfel (Commit-Reveal), Rate-Limits für WebSocket-Nachrichten, Admin/Moderation
 - Revanche-Button, Chat/Emotes, Turniere

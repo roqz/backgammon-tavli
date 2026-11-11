@@ -1,5 +1,5 @@
 import { getVariant, type Player } from "@tavli/engine";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Board } from "../board/Board";
 import { applyMoveToLayout, layoutFromBoard } from "../board/layout";
 import { THEMES } from "../board/themes";
@@ -12,7 +12,33 @@ import { useSettings } from "../store/settings";
 
 const STEP_MS = 750;
 
-export function ReplayScreen({ record, onBack }: { record: GameRecord; onBack: () => void }) {
+/** Replays one or several games (e.g. all games of an online match). */
+export function ReplayScreen({ records, onBack }: { records: readonly GameRecord[]; onBack: () => void }) {
+  const t = useT();
+  const [game, setGame] = useState(0);
+  const tabs =
+    records.length > 1 ? (
+      <div className="flex flex-wrap justify-center gap-2">
+        {records.map((r, i) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => setGame(i)}
+            className={`rounded-lg border px-3 py-1 text-sm ${
+              i === game
+                ? "border-amber-400 bg-amber-400/15 text-amber-200"
+                : "border-stone-700 text-stone-300"
+            }`}
+          >
+            {t.game} {i + 1}
+          </button>
+        ))}
+      </div>
+    ) : null;
+  return <SingleReplay key={game} record={records[game]!} onBack={onBack} tabs={tabs} />;
+}
+
+function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: () => void; tabs: ReactNode }) {
   const t = useT();
   const style = useSettings((s) => s.style);
   const frames = useMemo(() => buildFrames(record.variant, record.history), [record]);
@@ -75,6 +101,7 @@ export function ReplayScreen({ record, onBack }: { record: GameRecord; onBack: (
           </div>
           <div className="w-16" />
         </div>
+        {tabs}
         <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
           <Board
             state={frame.state}

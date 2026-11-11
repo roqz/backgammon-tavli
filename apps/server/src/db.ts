@@ -207,7 +207,7 @@ export class Store {
       .prepare("SELECT id, name, password_hash FROM players WHERE lower(username) = lower(?)")
       .get(username) as { id: string; name: string; password_hash: string | null } | undefined;
     const ok = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
-    if (!row || !row.password_hash || !ok) throw new AccountError(401, "wrong username or password");
+    if (!row?.password_hash || !ok) throw new AccountError(401, "wrong username or password");
     const token = randomBytes(24).toString("base64url");
     const now = new Date().toISOString();
     this.db

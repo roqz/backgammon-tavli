@@ -31,6 +31,7 @@ import { useGameSounds } from "../sound";
 import { type GameRecord, useArchive } from "../store/archive";
 import { useGame } from "../store/game";
 import { useSettings } from "../store/settings";
+import { RulesDrawer } from "./RulesPanel";
 import { SettingsDrawer } from "./SettingsPanel";
 
 /** three.js is only loaded when the 3D dice are used. */
@@ -169,6 +170,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
   const onlineError = useOnline((s) => s.lastError);
   const [forfeiting, setForfeiting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   // Errors from the server fade out after a few seconds.
   useEffect(() => {
     if (!onlineError) return;
@@ -267,6 +269,15 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                 graceUntil={onlineInfo.opponentGraceUntil}
               />
             )}
+            <Button
+              variant="ghost"
+              className="px-3 py-1.5 text-lg"
+              onClick={() => setRulesOpen(true)}
+              aria-label={t.rules}
+              title={t.rules}
+            >
+              📖
+            </Button>
             <Button
               variant="ghost"
               className="px-3 py-1.5 text-lg"
@@ -608,6 +619,11 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
         </Modal>
       )}
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <RulesDrawer
+        open={rulesOpen}
+        onClose={() => setRulesOpen(false)}
+        initial={match.config.variant === "tavli" ? g.variant : match.config.variant}
+      />
     </div>
   );
 }

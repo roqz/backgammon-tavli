@@ -6,11 +6,12 @@ import { GameScreen } from "./screens/GameScreen";
 import { Menu, NewGame, SettingsScreen } from "./screens/MenuScreens";
 import { OnlineScreen } from "./screens/OnlineScreen";
 import { ReplayScreen } from "./screens/ReplayScreen";
+import { RulesScreen } from "./screens/RulesPanel";
 import { StatsScreen } from "./screens/StatsScreen";
 import type { GameRecord } from "./store/archive";
 import { useGame } from "./store/game";
 
-type Screen = "menu" | "new" | "game" | "settings" | "stats" | "replay" | "online";
+type Screen = "menu" | "new" | "game" | "settings" | "stats" | "replay" | "online" | "rules";
 
 /** Invite links look like `…/?join=ABC234`. */
 const takeJoinCode = (): string | null => {
@@ -26,9 +27,9 @@ export function App() {
   const hasGame = useGame((s) => s.match !== null && s.match.winner === null);
   const onlineMatchId = useOnline((s) => s.match?.matchId ?? null);
   const [screen, setScreen] = useState<Screen>("menu");
-  const [replay, setReplay] = useState<{ record: GameRecord; back: Screen } | null>(null);
-  const openReplay = (record: GameRecord, back: Screen) => {
-    setReplay({ record, back });
+  const [replay, setReplay] = useState<{ records: readonly GameRecord[]; back: Screen } | null>(null);
+  const openReplay = (records: GameRecord | readonly GameRecord[], back: Screen) => {
+    setReplay({ records: Array.isArray(records) ? records : [records as GameRecord], back });
     setScreen("replay");
   };
 
@@ -56,11 +57,15 @@ export function App() {
             onSettings={() => setScreen("settings")}
             onStats={() => setScreen("stats")}
             onOnline={() => setScreen(onlineMatchId ? "game" : "online")}
+            onRules={() => setScreen("rules")}
           />
         )}
         {screen === "new" && <NewGame onBack={() => setScreen("menu")} onStarted={() => setScreen("game")} />}
+        {screen === "rules" && <RulesScreen onBack={() => setScreen("menu")} />}
         {screen === "settings" && <SettingsScreen onBack={() => setScreen(hasGame ? "game" : "menu")} />}
-        {screen === "online" && <OnlineScreen onBack={() => setScreen("menu")} />}
+        {screen === "online" && (
+          <OnlineScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "online")} />
+        )}
         {screen === "game" && (
           <GameScreen onMenu={() => setScreen("menu")} onReplay={(r) => openReplay(r, "game")} />
         )}
@@ -68,7 +73,7 @@ export function App() {
           <StatsScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "stats")} />
         )}
         {screen === "replay" && replay && (
-          <ReplayScreen record={replay.record} onBack={() => setScreen(replay.back)} />
+          <ReplayScreen records={replay.records} onBack={() => setScreen(replay.back)} />
         )}
       </main>
     </MotionConfig>

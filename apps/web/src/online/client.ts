@@ -1,7 +1,9 @@
 import { createMatch } from "@tavli/engine";
 import type {
+  AccountResponse,
   ClientMessage,
   LeaderboardEntry,
+  MatchDetailResponse,
   MatchVariantId,
   ProfileResponse,
   RegisterResponse,
@@ -238,5 +240,43 @@ export const rename = async (name: string) => {
 };
 
 export const fetchProfile = (id: string) => rest<ProfileResponse>(`/api/players/${id}`);
+export const fetchMatch = (id: string) => rest<MatchDetailResponse>(`/api/matches/${id}`);
+
+/** Turns the current guest profile into an account that can log in on other devices. */
+export const claimAccount = async (username: string, password: string, email: string) => {
+  const acc = await rest<AccountResponse>("/api/account/claim", {
+    method: "POST",
+    body: JSON.stringify({ username, password, email }),
+  });
+  const p = useOnline.getState().profile;
+  if (p) set({ profile: { ...p, username: acc.username } });
+  return acc;
+};
+
+/** Logs in on this device; replaces a local guest profile. */
+export const login = async (username: string, password: string) => {
+  const r = await rest<RegisterResponse>("/api/account/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+  disconnect();
+  set({ profile: { id: r.id, token: r.token, name: r.name, username }, lastError: null });
+  connect();
+  return r;
+};
+
+/** Logs out on this device: the session ends and the local profile is forgotten. */
+export const logout = async () => {
+  await rest("/api/account/logout", { method: "POST" }).catch(() => {});
+  disconnect();
+  set({ profile: null, match: null, lobby: { kind: "idle" } });
+};
+
+export const syncAccount = async () => {
+  const acc = await rest<AccountResponse>("/api/account");
+  const p = useOnline.getState().profile;
+  if (p) set({ profile: { ...p, name: acc.name, username: acc.username } });
+  return acc;
+};
 export const fetchLeaderboard = (variant: MatchVariantId) =>
   rest<LeaderboardEntry[]>(`/api/leaderboard?variant=${variant}`);

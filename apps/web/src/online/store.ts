@@ -7,6 +7,8 @@ export interface Profile {
   readonly id: string;
   readonly token: string;
   readonly name: string;
+  /** Login name once the guest profile was turned into an account. */
+  readonly username?: string | null;
 }
 
 export type ConnectionStatus = "offline" | "connecting" | "ready" | "reconnecting";

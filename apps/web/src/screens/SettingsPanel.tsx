@@ -1,6 +1,6 @@
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { type BoardStyle, THEMES } from "../board/themes";
+import { Drawer } from "../components/Drawer";
 import { Section, Toggle } from "../components/ui";
 import { useT } from "../i18n";
 import { disconnect } from "../online/client";
@@ -188,51 +188,12 @@ export function SettingsPanel() {
   );
 }
 
-/** Slide-in settings panel over the running game (the game stays mounted). */
+/** Settings over the running game (the game stays mounted). */
 export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT();
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-40 flex justify-end bg-black/50 backdrop-blur-[2px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
-          <motion.aside
-            role="dialog"
-            aria-modal="true"
-            aria-label={t.settings}
-            className="h-full w-full max-w-md overflow-y-auto border-l border-stone-800 bg-stone-950 p-4 shadow-2xl sm:p-5"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 320, damping: 34 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-amber-100">⚙ {t.settings}</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg px-3 py-1.5 text-stone-300 hover:bg-stone-800"
-                aria-label={t.close}
-              >
-                ✕
-              </button>
-            </div>
-            <SettingsPanel />
-          </motion.aside>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <Drawer open={open} onClose={onClose} title={`⚙ ${t.settings}`} closeLabel={t.close}>
+      <SettingsPanel />
+    </Drawer>
   );
 }
