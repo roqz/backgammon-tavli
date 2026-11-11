@@ -84,6 +84,8 @@ export type TurnRecord =
     }
   | { readonly kind: "double"; readonly player: Player; readonly to: number }
   | { readonly kind: "take"; readonly player: Player }
+  /** On the bar against a closed home board: the turn is skipped without rolling. */
+  | { readonly kind: "closed-out"; readonly player: Player }
   | { readonly kind: "drop"; readonly player: Player }
   | { readonly kind: "resign"; readonly player: Player; readonly level: ResultLevel };
 
@@ -116,6 +118,8 @@ export type GameAction =
   | { readonly type: "roll"; readonly dice: Dice }
   | { readonly type: "move"; readonly move: Move }
   | { readonly type: "undo" }
+  /** Skip the turn without rolling when closed out (see isClosedOut). */
+  | { readonly type: "pass" }
   | { readonly type: "confirm" }
   | { readonly type: "double" }
   | { readonly type: "take" }

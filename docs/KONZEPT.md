@@ -155,3 +155,25 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Bewertungsgewichte per Selbstspiel optimieren (z. B. Hill-Climbing/CMA-ES) – größter Hebel vor einem neuronalen Netz
 - Gammon-Bewusstsein im Spiel (nicht nur beim Verdoppeln), Match-Equity-Table für Verdoppel-Entscheidungen
 - Hinweis-Funktion („bester Zug“) für Menschen auf Basis desselben Bots
+
+### Phase 4 – Feinschliff ✅
+
+- 3D-Würfelwurf (three.js + React Three Fiber) als nachgeladenes Overlay (eigener Chunk, ~244 KB gzip), abschaltbar; danach übernehmen die 2D-Würfel
+- Soundeffekte per Web Audio synthetisiert (Würfel, Steine, Schlag, Verdopplung, Spielende) – keine Audiodateien, abschaltbar
+- Tipp-Funktion: der starke Bot schlägt einen Zug vor (nummerierte Pfeile + Notation)
+- Lokales Archiv beendeter Partien, Wiederholung (Schritte, Autoplay, Schieberegler, Tastatur, Sprung über den Verlauf)
+- Statistik gegen den Computer nach Stärke und Variante (Siegquote, Gammons/Mars, Serie, letzte Partien)
+
+### Bot-Tuning per Selbstspiel
+
+- Bewertungsgewichte in `packages/ai/src/weights.ts`, Tuning per (1+1)-Evolutionsstrategie mit gepaarten Partien: `pnpm --filter @tavli/ai tune <variante> [iterationen] [partien]`, Validierung mit `… tune <variante> 0 400 validate`
+- Ergebnisse (getunt gegen Ausgangsgewichte, 400 unabhängige Partien, 1-Zug-Bot):
+  - Backgammon: **57,0 %** · Portes: **56,8 %** · Plakoto: **58,5 %** · Fevga: **63,0 %** (300 Partien)
+- Eröffnungszüge des starken Bots (`npx tsx scripts/openings.ts`): 10 von 15 entsprechen den Standardzügen, bei 21/32/41/43 bevorzugt er sichere Läufer statt Aufbau
+
+### Usability-Verbesserungen
+
+- Auto-Würfeln mit abbrechbarem 3-s-Countdown, wenn Verdoppeln möglich ist; Zug automatisch beenden optional mit 3-s-Verzögerung
+- Ereignis-Banner über dem Brett (kein Zug möglich inkl. Grund, nur n von m Würfeln spielbar, ausgesperrt, Anwurf, Pasch, geschlagen/eingeklemmt, Verdopplung, Crawford); würfelbezogene Banner erscheinen erst, wenn die 3D-Würfel liegen
+- Ausgesperrt (Bar gegen geschlossenes Heimfeld): Zug entfällt ohne Würfeln (Engine-Aktion `pass`)
+- Ruhiger Übergang 3D → 2D-Würfel, Ausblenden statt Flackern; realistischerer synthetischer Würfelsound

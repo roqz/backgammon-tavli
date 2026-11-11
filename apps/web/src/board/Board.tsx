@@ -8,7 +8,7 @@ import {
   type Player,
   type To,
 } from "@tavli/engine";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   BAR_W,
@@ -55,6 +55,8 @@ export interface BoardProps {
   readonly hint?: readonly Move[] | null;
   /** Hide the 2D dice (while the 3D throw animation runs). */
   readonly hideDice?: boolean;
+  /** Animate the 2D dice in; off when the 3D throw already showed them landing. */
+  readonly diceIntro?: boolean;
 }
 
 export interface OpeningRoll {
@@ -86,6 +88,7 @@ export function Board({
   onMoves,
   hint,
   hideDice,
+  diceIntro = true,
 }: BoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selected, setSelected] = useState<From | null>(null);
@@ -335,7 +338,18 @@ export function Board({
         );
       })}
 
-      {!hideDice && <DiceLayer state={state} theme={theme} openingDice={openingDice} />}
+      <AnimatePresence>
+        {!hideDice &&
+          ((state.phase === "opening" && openingDice) || (state.phase === "moving" && state.dice)) && (
+            <DiceLayer
+              key={state.phase === "opening" ? `open${openingDice?.seq}` : `roll${state.history.length}`}
+              state={state}
+              theme={theme}
+              openingDice={openingDice}
+              intro={diceIntro}
+            />
+          )}
+      </AnimatePresence>
       <CubeView state={state} theme={theme} />
       {hint && hint.length > 0 && (
         <HintArrows moves={hint} layout={layout} player={turn} color={theme.highlight} />
@@ -386,6 +400,7 @@ function Die({
   faded,
   theme,
   edge,
+  intro = true,
 }: {
   x: number;
   y: number;
@@ -394,12 +409,14 @@ function Die({
   faded?: boolean;
   theme: BoardTheme;
   edge?: string;
+  intro?: boolean;
 }) {
   const s = size / 2;
   return (
     <motion.g
-      initial={{ rotate: -120, scale: 0.4, opacity: 0 }}
+      initial={intro ? { rotate: -120, scale: 0.4, opacity: 0 } : false}
       animate={{ rotate: 0, scale: 1, opacity: faded ? 0.35 : 1 }}
+      exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.25 } }}
       transition={{ type: "spring", stiffness: 200, damping: 14 }}
       style={{ x, y, pointerEvents: "none" }}
     >
@@ -430,17 +447,20 @@ function DiceLayer({
   state,
   theme,
   openingDice,
+  intro,
 }: {
   state: GameState;
   theme: BoardTheme;
   openingDice: OpeningRoll | null;
+  intro: boolean;
 }) {
   const halfCenter = (p: Player) => (p === 0 ? RIGHT_X + 3 * POINT_W : LEFT_X + 3 * POINT_W);
   if (state.phase === "opening" && openingDice) {
     return (
       <g key={`open${openingDice.seq}`}>
-        <Die x={halfCenter(0)} y={MID_Y} value={openingDice.dice[0]} size={52} theme={theme} />
+        <Die intro={intro} x={halfCenter(0)} y={MID_Y} value={openingDice.dice[0]} size={52} theme={theme} />
         <Die
+          intro={intro}
           x={halfCenter(1)}
           y={MID_Y}
           value={openingDice.dice[1]}
@@ -472,6 +492,7 @@ function DiceLayer({
     <g key={`dice${state.history.length}${a}${b}`}>
       {values.map((v, i) => (
         <Die
+          intro={intro}
           // biome-ignore lint/suspicious/noArrayIndexKey: dice are positional
           key={i}
           x={start + i * gap}

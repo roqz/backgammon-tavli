@@ -1,0 +1,315 @@
+{
+  "variant": "fevga",
+  "iteration": 60,
+  "weights": {
+    "offBonus": 0.439,
+    "raceWastage": 0.108,
+    "blockHome": 1.428,
+    "blockOther": 1.538,
+    "fevStack": 0.355,
+    "fevPrime": 1.753,
+    "startPenalty": 0.372
+  },
+  "history": [
+    {
+      "iteration": 1,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 2,
+      "rate": 0.49166666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 3,
+      "rate": 0.44166666666666665,
+      "accepted": false
+    },
+    {
+      "iteration": 4,
+      "rate": 0.48333333333333334,
+      "accepted": false
+    },
+    {
+      "iteration": 5,
+      "rate": 0.525,
+      "accepted": false
+    },
+    {
+      "iteration": 6,
+      "rate": 0.4583333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 7,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 8,
+      "rate": 0.5083333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 9,
+      "rate": 0.5333333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 10,
+      "rate": 0.5083333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 11,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 12,
+      "rate": 0.48333333333333334,
+      "accepted": false
+    },
+    {
+      "iteration": 13,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 14,
+      "rate": 0.5083333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 15,
+      "rate": 0.5083333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 16,
+      "rate": 0.5083333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 17,
+      "rate": 0.425,
+      "accepted": false
+    },
+    {
+      "iteration": 18,
+      "rate": 0.5416666666666666,
+      "accepted": true
+    },
+    {
+      "iteration": 19,
+      "rate": 0.6,
+      "accepted": true
+    },
+    {
+      "iteration": 20,
+      "rate": 0.49166666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 21,
+      "rate": 0.525,
+      "accepted": false
+    },
+    {
+      "iteration": 22,
+      "rate": 0.48333333333333334,
+      "accepted": false
+    },
+    {
+      "iteration": 23,
+      "rate": 0.425,
+      "accepted": false
+    },
+    {
+      "iteration": 24,
+      "rate": 0.4666666666666667,
+      "accepted": false
+    },
+    {
+      "iteration": 25,
+      "rate": 0.5083333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 26,
+      "rate": 0.48333333333333334,
+      "accepted": false
+    },
+    {
+      "iteration": 27,
+      "rate": 0.39166666666666666,
+      "accepted": false
+    },
+    {
+      "iteration": 28,
+      "rate": 0.2916666666666667,
+      "accepted": false
+    },
+    {
+      "iteration": 29,
+      "rate": 0.49166666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 30,
+      "rate": 0.4166666666666667,
+      "accepted": false
+    },
+    {
+      "iteration": 31,
+      "rate": 0.36666666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 32,
+      "rate": 0.30833333333333335,
+      "accepted": false
+    },
+    {
+      "iteration": 33,
+      "rate": 0.49166666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 34,
+      "rate": 0.3333333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 35,
+      "rate": 0.49166666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 36,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 37,
+      "rate": 0.38333333333333336,
+      "accepted": false
+    },
+    {
+      "iteration": 38,
+      "rate": 0.35833333333333334,
+      "accepted": false
+    },
+    {
+      "iteration": 39,
+      "rate": 0.38333333333333336,
+      "accepted": false
+    },
+    {
+      "iteration": 40,
+      "rate": 0.4666666666666667,
+      "accepted": false
+    },
+    {
+      "iteration": 41,
+      "rate": 0.49166666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 42,
+      "rate": 0.49166666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 43,
+      "rate": 0.5166666666666667,
+      "accepted": false
+    },
+    {
+      "iteration": 44,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 45,
+      "rate": 0.4,
+      "accepted": false
+    },
+    {
+      "iteration": 46,
+      "rate": 0.525,
+      "accepted": false
+    },
+    {
+      "iteration": 47,
+      "rate": 0.5166666666666667,
+      "accepted": false
+    },
+    {
+      "iteration": 48,
+      "rate": 0.30833333333333335,
+      "accepted": false
+    },
+    {
+      "iteration": 49,
+      "rate": 0.5166666666666667,
+      "accepted": false
+    },
+    {
+      "iteration": 50,
+      "rate": 0.36666666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 51,
+      "rate": 0.48333333333333334,
+      "accepted": false
+    },
+    {
+      "iteration": 52,
+      "rate": 0.5083333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 53,
+      "rate": 0.36666666666666664,
+      "accepted": false
+    },
+    {
+      "iteration": 54,
+      "rate": 0.5333333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 55,
+      "rate": 0.375,
+      "accepted": false
+    },
+    {
+      "iteration": 56,
+      "rate": 0.44166666666666665,
+      "accepted": false
+    },
+    {
+      "iteration": 57,
+      "rate": 0.5083333333333333,
+      "accepted": false
+    },
+    {
+      "iteration": 58,
+      "rate": 0.375,
+      "accepted": false
+    },
+    {
+      "iteration": 59,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 60,
+      "rate": 0.48333333333333334,
+      "accepted": false
+    }
+  ]
+}

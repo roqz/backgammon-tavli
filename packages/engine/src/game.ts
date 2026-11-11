@@ -1,4 +1,4 @@
-import { HOME_START, initialBoard, POINTS } from "./board";
+import { canLandOn, HOME_START, initialBoard, POINTS } from "./board";
 import { applyMoveUnchecked, diceToPlay, gameEndAfterMove, MoveGenerator, sameMove } from "./movegen";
 import type {
   Board,
@@ -68,6 +68,18 @@ export const legalMoves = (s: GameState): Move[] =>
 export const canConfirm = (s: GameState): boolean => s.phase === "moving" && legalMoves(s).length === 0;
 
 export const canUndo = (s: GameState): boolean => s.phase === "moving" && s.undoStack.length > 0;
+
+/**
+ * The player on roll has a checker on the bar and every entry point is blocked, so no roll can
+ * help: the turn may be skipped with the "pass" action instead of rolling.
+ */
+export const isClosedOut = (s: GameState): boolean => {
+  if (s.phase !== "rolling" || s.board.bar[s.turn] === 0) return false;
+  const rules = getVariant(s.variant);
+  const path = rules.paths[s.turn];
+  for (let k = 0; k < 6; k++) if (canLandOn(rules, s.board, s.turn, path[k]!)) return false;
+  return true;
+};
 
 export const canDouble = (s: GameState): boolean =>
   s.phase === "rolling" && s.cube.enabled && (s.cube.owner === null || s.cube.owner === s.turn);
@@ -206,6 +218,15 @@ export const applyAction = (s: GameState, action: GameAction): GameState => {
         played: [],
         undoStack: [],
         history: [...s.history, moveRecord(s, s.played)],
+      };
+    }
+
+    case "pass": {
+      if (!isClosedOut(s)) illegal("only allowed when closed out");
+      return {
+        ...s,
+        turn: opponent(s.turn),
+        history: [...s.history, { kind: "closed-out", player: s.turn }],
       };
     }
 

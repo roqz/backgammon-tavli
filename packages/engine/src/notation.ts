@@ -46,6 +46,8 @@ export const formatTurn = (variant: VariantId, t: TurnRecord): string => {
       return `Doubles => ${t.to}`;
     case "take":
       return "Takes";
+    case "closed-out":
+      return "closed out";
     case "drop":
       return "Drops";
     case "resign":

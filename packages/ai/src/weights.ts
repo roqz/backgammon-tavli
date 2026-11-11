@@ -118,7 +118,63 @@ export const RELEVANT_WEIGHTS: Record<VariantId, readonly (keyof Weights)[]> = {
 };
 
 /** Self-play tuned overrides per variant. */
-export const TUNED: Partial<Record<VariantId, Partial<Weights>>> = {};
+export const TUNED: Partial<Record<VariantId, Partial<Weights>>> = {
+  fevga: {
+    offBonus: 0.439,
+    raceWastage: 0.108,
+    blockHome: 1.428,
+    blockOther: 1.538,
+    fevStack: 0.355,
+    fevPrime: 1.753,
+    startPenalty: 0.372,
+  },
+  plakoto: {
+    offBonus: 0.505,
+    raceWastage: 0.027,
+    pinnedBase: 22.876,
+    pinnedPerPip: 1.646,
+    pinPointHome: 0.98,
+    pinPointOuter: 2.151,
+    pinPointOther: 1.587,
+    pinStack: 0.018,
+    manaRisk: 53.476,
+    pinRiskBase: 6.831,
+    pinRiskPerPip: 0.528,
+    pinPrime: 0.664,
+  },
+  portes: {
+    offBonus: 0.45,
+    raceWastage: 0.725,
+    pointHome: 3.471,
+    pointHomeBest: 5.434,
+    pointBar: 2.021,
+    pointOuter: 1.767,
+    anchor: 1.261,
+    pointOther: 2.204,
+    stack: 0.122,
+    blotScale: 1.313,
+    blotTempo: 1.299,
+    prime: 2.881,
+    barBase: 1.999,
+    barPerPoint: 1.99,
+  },
+  backgammon: {
+    offBonus: 0.791,
+    raceWastage: 0.289,
+    pointHome: 4.039,
+    pointHomeBest: 4.246,
+    pointBar: 2.676,
+    pointOuter: 1.419,
+    anchor: 1.356,
+    pointOther: 2.868,
+    stack: 0.271,
+    blotScale: 0.982,
+    blotTempo: 3.181,
+    prime: 2.096,
+    barBase: 2.805,
+    barPerPoint: 0.844,
+  },
+};
 
 const cache = new Map<VariantId, Weights>();
 

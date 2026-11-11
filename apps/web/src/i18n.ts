@@ -100,6 +100,19 @@ const de = {
   sound: "Soundeffekte",
   dice3d: "3D-Würfel",
   histDouble: "Verdoppelt auf",
+  evNoDoubling: "Verdoppeln nicht möglich",
+  evTie: "Gleichstand – nochmal",
+  evWonOpening: "Anwurf gewonnen",
+  evDoubleTo: "Verdopplung auf",
+  evBarBlocked: "Einsetzen blockiert",
+  evAllBlocked: "alle Züge blockiert",
+  evPartial: "Nur {n} von {m} Würfeln spielbar",
+  evDoubles: "Pasch!",
+  evHit: "Geschlagen!",
+  evPinned: "Eingeklemmt!",
+  evClosedOut: "Ausgesperrt",
+  evClosedOutSub: "Heimfeld des Gegners ist geschlossen",
+  histClosedOut: "Ausgesperrt",
   histTake: "Angenommen",
   histDrop: "Abgelehnt",
   histResign: "Gibt auf",
@@ -206,6 +219,19 @@ const en: Dict = {
   sound: "Sound effects",
   dice3d: "3D dice",
   histDouble: "Doubles to",
+  evNoDoubling: "No doubling",
+  evTie: "Tie – roll again",
+  evWonOpening: "Won the opening roll",
+  evDoubleTo: "Double to",
+  evBarBlocked: "cannot enter from the bar",
+  evAllBlocked: "all moves blocked",
+  evPartial: "Only {n} of {m} dice playable",
+  evDoubles: "Doubles!",
+  evHit: "Hit!",
+  evPinned: "Pinned!",
+  evClosedOut: "Closed out",
+  evClosedOutSub: "the opponent's home board is closed",
+  histClosedOut: "Closed out",
   histTake: "Takes",
   histDrop: "Passes",
   histResign: "Resigns",
@@ -223,6 +249,8 @@ export const turnText = (t: Dict, variant: VariantId, rec: TurnRecord): string =
       return `${t.histDouble} ${rec.to}`;
     case "take":
       return t.histTake;
+    case "closed-out":
+      return t.histClosedOut;
     case "drop":
       return t.histDrop;
     case "resign":

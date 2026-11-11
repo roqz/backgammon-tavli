@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   applyAction,
   applyActions,
+  boardFromSpec,
   canConfirm,
   canDouble,
   createGame,
   formatHistory,
+  getVariant,
   IllegalActionError,
+  isClosedOut,
   playerToAct,
 } from "../src";
 import { mv, play, position } from "./helpers";
@@ -60,6 +63,25 @@ describe("game flow", () => {
     );
     g = applyAction(g, { type: "confirm" });
     expect(formatHistory(g)).toEqual(["White: 34: no play"]);
+  });
+});
+
+describe("closed out", () => {
+  const closed = { white: { 13: 14 }, black: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2 }, bar: [1, 0] as const };
+
+  it("skips the turn without rolling when every entry point is blocked", () => {
+    const g = createGame({ variant: BG, starter: 0, board: boardFromSpec(getVariant(BG), closed) });
+    expect(isClosedOut(g)).toBe(true);
+    const after = applyAction(g, { type: "pass" });
+    expect(after).toMatchObject({ phase: "rolling", turn: 1 });
+    expect(formatHistory(after)).toEqual(["White: closed out"]);
+  });
+
+  it("is not allowed with an open entry point", () => {
+    const board = boardFromSpec(getVariant(BG), { ...closed, black: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 1 } });
+    const g = createGame({ variant: BG, starter: 0, board });
+    expect(isClosedOut(g)).toBe(false);
+    expect(() => applyAction(g, { type: "pass" })).toThrow(IllegalActionError);
   });
 });
 

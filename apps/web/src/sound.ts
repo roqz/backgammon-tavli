@@ -16,7 +16,15 @@ const audio = (): AudioContext | null => {
   return ctx;
 };
 
-const noiseBurst = (ac: AudioContext, at: number, dur: number, freq: number, gain: number) => {
+const noiseBurst = (
+  ac: AudioContext,
+  at: number,
+  dur: number,
+  freq: number,
+  gain: number,
+  type: BiquadFilterType = "bandpass",
+  q = 1.2,
+) => {
   const len = Math.max(1, Math.floor(ac.sampleRate * dur));
   const buf = ac.createBuffer(1, len, ac.sampleRate);
   const data = buf.getChannelData(0);
@@ -24,9 +32,9 @@ const noiseBurst = (ac: AudioContext, at: number, dur: number, freq: number, gai
   const src = ac.createBufferSource();
   src.buffer = buf;
   const filter = ac.createBiquadFilter();
-  filter.type = "bandpass";
+  filter.type = type;
   filter.frequency.value = freq;
-  filter.Q.value = 1.2;
+  filter.Q.value = q;
   const g = ac.createGain();
   g.gain.value = gain;
   src.connect(filter).connect(g).connect(ac.destination);
@@ -53,13 +61,50 @@ const tone = (
   osc.stop(at + dur + 0.02);
 };
 
+/** Short tone whose pitch drops, like a hard object knocking on wood. */
+const knock = (ac: AudioContext, at: number, freq: number, dur: number, gain: number) => {
+  const osc = ac.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, at);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.55, at + dur);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(gain, at);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  osc.connect(g).connect(ac.destination);
+  osc.start(at);
+  osc.stop(at + dur + 0.02);
+};
+
+/** One impact of a die: sharp click, wooden knock and a short resonance of the die itself. */
+const dieImpact = (ac: AudioContext, at: number, amp: number) => {
+  noiseBurst(ac, at, 0.008, 5000, amp * 0.9, "highpass", 0.7);
+  knock(ac, at, 190 + Math.random() * 140, 0.06, amp * 0.55);
+  noiseBurst(ac, at, 0.025, 2600 + Math.random() * 1800, amp * 0.5, "bandpass", 5);
+};
+
+const rand = (a: number, b: number) => a + Math.random() * (b - a);
+
 export const sounds = {
+  /** Two dice landing: bounces with shrinking gaps and loudness, then a short roll-out. */
   dice() {
     const ac = audio();
     if (!ac) return;
-    const t = ac.currentTime;
-    for (let i = 0; i < 7; i++)
-      noiseBurst(ac, t + i * 0.045 + Math.random() * 0.02, 0.04, 2500 + Math.random() * 2500, 0.35);
+    const t = ac.currentTime + 0.02;
+    for (let d = 0; d < 2; d++) {
+      let at = t + d * rand(0.03, 0.07);
+      let gap = rand(0.1, 0.14);
+      let amp = rand(0.5, 0.65);
+      for (let k = 0; k < 6; k++) {
+        dieImpact(ac, at, amp);
+        at += gap * rand(0.85, 1.15);
+        gap *= 0.66;
+        amp *= 0.6;
+      }
+      for (let r = 0; r < 6; r++)
+        noiseBurst(ac, at + r * rand(0.012, 0.022), 0.006, rand(3500, 6000), amp * 0.6, "bandpass", 3);
+    }
+    // the two dice clicking against each other
+    noiseBurst(ac, t + rand(0.15, 0.25), 0.01, 4200, 0.25, "bandpass", 4);
   },
   checker() {
     const ac = audio();

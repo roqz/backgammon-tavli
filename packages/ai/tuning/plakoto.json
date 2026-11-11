@@ -1,0 +1,420 @@
+{
+  "variant": "plakoto",
+  "iteration": 80,
+  "weights": {
+    "offBonus": 0.505,
+    "raceWastage": 0.027,
+    "pinnedBase": 22.876,
+    "pinnedPerPip": 1.646,
+    "pinPointHome": 0.98,
+    "pinPointOuter": 2.151,
+    "pinPointOther": 1.587,
+    "pinStack": 0.018,
+    "manaRisk": 53.476,
+    "pinRiskBase": 6.831,
+    "pinRiskPerPip": 0.528,
+    "pinPrime": 0.664
+  },
+  "history": [
+    {
+      "iteration": 1,
+      "rate": 0.48,
+      "accepted": false
+    },
+    {
+      "iteration": 2,
+      "rate": 0.46,
+      "accepted": false
+    },
+    {
+      "iteration": 3,
+      "rate": 0.42,
+      "accepted": false
+    },
+    {
+      "iteration": 4,
+      "rate": 0.48,
+      "accepted": false
+    },
+    {
+      "iteration": 5,
+      "rate": 0.525,
+      "accepted": false
+    },
+    {
+      "iteration": 6,
+      "rate": 0.55,
+      "accepted": true
+    },
+    {
+      "iteration": 7,
+      "rate": 0.465,
+      "accepted": false
+    },
+    {
+      "iteration": 8,
+      "rate": 0.535,
+      "accepted": true
+    },
+    {
+      "iteration": 9,
+      "rate": 0.555,
+      "accepted": true
+    },
+    {
+      "iteration": 10,
+      "rate": 0.505,
+      "accepted": false
+    },
+    {
+      "iteration": 11,
+      "rate": 0.515,
+      "accepted": false
+    },
+    {
+      "iteration": 12,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 13,
+      "rate": 0.485,
+      "accepted": false
+    },
+    {
+      "iteration": 14,
+      "rate": 0.495,
+      "accepted": false
+    },
+    {
+      "iteration": 15,
+      "rate": 0.52,
+      "accepted": false
+    },
+    {
+      "iteration": 16,
+      "rate": 0.52,
+      "accepted": false
+    },
+    {
+      "iteration": 17,
+      "rate": 0.48,
+      "accepted": false
+    },
+    {
+      "iteration": 18,
+      "rate": 0.455,
+      "accepted": false
+    },
+    {
+      "iteration": 19,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 20,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 21,
+      "rate": 0.485,
+      "accepted": false
+    },
+    {
+      "iteration": 22,
+      "rate": 0.515,
+      "accepted": false
+    },
+    {
+      "iteration": 23,
+      "rate": 0.46,
+      "accepted": false
+    },
+    {
+      "iteration": 24,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 25,
+      "rate": 0.535,
+      "accepted": true
+    },
+    {
+      "iteration": 26,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 27,
+      "rate": 0.545,
+      "accepted": true
+    },
+    {
+      "iteration": 28,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 29,
+      "rate": 0.53,
+      "accepted": false
+    },
+    {
+      "iteration": 30,
+      "rate": 0.535,
+      "accepted": true
+    },
+    {
+      "iteration": 31,
+      "rate": 0.51,
+      "accepted": false
+    },
+    {
+      "iteration": 32,
+      "rate": 0.48,
+      "accepted": false
+    },
+    {
+      "iteration": 33,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 34,
+      "rate": 0.435,
+      "accepted": false
+    },
+    {
+      "iteration": 35,
+      "rate": 0.53,
+      "accepted": false
+    },
+    {
+      "iteration": 36,
+      "rate": 0.52,
+      "accepted": false
+    },
+    {
+      "iteration": 37,
+      "rate": 0.515,
+      "accepted": false
+    },
+    {
+      "iteration": 38,
+      "rate": 0.54,
+      "accepted": true
+    },
+    {
+      "iteration": 39,
+      "rate": 0.525,
+      "accepted": false
+    },
+    {
+      "iteration": 40,
+      "rate": 0.465,
+      "accepted": false
+    },
+    {
+      "iteration": 41,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 42,
+      "rate": 0.43,
+      "accepted": false
+    },
+    {
+      "iteration": 43,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 44,
+      "rate": 0.495,
+      "accepted": false
+    },
+    {
+      "iteration": 45,
+      "rate": 0.46,
+      "accepted": false
+    },
+    {
+      "iteration": 46,
+      "rate": 0.48,
+      "accepted": false
+    },
+    {
+      "iteration": 47,
+      "rate": 0.51,
+      "accepted": false
+    },
+    {
+      "iteration": 48,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 49,
+      "rate": 0.48,
+      "accepted": false
+    },
+    {
+      "iteration": 50,
+      "rate": 0.48,
+      "accepted": false
+    },
+    {
+      "iteration": 51,
+      "rate": 0.49,
+      "accepted": false
+    },
+    {
+      "iteration": 52,
+      "rate": 0.52,
+      "accepted": false
+    },
+    {
+      "iteration": 53,
+      "rate": 0.42,
+      "accepted": false
+    },
+    {
+      "iteration": 54,
+      "rate": 0.52,
+      "accepted": false
+    },
+    {
+      "iteration": 55,
+      "rate": 0.495,
+      "accepted": false
+    },
+    {
+      "iteration": 56,
+      "rate": 0.495,
+      "accepted": false
+    },
+    {
+      "iteration": 57,
+      "rate": 0.49,
+      "accepted": false
+    },
+    {
+      "iteration": 58,
+      "rate": 0.505,
+      "accepted": false
+    },
+    {
+      "iteration": 59,
+      "rate": 0.445,
+      "accepted": false
+    },
+    {
+      "iteration": 60,
+      "rate": 0.45,
+      "accepted": false
+    },
+    {
+      "iteration": 61,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 62,
+      "rate": 0.515,
+      "accepted": false
+    },
+    {
+      "iteration": 63,
+      "rate": 0.47,
+      "accepted": false
+    },
+    {
+      "iteration": 64,
+      "rate": 0.465,
+      "accepted": false
+    },
+    {
+      "iteration": 65,
+      "rate": 0.465,
+      "accepted": false
+    },
+    {
+      "iteration": 66,
+      "rate": 0.44,
+      "accepted": false
+    },
+    {
+      "iteration": 67,
+      "rate": 0.5,
+      "accepted": false
+    },
+    {
+      "iteration": 68,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 69,
+      "rate": 0.475,
+      "accepted": false
+    },
+    {
+      "iteration": 70,
+      "rate": 0.525,
+      "accepted": false
+    },
+    {
+      "iteration": 71,
+      "rate": 0.47,
+      "accepted": false
+    },
+    {
+      "iteration": 72,
+      "rate": 0.53,
+      "accepted": false
+    },
+    {
+      "iteration": 73,
+      "rate": 0.505,
+      "accepted": false
+    },
+    {
+      "iteration": 74,
+      "rate": 0.515,
+      "accepted": false
+    },
+    {
+      "iteration": 75,
+      "rate": 0.45,
+      "accepted": false
+    },
+    {
+      "iteration": 76,
+      "rate": 0.485,
+      "accepted": false
+    },
+    {
+      "iteration": 77,
+      "rate": 0.465,
+      "accepted": false
+    },
+    {
+      "iteration": 78,
+      "rate": 0.54,
+      "accepted": true
+    },
+    {
+      "iteration": 79,
+      "rate": 0.49,
+      "accepted": false
+    },
+    {
+      "iteration": 80,
+      "rate": 0.445,
+      "accepted": false
+    }
+  ]
+}

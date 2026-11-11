@@ -7,6 +7,7 @@ import {
   type GameResult,
   type GameState,
   getVariant,
+  isClosedOut,
   legalMoves,
   type Move,
   type PlayedMove,
@@ -20,6 +21,7 @@ import { Board } from "../board/Board";
 import { THEMES } from "../board/themes";
 import { askBot } from "../bot/client";
 import { humanSeat, useBotDriver } from "../bot/useBotDriver";
+import { BLOCKED_VISIBLE_MS, EventBanner, noPlayDelay } from "../components/EventBanner";
 import { Button, Modal } from "../components/ui";
 import { turnText, useT } from "../i18n";
 import { useGameSounds } from "../sound";
@@ -66,7 +68,7 @@ interface Countdown {
  */
 function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
   const { match, busy, roll, dispatch, opening, players } = useGame();
-  const { autoRoll, autoRollCountdown, autoConfirm, autoConfirmDelay } = useSettings();
+  const { autoRoll, autoRollCountdown, autoConfirm, autoConfirmDelay, dice3d } = useSettings();
   const g = match?.game;
   // A tied opening roll leaves the game state unchanged, so the roll counter re-triggers the effect.
   const openingSeq = opening?.seq;
@@ -88,7 +90,11 @@ function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
     let delay = -1;
     let act: () => void = () => {};
     let countdown: Countdown["kind"] | null = null;
-    if (g.phase === "opening" && autoRoll) {
+    if (isClosedOut(g)) {
+      // Nothing to decide: skip the turn once the "closed out" banner was readable.
+      delay = BLOCKED_VISIBLE_MS;
+      act = () => dispatch({ type: "pass" });
+    } else if (g.phase === "opening" && autoRoll) {
       delay = 700;
       act = roll;
     } else if (g.phase === "rolling" && autoRoll) {
@@ -100,7 +106,7 @@ function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
       }
     } else if (g.phase === "moving" && legalMoves(g).length === 0) {
       act = () => dispatch({ type: "confirm" });
-      if (g.played.length === 0) delay = 1400;
+      if (g.played.length === 0) delay = noPlayDelay(dice3d);
       else if (autoConfirm) {
         delay = autoConfirmDelay ? COUNTDOWN_MS : 600;
         if (autoConfirmDelay) countdown = "confirm";
@@ -121,6 +127,7 @@ function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
     autoRollCountdown,
     autoConfirm,
     autoConfirmDelay,
+    dice3d,
     roll,
     dispatch,
     match?.winner,
@@ -187,7 +194,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
       status = tie ? t.tie : t.openingRoll;
       break;
     case "rolling":
-      status = `${name(g.turn)} ${t.toRoll}`;
+      status = isClosedOut(g) ? `${name(g.turn)}: ${t.evClosedOut}` : `${name(g.turn)} ${t.toRoll}`;
       break;
     case "moving":
       status = noPlay ? `${name(g.turn)}: ${t.noPlay}` : `${name(g.turn)} ${t.toMove}`;
@@ -246,7 +253,9 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
             onMoves={(chain) => void playChain(chain)}
             hint={activeHint}
             hideDice={diceAnimating}
+            diceIntro={!settings.dice3d}
           />
+          <EventBanner />
           {diceAnimating && rollFx && (
             <Suspense fallback={null}>
               <Dice3D
@@ -271,7 +280,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                 {t.openingRoll}
               </Button>
             )}
-            {g.phase === "rolling" && humanToAct && (
+            {g.phase === "rolling" && humanToAct && !isClosedOut(g) && (
               <>
                 {canDouble(g) && (
                   <Button onClick={() => dispatch({ type: "double" })}>
