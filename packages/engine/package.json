@@ -1,0 +1,22 @@
+{
+  "name": "@tavli/engine",
+  "version": "0.1.0",
+  "description": "Pure, deterministic rules engine for Backgammon and Tavli (Portes, Plakoto, Fevga)",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "fast-check": "^4.10.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

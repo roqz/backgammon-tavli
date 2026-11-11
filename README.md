@@ -1,75 +1,43 @@
-# BackgammonTavli
+# Backgammon & Tavli
 
-[![Build Status](https://dev.azure.com/ThomasOstarek/backgammon-tavli/_apis/build/status/roqz.backgammon-tavli)](https://dev.azure.com/ThomasOstarek/backgammon-tavli/_build/latest?definitionId=1)
+Open-source Backgammon and Greek Tavli (Portes, Plakoto, Fevga) for the web – offline-first PWA,
+human vs. human and human vs. computer, with online play planned.
 
-## Development server
+> Status: rewrite in progress. The original 2018 Angular proof of concept lives in [`legacy/`](legacy/).
+> Concept and roadmap (German): [`docs/KONZEPT.md`](docs/KONZEPT.md).
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
+## Structure
 
-## Code scaffolding
+| Path              | Content                                                                         |
+| ----------------- | ------------------------------------------------------------------------------- |
+| `packages/engine` | Pure, deterministic rules engine: all four variants, cube, match play, notation |
+| `legacy/`         | Old Angular 6 / Express implementation (reference only)                         |
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+## Development
 
-## Build
+Requires Node.js ≥ 22 and pnpm (`corepack enable`).
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory. Use the `-prod` flag for a production build.
+```sh
+pnpm install
+pnpm test        # run all tests
+pnpm typecheck
+pnpm lint        # Biome; `pnpm format` to fix
+pnpm check       # lint + typecheck + test (same as CI)
+```
 
-## Running unit tests
+## Engine in a nutshell
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+```ts
+import { applyAction, createGame, legalMoves, rollDice, cryptoRng } from "@tavli/engine";
 
-## Running end-to-end tests
+let game = createGame({ variant: "backgammon" });
+game = applyAction(game, { type: "roll", dice: rollDice(cryptoRng) }); // opening roll
+const moves = legalMoves(game); // legal next single moves for the player on turn
+```
 
-Run `ng e2e` to execute the end-to-end tests via [Protractor](http://www.protractortest.org/).
+Dice are always passed in from outside, so the same engine runs in the browser, in bot workers and on an
+authoritative server.
 
-## Further help
+## License
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI README](https://github.com/angular/angular-cli/blob/master/README.md).
-
-## Open Features
-
-- implementation of backgammon variation Portes
-
-
-- UI to select players and start games 
-- configurable colors and start positions
-
-- computer AI
-
-- statistics
-
-- game history notation at the moment with static board numbers (24 top right to 1 bottom right), must be from players view
-- game history ui
-
-
-- create optional server/ multi-player mode with signal r
-- user accounts for stats
-- 
-- random numbers from server
-- server logic validation 
-- greenkeeper.io
-- Play Game from history 
-
-## Implemented
-- drag and drop for touch devices
-- drag and drop for checker movements
-- Game history with print to official backgammon notation 
-- Checker Move Animations
-- implementation of state handling with ngrx
-- implement gammon and backgammon / points
-- bug in getpossiblemoves calculation, needs unit tests
-- implementation of missing backgammon game rules (es müssen so viele Züge wie möglich gespielt werden, wenn nur einer der beiden geht aber beide gehen dann der höhere)
-- Svg Responsiveness with viewbox
-- implement doubler cube
-- rolling dice must be an active action to give player the chance to double
-- pip counts http://www.bkgm.com/articles/Driver/GuideToCountingPips/
-- ui should get data only from ngrx store
-- revert move, confirmation of turn end 
-- fix checker animation after revert move action
-- add option to auto roll dices and to auto finish turn after x seconds
-- show dice condition bugfixes
-- game over endless loop fix
-- checker animation bugfixes -> sometimes wrong element is moved
-- implementation of backgammon variation Tavli
-- implementation of backgammon variation Plakato
-- add routing 
+[AGPL-3.0-or-later](LICENSE)
