@@ -8,3 +8,5 @@ coverage/
 .env.*
 !.env.example
 packages/ai/tuning/*.log
+test-results/
+playwright-report/

@@ -211,9 +211,15 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Höchstens 3 gewertete Matches pro Spielerpaar in 24 Stunden, weitere sind ungewertet
 - Abzeichen „Ungewertet“ mit Grund im Spiel und im Ergebnis; Regeln im Handbuch beschrieben
 
+### Weitere Punkte ✅
+- Nachweisbar faire Würfel (Commit-Reveal mit Client-Seeds, HMAC-SHA256, Prüfung im Browser)
+- Zugzeit-Uhr korrekt (Zeitbasis), WebSocket-Nachrichtenlimit, Passwort ändern
+- Handy im Hochformat: um 90° gedrehtes Brett mit ~45 % größeren Steinen, kompakte Kopfzeile
+- Playwright-E2E-Tests im Repo (lokales Spiel, Einstellungen/Regeln, Wiederholung, Online mit Einladung/Aufgabe/Würfelprüfung/Rangliste, Konto auf Zweitgerät, Hochformat) und als CI-Job
+
 ### Offen / nächste Schritte Online
 
 - Weitere Fair-Play-Signale: Zuggenauigkeit im Vergleich zum Bot (Bot-Nutzung), auffällige Aufgabe-Muster, Melden-Funktion
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs), Passwort-ändern-UI
-- Nachweisbar faire Würfel (Commit-Reveal), Rate-Limits für WebSocket-Nachrichten, Admin/Moderation
+- Admin/Moderation
 - Revanche-Button, Chat/Emotes, Turniere

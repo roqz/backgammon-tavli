@@ -8,14 +8,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "typecheck": "tsc -p tsconfig.json && tsc -p e2e/tsconfig.json",
+    "test": "vitest run",
+    "e2e": "playwright test"
   },
   "dependencies": {
-    "@tavli/protocol": "workspace:*",
     "@react-three/fiber": "^9.8.2",
     "@tavli/ai": "workspace:*",
     "@tavli/engine": "workspace:*",
+    "@tavli/protocol": "workspace:*",
     "motion": "^14.12.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -23,7 +24,9 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.0",
     "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.187.0",

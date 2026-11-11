@@ -26,6 +26,8 @@ pnpm test        # run all tests
 pnpm typecheck
 pnpm lint        # Biome; `pnpm format` to fix
 pnpm check       # lint + typecheck + test (same as CI)
+pnpm --filter @tavli/server build && pnpm --filter @tavli/web build
+pnpm --filter @tavli/web e2e   # Playwright (PW_CHANNEL=msedge to use an installed browser)
 ```
 
 ## Engine in a nutshell
