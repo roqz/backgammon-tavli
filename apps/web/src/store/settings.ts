@@ -9,6 +9,10 @@ export interface Settings {
   showNumbers: boolean;
   autoRoll: boolean;
   autoConfirm: boolean;
+  /** When doubling is possible: roll automatically after a cancellable countdown. */
+  autoRollCountdown: boolean;
+  /** Auto-confirm only after a cancellable countdown. */
+  autoConfirmDelay: boolean;
   sound: boolean;
   /** Animated 3D dice throw (loads three.js on demand). */
   dice3d: boolean;
@@ -29,7 +33,9 @@ export const useSettings = create<SettingsStore>()(
       showPips: true,
       showNumbers: true,
       autoRoll: true,
-      autoConfirm: false,
+      autoConfirm: true,
+      autoRollCountdown: true,
+      autoConfirmDelay: true,
       sound: true,
       dice3d: true,
       update: (patch) => set(patch),

@@ -52,34 +52,96 @@ function Checker({ player }: { player: Player }) {
   );
 }
 
-/** Automatic actions: auto-roll, passing on "no play", optional auto-confirm. */
-function useAutoActions() {
+const COUNTDOWN_MS = 3000;
+
+interface Countdown {
+  readonly kind: "roll" | "confirm";
+  readonly seconds: number;
+}
+
+/**
+ * Automatic actions for human players: opening roll, auto-roll (immediately, or after a
+ * cancellable countdown when doubling is possible), passing on "no play" and auto-confirm
+ * (optionally after a cancellable countdown).
+ */
+function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
   const { match, busy, roll, dispatch, opening, players } = useGame();
-  const { autoRoll, autoConfirm } = useSettings();
+  const { autoRoll, autoRollCountdown, autoConfirm, autoConfirmDelay } = useSettings();
   const g = match?.game;
   // A tied opening roll leaves the game state unchanged, so the roll counter re-triggers the effect.
   const openingSeq = opening?.seq;
   // Computer players act on their own (see useBotDriver).
   const actor = g ? playerToAct(g) : null;
   const humanTurn = actor !== null && players[actor].kind === "human";
+  const [cancelledFor, setCancelledFor] = useState<GameState | null>(null);
+  const [pending, setPending] = useState<{ kind: Countdown["kind"]; at: number; game: GameState } | null>(
+    null,
+  );
+  const [now, setNow] = useState(() => Date.now());
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: openingSeq is an intentional trigger
   useEffect(() => {
+    setPending(null);
     if (!g || busy || match?.winner !== null) return;
     if (g.phase !== "opening" && !humanTurn) return;
+    if (cancelledFor === g) return;
     let delay = -1;
     let act: () => void = () => {};
-    if ((g.phase === "opening" || (g.phase === "rolling" && !canDouble(g))) && autoRoll) {
-      delay = g.phase === "opening" ? 700 : 450;
+    let countdown: Countdown["kind"] | null = null;
+    if (g.phase === "opening" && autoRoll) {
+      delay = 700;
       act = roll;
+    } else if (g.phase === "rolling" && autoRoll) {
+      act = roll;
+      if (!canDouble(g)) delay = 450;
+      else if (autoRollCountdown) {
+        delay = COUNTDOWN_MS;
+        countdown = "roll";
+      }
     } else if (g.phase === "moving" && legalMoves(g).length === 0) {
-      if (g.played.length === 0) delay = 1400;
-      else if (autoConfirm) delay = 600;
       act = () => dispatch({ type: "confirm" });
+      if (g.played.length === 0) delay = 1400;
+      else if (autoConfirm) {
+        delay = autoConfirmDelay ? COUNTDOWN_MS : 600;
+        if (autoConfirmDelay) countdown = "confirm";
+      }
     }
     if (delay < 0) return;
+    if (countdown) {
+      const start = Date.now();
+      setNow(start);
+      setPending({ kind: countdown, at: start + delay, game: g });
+    }
     const id = setTimeout(act, delay);
     return () => clearTimeout(id);
-  }, [g, busy, autoRoll, autoConfirm, roll, dispatch, match?.winner, openingSeq, humanTurn]);
+  }, [
+    g,
+    busy,
+    autoRoll,
+    autoRollCountdown,
+    autoConfirm,
+    autoConfirmDelay,
+    roll,
+    dispatch,
+    match?.winner,
+    openingSeq,
+    humanTurn,
+    cancelledFor,
+  ]);
+
+  const active = pending !== null && pending.game === g && cancelledFor !== g;
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 200);
+    return () => clearInterval(id);
+  }, [active]);
+
+  return {
+    countdown: active
+      ? { kind: pending.kind, seconds: Math.max(1, Math.ceil((pending.at - now) / 1000)) }
+      : null,
+    cancel: () => setCancelledFor(g ?? null),
+  };
 }
 
 export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay: (r: GameRecord) => void }) {
@@ -88,7 +150,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
   const { match, players, layout, opening, busy, roll, dispatch, playChain, leave } = useGame();
   const [resigning, setResigning] = useState(false);
   const historyRef = useRef<HTMLOListElement>(null);
-  useAutoActions();
+  const { countdown, cancel: cancelCountdown } = useAutoActions();
   useGameSounds();
   const thinking = useBotDriver();
   const rollFx = useGame((s) => s.rollFx);
@@ -218,7 +280,13 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                 )}
                 <Button variant="primary" onClick={roll}>
                   {t.roll}
+                  {countdown?.kind === "roll" && <CountdownBadge seconds={countdown.seconds} />}
                 </Button>
+                {countdown?.kind === "roll" && (
+                  <Button variant="ghost" onClick={cancelCountdown}>
+                    ✕ {t.cancel}
+                  </Button>
+                )}
               </>
             )}
             {g.phase === "moving" && humanToAct && (
@@ -239,7 +307,13 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                   onClick={() => dispatch({ type: "confirm" })}
                 >
                   {t.confirm}
+                  {countdown?.kind === "confirm" && <CountdownBadge seconds={countdown.seconds} />}
                 </Button>
+                {countdown?.kind === "confirm" && (
+                  <Button variant="ghost" onClick={cancelCountdown}>
+                    ✕ {t.cancel}
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -385,6 +459,19 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
         </Modal>
       )}
     </div>
+  );
+}
+
+/** Seconds left until an automatic action, shown inside its button. */
+function CountdownBadge({ seconds }: { seconds: number }) {
+  const t = useT();
+  return (
+    <span
+      className="ml-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-stone-950/25 px-1.5 text-sm tabular-nums"
+      title={`${t.autoIn} ${seconds} s`}
+    >
+      {seconds}
+    </span>
   );
 }
 

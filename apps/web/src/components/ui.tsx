@@ -63,18 +63,26 @@ export function Toggle({
   checked,
   onChange,
   label,
+  disabled = false,
+  sub = false,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
+  disabled?: boolean;
+  /** Indented sub-option of the toggle above. */
+  sub?: boolean;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 py-2">
+    <label
+      className={`flex cursor-pointer items-center justify-between gap-4 py-2 ${sub ? "pl-6 text-sm" : ""} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+    >
       <span className="text-stone-200">{label}</span>
       <input
         type="checkbox"
         className="h-5 w-5 accent-amber-500"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
     </label>

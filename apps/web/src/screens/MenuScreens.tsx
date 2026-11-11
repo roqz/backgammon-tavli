@@ -212,12 +212,26 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
             onChange={(showNumbers) => s.update({ showNumbers })}
           />
           <Toggle label={t.autoRoll} checked={s.autoRoll} onChange={(autoRoll) => s.update({ autoRoll })} />
+          <Toggle
+            sub
+            disabled={!s.autoRoll}
+            label={t.autoRollCountdown}
+            checked={s.autoRollCountdown}
+            onChange={(autoRollCountdown) => s.update({ autoRollCountdown })}
+          />
           <Toggle label={t.sound} checked={s.sound} onChange={(sound) => s.update({ sound })} />
           <Toggle label={t.dice3d} checked={s.dice3d} onChange={(dice3d) => s.update({ dice3d })} />
           <Toggle
             label={t.autoConfirm}
             checked={s.autoConfirm}
             onChange={(autoConfirm) => s.update({ autoConfirm })}
+          />
+          <Toggle
+            sub
+            disabled={!s.autoConfirm}
+            label={t.autoConfirmDelay}
+            checked={s.autoConfirmDelay}
+            onChange={(autoConfirmDelay) => s.update({ autoConfirmDelay })}
           />
         </div>
       </Card>
