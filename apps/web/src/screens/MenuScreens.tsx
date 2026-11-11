@@ -1,12 +1,11 @@
 import { BOT_LEVELS, type BotLevel } from "@tavli/ai";
 import type { MatchConfig, MatchVariant } from "@tavli/engine";
 import { useState } from "react";
-import { Button, Card, Segmented, Toggle } from "../components/ui";
+import { Button, Card, Segmented } from "../components/ui";
 import { useT } from "../i18n";
-import { disconnect } from "../online/client";
 import { useOnline } from "../online/store";
 import { type PlayerInfo, useGame } from "../store/game";
-import { useSettings } from "../store/settings";
+import { SettingsPanel } from "./SettingsPanel";
 
 export function Menu({
   onNew,
@@ -191,35 +190,8 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   );
 }
 
-function ServerUrlField() {
-  const t = useT();
-  const { serverUrl, set } = useOnline();
-  const [value, setValue] = useState(serverUrl);
-  return (
-    <Card className="order-last flex flex-col gap-2">
-      <label className="flex flex-col gap-1 text-sm text-stone-400">
-        {t.serverUrl}
-        <input
-          className="rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 font-mono text-sm text-stone-100 outline-none focus:border-amber-400"
-          value={value}
-          placeholder="https://tavli.example.com"
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={() => {
-            const url = value.trim().replace(/\/$/, "");
-            if (url !== serverUrl) {
-              disconnect();
-              set({ serverUrl: url, profile: null });
-            }
-          }}
-        />
-      </label>
-    </Card>
-  );
-}
-
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const t = useT();
-  const s = useSettings();
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center gap-2">
@@ -228,57 +200,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         </Button>
         <h1 className="text-2xl font-bold text-amber-100">{t.settings}</h1>
       </div>
-      <ServerUrlField />
-      <Card className="flex flex-col gap-5">
-        <Segmented
-          label={t.style}
-          value={s.style}
-          onChange={(style) => s.update({ style })}
-          options={[
-            { value: "classic", label: t.classic },
-            { value: "modern", label: t.modern },
-          ]}
-        />
-        <Segmented
-          label={t.language}
-          value={s.lang}
-          onChange={(lang) => s.update({ lang })}
-          options={[
-            { value: "de", label: "Deutsch" },
-            { value: "en", label: "English" },
-          ]}
-        />
-        <div className="divide-y divide-stone-800">
-          <Toggle label={t.showPips} checked={s.showPips} onChange={(showPips) => s.update({ showPips })} />
-          <Toggle
-            label={t.showNumbers}
-            checked={s.showNumbers}
-            onChange={(showNumbers) => s.update({ showNumbers })}
-          />
-          <Toggle label={t.autoRoll} checked={s.autoRoll} onChange={(autoRoll) => s.update({ autoRoll })} />
-          <Toggle
-            sub
-            disabled={!s.autoRoll}
-            label={t.autoRollCountdown}
-            checked={s.autoRollCountdown}
-            onChange={(autoRollCountdown) => s.update({ autoRollCountdown })}
-          />
-          <Toggle label={t.sound} checked={s.sound} onChange={(sound) => s.update({ sound })} />
-          <Toggle label={t.dice3d} checked={s.dice3d} onChange={(dice3d) => s.update({ dice3d })} />
-          <Toggle
-            label={t.autoConfirm}
-            checked={s.autoConfirm}
-            onChange={(autoConfirm) => s.update({ autoConfirm })}
-          />
-          <Toggle
-            sub
-            disabled={!s.autoConfirm}
-            label={t.autoConfirmDelay}
-            checked={s.autoConfirmDelay}
-            onChange={(autoConfirmDelay) => s.update({ autoConfirmDelay })}
-          />
-        </div>
-      </Card>
+      <SettingsPanel />
     </div>
   );
 }

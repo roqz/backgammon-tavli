@@ -263,8 +263,12 @@ export const useGame = create<GameStore>()(
         s.mode === "online"
           ? { match: s.savedLocal?.match ?? null, players: s.savedLocal?.players ?? s.players }
           : { match: s.match, players: s.players },
-      onRehydrateStorage: () => (state) => {
-        if (state?.match) useGame.setState({ layout: layoutFromBoard(state.match.game.board) });
+      // Rebuild the checker identities from the restored board while merging (the store itself
+      // is not available yet during synchronous hydration).
+      merge: (persisted, current) => {
+        const p = persisted as Partial<GameStore> | undefined;
+        const match = p?.match ?? null;
+        return { ...current, ...p, layout: match ? layoutFromBoard(match.game.board) : {} };
       },
     },
   ),

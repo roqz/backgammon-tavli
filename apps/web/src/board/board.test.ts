@@ -2,6 +2,7 @@ import {
   applyAction,
   createGame,
   type GameState,
+  getVariant,
   legalMoves,
   type Player,
   rollDice,
@@ -9,7 +10,7 @@ import {
   type VariantId,
 } from "@tavli/engine";
 import { describe, expect, it } from "vitest";
-import { checkerPos, pointX, slotAt } from "./geometry";
+import { checkerPos, makeView, pointX, slotAt } from "./geometry";
 import { targetsFrom } from "./interaction";
 import { applyMoveToLayout, layoutFromBoard, layoutMatches, stackAt, undoMoveInLayout } from "./layout";
 
@@ -90,5 +91,26 @@ describe("layout tracking", () => {
       pinned: g.board.pinned.map((x, i) => (i === 20 ? 1 : x)),
     });
     expect(stackAt(layout, 20).map((id) => id[0])).toEqual(["b", "w"]);
+  });
+});
+
+describe("perspective", () => {
+  for (const variant of ["backgammon", "plakoto", "fevga"] as const) {
+    it(`${variant}: black sees its start top right and its home bottom right`, () => {
+      const rules = getVariant(variant);
+      const view = makeView(rules.paths, 1);
+      const start = rules.paths[1][0]!;
+      const lastHome = rules.paths[1][23]!;
+      expect(view.toScreen(start)).toBe(23); // white's 24-point position: top right
+      expect(view.toScreen(lastHome)).toBe(0); // bottom right
+      for (let abs = 0; abs < 24; abs++) expect(view.fromScreen(view.toScreen(abs))).toBe(abs);
+      expect(view.toScreen("off1")).toBe("off0");
+      expect(view.side(1)).toBe(0);
+    });
+  }
+  it("white's view is the identity", () => {
+    const view = makeView([[], []], 0);
+    expect(view.toScreen(5)).toBe(5);
+    expect(view.toScreen("bar0")).toBe("bar0");
   });
 });

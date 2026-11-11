@@ -59,33 +59,58 @@ export function Segmented<T extends string | number>({
   );
 }
 
+/** Accessible on/off switch with label and optional description. */
 export function Toggle({
   checked,
   onChange,
   label,
+  description,
   disabled = false,
   sub = false,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
+  description?: string;
   disabled?: boolean;
   /** Indented sub-option of the toggle above. */
   sub?: boolean;
 }) {
   return (
-    <label
-      className={`flex cursor-pointer items-center justify-between gap-4 py-2 ${sub ? "pl-6 text-sm" : ""} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+    <div
+      className={`flex items-center justify-between gap-4 py-3 ${sub ? "ml-3 border-l-2 border-stone-800 pl-4" : ""} ${disabled ? "opacity-40" : ""}`}
     >
-      <span className="text-stone-200">{label}</span>
-      <input
-        type="checkbox"
-        className="h-5 w-5 accent-amber-500"
-        checked={checked}
+      <div className="min-w-0">
+        <div className={`text-stone-100 ${sub ? "text-sm" : ""}`}>{label}</div>
+        {description && <div className="mt-0.5 text-xs leading-snug text-stone-500">{description}</div>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-    </label>
+        onClick={() => onChange(!checked)}
+        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 disabled:cursor-not-allowed ${checked ? "bg-amber-500" : "bg-stone-700"}`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : ""}`}
+        />
+      </button>
+    </div>
+  );
+}
+
+/** Titled group of settings. */
+export function Section({ title, icon, children }: { title: string; icon: string; children: ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-stone-800 bg-stone-900/70 px-5 py-4">
+      <h2 className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-stone-400">
+        <span aria-hidden>{icon}</span>
+        {title}
+      </h2>
+      <div className="divide-y divide-stone-800/80">{children}</div>
+    </section>
   );
 }
 

@@ -83,6 +83,7 @@ export function ReplayScreen({ record, onBack }: { record: GameRecord; onBack: (
             interactive={false}
             openingDice={null}
             numbersFor={seat ?? 0}
+            viewer={seat ?? 0}
             onMoves={() => {}}
           />
         </div>

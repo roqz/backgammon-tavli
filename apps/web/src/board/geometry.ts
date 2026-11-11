@@ -95,3 +95,38 @@ export const slotAt = (x: number, y: number): Slot | null => {
   if (top) return col < 6 ? 12 + col : 18 + (col - 6);
   return col < 6 ? 11 - col : 5 - (col - 6);
 };
+
+/**
+ * Perspective of the viewer: maps logical slots (engine point indices, per-player bar/off) to
+ * the physical slots they are drawn at, so that the viewer's starting point is always top right
+ * and their home board bottom right. For white this is the identity; for black it is a vertical
+ * mirror (opposite directions) or a 180° rotation (Fevga, same direction).
+ */
+export interface View {
+  readonly viewer: Player;
+  /** logical -> physical */
+  readonly toScreen: (s: Slot) => Slot;
+  /** physical -> logical */
+  readonly fromScreen: (s: Slot) => Slot;
+  /** Which physical side a player sits on: 0 = bottom/right half (viewer), 1 = top/left. */
+  readonly side: (p: Player) => Player;
+}
+
+export const makeView = (paths: readonly [readonly number[], readonly number[]], viewer: Player): View => {
+  if (viewer === 0) return { viewer, toScreen: (s) => s, fromScreen: (s) => s, side: (p) => p };
+  const toPhys = new Array<number>(24);
+  const toLogical = new Array<number>(24);
+  for (let abs = 0; abs < 24; abs++) {
+    // Draw the viewer's path where white's path is drawn.
+    const phys = 23 - paths[viewer].indexOf(abs);
+    toPhys[abs] = phys;
+    toLogical[phys] = abs;
+  }
+  const swap: Record<string, Slot> = { bar0: "bar1", bar1: "bar0", off0: "off1", off1: "off0" };
+  return {
+    viewer,
+    toScreen: (s) => (typeof s === "number" ? toPhys[s]! : swap[s]!),
+    fromScreen: (s) => (typeof s === "number" ? toLogical[s]! : swap[s]!),
+    side: (p) => (p === 0 ? 1 : 0),
+  };
+};

@@ -22,6 +22,7 @@ import {
   isTop,
   LEFT_X,
   MID_Y,
+  makeView,
   OFF_CHIP_H,
   offSlot,
   POINT_W,
@@ -34,6 +35,7 @@ import {
   TOP_Y,
   TRAY_W,
   TRAY_X,
+  type View,
   WIDTH,
 } from "./geometry";
 import { fromKey, movableSources, targetsFrom, toKey } from "./interaction";
@@ -57,6 +59,8 @@ export interface BoardProps {
   readonly hideDice?: boolean;
   /** Animate the 2D dice in; off when the 3D throw already showed them landing. */
   readonly diceIntro?: boolean;
+  /** Perspective: this player's home board is drawn bottom right. */
+  readonly viewer?: Player;
 }
 
 export interface OpeningRoll {
@@ -89,8 +93,12 @@ export function Board({
   hint,
   hideDice,
   diceIntro = true,
+  viewer = 0,
 }: BoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const rules = getVariant(state.variant);
+  const view = useMemo(() => makeView(rules.paths, viewer), [rules, viewer]);
+  const screen = view.toScreen;
   const [selected, setSelected] = useState<From | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const turn = state.turn;
@@ -124,8 +132,9 @@ export function Board({
   /** Interprets an SVG coordinate as a move source or destination for the player on turn. */
   const locate = (pos: Pos): { from: From | null; to: To | null } => {
     if (pos.x >= BAR_X && pos.x <= BAR_X + BAR_W) return { from: "bar", to: null };
-    const slot = slotAt(pos.x, pos.y);
-    if (slot === null) return { from: null, to: null };
+    const phys = slotAt(pos.x, pos.y);
+    if (phys === null) return { from: null, to: null };
+    const slot = view.fromScreen(phys);
     if (typeof slot === "number") return { from: slot, to: slot };
     return { from: null, to: slot === offSlot(turn) ? "off" : null };
   };
@@ -175,7 +184,6 @@ export function Board({
   };
 
   // ---- rendering ---------------------------------------------------------------------------
-  const rules = getVariant(state.variant);
   const checkers: { id: string; slot: Slot; i: number; n: number }[] = [];
   for (const [k, ids] of Object.entries(layout)) {
     const slot: Slot = /^\d+$/.test(k) ? Number(k) : (k as Slot);
@@ -226,8 +234,8 @@ export function Board({
       <rect x={TRAY_X} y={MID_Y + 6} width={TRAY_W} height={BOTTOM_Y - MID_Y - 6} rx={6} fill={theme.tray} />
 
       {/* points */}
-      {POINT_INDICES.map((abs) => (
-        <path key={`pt${abs}`} d={pointPath(abs)} fill={abs % 2 === 0 ? theme.pointA : theme.pointB} />
+      {POINT_INDICES.map((phys) => (
+        <path key={`pt${phys}`} d={pointPath(phys)} fill={phys % 2 === 0 ? theme.pointA : theme.pointB} />
       ))}
 
       {/* highlights */}
@@ -235,7 +243,7 @@ export function Board({
         targetPoints.has(String(abs)) ? (
           <path
             key={`hl${abs}`}
-            d={pointPath(abs)}
+            d={pointPath(screen(abs) as number)}
             fill={theme.highlight}
             opacity={0.55}
             className="animate-pulse"
@@ -243,12 +251,12 @@ export function Board({
         ) : null,
       )}
       {typeof activeSlot === "number" && (
-        <path d={pointPath(activeSlot)} fill={theme.selected} opacity={0.45} />
+        <path d={pointPath(screen(activeSlot) as number)} fill={theme.selected} opacity={0.45} />
       )}
       {targetPoints.has("off") && (
         <rect
           x={TRAY_X}
-          y={turn === 0 ? MID_Y + 6 : TOP_Y}
+          y={view.side(turn) === 0 ? MID_Y + 6 : TOP_Y}
           width={TRAY_W}
           height={BOTTOM_Y - MID_Y - 6}
           rx={6}
@@ -260,17 +268,17 @@ export function Board({
 
       {/* point numbers */}
       {numbersFor !== null &&
-        POINT_INDICES.map((abs) => (
+        POINT_INDICES.map((phys) => (
           <text
-            key={`n${abs}`}
-            x={pointX(abs)}
-            y={isTop(abs) ? TOP_Y - 4 : BOTTOM_Y + 13}
+            key={`n${phys}`}
+            x={pointX(phys)}
+            y={isTop(phys) ? TOP_Y - 4 : BOTTOM_Y + 13}
             textAnchor="middle"
             fontSize={12}
             fill={theme.label}
             opacity={0.85}
           >
-            {ownPoint(rules, numbersFor, abs)}
+            {ownPoint(rules, numbersFor, view.fromScreen(phys) as number)}
           </text>
         ))}
 
@@ -280,7 +288,7 @@ export function Board({
         [...sources].map((k) => {
           const slot: Slot = k === "bar" ? barSlot(turn) : Number(k);
           const n = stackAt(layout, slot).length;
-          const top = checkerPos(slot, n - 1, n);
+          const top = checkerPos(screen(slot), n - 1, n);
           return (
             <circle
               key={`src${k}`}
@@ -301,7 +309,7 @@ export function Board({
         const owner = checkerOwner(id);
         const look = theme.checkers[owner];
         const isDragged = drag?.id === id && drag.moved;
-        const pos = isDragged ? drag.cur : checkerPos(slot, i, n);
+        const pos = isDragged ? drag.cur : checkerPos(screen(slot), i, n);
         const off = slot === "off0" || slot === "off1";
         const pinnedBelow =
           typeof slot === "number" && i === 0 && n > 1 && state.board.pinned[slot] === owner;
@@ -347,12 +355,13 @@ export function Board({
               theme={theme}
               openingDice={openingDice}
               intro={diceIntro}
+              view={view}
             />
           )}
       </AnimatePresence>
-      <CubeView state={state} theme={theme} />
+      <CubeView state={state} theme={theme} view={view} />
       {hint && hint.length > 0 && (
-        <HintArrows moves={hint} layout={layout} player={turn} color={theme.highlight} />
+        <HintArrows moves={hint} layout={layout} player={turn} color={theme.highlight} view={view} />
       )}
     </svg>
   );
@@ -448,13 +457,15 @@ function DiceLayer({
   theme,
   openingDice,
   intro,
+  view,
 }: {
   state: GameState;
   theme: BoardTheme;
   openingDice: OpeningRoll | null;
   intro: boolean;
+  view: View;
 }) {
-  const halfCenter = (p: Player) => (p === 0 ? RIGHT_X + 3 * POINT_W : LEFT_X + 3 * POINT_W);
+  const halfCenter = (p: Player) => (view.side(p) === 0 ? RIGHT_X + 3 * POINT_W : LEFT_X + 3 * POINT_W);
   if (state.phase === "opening" && openingDice) {
     return (
       <g key={`open${openingDice.seq}`}>
@@ -507,14 +518,14 @@ function DiceLayer({
   );
 }
 
-function CubeView({ state, theme }: { state: GameState; theme: BoardTheme }) {
+function CubeView({ state, theme, view }: { state: GameState; theme: BoardTheme; view: View }) {
   // Tavli variants have no doubling cube by rule; in Backgammon it is always shown,
   // greyed out while unavailable (1-point match, Crawford game).
   if (!getVariant(state.variant).cube) return null;
   const { value, owner, enabled } = state.cube;
   const size = 44;
   const x = BAR_X + BAR_W / 2;
-  const y = owner === null ? MID_Y : owner === 0 ? BOTTOM_Y - size / 2 - 4 : TOP_Y + size / 2 + 4;
+  const y = owner === null ? MID_Y : view.side(owner) === 0 ? BOTTOM_Y - size / 2 - 4 : TOP_Y + size / 2 + 4;
   const offered = state.phase === "cube-offered";
   return (
     <motion.g
@@ -552,29 +563,31 @@ function HintArrows({
   layout,
   player,
   color,
+  view,
 }: {
   moves: readonly Move[];
   layout: Layout;
   player: Player;
   color: string;
+  view: View;
 }) {
   const counts = new Map<string, number>();
   const sizeOf = (slot: Slot) => counts.get(String(slot)) ?? stackAt(layout, slot).length;
   const offPos: Pos = {
     x: TRAY_X + TRAY_W / 2,
-    y: player === 0 ? (MID_Y + BOTTOM_Y) / 2 : (TOP_Y + MID_Y) / 2,
+    y: view.side(player) === 0 ? (MID_Y + BOTTOM_Y) / 2 : (TOP_Y + MID_Y) / 2,
   };
   return (
     <g style={{ pointerEvents: "none" }} opacity={0.9}>
       {moves.map((m, i) => {
         const fromSlot = slotOfFrom(player, m.from);
         const n = sizeOf(fromSlot);
-        const a = checkerPos(fromSlot, Math.max(0, n - 1), Math.max(1, n));
+        const a = checkerPos(view.toScreen(fromSlot), Math.max(0, n - 1), Math.max(1, n));
         counts.set(String(fromSlot), Math.max(0, n - 1));
         let b = offPos;
         if (m.to !== "off") {
           const k = sizeOf(m.to);
-          b = checkerPos(m.to, k, k + 1);
+          b = checkerPos(view.toScreen(m.to), k, k + 1);
           counts.set(String(m.to), k + 1);
         }
         return (

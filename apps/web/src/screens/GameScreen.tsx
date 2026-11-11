@@ -18,6 +18,7 @@ import {
 } from "@tavli/engine";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Board } from "../board/Board";
+import { layoutFromBoard, layoutMatches } from "../board/layout";
 import { THEMES } from "../board/themes";
 import { askBot } from "../bot/client";
 import { humanSeat, useBotDriver } from "../bot/useBotDriver";
@@ -30,6 +31,7 @@ import { useGameSounds } from "../sound";
 import { type GameRecord, useArchive } from "../store/archive";
 import { useGame } from "../store/game";
 import { useSettings } from "../store/settings";
+import { SettingsDrawer } from "./SettingsPanel";
 
 /** three.js is only loaded when the 3D dice are used. */
 const Dice3D = lazy(() => import("../dice3d/Dice3D"));
@@ -166,6 +168,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
   const onlineInfo = useOnline((s) => s.match);
   const onlineError = useOnline((s) => s.lastError);
   const [forfeiting, setForfeiting] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // Errors from the server fade out after a few seconds.
   useEffect(() => {
     if (!onlineError) return;
@@ -192,6 +195,8 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
 
   if (!match) return null;
   const g = match.game;
+  // Defensive: never draw a stale checker layout (e.g. after restoring a saved game).
+  const safeLayout = layoutMatches(layout, g.board) ? layout : layoutFromBoard(g.board);
   const rules = getVariant(g.variant);
   const actor = playerToAct(g);
   const humanToAct = actor !== null && players[actor].kind === "human";
@@ -251,21 +256,30 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
               <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-300">{t.crawford}</span>
             )}
           </div>
-          {online && onlineInfo ? (
-            <OnlineStatus
-              deadline={onlineInfo.end ? null : onlineInfo.deadline}
-              opponentConnected={onlineInfo.opponentConnected}
-              graceUntil={onlineInfo.opponentGraceUntil}
-            />
-          ) : (
-            <div className="w-16" />
-          )}
+          <div className="flex items-center gap-2">
+            {online && onlineInfo && (
+              <OnlineStatus
+                deadline={onlineInfo.end ? null : onlineInfo.deadline}
+                opponentConnected={onlineInfo.opponentConnected}
+                graceUntil={onlineInfo.opponentGraceUntil}
+              />
+            )}
+            <Button
+              variant="ghost"
+              className="px-3 py-1.5 text-lg"
+              onClick={() => setSettingsOpen(true)}
+              aria-label={t.settings}
+              title={t.settings}
+            >
+              ⚙
+            </Button>
+          </div>
         </div>
 
         <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
           <Board
             state={g}
-            layout={layout}
+            layout={safeLayout}
             theme={THEMES[settings.style]}
             interactive={interactive}
             openingDice={opening}
@@ -273,13 +287,18 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
             onMoves={(chain) => void playChain(chain)}
             hint={activeHint}
             hideDice={diceAnimating}
+            viewer={seat ?? 0}
             diceIntro={!settings.dice3d}
           />
           <EventBanner />
           {diceAnimating && rollFx && (
             <Suspense fallback={null}>
               <Dice3D
-                roll={rollFx}
+                roll={
+                  seat === 1
+                    ? { ...rollFx, dice: rollFx.dice.map((d) => ({ ...d, half: d.half === 0 ? 1 : 0 })) }
+                    : rollFx
+                }
                 faceColor={THEMES[settings.style].die.fill}
                 pipColor={THEMES[settings.style].die.pip}
                 onDone={setDoneSeq}
@@ -564,6 +583,7 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
           </Button>
         </Modal>
       )}
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
