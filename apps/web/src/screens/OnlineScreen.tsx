@@ -23,6 +23,7 @@ import {
 } from "../online/client";
 import { useOnline } from "../online/store";
 import type { GameRecord } from "../store/archive";
+import { ClubsPanel } from "./ClubsPanel";
 import { CorrPanel } from "./CorrScreens";
 import { FriendsPanel, LivePanel } from "./FriendsPanel";
 import { AuthForm, PlayerSheet, ProfileTab } from "./OnlineProfile";
@@ -273,7 +274,7 @@ export function OnlineScreen({
   const t = useT();
   const { profile, serverUrl } = useOnline();
   const [tab, setTab] = useState<
-    "play" | "friends" | "corr" | "live" | "tournaments" | "ranking" | "profile"
+    "play" | "friends" | "corr" | "clubs" | "live" | "tournaments" | "ranking" | "profile"
   >(tournament ? "tournaments" : "play");
 
   // Connect and refresh account data once per profile (not on every profile field change).
@@ -313,6 +314,7 @@ export function OnlineScreen({
               { value: "play", label: t.playTab },
               { value: "friends", label: <FriendsTabLabel /> },
               { value: "corr", label: t.corrTab },
+              { value: "clubs", label: t.clubsTab },
               { value: "live", label: t.liveTab },
               { value: "tournaments", label: t.tournamentsTab },
               { value: "ranking", label: t.leaderboard },
@@ -323,6 +325,7 @@ export function OnlineScreen({
           {tab === "friends" && <FriendsPanel onWatch={onWatch} />}
           {tab === "live" && <LivePanel onWatch={onWatch} />}
           {tab === "corr" && <CorrPanel onOpen={onCorr} />}
+          {tab === "clubs" && <ClubsPanel />}
           {tab === "tournaments" && <TournamentPanel focus={tournament} onReplay={onReplay} />}
           {tab === "ranking" && <LeaderboardPanel onReplay={onReplay} />}
           {tab === "profile" && <ProfileTab onReplay={onReplay} />}

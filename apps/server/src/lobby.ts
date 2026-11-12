@@ -2,6 +2,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import type { MatchConfig } from "@tavli/engine";
 import type { ClientMessage, LiveMatch, MatchVariantId, TournamentRef, UnratedReason } from "@tavli/protocol";
 import type { Analyzer } from "./analysis";
+import { Clubs } from "./clubs";
 import type { Store } from "./db";
 import { challengeMessage, type Push, tournamentReadyMessage } from "./push";
 import { type Conn, MatchRoom, type RoomTimings } from "./room";
@@ -26,6 +27,8 @@ interface Challenge {
   readonly createdAt: number;
   /** Longer when the friend was offline and got a push notification. */
   readonly ttlMs: number;
+  /** A league pairing. */
+  readonly league?: string;
 }
 
 /** A challenge without an answer ends after this time (friend online / notified by push). */
@@ -146,10 +149,12 @@ export class Lobby {
   private readonly rematchOffers = new Map<string, Set<string>>();
   private readonly failedJoins = new Map<string, { n: number; since: number }>();
   private readonly challenges = new Map<string, Challenge>();
+  private lastClubTick = 0;
   private readonly mm: MatchmakingOptions;
   private readonly fair: FairPlayOptions;
   private readonly sweepTimer: ReturnType<typeof setInterval>;
   readonly tournaments: Tournaments;
+  readonly clubs: Clubs;
 
   constructor(private readonly opts: LobbyOptions) {
     this.mm = { ...DEFAULT_MATCHMAKING, ...opts.matchmaking };
@@ -172,6 +177,7 @@ export class Lobby {
       opts.tournaments,
       opts.log,
     );
+    this.clubs = new Clubs(opts.store, { presence: (id, viewer) => this.presence(id, viewer) }, opts.log);
     this.sweepTimer = setInterval(() => this.sweep(), this.mm.sweepMs);
   }
 
@@ -275,7 +281,7 @@ export class Lobby {
         session.watching = null;
         return;
       case "challenge":
-        return this.challenge(conn, id, msg.playerId, msg.variant, msg.length);
+        return this.challenge(conn, id, msg.playerId, msg.variant, msg.length, msg.leagueId);
       case "challenge-answer":
         return this.answerChallenge(conn, id, msg.id, msg.accept);
       case "challenge-cancel": {
@@ -418,6 +424,14 @@ export class Lobby {
     const now = Date.now();
     for (const c of this.challenges.values())
       if (now - c.createdAt > c.ttlMs) this.endChallenge(c, "expired");
+    if (now - this.lastClubTick > 60_000) {
+      this.lastClubTick = now;
+      try {
+        this.clubs.tick(now);
+      } catch (e) {
+        this.opts.log?.(`league tick failed: ${String(e)}`);
+      }
+    }
     for (const [key, list] of this.queues) {
       let waiting = list.filter((w) => this.connByPlayer.has(w.playerId));
       const { variant, length } = parseKey(key);
@@ -521,6 +535,7 @@ export class Lobby {
     fixedSeats = false,
     tournament?: { readonly ref: TournamentRef; readonly slot: number },
     watchable = false,
+    league?: string,
   ): string {
     const { store, timings, log } = this.opts;
     const swap = !fixedSeats && this.opts.randomSeats !== false && randomInt(2) === 1;
@@ -561,6 +576,13 @@ export class Lobby {
             return deltas;
           }
           this.analyse(r.id, result.players, result.games);
+          if (league) {
+            try {
+              this.clubs.matchEnded(league, result.players, result.players[result.winner], result.score);
+            } catch (e) {
+              log?.(`league update after ${r.id} failed: ${String(e)}`);
+            }
+          }
           if (tournament) {
             try {
               this.tournaments.matchEnded(
@@ -723,10 +745,22 @@ export class Lobby {
     this.connByPlayer.get(playerId)?.send(msg);
   }
 
-  private challenge(conn: Conn, id: string, to: string, variant: MatchVariantId, length: number): void {
+  private challenge(
+    conn: Conn,
+    id: string,
+    to: string,
+    requestedVariant: MatchVariantId,
+    requestedLength: number,
+    league?: string,
+  ): void {
     const { store } = this.opts;
+    // a league pairing plays the league's variant and length; otherwise only friends
+    const pairing = league ? this.clubs.pendingPairing(league, id, to) : null;
+    if (league && !pairing) return conn.send({ t: "error", message: "no open league match" });
+    const variant = pairing?.variant ?? requestedVariant;
+    const length = pairing?.length ?? requestedLength;
     const publicTo = () => store.publicPlayer(to, variant);
-    if (!store.areFriends(id, to)) return conn.send({ t: "error", message: "not friends" });
+    if (!pairing && !store.areFriends(id, to)) return conn.send({ t: "error", message: "not friends" });
     if (this.busy(conn, id)) return;
     const online = this.connByPlayer.has(to);
     // offline friends with notifications get a push and a few minutes to come
@@ -744,6 +778,7 @@ export class Lobby {
       length,
       createdAt: Date.now(),
       ttlMs: online ? CHALLENGE_TTL_MS : CHALLENGE_PUSH_TTL_MS,
+      ...(league ? { league } : {}),
     };
     this.challenges.set(c.id, c);
     conn.send({ t: "challenge-update", id: c.id, to: publicTo(), status: online ? "sent" : "notified" });
@@ -772,7 +807,10 @@ export class Lobby {
     this.removeFromQueues(id);
     this.removeInvites(c.from);
     this.removeInvites(id);
-    this.startMatch(c.variant, c.length, c.from, id);
+    if (c.league && !this.clubs.pendingPairing(c.league, c.from, id))
+      return this.endChallenge(c, "cancelled");
+    const roomId = this.startMatch(c.variant, c.length, c.from, id, false, undefined, !!c.league, c.league);
+    if (c.league) this.clubs.matchStarted(c.league, c.from, id, roomId);
   }
 
   /** Ends a challenge without a match and tells both sides. */

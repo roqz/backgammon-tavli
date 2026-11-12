@@ -3,11 +3,14 @@ import type {
   AccountResponse,
   ClientAction,
   ClientMessage,
+  ClubSummary,
+  ClubView,
   CorrView,
   EmoteId,
   Frame,
   FriendView,
   LeaderboardEntry,
+  LeagueView,
   LiveMatch,
   MatchDetailResponse,
   MatchVariantId,
@@ -354,6 +357,36 @@ export const removeFriend = (playerId: string) =>
   rest("/api/friends/remove", { method: "POST", body: JSON.stringify({ playerId }) });
 export const fetchLive = () => rest<LiveMatch[]>("/api/live");
 
+// ---- clubs and leagues ------------------------------------------------------------------------
+
+export const fetchClubs = (query = "") =>
+  rest<ClubSummary[]>(`/api/clubs${query ? `?q=${encodeURIComponent(query)}` : ""}`);
+export const fetchClub = (id: string) => rest<ClubView>(`/api/clubs/${id}`);
+export const createClub = (name: string, description: string, open: boolean) =>
+  rest<ClubView>("/api/clubs", { method: "POST", body: JSON.stringify({ name, description, open }) });
+export const joinClub = (id: string) => rest<ClubView>(`/api/clubs/${id}/join`, { method: "POST" });
+export const leaveClub = (id: string) => rest(`/api/clubs/${id}/leave`, { method: "POST" });
+export const manageMember = (
+  id: string,
+  playerId: string,
+  action: "approve" | "remove" | "promote" | "demote",
+) =>
+  rest<ClubView>(`/api/clubs/${id}/manage`, { method: "POST", body: JSON.stringify({ playerId, action }) });
+export const createLeague = (
+  clubId: string,
+  name: string,
+  variant: MatchVariantId,
+  length: Exclude<MatchLength, 0>,
+  weeks: 1 | 2 | 4 | 8,
+) =>
+  rest<LeagueView>(`/api/clubs/${clubId}/leagues`, {
+    method: "POST",
+    body: JSON.stringify({ name, variant, length, weeks }),
+  });
+export const fetchLeague = (id: string) => rest<LeagueView>(`/api/leagues/${id}`);
+export const leagueAction = (id: string, action: "join" | "leave" | "start") =>
+  rest<LeagueView>(`/api/leagues/${id}/${action}`, { method: "POST" });
+
 // ---- correspondence games ---------------------------------------------------------------------
 
 export const fetchCorrGames = () => rest<CorrView[]>("/api/corr");
@@ -366,8 +399,12 @@ export const corrAction = (id: string, action: ClientAction) =>
   rest<CorrView>(`/api/corr/${id}/action`, { method: "POST", body: JSON.stringify({ action }) });
 export const abandonCorr = (id: string) => rest<CorrView>(`/api/corr/${id}/abandon`, { method: "POST" });
 
-export const challengeFriend = (playerId: string, variant: MatchVariantId, length: MatchLength) =>
-  send({ t: "challenge", playerId, variant, length });
+export const challengeFriend = (
+  playerId: string,
+  variant: MatchVariantId,
+  length: MatchLength,
+  leagueId?: string,
+) => send({ t: "challenge", playerId, variant, length, ...(leagueId ? { leagueId } : {}) });
 export const answerChallenge = (id: string, accept: boolean) => {
   send({ t: "challenge-answer", id, accept });
   set({ incoming: null });

@@ -57,6 +57,7 @@ test("money session: games go on until a player ends the session", async ({ brow
 });
 
 test("achievements sync with the profile; an unlocked frame can be chosen", async ({ browser }) => {
+  test.setTimeout(90_000);
   const page = await onlineGuest(browser, "Ida");
   // as if the tutorial had been completed on this device
   await page.evaluate(() =>

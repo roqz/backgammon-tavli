@@ -145,6 +145,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     progress: (c) => flag(!!c.me && c.tournaments.some((t) => t.status === "finished" && t.winner === c.me)),
   },
   {
+    id: "league-win",
+    icon: "🏟️",
+    title: { de: "Meister", en: "League champion" },
+    text: { de: "Gewinne eine Club-Liga.", en: "Win a club league." },
+    progress: (c) => count(c.profile?.leaguesWon ?? 0, 1),
+  },
+  {
     id: "analyst",
     icon: "🔍",
     title: { de: "Analytiker", en: "Analyst" },

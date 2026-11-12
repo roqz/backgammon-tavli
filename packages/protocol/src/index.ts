@@ -101,7 +101,13 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
   z.object({ t: z.literal("watch"), matchId: z.string().min(1).max(64) }),
   z.object({ t: z.literal("unwatch") }),
   /** Challenge a friend who is online and free. */
-  z.object({ t: z.literal("challenge"), playerId: z.string().min(1).max(64), ...matchSetup }),
+  z.object({
+    t: z.literal("challenge"),
+    playerId: z.string().min(1).max(64),
+    ...matchSetup,
+    /** A league pairing: variant and length come from the league. */
+    leagueId: z.string().min(1).max(64).optional(),
+  }),
   z.object({ t: z.literal("challenge-answer"), id: z.string().min(1).max(64), accept: z.boolean() }),
   z.object({ t: z.literal("challenge-cancel"), id: z.string().min(1).max(64) }),
   z.object({ t: z.literal("ping") }),
@@ -171,6 +177,89 @@ export interface FriendView {
 }
 
 export const FriendRequestSchema = z.object({ playerId: z.string().min(1).max(64) });
+
+// ---- clubs and leagues -----------------------------------------------------------------------
+
+/** pending = asked to join a closed club */
+export type ClubRole = "owner" | "admin" | "member" | "pending";
+export type LeagueStatus = "open" | "running" | "finished";
+
+export interface ClubSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly open: boolean;
+  readonly members: number;
+  readonly myRole: ClubRole | null;
+}
+
+export interface ClubView extends ClubSummary {
+  readonly createdBy: string;
+  /** Join requests only for admins; presence only for members. */
+  readonly memberList: readonly {
+    readonly player: PublicPlayer;
+    readonly role: ClubRole;
+    readonly presence: "offline" | "online" | "playing" | null;
+  }[];
+  readonly leagues: readonly LeagueSummary[];
+}
+
+export interface LeagueSummary {
+  readonly id: string;
+  readonly clubId: string;
+  readonly name: string;
+  readonly variant: MatchVariantId;
+  readonly length: number;
+  readonly weeks: number;
+  readonly status: LeagueStatus;
+  readonly players: number;
+  readonly entered: boolean;
+  readonly endsAt: number | null;
+  readonly winner: PublicPlayer | null;
+}
+
+export interface LeagueStanding {
+  readonly id: string;
+  readonly played: number;
+  readonly wins: number;
+  readonly losses: number;
+  readonly points: number;
+  /** Match points won minus lost. */
+  readonly diff: number;
+}
+
+export interface LeagueView extends LeagueSummary {
+  readonly myRole: ClubRole | null;
+  readonly entries: readonly PublicPlayer[];
+  readonly standings: readonly (LeagueStanding & { readonly player: PublicPlayer })[];
+  readonly matches: readonly {
+    readonly players: readonly [PublicPlayer, PublicPlayer];
+    readonly status: "pending" | "playing" | "done";
+    readonly winner: string | null;
+    readonly score: readonly [number, number] | null;
+    readonly matchId: string | null;
+  }[];
+}
+
+export const CLUB_NAME_MAX = 40;
+export const ClubCreateSchema = z.object({
+  name: z
+    .string()
+    .transform((s) => cleanName(s))
+    .pipe(z.string().min(3).max(CLUB_NAME_MAX)),
+  description: z.string().trim().max(300),
+  open: z.boolean(),
+});
+export const ClubManageSchema = z.object({
+  playerId: z.string().min(1).max(64),
+  action: z.enum(["approve", "remove", "promote", "demote"]),
+});
+export const LeagueCreateSchema = z.object({
+  name: z.string().trim().min(1).max(CLUB_NAME_MAX),
+  variant: z.enum(MATCH_VARIANTS),
+  length: z.union([z.literal(1), z.literal(3), z.literal(5), z.literal(7)]),
+  weeks: z.union([z.literal(1), z.literal(2), z.literal(4), z.literal(8)]),
+});
 
 // ---- correspondence games -------------------------------------------------------------------
 
@@ -366,6 +455,8 @@ export interface ProfileResponse {
   readonly name: string;
   readonly ratings: readonly RatingEntry[];
   readonly recent: readonly MatchSummary[];
+  /** Club leagues this player won. */
+  readonly leaguesWon?: number;
   /** Rating after each of the last rated matches per variant, oldest first. */
   readonly history?: Readonly<Partial<Record<MatchVariantId, readonly RatingPoint[]>>>;
 }

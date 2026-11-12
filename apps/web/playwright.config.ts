@@ -17,7 +17,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
   use: {
-    baseURL: `http://localhost:${WEB_PORT}`,
+    baseURL: `http://127.0.0.1:${WEB_PORT}`,
     channel: process.env.PW_CHANNEL,
     locale: "de-DE",
     trace: "retain-on-failure",
@@ -25,13 +25,13 @@ export default defineConfig({
   projects: [{ name: "desktop", use: { ...devices["Desktop Chrome"], channel: process.env.PW_CHANNEL } }],
   webServer: [
     {
-      command: `pnpm exec vite preview --port ${WEB_PORT} --strictPort`,
-      url: `http://localhost:${WEB_PORT}`,
+      command: `pnpm exec vite preview --host 127.0.0.1 --port ${WEB_PORT} --strictPort`,
+      url: `http://127.0.0.1:${WEB_PORT}`,
       reuseExistingServer: !process.env.CI,
     },
     {
       command: "node ../server/dist/server.js",
-      url: `http://localhost:${E2E_SERVER_PORT}/api/health`,
+      url: `http://127.0.0.1:${E2E_SERVER_PORT}/api/health`,
       reuseExistingServer: !process.env.CI,
       env: {
         PORT: String(E2E_SERVER_PORT),

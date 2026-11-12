@@ -3,11 +3,11 @@ import { onlineGuest } from "./helpers";
 
 test("friends via link, a challenge starts a match, a third player watches it live", async ({ browser }) => {
   test.setTimeout(90_000);
-  const ann = await onlineGuest(browser, "Ann");
-  const ben = await onlineGuest(browser, "Ben");
+  const ann = await onlineGuest(browser, "Ada");
+  const ben = await onlineGuest(browser, "Bodo");
   const wes = await onlineGuest(browser, "Wes");
 
-  // Ann shares her friend link, Ben opens it and sends a request
+  // Ada shares her friend link, Bodo opens it and sends a request
   await ann.getByRole("tab", { name: /Freunde/ }).click();
   const link = (await ann.locator("span.select-all").textContent()) ?? "";
   await ben.goto(link);
@@ -15,26 +15,31 @@ test("friends via link, a challenge starts a match, a third player watches it li
   await expect(ben.getByText("Anfrage gesendet.")).toBeVisible();
   await ben.getByRole("button", { name: "OK" }).click();
 
-  // Ann accepts; Ben shows as online
+  // Ada accepts; Bodo shows as online
   await expect(ann.getByText("Freundschaftsanfragen")).toBeVisible({ timeout: 15_000 });
   await ann.getByRole("button", { name: "Annehmen" }).click();
   await expect(ann.getByText("online", { exact: true })).toBeVisible({ timeout: 15_000 });
 
-  // Ann challenges Ben to a 1-point Portes match; Ben accepts from wherever he is
+  // Ada challenges Bodo to a 1-point Portes match; Bodo accepts from wherever he is
   await ann.getByRole("button", { name: /Herausfordern/ }).click();
   await ann.getByRole("dialog").getByRole("button", { name: "Portes", exact: true }).click();
   await ann.getByRole("dialog").getByRole("button", { name: "1", exact: true }).click();
   await ann.getByRole("button", { name: "Herausforderung senden" }).click();
-  await expect(ben.getByText(/Ann fordert dich heraus/)).toBeVisible({ timeout: 10_000 });
+  await expect(ben.getByText(/Ada fordert dich heraus/)).toBeVisible({ timeout: 10_000 });
   await ben.getByRole("button", { name: "Annehmen" }).click();
   await expect(ann.getByText(/Portes · Spiel 1/)).toBeVisible({ timeout: 15_000 });
   await expect(ben.getByText(/Portes · Spiel 1/)).toBeVisible();
 
   // a private challenge is not listed live; a public queue match is
+  // (other tests share the server, so the list need not be empty: only this match must be missing)
   await wes.getByRole("tab", { name: "Live" }).click();
-  await expect(wes.getByText(/Gerade läuft kein öffentliches Match/)).toBeVisible();
+  await expect(wes.getByText("Live-Matches")).toBeVisible();
+  await expect(wes.getByText("Lade …")).toHaveCount(0);
+  await expect(wes.getByRole("button", { name: /Portes · 1 Punkt/ }).filter({ hasText: /Ada/ })).toHaveCount(
+    0,
+  );
 
-  // Ben resigns; both then start a public match from the queue, which Wes watches
+  // Bodo resigns; both then start a public match from the queue, which Wes watches
   await ben
     .getByRole("button", { name: /Aufgeben/ })
     .first()
@@ -50,7 +55,7 @@ test("friends via link, a challenge starts a match, a third player watches it li
   await expect(ann.getByText(/Backgammon · Spiel 1/)).toBeVisible({ timeout: 15_000 });
   await wes.getByRole("tab", { name: "Spielen" }).click();
   await wes.getByRole("tab", { name: "Live" }).click();
-  await wes.getByRole("button", { name: /Ann .*Ben|Ben .*Ann/ }).click();
+  await wes.getByRole("button", { name: /Ada .*Bodo|Bodo .*Ada/ }).click();
   await expect(wes.getByText(/Zuschauen/)).toBeVisible();
   await expect(wes.locator("svg").first()).toBeVisible();
 });

@@ -283,6 +283,11 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 - Erfolge, Tutorial-Fortschritt und Rätsel-Ergebnisse werden mit dem Profil synchronisiert und geräteübergreifend zusammengeführt (früheste Freischaltung, erste Rätsel-Antwort zählt); der Server erlaubt einen Rahmen nur, wenn der Erfolg im gespeicherten Fortschritt steht. Erfolge sind kosmetisch und werden vom Gerät gemeldet, nicht serverseitig nachgerechnet
 
+### Clubs und Ligen ✅
+
+- Clubs: gründen mit Konto oder nach 3 Matches (wie Turniere), Name eindeutig, Beschreibung, offen (direkt beitreten) oder geschlossen (Anfrage, ein Admin bestätigt); Rollen Gründer, Admin, Mitglied; höchstens 100 Mitglieder, höchstens 10 Clubs je Spieler; Suche nach Namen; Mitglieder sehen sich mit Online-Status; verlässt der Gründer den Club, übernimmt der dienstälteste Admin bzw. das dienstälteste Mitglied
+- Ligen: Admins legen eine Saison an (Variante, Länge, 1–8 Wochen), Mitglieder melden sich an (3–16), der Admin startet; jeder spielt einmal gegen jeden, live per Herausforderung aus der Ligatabelle (Variante und Länge gibt die Liga vor), gewertet und öffentlich zuschaubar; 2 Punkte pro Sieg, dann Punktdifferenz, dann direkter Vergleich; Saisonende nach Ablauf oder wenn alles gespielt ist, ungespielte Partien bleiben ohne Punkte; Erfolg „Meister“ für den Ligasieg; nach einem Server-Neustart können abgebrochene Ligaspiele neu gespielt werden
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)

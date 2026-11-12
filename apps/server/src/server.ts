@@ -8,12 +8,15 @@ import {
   BanSchema,
   ClaimSchema,
   ClientMessageSchema,
+  ClubCreateSchema,
+  ClubManageSchema,
   CorrActionSchema,
   CorrAnswerSchema,
   CorrCreateSchema,
   DeleteAccountSchema,
   FrameSchema,
   FriendRequestSchema,
+  LeagueCreateSchema,
   LoginSchema,
   MATCH_VARIANTS,
   type MatchVariantId,
@@ -28,6 +31,7 @@ import {
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
 import { type AnalysisMode, Analyzer } from "./analysis";
+import { ClubError } from "./clubs";
 import { CorrError, Correspondence } from "./correspondence";
 import { AccountError, Store } from "./db";
 import { type FairPlayOptions, Lobby, type MatchmakingOptions, type SpectatorDelay } from "./lobby";
@@ -417,6 +421,62 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     }
     if (req.method === "GET" && path === "/api/tournaments") return lobby.tournaments.list();
     if (req.method === "GET" && path === "/api/live") return lobby.liveMatches();
+    if (path.startsWith("/api/clubs") || path.startsWith("/api/leagues")) {
+      const player = authPlayer(req);
+      const clubs = lobby.clubs;
+      const run = <T>(fn: () => T): T => {
+        try {
+          return fn();
+        } catch (e) {
+          if (e instanceof ClubError) throw new HttpError(e.status, e.message);
+          throw e;
+        }
+      };
+      if (path === "/api/clubs" && req.method === "GET")
+        return clubs.list(player.id, url.searchParams.get("q") ?? "");
+      if (path === "/api/clubs" && req.method === "POST") {
+        const body = ClubCreateSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid club");
+        // same rule as for tournaments: guests need a few finished matches
+        const allowed =
+          !!store.account(player.id)?.username ||
+          store.matchCount(player.id) >= (opts.tournaments?.guestMinMatches ?? 3);
+        res.statusCode = 201;
+        return run(() =>
+          clubs.create(player.id, body.data.name, body.data.description, body.data.open, allowed),
+        );
+      }
+      let k = /^\/api\/clubs\/([\w-]{1,64})(?:\/(join|leave|manage|leagues))?$/.exec(path);
+      if (k) {
+        const id = k[1]!;
+        if (!k[2] && req.method === "GET") return run(() => clubs.view(player.id, id));
+        if (k[2] === "join" && req.method === "POST") return run(() => clubs.join(player.id, id));
+        if (k[2] === "leave" && req.method === "POST") {
+          run(() => clubs.leave(player.id, id));
+          return { ok: true };
+        }
+        if (k[2] === "manage" && req.method === "POST") {
+          const body = ClubManageSchema.safeParse(await readJson(req));
+          if (!body.success) throw new HttpError(400, "invalid request");
+          return run(() => clubs.manage(player.id, id, body.data.playerId, body.data.action));
+        }
+        if (k[2] === "leagues" && req.method === "POST") {
+          const body = LeagueCreateSchema.safeParse(await readJson(req));
+          if (!body.success) throw new HttpError(400, "invalid league");
+          const { name, variant, length, weeks } = body.data;
+          return run(() => clubs.createLeague(player.id, id, name, variant, length, weeks));
+        }
+      }
+      k = /^\/api\/leagues\/([\w-]{1,64})(?:\/(join|leave|start))?$/.exec(path);
+      if (k) {
+        const id = k[1]!;
+        if (!k[2] && req.method === "GET") return run(() => clubs.leagueView(player.id, id));
+        if (k[2] === "join" && req.method === "POST") return run(() => clubs.joinLeague(player.id, id));
+        if (k[2] === "leave" && req.method === "POST") return run(() => clubs.leaveLeague(player.id, id));
+        if (k[2] === "start" && req.method === "POST") return run(() => clubs.startLeague(player.id, id));
+      }
+      throw new HttpError(404, "not found");
+    }
     if (path.startsWith("/api/corr")) {
       const player = authPlayer(req);
       const run = <T>(fn: () => T): T => {

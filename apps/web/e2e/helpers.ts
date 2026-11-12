@@ -1,6 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 
-export const SERVER_URL = "http://localhost:2580";
+export const SERVER_URL = "http://127.0.0.1:2580";
 
 /** Deterministic, fast settings: German UI, no 3D dice, no sounds, no countdowns. */
 const SETTINGS = {

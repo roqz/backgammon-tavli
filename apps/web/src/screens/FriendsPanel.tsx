@@ -246,7 +246,7 @@ function ChallengeDialog({
 }
 
 /** State of the own challenge: waiting (with cancel) or why it ended. */
-function OutgoingChallenge() {
+export function OutgoingChallenge() {
   const t = useT();
   const outgoing = useOnline((s) => s.outgoing);
   if (!outgoing) return null;

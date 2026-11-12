@@ -955,6 +955,13 @@ export class Store {
       ratings,
       recent: recent.map((r) => this.matchSummary(r.id)).filter((x): x is MatchSummary => x !== null),
       history: this.ratingHistory(playerId),
+      leaguesWon: this.tableExists("leagues")
+        ? (
+            this.db.prepare("SELECT COUNT(*) AS n FROM leagues WHERE winner = ?").get(playerId) as {
+              n: number;
+            }
+          ).n
+        : 0,
     };
   }
 

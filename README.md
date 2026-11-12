@@ -2,7 +2,7 @@
 
 Open-source Backgammon and Greek Tavli (Portes, Plakoto, Fevga) for the web: an offline-first PWA with
 games against the computer and on one device, plus online play with ratings, matchmaking, private
-invites, friends and challenges, live spectating, tournaments (knockout and Swiss) and provably fair
+invites, friends and challenges, clubs with leagues, correspondence games, live spectating, tournaments (knockout and Swiss) and provably fair
 dice.
 
 > Status: rewrite on branch `rewrite/foundation`. The original 2018 Angular proof of concept lives in
