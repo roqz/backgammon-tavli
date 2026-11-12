@@ -260,3 +260,29 @@ S = bis 1 Tag, M = einige Tage, L = mehrere Wochen
 1. Phase A: Regeln, Sicherheit und Betrieb lassen sich ohne dich umsetzen. Für Impressum und Datenschutzerklärung brauche ich deine Angaben: Betreiber, Anschrift, Kontakt.
 2. Phase B
 3. Matchanalyse aus Phase C, weil die Daten schon da sind und sie der größte Rückstand gegenüber Galaxy und gnubg ist.
+
+---
+
+## 8. Stand der Umsetzung (12.11.2026)
+
+**Erledigt:**
+- **Phase A** ohne die Betreiberangaben: V1/V2, S1–S9, S11, S12, Recht (Seiten, Export, Löschen, Fristen, Quellcode-Link), Betrieb, UI/UX-Punkte 1–5 und 6–10, Doku.
+- **Phase B:**
+  - Barrierefreiheit: Brett per Tastatur und Screenreader, Fokus in Dialogen, Kontrast, reduzierte Bewegung.
+  - Hinweise, Lade- und Fehlerzustände, Update-Hinweis.
+  - Tests: protocol, rng, Turniere; CI mit Audit, Docker, CodeQL, Dependabot.
+- **Phase C:** Matchanalyse für Spieler, `.mat`-Export, Rating-Verlauf, Variantenbeschreibungen.
+
+**Offen ohne Eingaben von dir:**
+- GNUbg-ID
+- Tutorial und Regeln mit Diagrammen, tägliches Puzzle
+- Freunde, direkte Herausforderung, Zuschauen
+- Geldspiel online
+- Neuronales Netz, Korrespondenzspiel, Clubs/Ligen, weitere Varianten, Play Store per TWA
+
+**Offen mit Eingaben von dir:**
+- Betreiberangaben für Impressum und Datenschutz
+- SMTP, OAuth
+- Kalibrierung der Fair-Play-Schwellen mit echten Daten
+- Push im echten Betrieb
+- Regel-Feinheiten (Mana-Ausnahmen, Fevga)
