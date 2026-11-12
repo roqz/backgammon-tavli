@@ -10,9 +10,11 @@ import { GameScreen } from "./screens/GameScreen";
 import { LegalScreen } from "./screens/LegalScreen";
 import { Menu, NewGame, SettingsScreen } from "./screens/MenuScreens";
 import { OnlineScreen } from "./screens/OnlineScreen";
+import { PuzzleScreen } from "./screens/PuzzleScreen";
 import { ReplayScreen } from "./screens/ReplayScreen";
 import { RulesScreen } from "./screens/RulesPanel";
 import { StatsScreen } from "./screens/StatsScreen";
+import { TutorialScreen } from "./screens/TutorialScreen";
 import { WatchScreen } from "./screens/WatchScreen";
 import type { GameRecord } from "./store/archive";
 import { useSettings } from "./store/settings";
@@ -29,7 +31,9 @@ type Screen =
   | "admin"
   | "imprint"
   | "privacy"
-  | "watch";
+  | "watch"
+  | "tutorial"
+  | "puzzle";
 
 /** Invite links look like `…/?join=ABC234`. */
 const takeJoinCode = (): string | null => {
@@ -161,6 +165,8 @@ export function App() {
             onOnline={() => setScreen(onlineMatchId ? "game" : "online")}
             onRules={() => setScreen("rules")}
             onLegal={(page) => setScreen(page)}
+            onTutorial={() => setScreen("tutorial")}
+            onPuzzle={() => setScreen("puzzle")}
           />
         )}
         {(screen === "imprint" || screen === "privacy") && (
@@ -206,6 +212,10 @@ export function App() {
           <ReplayScreen records={replay.records} onBack={() => setScreen(replay.back)} />
         )}
         {screen === "watch" && <WatchScreen onBack={() => setScreen("online")} />}
+        {screen === "tutorial" && (
+          <TutorialScreen onBack={() => setScreen("menu")} onPlay={() => setScreen("new")} />
+        )}
+        {screen === "puzzle" && <PuzzleScreen onBack={() => setScreen("menu")} />}
         <ChallengePrompt />
         <FriendLinkPrompt />
         <UpdatePrompt />

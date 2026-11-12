@@ -9,7 +9,7 @@ test("friends via link, a challenge starts a match, a third player watches it li
 
   // Ann shares her friend link, Ben opens it and sends a request
   await ann.getByRole("tab", { name: /Freunde/ }).click();
-  const link = await ann.locator("span.select-all").innerText();
+  const link = (await ann.locator("span.select-all").textContent()) ?? "";
   await ben.goto(link);
   await ben.getByRole("button", { name: "Anfrage senden" }).click();
   await expect(ben.getByText("Anfrage gesendet.")).toBeVisible();

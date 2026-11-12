@@ -276,12 +276,11 @@ S = bis 1 Tag, M = einige Tage, L = mehrere Wochen
   - Barrierefreiheit: Brett per Tastatur und Screenreader, Fokus in Dialogen, Kontrast, reduzierte Bewegung.
   - Hinweise, Lade- und Fehlerzustände, Update-Hinweis.
   - Tests: protocol, rng, Turniere; CI mit Audit, Docker, CodeQL, Dependabot.
-- **Phase C:** Matchanalyse für Spieler, `.mat`-Export, Rating-Verlauf, Variantenbeschreibungen, Freunde mit Herausforderung, Zuschauen.
+- **Phase C:** Matchanalyse für Spieler, `.mat`-Export, Rating-Verlauf, Variantenbeschreibungen, Freunde mit Herausforderung, Zuschauen (mit Verzögerung, private Spiele für Freunde), Tutorial, Regeln mit Diagrammen, Tagesrätsel.
 
 **Offen ohne Eingaben von dir:**
 
 - GNUbg-ID
-- Tutorial und Regeln mit Diagrammen, tägliches Puzzle
 - Geldspiel online
 - Neuronales Netz, Korrespondenzspiel, Clubs/Ligen, weitere Varianten, Play Store per TWA
 

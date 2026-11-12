@@ -14,6 +14,7 @@ import { useT } from "../i18n";
 import { SOURCE_URL } from "../legal";
 import { unqueue } from "../online/client";
 import { useOnline } from "../online/store";
+import { today, usePuzzles } from "../puzzle";
 import { type PlayerInfo, useGame } from "../store/game";
 import { SettingsPanel } from "./SettingsPanel";
 
@@ -25,7 +26,11 @@ export function Menu({
   onOnline,
   onRules,
   onLegal,
+  onTutorial,
+  onPuzzle,
 }: {
+  onTutorial: () => void;
+  onPuzzle: () => void;
   onNew: () => void;
   onResume: () => void;
   onSettings: () => void;
@@ -40,6 +45,7 @@ export function Menu({
   const onlineActive = useOnline((s) => s.match !== null && s.match.end === null);
   const canResume = mode === "local" && match !== null && match.winner === null;
   const lobby = useOnline((s) => s.lobby);
+  const solvedToday = usePuzzles((s) => s.results[today()] !== undefined);
   const online = useOnlineStatus();
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-8 p-6">
@@ -84,6 +90,17 @@ export function Menu({
             </Button>
           </>
         )}
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant="ghost" onClick={onTutorial}>
+            🎓 {t.tutorial}
+          </Button>
+          <Button variant="ghost" onClick={onPuzzle}>
+            🧩 {t.puzzle}
+            {!solvedToday && (
+              <span className="ml-1 inline-block h-2 w-2 rounded-full bg-amber-400" aria-hidden />
+            )}
+          </Button>
+        </div>
         <Button variant="ghost" onClick={onRules}>
           📖 {t.rules}
         </Button>

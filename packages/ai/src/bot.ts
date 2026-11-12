@@ -203,6 +203,28 @@ export const analyseTurn = (
   };
 };
 
+/** A turn option with its 1-ply value for the player on turn (points per game). */
+export interface RankedOption {
+  readonly moves: readonly PlayedMove[];
+  readonly board: Board;
+  readonly value: number;
+}
+
+/**
+ * All distinct options of the roll, best first, by the same 1-ply evaluation the reviews use
+ * (for puzzles: a clear best move is one well ahead of the second).
+ */
+export const rankTurnOptions = (s: GameState): RankedOption[] => {
+  if (s.phase !== "moving") return [];
+  const options = moveGenerator(s.variant, s.turn).turnOptions(s.board, s.remaining);
+  const w = weightsFor(s.variant);
+  const v = new Valuer(s, s.turn, w, {});
+  const opp = opponent(s.turn);
+  return options
+    .map((o) => ({ moves: o.moves, board: o.board, value: o.end ? v.end(o, s.turn) : v.position(o.board, opp) }))
+    .sort((a, b) => b.value - a.value);
+};
+
 /** A played turn compared with the best option (for players reviewing their games). */
 export interface TurnReview extends TurnAnalysis {
   /** The best option by the same 1-ply evaluation the loss is measured against. */

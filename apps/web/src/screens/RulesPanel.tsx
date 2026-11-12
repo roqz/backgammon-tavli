@@ -4,6 +4,7 @@ import { Button } from "../components/ui";
 import { useT } from "../i18n";
 import { RULES, RULES_TOPICS, type RulesTopic } from "../rules";
 import { useSettings } from "../store/settings";
+import { RuleDiagram } from "./RuleDiagram";
 
 /** The rule book: one chapter per variant plus basics and app notes. */
 export function RulesPanel({ initial = "general" }: { initial?: RulesTopic }) {
@@ -48,6 +49,7 @@ export function RulesPanel({ initial = "general" }: { initial?: RulesTopic }) {
                 ))}
               </ul>
             )}
+            {s.diagram && <RuleDiagram id={s.diagram} lang={lang} />}
           </section>
         ))}
       </article>

@@ -263,6 +263,12 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Herausforderung eines Freundes (Variante, Länge): erscheint beim Freund als Dialog auf jedem Bildschirm, verfällt nach 60 Sekunden, Status für den Herausforderer (wartet, abgelehnt, nicht frei, abgelaufen); das Match ist privat
 - Zuschauen: Reiter „Live“ mit laufenden öffentlichen Matches (Warteschlange und Turniere, beste Ratings zuerst), Ansicht nur zum Lesen mit Stand, Pips, Uhr und Zuschauerzahl; laufende öffentliche Matches von Freunden direkt aus der Freundesliste; private Einladungs- und Freundesspiele sind nicht zu sehen; höchstens 50 Zuschauer je Match
 
+### Lernen ✅
+
+- Regelbuch mit Brett-Diagrammen (echtes Brett, Pfeile für die gezeigten Züge): Zugrichtung, Schlagen und Bar, Abtragen, Plakoto-Aufstellung und Einklemmen, Fevga-Aufstellung und Sechser-Sperre; ein Test prüft, dass jede Stellung gültig und jeder Pfeil ein legaler Zug ist
+- Tutorial mit sechs Lektionen auf vorbereiteten Stellungen (Ziehen, Schlagen, Einsetzen, Abtragen, Plakoto-Einklemmen, Fevga-Läufer): selbst ziehen, Tipp mit Pfeilen, Ziel wird geprüft; jede Lektion ist per Test mit ihrem Tipp lösbar
+- Tagesrätsel: aus dem Datum erzeugt (Selbstspiel des starken Bots mit Seed), daher für alle gleich und offline verfügbar; erste Entscheidung ab dem 6. Zug mit mindestens 4 Möglichkeiten und klarem besten Zug (≥ 0,06 Punkte vor dem zweitbesten); Variante wechselt täglich; erster Versuch zählt, Serie gelöster Tage, Lösung mit Pfeilen
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)

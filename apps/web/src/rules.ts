@@ -3,11 +3,14 @@
  * (packages/engine), including the interpretations chosen where house rules differ.
  */
 import type { Lang } from "./i18n";
+import type { DiagramId } from "./screens/RuleDiagram";
 
 export type RulesTopic = "general" | "backgammon" | "portes" | "plakoto" | "fevga" | "tavli" | "app";
 
 export interface RulesSection {
   readonly title: string;
+  /** Board picture shown below the text. */
+  readonly diagram?: DiagramId;
   readonly paragraphs?: readonly string[];
   readonly bullets?: readonly string[];
 }
@@ -36,6 +39,7 @@ const de: Record<RulesTopic, RulesChapter> = {
     sections: [
       {
         title: "Brett und Zugrichtung",
+        diagram: "direction",
         bullets: [
           "Die Felder sind aus Sicht jedes Spielers von 24 (Start) bis 1 nummeriert; das Heimfeld sind die Felder 6 bis 1.",
           "In der App liegt dein Startpunkt immer oben rechts und dein Heimfeld unten rechts – das Brett wird für Schwarz entsprechend gedreht.",
@@ -63,6 +67,7 @@ const de: Record<RulesTopic, RulesChapter> = {
       },
       {
         title: "Abtragen",
+        diagram: "bearoff",
         bullets: [
           "Abgetragen werden darf erst, wenn alle eigenen Steine im Heimfeld stehen (keiner auf der Bar oder außerhalb).",
           "Ein Stein wird mit der passenden Augenzahl abgetragen (z. B. eine 4 vom Feld 4).",
@@ -90,6 +95,7 @@ const de: Record<RulesTopic, RulesChapter> = {
       },
       {
         title: "Schlagen und Bar",
+        diagram: "hit",
         bullets: [
           "Ein einzelner Stein auf einem Feld ist ein „Blot“. Landet ein gegnerischer Stein darauf, wird er geschlagen und auf die Bar gesetzt.",
           "Ein Feld mit zwei oder mehr gegnerischen Steinen ist blockiert.",
@@ -152,6 +158,7 @@ const de: Record<RulesTopic, RulesChapter> = {
     sections: [
       {
         title: "Aufstellung und Richtung",
+        diagram: "plakotoStart",
         bullets: [
           "Alle 15 Steine beginnen auf dem eigenen Startfeld 24 (das Feld 1 des Gegners).",
           "Die Spieler ziehen in entgegengesetzte Richtungen wie im Backgammon.",
@@ -159,6 +166,7 @@ const de: Record<RulesTopic, RulesChapter> = {
       },
       {
         title: "Einklemmen",
+        diagram: "pin",
         bullets: [
           "Landet ein Stein auf einem einzelnen gegnerischen Stein, wird dieser eingeklemmt; er bleibt liegen und kann nicht ziehen.",
           "Der eingeklemmte Stein wird erst frei, wenn alle einklemmenden Steine das Feld verlassen haben.",
@@ -188,6 +196,7 @@ const de: Record<RulesTopic, RulesChapter> = {
     sections: [
       {
         title: "Aufstellung und Richtung",
+        diagram: "fevgaStart",
         bullets: [
           "Alle 15 Steine beginnen auf dem eigenen Startfeld; die Startfelder liegen sich diagonal gegenüber.",
           "Beide Spieler ziehen gegen den Uhrzeigersinn um das ganze Brett.",
@@ -209,6 +218,7 @@ const de: Record<RulesTopic, RulesChapter> = {
       },
       {
         title: "Blockade-Verbot",
+        diagram: "fevgaPrime",
         bullets: [
           "Eine Sperre aus sechs aufeinanderfolgenden Feldern ist verboten, solange kein gegnerischer Stein schon vor ihr steht.",
           "Auslegung in dieser App: Die Regel wird nach jedem einzelnen Zug geprüft, nicht erst am Ende des Wurfs.",
@@ -297,6 +307,7 @@ const en: Record<RulesTopic, RulesChapter> = {
     sections: [
       {
         title: "Board and direction",
+        diagram: "direction",
         bullets: [
           "Points are numbered from each player's view from 24 (start) to 1; the home board is points 6 to 1.",
           "In the app your starting point is always top right and your home board bottom right – the board is turned for black.",
@@ -324,6 +335,7 @@ const en: Record<RulesTopic, RulesChapter> = {
       },
       {
         title: "Bearing off",
+        diagram: "bearoff",
         bullets: [
           "Bearing off is allowed once all your checkers are in your home board (none on the bar or outside).",
           "A checker is borne off with the exact number (e.g. a 4 from point 4).",
@@ -348,6 +360,7 @@ const en: Record<RulesTopic, RulesChapter> = {
       { title: "Setup", bullets: ["Per player: 2 checkers on 24, 5 on 13, 3 on 8 and 5 on 6."] },
       {
         title: "Hitting and the bar",
+        diagram: "hit",
         bullets: [
           "A single checker on a point is a blot. An opposing checker landing on it hits it and sends it to the bar.",
           "A point with two or more opposing checkers is blocked.",
@@ -409,6 +422,7 @@ const en: Record<RulesTopic, RulesChapter> = {
     sections: [
       {
         title: "Setup and direction",
+        diagram: "plakotoStart",
         bullets: [
           "All 15 checkers start on the own starting point 24 (the opponent's point 1).",
           "Players move in opposite directions as in backgammon.",
@@ -416,6 +430,7 @@ const en: Record<RulesTopic, RulesChapter> = {
       },
       {
         title: "Pinning",
+        diagram: "pin",
         bullets: [
           "Landing on a single opposing checker pins it; it stays and cannot move.",
           "The pinned checker is released once all pinning checkers have left the point.",
@@ -442,6 +457,7 @@ const en: Record<RulesTopic, RulesChapter> = {
     sections: [
       {
         title: "Setup and direction",
+        diagram: "fevgaStart",
         bullets: [
           "All 15 checkers start on the own starting point; the starting points are diagonally opposite.",
           "Both players move counter-clockwise around the whole board.",
@@ -463,6 +479,7 @@ const en: Record<RulesTopic, RulesChapter> = {
       },
       {
         title: "No six-point prime",
+        diagram: "fevgaPrime",
         bullets: [
           "A wall of six consecutive points is forbidden unless an opposing checker is already ahead of it.",
           "Interpretation in this app: the rule is checked after every single move, not only at the end of the roll.",

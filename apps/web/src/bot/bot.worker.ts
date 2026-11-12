@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { chooseMoves, shouldAcceptResign, shouldDouble, shouldTake } from "@tavli/ai";
 import { cryptoRng } from "@tavli/engine";
+import { generatePuzzle } from "../puzzle";
 import { reviewGame } from "../review";
 import type { BotEnvelope, BotReply } from "./protocol";
 
@@ -27,6 +28,9 @@ self.onmessage = (e: MessageEvent<BotEnvelope>) => {
         break;
       case "review":
         reply = { id, result: reviewGame(request.variant, request.history) };
+        break;
+      case "puzzle":
+        reply = { id, result: generatePuzzle(request.date) };
         break;
     }
   } catch (err) {
