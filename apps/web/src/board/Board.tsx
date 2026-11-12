@@ -9,8 +9,9 @@ import {
   type To,
 } from "@tavli/engine";
 import { AnimatePresence, motion } from "motion/react";
-import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type PointerEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useT } from "../i18n";
+import { FocusCells, LiveRegion, useBoardKeyboard } from "./BoardKeyboard";
 import {
   BAR_W,
   BAR_X,
@@ -158,6 +159,23 @@ export function Board({
     return true;
   };
 
+  const t = useT();
+  const hintId = useId();
+  const keyboard = useBoardKeyboard({
+    state,
+    view,
+    t,
+    interactive,
+    rotated,
+    mirrored,
+    numbersFor: numbersFor ?? viewer,
+    sources,
+    selected,
+    setSelected,
+    tryMove,
+    svgRef,
+  });
+
   const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
     if (!interactive) return;
     const pos = toSvg(e);
@@ -203,219 +221,246 @@ export function Board({
   // Stable render order by id keeps React from remounting; the dragged checker is drawn last.
   checkers.sort((a, b) => (a.id === drag?.id ? 1 : b.id === drag?.id ? -1 : a.i - b.i));
 
-  const t = useT();
   const targetPoints = new Set([...targets.keys()]);
   const activeSlot = active !== null ? slotOfFrom(turn, active) : null;
 
+  // role="application": the board contains focusable cells and handles arrow keys itself, so
+  // screen readers must pass the keys through instead of using them for browsing.
   return (
-    <svg
-      ref={svgRef}
-      viewBox={rotated ? `0 0 ${HEIGHT} ${WIDTH}` : `0 0 ${WIDTH} ${HEIGHT}`}
-      className="block h-auto w-full touch-none select-none"
-      role="img"
-      aria-label={t.boardLabel}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={() => setDrag(null)}
-    >
-      <defs>
-        {theme.defs}
-        <marker
-          id="hint-arrow"
-          viewBox="0 0 10 10"
-          refX="6"
-          refY="5"
-          markerWidth="4"
-          markerHeight="4"
-          orient="auto"
-        >
-          <path d="M0,0 L10,5 L0,10 z" fill={theme.highlight} />
-        </marker>
-      </defs>
-
-      <g
-        ref={rootRef}
-        transform={
-          [
-            rotated ? `translate(${HEIGHT} 0) rotate(90)` : "",
-            mirrored ? `translate(${WIDTH} 0) scale(-1 1)` : "",
-          ]
-            .join(" ")
-            .trim() || undefined
-        }
+    <>
+      <svg
+        ref={svgRef}
+        viewBox={rotated ? `0 0 ${HEIGHT} ${WIDTH}` : `0 0 ${WIDTH} ${HEIGHT}`}
+        className="block h-auto w-full touch-none select-none"
+        role="application"
+        aria-label={t.boardLabel}
+        aria-describedby={hintId}
+        onKeyDown={keyboard.onKeyDown}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => setDrag(null)}
       >
-        {/* frame, felt, bar, tray */}
-        <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={14} fill={theme.frame} />
-        <rect x={LEFT_X} y={TOP_Y} width={6 * POINT_W} height={HEIGHT - 2 * FRAME} fill={theme.felt} />
-        <rect x={RIGHT_X} y={TOP_Y} width={6 * POINT_W} height={HEIGHT - 2 * FRAME} fill={theme.felt} />
-        <rect x={BAR_X} y={0} width={BAR_W} height={HEIGHT} fill={theme.bar} />
-        <rect x={BAR_X + BAR_W / 2 - 1} y={0} width={2} height={HEIGHT} fill="#000" opacity={0.25} />
-        <rect x={TRAY_X} y={TOP_Y} width={TRAY_W} height={MID_Y - TOP_Y - 6} rx={6} fill={theme.tray} />
-        <rect
-          x={TRAY_X}
-          y={MID_Y + 6}
-          width={TRAY_W}
-          height={BOTTOM_Y - MID_Y - 6}
-          rx={6}
-          fill={theme.tray}
-        />
+        <defs>
+          {theme.defs}
+          <marker
+            id="hint-arrow"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="4"
+            markerHeight="4"
+            orient="auto"
+          >
+            <path d="M0,0 L10,5 L0,10 z" fill={theme.highlight} />
+          </marker>
+        </defs>
 
-        {/* points */}
-        {POINT_INDICES.map((phys) => (
-          <path key={`pt${phys}`} d={pointPath(phys)} fill={phys % 2 === 0 ? theme.pointA : theme.pointB} />
-        ))}
+        <g
+          ref={rootRef}
+          transform={
+            [
+              rotated ? `translate(${HEIGHT} 0) rotate(90)` : "",
+              mirrored ? `translate(${WIDTH} 0) scale(-1 1)` : "",
+            ]
+              .join(" ")
+              .trim() || undefined
+          }
+        >
+          {/* frame, felt, bar, tray */}
+          <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={14} fill={theme.frame} />
+          <rect x={LEFT_X} y={TOP_Y} width={6 * POINT_W} height={HEIGHT - 2 * FRAME} fill={theme.felt} />
+          <rect x={RIGHT_X} y={TOP_Y} width={6 * POINT_W} height={HEIGHT - 2 * FRAME} fill={theme.felt} />
+          <rect x={BAR_X} y={0} width={BAR_W} height={HEIGHT} fill={theme.bar} />
+          <rect x={BAR_X + BAR_W / 2 - 1} y={0} width={2} height={HEIGHT} fill="#000" opacity={0.25} />
+          <rect x={TRAY_X} y={TOP_Y} width={TRAY_W} height={MID_Y - TOP_Y - 6} rx={6} fill={theme.tray} />
+          <rect
+            x={TRAY_X}
+            y={MID_Y + 6}
+            width={TRAY_W}
+            height={BOTTOM_Y - MID_Y - 6}
+            rx={6}
+            fill={theme.tray}
+          />
 
-        {/* highlights */}
-        {POINT_INDICES.map((abs) =>
-          targetPoints.has(String(abs)) ? (
-            <path
-              key={`hl${abs}`}
+          {/* points */}
+          {POINT_INDICES.map((phys) => (
+            <path key={`pt${phys}`} d={pointPath(phys)} fill={phys % 2 === 0 ? theme.pointA : theme.pointB} />
+          ))}
+
+          {/* highlights */}
+          {POINT_INDICES.map((abs) =>
+            targetPoints.has(String(abs)) ? (
+              <path
+                key={`hl${abs}`}
+                data-target=""
+                d={pointPath(screen(abs) as number)}
+                fill={theme.highlight}
+                fillOpacity={0.55}
+                stroke="#fff"
+                strokeOpacity={0.85}
+                strokeWidth={3}
+                className="motion-safe:animate-pulse"
+              />
+            ) : null,
+          )}
+          {typeof activeSlot === "number" && (
+            <path d={pointPath(screen(activeSlot) as number)} fill={theme.selected} opacity={0.45} />
+          )}
+          {targetPoints.has("off") && (
+            <rect
               data-target=""
-              d={pointPath(screen(abs) as number)}
+              x={TRAY_X}
+              y={view.side(turn) === 0 ? MID_Y + 6 : TOP_Y}
+              width={TRAY_W}
+              height={BOTTOM_Y - MID_Y - 6}
+              rx={6}
               fill={theme.highlight}
-              fillOpacity={0.55}
+              fillOpacity={0.45}
               stroke="#fff"
               strokeOpacity={0.85}
               strokeWidth={3}
               className="motion-safe:animate-pulse"
             />
-          ) : null,
-        )}
-        {typeof activeSlot === "number" && (
-          <path d={pointPath(screen(activeSlot) as number)} fill={theme.selected} opacity={0.45} />
-        )}
-        {targetPoints.has("off") && (
-          <rect
-            data-target=""
-            x={TRAY_X}
-            y={view.side(turn) === 0 ? MID_Y + 6 : TOP_Y}
-            width={TRAY_W}
-            height={BOTTOM_Y - MID_Y - 6}
-            rx={6}
-            fill={theme.highlight}
-            fillOpacity={0.45}
-            stroke="#fff"
-            strokeOpacity={0.85}
-            strokeWidth={3}
-            className="motion-safe:animate-pulse"
-          />
-        )}
+          )}
 
-        {/* point numbers */}
-        {numbersFor !== null &&
-          POINT_INDICES.map((phys) => (
-            <text
-              key={`n${phys}`}
-              x={pointX(phys)}
-              y={isTop(phys) ? FRAME / 2 : HEIGHT - FRAME / 2}
-              transform={upright(
-                pointX(phys),
-                isTop(phys) ? FRAME / 2 : HEIGHT - FRAME / 2,
-                rotated,
-                mirrored,
-              )}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={12}
-              fill={theme.label}
-              opacity={0.85}
-            >
-              {ownPoint(rules, numbersFor, view.fromScreen(phys) as number)}
-            </text>
-          ))}
+          {/* point numbers */}
+          {numbersFor !== null &&
+            POINT_INDICES.map((phys) => (
+              <text
+                key={`n${phys}`}
+                x={pointX(phys)}
+                y={isTop(phys) ? FRAME / 2 : HEIGHT - FRAME / 2}
+                transform={upright(
+                  pointX(phys),
+                  isTop(phys) ? FRAME / 2 : HEIGHT - FRAME / 2,
+                  rotated,
+                  mirrored,
+                )}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={12}
+                fill={theme.label}
+                opacity={0.85}
+              >
+                {ownPoint(rules, numbersFor, view.fromScreen(phys) as number)}
+              </text>
+            ))}
 
-        {/* movable sources */}
-        {interactive &&
-          drag === null &&
-          [...sources].map((k) => {
-            const slot: Slot = k === "bar" ? barSlot(turn) : Number(k);
-            const n = stackAt(layout, slot).length;
-            const top = checkerPos(screen(slot), n - 1, n);
+          {/* movable sources */}
+          {interactive &&
+            drag === null &&
+            [...sources].map((k) => {
+              const slot: Slot = k === "bar" ? barSlot(turn) : Number(k);
+              const n = stackAt(layout, slot).length;
+              const top = checkerPos(screen(slot), n - 1, n);
+              return (
+                <circle
+                  key={`src${k}`}
+                  cx={top.x}
+                  cy={top.y}
+                  r={CHECKER_R + 4}
+                  fill="none"
+                  stroke={theme.selected}
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  opacity={0.8}
+                />
+              );
+            })}
+
+          {/* checkers */}
+          {checkers.map(({ id, slot, i, n }) => {
+            const owner = checkerOwner(id);
+            const look = theme.checkers[owner];
+            const isDragged = drag?.id === id && drag.moved;
+            const pos = isDragged ? drag.cur : checkerPos(screen(slot), i, n);
+            const off = slot === "off0" || slot === "off1";
+            const pinnedBelow =
+              typeof slot === "number" && i === 0 && n > 1 && state.board.pinned[slot] === owner;
             return (
-              <circle
-                key={`src${k}`}
-                cx={top.x}
-                cy={top.y}
-                r={CHECKER_R + 4}
-                fill="none"
-                stroke={theme.selected}
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                opacity={0.8}
-              />
+              <motion.g
+                key={id}
+                initial={false}
+                animate={{ x: pos.x, y: pos.y }}
+                transition={isDragged ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 26 }}
+                style={{ pointerEvents: "none" }}
+                filter="url(#cl-shadow)"
+              >
+                {off ? (
+                  <rect
+                    x={-CHECKER_R}
+                    y={-OFF_CHIP_H / 2 + 1}
+                    width={CHECKER_R * 2}
+                    height={OFF_CHIP_H - 2}
+                    rx={3}
+                    fill={look.fill}
+                    stroke={look.edge}
+                  />
+                ) : (
+                  <>
+                    <circle r={CHECKER_R} fill={look.fill} stroke={look.edge} strokeWidth={2} />
+                    <circle
+                      r={CHECKER_R * 0.62}
+                      fill="none"
+                      stroke={look.ring}
+                      strokeWidth={2}
+                      opacity={0.8}
+                    />
+                    {pinnedBelow && <circle r={CHECKER_R * 0.25} fill={theme.highlight} opacity={0.9} />}
+                    {activeSlot === slot && i === n - 1 && (
+                      <circle r={CHECKER_R + 2} fill="none" stroke={theme.selected} strokeWidth={3} />
+                    )}
+                  </>
+                )}
+              </motion.g>
             );
           })}
 
-        {/* checkers */}
-        {checkers.map(({ id, slot, i, n }) => {
-          const owner = checkerOwner(id);
-          const look = theme.checkers[owner];
-          const isDragged = drag?.id === id && drag.moved;
-          const pos = isDragged ? drag.cur : checkerPos(screen(slot), i, n);
-          const off = slot === "off0" || slot === "off1";
-          const pinnedBelow =
-            typeof slot === "number" && i === 0 && n > 1 && state.board.pinned[slot] === owner;
-          return (
-            <motion.g
-              key={id}
-              initial={false}
-              animate={{ x: pos.x, y: pos.y }}
-              transition={isDragged ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 26 }}
-              style={{ pointerEvents: "none" }}
-              filter="url(#cl-shadow)"
-            >
-              {off ? (
-                <rect
-                  x={-CHECKER_R}
-                  y={-OFF_CHIP_H / 2 + 1}
-                  width={CHECKER_R * 2}
-                  height={OFF_CHIP_H - 2}
-                  rx={3}
-                  fill={look.fill}
-                  stroke={look.edge}
+          <AnimatePresence>
+            {!hideDice &&
+              ((state.phase === "opening" && openingDice) || (state.phase === "moving" && state.dice)) && (
+                <DiceLayer
+                  key={state.phase === "opening" ? `open${openingDice?.seq}` : `roll${state.history.length}`}
+                  state={state}
+                  theme={theme}
+                  openingDice={openingDice}
+                  intro={diceIntro}
+                  view={view}
                 />
-              ) : (
-                <>
-                  <circle r={CHECKER_R} fill={look.fill} stroke={look.edge} strokeWidth={2} />
-                  <circle r={CHECKER_R * 0.62} fill="none" stroke={look.ring} strokeWidth={2} opacity={0.8} />
-                  {pinnedBelow && <circle r={CHECKER_R * 0.25} fill={theme.highlight} opacity={0.9} />}
-                  {activeSlot === slot && i === n - 1 && (
-                    <circle r={CHECKER_R + 2} fill="none" stroke={theme.selected} strokeWidth={3} />
-                  )}
-                </>
               )}
-            </motion.g>
-          );
-        })}
-
-        <AnimatePresence>
-          {!hideDice &&
-            ((state.phase === "opening" && openingDice) || (state.phase === "moving" && state.dice)) && (
-              <DiceLayer
-                key={state.phase === "opening" ? `open${openingDice?.seq}` : `roll${state.history.length}`}
-                state={state}
-                theme={theme}
-                openingDice={openingDice}
-                intro={diceIntro}
-                view={view}
-              />
-            )}
-        </AnimatePresence>
-        <CubeView state={state} theme={theme} view={view} rotated={rotated} mirrored={mirrored} />
-        {hint && hint.length > 0 && (
-          <HintArrows
-            moves={hint}
-            layout={layout}
-            player={turn}
-            color={theme.highlight}
+          </AnimatePresence>
+          <CubeView state={state} theme={theme} view={view} rotated={rotated} mirrored={mirrored} />
+          {hint && hint.length > 0 && (
+            <HintArrows
+              moves={hint}
+              layout={layout}
+              player={turn}
+              color={theme.highlight}
+              view={view}
+              mirrored={mirrored}
+              rotated={rotated}
+            />
+          )}
+          <FocusCells
+            state={state}
             view={view}
-            mirrored={mirrored}
-            rotated={rotated}
+            t={t}
+            cursor={keyboard.cursor}
+            numbersFor={numbersFor ?? viewer}
+            sources={sources}
+            targets={targets}
+            selected={selected}
+            ringColor={theme.selected}
+            onCellFocus={keyboard.onCellFocus}
           />
-        )}
-      </g>
-    </svg>
+        </g>
+      </svg>
+      <p id={hintId} className="sr-only">
+        {t.boardKeysHint}
+      </p>
+      <LiveRegion announcement={keyboard.announcement} />
+    </>
   );
 }
 
