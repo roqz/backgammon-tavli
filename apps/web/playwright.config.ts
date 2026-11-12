@@ -33,7 +33,12 @@ export default defineConfig({
       command: "node ../server/dist/server.js",
       url: `http://localhost:${E2E_SERVER_PORT}/api/health`,
       reuseExistingServer: !process.env.CI,
-      env: { PORT: String(E2E_SERVER_PORT), DB_PATH: ":memory:", ALLOW_SAME_NETWORK: "1" },
+      env: {
+        PORT: String(E2E_SERVER_PORT),
+        DB_PATH: ":memory:",
+        ALLOW_SAME_NETWORK: "1",
+        TOURNAMENT_GUEST_MIN_MATCHES: "0",
+      },
     },
   ],
 });

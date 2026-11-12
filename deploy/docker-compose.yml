@@ -17,6 +17,14 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       # Contact for the browser push services (VAPID keys are generated and stored in /data)
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      # Daily database copies inside the volume (keep 14); copy /data/backups off the server too
+      BACKUP_DIR: /data/backups
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     volumes:
       - tavli-data:/data
     expose:
@@ -28,7 +36,9 @@ services:
       dockerfile: deploy/web.Dockerfile
     restart: unless-stopped
     depends_on:
-      - server
+      server:
+        condition: service_healthy
+    logging: *logging
     environment:
       DOMAIN: ${DOMAIN:-:80}
     ports:

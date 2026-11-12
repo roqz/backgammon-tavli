@@ -60,12 +60,18 @@ export interface TournamentOptions {
   readonly openTtlMs: number;
   /** Pause before a ready match starts, so players can look at the previous result. */
   readonly startDelayMs: number;
+  /** Guests (no account) need this many finished matches before they may create a tournament. */
+  readonly guestMinMatches: number;
+  /** Open (not yet full) tournaments at the same time, against lobby spam. */
+  readonly maxOpen: number;
 }
 
 export const DEFAULT_TOURNAMENT_OPTIONS: TournamentOptions = {
   noShowMs: 5 * 60_000,
   openTtlMs: 24 * 60 * 60_000,
   startDelayMs: 10_000,
+  guestMinMatches: 3,
+  maxOpen: 50,
 };
 
 /** What the tournament manager needs from the lobby. */
@@ -313,7 +319,7 @@ export class Tournaments {
   list(): TournamentView[] {
     const ids = this.db
       .prepare(
-        `SELECT id FROM tournaments WHERE status IN ('open', 'running')
+        `SELECT id FROM (SELECT id FROM tournaments WHERE status IN ('open', 'running') ORDER BY created_at DESC LIMIT 100)
          UNION ALL
          SELECT id FROM (SELECT id FROM tournaments WHERE status = 'finished' ORDER BY finished_at DESC LIMIT 20)`,
       )
@@ -362,6 +368,13 @@ export class Tournaments {
     format: TournamentFormat = "knockout",
   ): TournamentView {
     if (this.activeTournamentOf(playerId)) throw new TournamentError("already in a tournament");
+    const account = this.store.account(playerId);
+    if (!account?.username && this.store.matchCount(playerId) < this.opts.guestMinMatches)
+      throw new TournamentError("play a few matches or create an account first");
+    const open = this.db.prepare("SELECT COUNT(*) AS n FROM tournaments WHERE status = 'open'").get() as {
+      n: number;
+    };
+    if (open.n >= this.opts.maxOpen) throw new TournamentError("too many open tournaments, join one");
     const id = randomUUID();
     this.db
       .prepare(
@@ -403,6 +416,17 @@ export class Tournaments {
       .run(id, playerId);
     this.tick();
     this.changed(id);
+  }
+
+  /** Leaves or withdraws from every open or running tournament (profile deleted). */
+  withdrawEverywhere(playerId: string): void {
+    const ids = this.db
+      .prepare(
+        `SELECT t.id FROM tournament_entries e JOIN tournaments t ON t.id = e.tournament_id
+         WHERE e.player_id = ? AND t.status IN ('open', 'running')`,
+      )
+      .all(playerId) as { id: string }[];
+    for (const { id } of ids) this.leave(playerId, id);
   }
 
   private addEntry(id: string, playerId: string): void {

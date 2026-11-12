@@ -200,10 +200,22 @@ export class Push {
     return { publicKey, key: privateKey };
   }
 
-  /** Stores a browser subscription; returns false for an endpoint that is not a push service. */
+  /**
+   * Stores a browser subscription; returns false for an endpoint that is not a push service, or
+   * one registered by another player with different keys (a known URL cannot be taken over).
+   */
   subscribe(playerId: string, sub: PushSubscriptionInput): boolean {
     if (!this.allow(sub.endpoint)) return false;
     const db = this.store.db;
+    const existing = db
+      .prepare("SELECT player_id, p256dh, auth FROM push_subscriptions WHERE endpoint = ?")
+      .get(sub.endpoint) as { player_id: string; p256dh: string; auth: string } | undefined;
+    if (
+      existing &&
+      existing.player_id !== playerId &&
+      (existing.p256dh !== sub.keys.p256dh || existing.auth !== sub.keys.auth)
+    )
+      return false;
     db.prepare(
       `INSERT INTO push_subscriptions (endpoint, player_id, p256dh, auth, lang, created_at) VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(endpoint) DO UPDATE SET player_id = excluded.player_id, p256dh = excluded.p256dh,

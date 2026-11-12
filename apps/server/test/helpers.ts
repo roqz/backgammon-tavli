@@ -14,6 +14,8 @@ export const start = (
   startServer({
     ...extra,
     analysis: extra.analysis ?? "off",
+    maintenanceMs: extra.maintenanceMs ?? 0,
+    tournaments: { guestMinMatches: 0, ...extra.tournaments },
     fairPlay: { blockSameNetwork: false, ...fairPlay },
     messageRate,
     matchmaking: { sweepMs: 50, ...matchmaking },

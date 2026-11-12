@@ -223,6 +223,9 @@ export const PushSubscribeSchema = z.object({
 
 export const PushUnsubscribeSchema = z.object({ endpoint: z.url().max(1000) });
 
+/** Deleting the profile: accounts confirm with their password. */
+export const DeleteAccountSchema = z.object({ password: z.string().max(200).optional() });
+
 export const ReportSchema = z.object({
   playerId: z.string().min(1).max(64),
   matchId: z.string().min(1).max(64).optional(),
@@ -384,7 +387,28 @@ export interface TournamentStanding {
   readonly buchholz: number;
 }
 
-export const NameSchema = z.object({ name: z.string().trim().min(1).max(NAME_MAX) });
+/** Removes control and invisible formatting characters (bidi overrides, zero-width) and collapses spaces. */
+export const cleanName = (s: string): string =>
+  s
+    .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/** Names that would look official in the lobby or the ranking. */
+const RESERVED_NAMES = /^(admin|administrator|mod|moderator|system|server|support|tavli|computer|bot)$/i;
+
+export const NameSchema = z.object({
+  name: z
+    .string()
+    .transform(cleanName)
+    .pipe(
+      z
+        .string()
+        .min(1)
+        .max(NAME_MAX)
+        .refine((n) => !RESERVED_NAMES.test(n), "reserved name"),
+    ),
+});
 
 export const encode = (m: ServerMessage | ClientMessage): string => JSON.stringify(m);
 

@@ -117,6 +117,7 @@ export class Lobby {
   private readonly roomByPlayer = new Map<string, MatchRoom>();
   private readonly finished = new Map<string, FinishedPairing & { endedAt: number }>();
   private readonly rematchOffers = new Map<string, Set<string>>();
+  private readonly failedJoins = new Map<string, { n: number; since: number }>();
   private readonly mm: MatchmakingOptions;
   private readonly fair: FairPlayOptions;
   private readonly sweepTimer: ReturnType<typeof setInterval>;
@@ -154,6 +155,10 @@ export class Lobby {
     this.sessions.set(conn, { playerId: null, ip, deviceId: null });
   }
 
+  isAuthenticated(conn: Conn): boolean {
+    return !!this.sessions.get(conn)?.playerId;
+  }
+
   disconnect(conn: Conn): void {
     const session = this.sessions.get(conn);
     this.sessions.delete(conn);
@@ -173,6 +178,7 @@ export class Lobby {
     if (!session) return;
     if (msg.t === "ping") return conn.send({ t: "pong" });
     if (msg.t === "hello") {
+      if (session.playerId) return conn.send({ t: "error", message: "already identified" });
       session.deviceId = msg.deviceId ?? null;
       return this.hello(conn, session, msg.playerId, msg.token);
     }
@@ -399,9 +405,18 @@ export class Lobby {
   private joinInvite(conn: Conn, id: string, code: string): void {
     if (this.busy(conn, id)) return;
     this.pruneInvites();
+    const ip = this.sessions.get(conn)?.ip ?? "";
+    const failed = this.failedJoins.get(ip);
+    if (failed && Date.now() - failed.since < 10 * 60_000 && failed.n >= 20)
+      return conn.send({ t: "error", message: "too many attempts" });
     const invite = this.invites.get(code);
-    if (!invite || !this.connByPlayer.has(invite.hostId))
+    if (!invite || !this.connByPlayer.has(invite.hostId)) {
+      // Invite codes are short: count misses per address against guessing.
+      const f = failed && Date.now() - failed.since < 10 * 60_000 ? failed : { n: 0, since: Date.now() };
+      this.failedJoins.set(ip, { n: f.n + 1, since: f.since });
+      if (this.failedJoins.size > 10_000) this.failedJoins.clear();
       return conn.send({ t: "error", message: "invite not found" });
+    }
     if (invite.hostId === id) return conn.send({ t: "error", message: "cannot join your own invite" });
     this.invites.delete(code);
     this.removeFromQueues(id);
@@ -559,13 +574,20 @@ export class Lobby {
   }
 
   /** Ends a banned player's connection; a running match is forfeited after the grace period. */
-  kick(playerId: string): void {
+  /** Disconnects a banned player, or one who deleted the profile (also forfeiting a running match). */
+  kick(playerId: string, reason: "banned" | "deleted" = "banned"): void {
     this.removeFromQueues(playerId);
     this.removeInvites(playerId);
+    if (reason === "deleted") {
+      const room = this.roomByPlayer.get(playerId);
+      const seat = room?.seatOf(playerId);
+      if (room && seat !== null && seat !== undefined && !room.ended) room.leave(seat);
+      this.tournaments.withdrawEverywhere(playerId);
+    }
     const conn = this.connByPlayer.get(playerId);
     if (!conn) return;
-    conn.send({ t: "error", message: "banned" });
-    conn.close(4003, "banned");
+    conn.send({ t: "error", message: reason });
+    conn.close(reason === "banned" ? 4003 : 4004, reason);
   }
 
   /** Whether both players sit in the same running or recently finished match. */
@@ -577,6 +599,11 @@ export class Lobby {
   }
 
   /** Stops all rooms and timers (server shutdown). */
+  /** Tells every connected player that the server goes down (before dispose). */
+  announceShutdown(): void {
+    for (const conn of this.connByPlayer.values()) conn.send({ t: "error", message: "server restarting" });
+  }
+
   dispose(): void {
     clearInterval(this.sweepTimer);
     for (const room of new Set(this.roomByPlayer.values())) room.dispose();

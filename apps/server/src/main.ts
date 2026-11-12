@@ -6,6 +6,13 @@ const server = await startServer({
   host: env.HOST,
   dbPath: env.DB_PATH ?? "./tavli.db",
   corsOrigin: env.CORS_ORIGIN ?? "*",
+  // Daily database copies (VACUUM INTO); copy them off the server, too.
+  backupDir: env.BACKUP_DIR || undefined,
+  backupKeep: env.BACKUP_KEEP ? Number(env.BACKUP_KEEP) : undefined,
+  // Guests need this many finished matches before creating a tournament (default 3).
+  ...(env.TOURNAMENT_GUEST_MIN_MATCHES
+    ? { tournaments: { guestMinMatches: Number(env.TOURNAMENT_GUEST_MIN_MATCHES) } }
+    : {}),
   trustProxy: env.TRUST_PROXY === "1" || env.TRUST_PROXY === "true",
   // Moderation API (reports, bans); disabled unless set.
   adminToken: env.ADMIN_TOKEN,
@@ -25,6 +32,14 @@ const server = await startServer({
   fairPlay: { blockSameNetwork: env.ALLOW_SAME_NETWORK !== "1" },
   log: (msg) => console.log(`[${new Date().toISOString()}] ${msg}`),
 });
+
+// A bug in one match must not take every other match down: log and keep serving.
+process.on("uncaughtException", (e) =>
+  console.error(`[${new Date().toISOString()}] uncaught: ${e.stack ?? String(e)}`),
+);
+process.on("unhandledRejection", (e) =>
+  console.error(`[${new Date().toISOString()}] unhandled rejection: ${String(e)}`),
+);
 
 const shutdown = async () => {
   console.log("shutting down…");

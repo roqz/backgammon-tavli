@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import type { GameResult, TurnRecord } from "@tavli/engine";
 import type {
@@ -105,10 +105,15 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["matches", "fairness", "ALTER TABLE matches ADD COLUMN fairness TEXT"],
   ["players", "banned_at", "ALTER TABLE players ADD COLUMN banned_at TEXT"],
   ["players", "ban_reason", "ALTER TABLE players ADD COLUMN ban_reason TEXT"],
+  ["players", "last_seen", "ALTER TABLE players ADD COLUMN last_seen TEXT"],
+  ["players", "deleted_at", "ALTER TABLE players ADD COLUMN deleted_at TEXT"],
 ];
 
 /** How many reports one player may file per day. */
 export const REPORTS_PER_DAY = 10;
+
+/** Shown instead of the name of a deleted player in old matches and tournaments. */
+export const DELETED_NAME = "—";
 
 /**
  * Fair-play signal thresholds. Bot agreement: the medium bot reaches 70–88 % in self-play, the
@@ -158,28 +163,82 @@ export class AccountError extends Error {
   }
 }
 
-const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 32 };
+/** scrypt cost: N=2^15 (32 MiB, ~100 ms); older hashes are upgraded on the next login. */
+const SCRYPT = { N: 32768, r: 8, p: 1, keylen: 32 };
+const SCRYPT_MAXMEM = 64 * 1024 * 1024;
+/** Hashes run on the libuv thread pool; at most this many at once, the rest queue (or are refused). */
+const HASH_CONCURRENCY = 2;
+const HASH_QUEUE_MAX = 32;
 
-export const hashPassword = (password: string): string => {
+let hashing = 0;
+const hashQueue: (() => void)[] = [];
+
+const scryptAsync = async (
+  password: string,
+  salt: Buffer,
+  keylen: number,
+  n: number,
+  r: number,
+  p: number,
+) => {
+  if (hashing >= HASH_CONCURRENCY) {
+    if (hashQueue.length >= HASH_QUEUE_MAX) throw new AccountError(503, "server busy, try again");
+    await new Promise<void>((resolve) => hashQueue.push(resolve));
+  }
+  hashing++;
+  try {
+    return await new Promise<Buffer>((resolve, reject) =>
+      scrypt(password, salt, keylen, { N: n, r, p, maxmem: SCRYPT_MAXMEM }, (err, key) =>
+        err ? reject(err) : resolve(key),
+      ),
+    );
+  } finally {
+    hashing--;
+    hashQueue.shift()?.();
+  }
+};
+
+export const hashPassword = async (password: string): Promise<string> => {
   const salt = randomBytes(16);
-  const hash = scryptSync(password, salt, SCRYPT.keylen, { N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p });
+  const hash = await scryptAsync(password, salt, SCRYPT.keylen, SCRYPT.N, SCRYPT.r, SCRYPT.p);
   return ["scrypt", SCRYPT.N, SCRYPT.r, SCRYPT.p, salt.toString("base64"), hash.toString("base64")].join("$");
 };
 
-export const verifyPassword = (password: string, stored: string): boolean => {
+export const verifyPassword = async (password: string, stored: string): Promise<boolean> => {
   const [algo, n, r, p, salt, hash] = stored.split("$");
   if (algo !== "scrypt" || !salt || !hash) return false;
   const expected = Buffer.from(hash, "base64");
-  const actual = scryptSync(password, Buffer.from(salt, "base64"), expected.length, {
-    N: Number(n),
-    r: Number(r),
-    p: Number(p),
-  });
+  const actual = await scryptAsync(
+    password,
+    Buffer.from(salt, "base64"),
+    expected.length,
+    Number(n),
+    Number(r),
+    Number(p),
+  );
   return timingSafeEqual(expected, actual);
 };
 
+/** Whether a stored hash uses weaker parameters than the current ones. */
+const needsRehash = (stored: string): boolean => Number(stored.split("$")[1]) < SCRYPT.N;
+
 /** Dummy hash so failed logins for unknown users cost the same time as wrong passwords. */
-const DUMMY_HASH = hashPassword("dummy-password-for-timing");
+let dummyHash: Promise<string> | null = null;
+const DUMMY_HASH = () => (dummyHash ??= hashPassword("dummy-password-for-timing"));
+
+/** Login sessions end after this long without use, and in any case after the absolute limit. */
+export const SESSION_IDLE_DAYS = 90;
+export const SESSION_MAX_DAYS = 365;
+const DAY = 24 * 60 * 60 * 1000;
+/** last_used is written at most this often (fewer writes per request). */
+const TOUCH_MS = 60 * 60 * 1000;
+
+/**
+ * Data retention (also described in the privacy notice): guests who never finished a match are
+ * deleted after GUEST_DAYS without activity, fair-play data after FAIRPLAY_DAYS, resolved
+ * reports after REPORT_DAYS.
+ */
+export const RETENTION = { guestDays: 30, fairPlayDays: 180, reportDays: 365 } as const;
 
 export interface AccountRow {
   readonly id: string;
@@ -237,6 +296,11 @@ export class Store {
       if (!cols.some((c) => c.name === column)) this.db.exec(ddl);
     }
     this.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS players_username ON players(lower(username))");
+    // Accounts created before sessions expired kept their guest token: turn it into a session.
+    const legacy = this.db
+      .prepare("SELECT id FROM players WHERE username IS NOT NULL AND token_hash NOT LIKE '-%'")
+      .all() as { id: string }[];
+    for (const { id } of legacy) this.guestTokenToSession(id);
   }
 
   close(): void {
@@ -252,26 +316,56 @@ export class Store {
     return { id, token, name };
   }
 
-  /** Returns the player if the token matches (the guest token or a login session). */
+  /**
+   * Returns the player if the token matches: the guest token (guests only) or a login session
+   * that has not expired.
+   */
   authenticate(id: string, token: string): PlayerRow | null {
-    const row = this.db.prepare("SELECT id, name, token_hash, banned_at FROM players WHERE id = ?").get(id) as
-      | { id: string; name: string; token_hash: string; banned_at: string | null }
+    const row = this.db
+      .prepare("SELECT id, name, token_hash, banned_at, deleted_at FROM players WHERE id = ?")
+      .get(id) as
+      | { id: string; name: string; token_hash: string; banned_at: string | null; deleted_at: string | null }
       | undefined;
-    if (!row) return null;
+    if (!row || row.deleted_at) return null;
     const player: PlayerRow = { id: row.id, name: row.name, banned: row.banned_at !== null };
     const actual = hashToken(token);
     const expected = Buffer.from(row.token_hash, "hex");
-    if (expected.length === actual.length && timingSafeEqual(expected, actual)) return player;
+    if (expected.length === actual.length && timingSafeEqual(expected, actual)) {
+      this.touchPlayer(id);
+      return player;
+    }
     const key = actual.toString("hex");
-    const session = this.db.prepare("SELECT player_id FROM sessions WHERE token_hash = ?").get(key) as
-      | { player_id: string }
-      | undefined;
+    const session = this.db
+      .prepare("SELECT player_id, created_at, last_used FROM sessions WHERE token_hash = ?")
+      .get(key) as { player_id: string; created_at: string; last_used: string } | undefined;
     if (session?.player_id !== id) return null;
-    this.db
-      .prepare("UPDATE sessions SET last_used = ? WHERE token_hash = ?")
-      .run(new Date().toISOString(), key);
+    const now = Date.now();
+    if (
+      now - Date.parse(session.last_used) > SESSION_IDLE_DAYS * DAY ||
+      now - Date.parse(session.created_at) > SESSION_MAX_DAYS * DAY
+    ) {
+      this.db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(key);
+      return null;
+    }
+    if (now - Date.parse(session.last_used) > TOUCH_MS) {
+      this.db
+        .prepare("UPDATE sessions SET last_used = ? WHERE token_hash = ?")
+        .run(new Date(now).toISOString(), key);
+      this.touchPlayer(id);
+    }
     return player;
   }
+
+  /** Last activity of a player (for the retention of inactive guests); written at most hourly. */
+  private touchPlayer(id: string): void {
+    const now = Date.now();
+    const last = this.lastSeen.get(id) ?? 0;
+    if (now - last < TOUCH_MS) return;
+    this.lastSeen.set(id, now);
+    this.db.prepare("UPDATE players SET last_seen = ? WHERE id = ?").run(new Date(now).toISOString(), id);
+  }
+
+  private readonly lastSeen = new Map<string, number>();
 
   account(id: string): AccountRow | null {
     const row = this.db.prepare("SELECT id, name, username, email FROM players WHERE id = ?").get(id) as
@@ -280,29 +374,66 @@ export class Store {
     return row ?? null;
   }
 
-  /** Turns a guest profile into an account with username and password (ratings stay). */
-  claimAccount(id: string, username: string, password: string, email: string | null): AccountRow {
+  /**
+   * Turns a guest profile into an account with username and password (ratings stay). The guest
+   * token of this device becomes a normal login session, so it can expire and be revoked.
+   */
+  async claimAccount(
+    id: string,
+    username: string,
+    password: string,
+    email: string | null,
+  ): Promise<AccountRow> {
     const current = this.account(id);
     if (!current) throw new AccountError(404, "unknown player");
     if (current.username) throw new AccountError(409, "account already exists");
     const taken = this.db.prepare("SELECT 1 FROM players WHERE lower(username) = lower(?)").get(username);
     if (taken) throw new AccountError(409, "username taken");
+    const hash = await hashPassword(password);
+    // re-check after the await: another request may have taken the name meanwhile
+    if (this.db.prepare("SELECT 1 FROM players WHERE lower(username) = lower(?)").get(username))
+      throw new AccountError(409, "username taken");
     this.db
       .prepare("UPDATE players SET username = ?, password_hash = ?, email = ? WHERE id = ?")
-      .run(username, hashPassword(password), email, id);
+      .run(username, hash, email, id);
+    this.guestTokenToSession(id);
     return this.account(id)!;
   }
 
+  /** Moves the guest token of an account into the sessions table (and disables it as guest token). */
+  private guestTokenToSession(id: string): void {
+    const row = this.db.prepare("SELECT token_hash FROM players WHERE id = ?").get(id) as
+      | { token_hash: string }
+      | undefined;
+    if (!row || row.token_hash.startsWith("-")) return;
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        "INSERT OR IGNORE INTO sessions (token_hash, player_id, created_at, last_used) VALUES (?, ?, ?, ?)",
+      )
+      .run(row.token_hash, id, now, now);
+    // "-" + random: never equal to a SHA-256 hex digest
+    this.db
+      .prepare("UPDATE players SET token_hash = ? WHERE id = ?")
+      .run(`-${randomBytes(16).toString("hex")}`, id);
+  }
+
   /** Checks credentials and opens a new session (one per device). */
-  login(username: string, password: string): { id: string; token: string; name: string } {
+  async login(username: string, password: string): Promise<{ id: string; token: string; name: string }> {
     const row = this.db
-      .prepare("SELECT id, name, password_hash, banned_at FROM players WHERE lower(username) = lower(?)")
+      .prepare(
+        "SELECT id, name, password_hash, banned_at FROM players WHERE lower(username) = lower(?) AND deleted_at IS NULL",
+      )
       .get(username) as
       | { id: string; name: string; password_hash: string | null; banned_at: string | null }
       | undefined;
-    const ok = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
+    const ok = await verifyPassword(password, row?.password_hash ?? (await DUMMY_HASH()));
     if (!row?.password_hash || !ok) throw new AccountError(401, "wrong username or password");
     if (row.banned_at) throw new AccountError(403, "banned");
+    if (needsRehash(row.password_hash)) {
+      const upgraded = await hashPassword(password);
+      this.db.prepare("UPDATE players SET password_hash = ? WHERE id = ?").run(upgraded, row.id);
+    }
     const token = randomBytes(24).toString("base64url");
     const now = new Date().toISOString();
     this.db
@@ -311,19 +442,179 @@ export class Store {
     return { id: row.id, token, name: row.name };
   }
 
-  /** Ends a login session (the guest token of the first device stays valid). */
+  /** Ends a login session. */
   logout(token: string): void {
     this.db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(token).toString("hex"));
   }
 
-  changePassword(id: string, oldPassword: string, newPassword: string): void {
+  /** Ends all sessions of a player except the one with `keepToken`; returns how many ended. */
+  logoutOthers(id: string, keepToken: string): number {
+    return Number(
+      this.db
+        .prepare("DELETE FROM sessions WHERE player_id = ? AND token_hash != ?")
+        .run(id, hashToken(keepToken).toString("hex")).changes,
+    );
+  }
+
+  /** Throws unless the password is the account's. */
+  async checkPassword(id: string, password: string): Promise<void> {
     const row = this.db.prepare("SELECT password_hash FROM players WHERE id = ?").get(id) as
       | { password_hash: string | null }
       | undefined;
-    if (!row?.password_hash || !verifyPassword(oldPassword, row.password_hash)) {
+    if (!row?.password_hash || !(await verifyPassword(password, row.password_hash)))
+      throw new AccountError(401, "wrong password");
+  }
+
+  /** Changes the password and ends every other session (a stolen token stops working). */
+  async changePassword(
+    id: string,
+    oldPassword: string,
+    newPassword: string,
+    keepToken: string,
+  ): Promise<void> {
+    const row = this.db.prepare("SELECT password_hash FROM players WHERE id = ?").get(id) as
+      | { password_hash: string | null }
+      | undefined;
+    if (!row?.password_hash || !(await verifyPassword(oldPassword, row.password_hash))) {
       throw new AccountError(401, "wrong password");
     }
-    this.db.prepare("UPDATE players SET password_hash = ? WHERE id = ?").run(hashPassword(newPassword), id);
+    const hash = await hashPassword(newPassword);
+    this.db.prepare("UPDATE players SET password_hash = ? WHERE id = ?").run(hash, id);
+    this.guestTokenToSession(id);
+    this.logoutOthers(id, keepToken);
+  }
+
+  // ---- privacy: export and deletion ------------------------------------------------------------
+
+  /** Everything stored about a player, as JSON for the data export (GDPR Art. 15/20). */
+  exportData(id: string): Record<string, unknown> | null {
+    const p = this.db
+      .prepare(
+        "SELECT id, name, username, email, created_at, last_seen, banned_at, ban_reason FROM players WHERE id = ?",
+      )
+      .get(id) as Record<string, unknown> | undefined;
+    if (!p) return null;
+    const all = (sql: string) => this.db.prepare(sql).all(id) as Record<string, unknown>[];
+    const matches = all(
+      `SELECT id, variant, length, p0, p1, winner, score0, score1, reason, rating_delta0, rating_delta1,
+         started_at, ended_at, games FROM matches WHERE p0 = ?1 OR p1 = ?1 ORDER BY ended_at`,
+    ).map((m) => ({ ...m, games: JSON.parse(String(m.games)) }));
+    return {
+      exportedAt: new Date().toISOString(),
+      player: p,
+      sessions: all("SELECT created_at, last_used FROM sessions WHERE player_id = ?"),
+      ratings: all("SELECT variant, rating, experience, matches, wins FROM ratings WHERE player_id = ?"),
+      matches,
+      reportsFiled: all(
+        "SELECT reported, match_id, reason, note, created_at FROM reports WHERE reporter = ?",
+      ),
+      fairPlayAnalyses: all(
+        "SELECT match_id, decisions, agree, loss, created_at FROM analyses WHERE player_id = ?",
+      ),
+      thinkTimes: all("SELECT match_id, n, sum_log, sum_log2, created_at FROM timings WHERE player_id = ?"),
+      tournaments: this.tableExists("tournament_entries")
+        ? all("SELECT tournament_id, seed, withdrawn, joined_at FROM tournament_entries WHERE player_id = ?")
+        : [],
+      pushSubscriptions: this.tableExists("push_subscriptions")
+        ? all("SELECT created_at, lang FROM push_subscriptions WHERE player_id = ?")
+        : [],
+    };
+  }
+
+  /**
+   * Deletes a player: login data, e-mail, sessions, ratings, push subscriptions, fair-play data
+   * and own reports are removed; the name is replaced, so archived matches of the opponents stay
+   * readable without personal data. Returns false for an unknown player.
+   */
+  deletePlayer(id: string): boolean {
+    const exists = this.db.prepare("SELECT 1 FROM players WHERE id = ? AND deleted_at IS NULL").get(id);
+    if (!exists) return false;
+    const run = (sql: string) => this.db.prepare(sql).run(id);
+    this.db.exec("BEGIN");
+    try {
+      this.db
+        .prepare(
+          `UPDATE players SET name = ?, username = NULL, password_hash = NULL, email = NULL, token_hash = ?,
+             deleted_at = ? WHERE id = ?`,
+        )
+        .run(DELETED_NAME, `-${randomBytes(16).toString("hex")}`, new Date().toISOString(), id);
+      run("DELETE FROM sessions WHERE player_id = ?");
+      run("DELETE FROM ratings WHERE player_id = ?");
+      run("DELETE FROM analyses WHERE player_id = ?");
+      run("DELETE FROM timings WHERE player_id = ?");
+      run("DELETE FROM reports WHERE reporter = ?1 OR reported = ?1");
+      if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
+      this.db.exec("COMMIT");
+    } catch (e) {
+      this.db.exec("ROLLBACK");
+      throw e;
+    }
+    return true;
+  }
+
+  private tableExists(name: string): boolean {
+    return !!this.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name);
+  }
+
+  /**
+   * Applies the retention periods (RETENTION); returns what was removed. Guests without any
+   * finished match or tournament entry are deleted completely after a period without activity.
+   */
+  prune(now = Date.now()): { guests: number; fairPlay: number; reports: number } {
+    const before = (days: number) => new Date(now - days * DAY).toISOString();
+    const guests = this.db
+      .prepare(
+        `SELECT id FROM players p WHERE username IS NULL AND coalesce(last_seen, created_at) < ?
+           AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.p0 = p.id OR m.p1 = p.id)
+           AND NOT EXISTS (SELECT 1 FROM reports r WHERE r.reporter = p.id OR r.reported = p.id)
+           ${this.tableExists("tournament_entries") ? "AND NOT EXISTS (SELECT 1 FROM tournament_entries e WHERE e.player_id = p.id) AND NOT EXISTS (SELECT 1 FROM tournaments t WHERE t.created_by = p.id)" : ""}`,
+      )
+      .all(before(RETENTION.guestDays)) as { id: string }[];
+    this.db.exec("BEGIN");
+    try {
+      for (const { id } of guests) {
+        for (const table of ["sessions", "ratings", "analyses", "timings"])
+          this.db.prepare(`DELETE FROM ${table} WHERE player_id = ?`).run(id);
+        if (this.tableExists("push_subscriptions"))
+          this.db.prepare("DELETE FROM push_subscriptions WHERE player_id = ?").run(id);
+        this.db.prepare("DELETE FROM players WHERE id = ?").run(id);
+      }
+      const old = before(RETENTION.fairPlayDays);
+      const fairPlay =
+        Number(this.db.prepare("DELETE FROM analyses WHERE created_at < ?").run(old).changes) +
+        Number(this.db.prepare("DELETE FROM timings WHERE created_at < ?").run(old).changes);
+      const reports = Number(
+        this.db
+          .prepare("DELETE FROM reports WHERE resolved_at IS NOT NULL AND resolved_at < ?")
+          .run(before(RETENTION.reportDays)).changes,
+      );
+      this.db.exec("COMMIT");
+      return { guests: guests.length, fairPlay, reports };
+    } catch (e) {
+      this.db.exec("ROLLBACK");
+      throw e;
+    }
+  }
+
+  /** Consistent copy of the database (also while it is in use), e.g. for backups. */
+  backup(path: string): void {
+    this.db.prepare("VACUUM INTO ?").run(path);
+  }
+
+  /** Cheap check that the database answers (health endpoint). */
+  healthy(): boolean {
+    try {
+      return !!this.db.prepare("SELECT 1 AS ok").get();
+    } catch {
+      return false;
+    }
+  }
+
+  /** Finished matches of a player. */
+  matchCount(id: string): number {
+    return (
+      this.db.prepare("SELECT COUNT(*) AS n FROM matches WHERE p0 = ?1 OR p1 = ?1").get(id) as { n: number }
+    ).n;
   }
 
   rename(id: string, name: string): void {
