@@ -23,7 +23,8 @@ import { newClientSeed, verifyDice } from "./fairness";
 import { notifyIfHidden } from "./push";
 import { httpUrl, useOnline, wsUrl } from "./store";
 
-export type MatchLength = 1 | 3 | 5 | 7;
+/** 0 = money session. */
+export type MatchLength = 0 | 1 | 3 | 5 | 7;
 
 let ws: WebSocket | null = null;
 let retry = 0;
@@ -328,7 +329,7 @@ const announceReadyMatch = (
 export const createTournament = (
   name: string,
   variant: MatchVariantId,
-  length: MatchLength,
+  length: Exclude<MatchLength, 0>,
   size: 4 | 8 | 16,
   format: TournamentFormat = "knockout",
 ) => send({ t: "tournament-create", name, variant, length, size, format });

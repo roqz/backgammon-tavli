@@ -7,7 +7,8 @@ import { z } from "zod";
 
 export const MATCH_VARIANTS = ["backgammon", "portes", "plakoto", "fevga", "tavli"] as const;
 export type MatchVariantId = (typeof MATCH_VARIANTS)[number];
-export const MATCH_LENGTHS = [1, 3, 5, 7] as const;
+/** Online match lengths; 0 = money session (game by game, cube with Jacoby, never rated). */
+export const MATCH_LENGTHS = [0, 1, 3, 5, 7] as const;
 
 /** Tournaments for 4, 8 or 16 players. */
 export const TOURNAMENT_SIZES = [4, 8, 16] as const;
@@ -55,6 +56,12 @@ export type ClientAction = z.infer<typeof ClientActionSchema>;
 
 const matchSetup = {
   variant: z.enum(MATCH_VARIANTS),
+  length: z.union([z.literal(0), z.literal(1), z.literal(3), z.literal(5), z.literal(7)]),
+};
+
+/** Tournaments are always matches to a number of points. */
+const tournamentSetup = {
+  variant: z.enum(MATCH_VARIANTS),
   length: z.union([z.literal(1), z.literal(3), z.literal(5), z.literal(7)]),
 };
 
@@ -83,7 +90,7 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
   z.object({
     t: z.literal("tournament-create"),
     name: z.string().trim().min(1).max(TOURNAMENT_NAME_MAX),
-    ...matchSetup,
+    ...tournamentSetup,
     size: z.union([z.literal(4), z.literal(8), z.literal(16)]),
     format: z.enum(TOURNAMENT_FORMATS).optional(),
   }),
@@ -144,9 +151,10 @@ export interface LiveMatch {
 }
 
 /** Why a match does not change ratings. */
-export type UnratedReason = "same-device" | "same-network" | "repeat-opponent";
+export type UnratedReason = "same-device" | "same-network" | "repeat-opponent" | "money";
 
-export type MatchEndReason = "won" | "forfeit" | "abandoned";
+/** ended: a player ended a money session (the score decides). */
+export type MatchEndReason = "won" | "forfeit" | "abandoned" | "ended";
 
 export type ServerMessage =
   | { readonly t: "welcome"; readonly player: PublicPlayer }

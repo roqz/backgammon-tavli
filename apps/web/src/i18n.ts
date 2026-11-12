@@ -113,6 +113,7 @@ const de = {
     "same-device": "gleiches Gerät",
     "same-network": "gleiches Netzwerk",
     "repeat-opponent": "heute schon genug gewertete Partien gegen diesen Gegner",
+    money: "Geldspiel",
   },
   rules: "Regeln",
   guestStart: "Neu als Gast",
@@ -184,6 +185,14 @@ const de = {
   forfeitConfirm: "Das ganze Match aufgeben? Es zählt als Niederlage.",
   reasonForfeit: "Gegner hat aufgegeben",
   reasonAbandoned: "Gegner nicht zurückgekehrt",
+  reasonEnded: "Session beendet – es zählt der Punktestand",
+  money: "Geld",
+  moneySession: "Geldspiel",
+  moneyHint:
+    "Geldspiel: Spiel um Spiel mit Verdopplungswürfel und Jacoby-Regel, ohne Wertung. Die Session läuft, bis einer sie beendet; es zählt der Punktestand.",
+  endSession: "Session beenden",
+  endSessionConfirm:
+    "Session beenden? Läuft gerade ein Spiel, gibst du es zum höchstmöglichen Ergebnis ab. Danach zählt der Punktestand.",
   ratingChange: "Rating",
   you2: "(du)",
   noRanking: "Noch keine Einträge.",
@@ -239,12 +248,12 @@ const de = {
   reportThanks: "Danke! Die Meldung ging an die Moderation.",
   reportDuplicate: "Du hast diesen Spieler für dieses Match schon gemeldet.",
   banned: "Dieses Profil wurde von der Moderation gesperrt.",
-  xgid: "Stellung (XGID)",
+  xgid: "Stellung (XGID / GNUbg-ID)",
   copy: "Kopieren",
   copied: "Kopiert ✓",
-  importXgid: "Stellung importieren (XGID)",
+  importXgid: "Stellung importieren (XGID oder GNUbg-ID)",
   xgidHint: "Startet die Partie in dieser Stellung, z. B. aus eXtreme Gammon oder GNU Backgammon.",
-  xgidInvalid: "Ungültige XGID",
+  xgidInvalid: "Ungültige Stellungs-ID",
   homeLeft: "Heimfeld links",
   homeLeftHint: "Brett gespiegelt: dein Heimfeld liegt unten links",
   adminTitle: "Moderation",
@@ -482,6 +491,9 @@ const de = {
     "Freunde können deine privaten Spiele (Einladungen, Herausforderungen) ansehen. Gilt nur, wenn beide Spieler es erlauben.",
   friendsPushHint:
     "Mit Benachrichtigungen erreichen dich Herausforderungen von Freunden auch, wenn die App geschlossen ist.",
+  matImport: ".mat öffnen",
+  matInvalid: "Datei nicht lesbar",
+  matEmpty: "keine vollständige Partie gefunden",
   tutorial: "Tutorial",
   tutorialTryAgain: "Noch nicht ganz – setz die Lektion zurück und versuch es nochmal (💡 hilft).",
   tutorialReset: "Zurücksetzen",
@@ -624,6 +636,7 @@ const en: Dict = {
     "same-device": "same device",
     "same-network": "same network",
     "repeat-opponent": "enough rated matches against this opponent today",
+    money: "money game",
   },
   rules: "Rules",
   guestStart: "New as guest",
@@ -694,6 +707,14 @@ const en: Dict = {
   forfeitConfirm: "Forfeit the whole match? It counts as a loss.",
   reasonForfeit: "opponent forfeited",
   reasonAbandoned: "opponent did not return",
+  reasonEnded: "session ended – the score decides",
+  money: "Money",
+  moneySession: "Money game",
+  moneyHint:
+    "Money game: game by game with the doubling cube and the Jacoby rule, unrated. The session runs until a player ends it; the score decides.",
+  endSession: "End session",
+  endSessionConfirm:
+    "End the session? If a game is running, you concede it at the highest possible result. Then the score decides.",
   ratingChange: "Rating",
   you2: "(you)",
   noRanking: "No entries yet.",
@@ -749,12 +770,12 @@ const en: Dict = {
   reportThanks: "Thanks! The report was sent to the moderators.",
   reportDuplicate: "You already reported this player for this match.",
   banned: "This profile was banned by the moderators.",
-  xgid: "Position (XGID)",
+  xgid: "Position (XGID / GNUbg ID)",
   copy: "Copy",
   copied: "Copied ✓",
-  importXgid: "Import position (XGID)",
+  importXgid: "Import position (XGID or GNUbg ID)",
   xgidHint: "Starts the game from this position, e.g. from eXtreme Gammon or GNU Backgammon.",
-  xgidInvalid: "Invalid XGID",
+  xgidInvalid: "Invalid position ID",
   homeLeft: "Home board on the left",
   homeLeftHint: "Mirrored board: your home board is bottom left",
   adminTitle: "Moderation",
@@ -989,6 +1010,9 @@ const en: Dict = {
   friendsCanWatchHint:
     "Friends can watch your private games (invites, challenges). Only when both players allow it.",
   friendsPushHint: "With notifications, challenges from friends reach you even when the app is closed.",
+  matImport: "Open .mat",
+  matInvalid: "Cannot read the file",
+  matEmpty: "no complete game found",
   tutorial: "Tutorial",
   tutorialTryAgain: "Not quite – reset the lesson and try again (💡 helps).",
   tutorialReset: "Reset",
@@ -1039,3 +1063,7 @@ export const turnText = (t: Dict, variant: VariantId, rec: TurnRecord): string =
       return formatTurn(variant, rec);
   }
 };
+
+/** "3 Punkte", "1 Punkt" or "Geldspiel" for online lengths. */
+export const lengthText = (t: Dict, length: number): string =>
+  length === 0 ? t.moneySession : `${length} ${length === 1 ? t.point : t.points}`;

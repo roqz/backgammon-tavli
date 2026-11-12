@@ -1,4 +1,4 @@
-import { getVariant } from "@tavli/engine";
+import { fromMat, getVariant } from "@tavli/engine";
 import { useMemo, useState } from "react";
 import { humanSeat } from "../bot/useBotDriver";
 import { Button, Card, Modal } from "../components/ui";
@@ -106,7 +106,10 @@ export function StatsScreen({
   onBack,
   onReplay,
   onPlay,
+  onImport,
 }: {
+  /** Games read from a .mat file, opened in the replay. */
+  onImport: (records: GameRecord[]) => void;
   onBack: () => void;
   onReplay: (r: GameRecord) => void;
   onPlay: () => void;
@@ -124,7 +127,8 @@ export function StatsScreen({
         <Button variant="ghost" onClick={onBack} className="px-3">
           ←
         </Button>
-        <h1 className="text-2xl font-bold text-amber-100">{t.stats}</h1>
+        <h1 className="flex-1 text-2xl font-bold text-amber-100">{t.stats}</h1>
+        <MatImport onImport={onImport} />
       </div>
 
       {records.length === 0 ? (
@@ -215,6 +219,59 @@ export function StatsScreen({
             </Button>
           </div>
         </Modal>
+      )}
+    </div>
+  );
+}
+
+/** Opens a .mat file (GNU Backgammon, eXtreme Gammon, Jellyfish) in the replay. */
+function MatImport({ onImport }: { onImport: (records: GameRecord[]) => void }) {
+  const t = useT();
+  const [error, setError] = useState<string | null>(null);
+  const read = async (file: File) => {
+    setError(null);
+    try {
+      const m = fromMat(await file.text());
+      const date = new Date(file.lastModified).toISOString();
+      const records: GameRecord[] = m.games
+        .filter((g) => g.result)
+        .map((g, i) => ({
+          id: `mat-${file.name}-${i}`,
+          date,
+          variant: "backgammon",
+          players: [
+            { name: m.players[0], kind: "human" },
+            { name: m.players[1], kind: "human" },
+          ],
+          matchLength: m.length,
+          result: g.result!,
+          history: g.history,
+        }));
+      if (records.length === 0) throw new Error(t.matEmpty);
+      onImport(records);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  return (
+    <div className="flex flex-col items-end">
+      <label className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-stone-300 hover:bg-stone-800">
+        📂 {t.matImport}
+        <input
+          type="file"
+          accept=".mat,.txt,text/plain"
+          className="sr-only"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void read(file);
+            e.target.value = "";
+          }}
+        />
+      </label>
+      {error && (
+        <p className="max-w-xs text-right text-xs text-red-400">
+          {t.matInvalid}: {error}
+        </p>
       )}
     </div>
   );

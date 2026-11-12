@@ -226,7 +226,31 @@ export class MatchRoom {
 
   /** The player leaves on purpose: forfeits a running match. */
   leave(seat: Player): void {
-    if (!this.ended) this.forfeit(seat, "forfeit");
+    if (this.ended) return;
+    if (this.config.length === 0) return this.endSession(seat);
+    this.forfeit(seat, "forfeit");
+  }
+
+  /**
+   * A player ends a money session. Between games that is a normal end; during a game the
+   * leaver first concedes it at the highest result still possible. The score decides (a tie
+   * goes to the player who stayed).
+   */
+  private endSession(by: Player): void {
+    const g = this.match.game;
+    if (g.result === null && g.history.length > 0) {
+      try {
+        this.advance({ type: "resign", player: by, level: maxResultLevel(g, opponent(by)) }, by);
+      } catch {
+        // the game state does not allow it (e.g. not started yet): the score stays
+      }
+      if (this.ended) return;
+    }
+    if (this.nextGameTimer) clearTimeout(this.nextGameTimer);
+    const [s0, s1] = this.match.score;
+    const winner: Player = s0 === s1 ? opponent(by) : s0 > s1 ? 0 : 1;
+    this.match = { ...this.match, winner };
+    this.finish("ended");
   }
 
   // ---- actions -------------------------------------------------------------------------------

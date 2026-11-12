@@ -280,8 +280,6 @@ S = bis 1 Tag, M = einige Tage, L = mehrere Wochen
 
 **Offen ohne Eingaben von dir:**
 
-- GNUbg-ID
-- Geldspiel online
 - Neuronales Netz, Korrespondenzspiel, Clubs/Ligen, weitere Varianten, Play Store per TWA
 
 **Offen mit Eingaben von dir:**

@@ -191,6 +191,7 @@ export function GameScreen({
   const onlineInfo = useOnline((s) => s.match);
   const onlineError = useOnline((s) => s.lastError);
   const [forfeiting, setForfeiting] = useState(false);
+  const moneySession = online && onlineInfo?.length === 0;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -294,7 +295,9 @@ export function GameScreen({
 
   const lengthLabel =
     match.config.length === 0
-      ? t.unlimited
+      ? online
+        ? t.moneySession
+        : t.unlimited
       : `${match.config.length} ${match.config.length === 1 ? t.point : t.points}`;
 
   const controls = (
@@ -636,7 +639,7 @@ export function GameScreen({
 
       {forfeiting && (
         <Modal onClose={() => setForfeiting(false)}>
-          <p className="mb-4 text-stone-100">{t.forfeitConfirm}</p>
+          <p className="mb-4 text-stone-100">{moneySession ? t.endSessionConfirm : t.forfeitConfirm}</p>
           <div className="flex gap-2">
             <Button className="flex-1" onClick={() => setForfeiting(false)}>
               {t.cancel}
@@ -650,7 +653,7 @@ export function GameScreen({
                 onMenu();
               }}
             >
-              {t.forfeitMatch}
+              {moneySession ? t.endSession : t.forfeitMatch}
             </Button>
           </div>
         </Modal>
@@ -673,7 +676,11 @@ export function GameScreen({
           </p>
           {onlineInfo.end.reason !== "won" && (
             <p className="mb-2 text-stone-300">
-              {onlineInfo.end.reason === "forfeit" ? t.reasonForfeit : t.reasonAbandoned}
+              {onlineInfo.end.reason === "forfeit"
+                ? t.reasonForfeit
+                : onlineInfo.end.reason === "ended"
+                  ? t.reasonEnded
+                  : t.reasonAbandoned}
             </p>
           )}
           <p className="mb-3 text-3xl font-bold tabular-nums text-stone-100">
@@ -794,10 +801,17 @@ export function GameScreen({
             {match.score[0]} : {match.score[1]}
           </p>
           {online && match.winner === null ? (
-            <p className="flex items-center justify-center gap-2 text-stone-400">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-              {t.nextGameSoon}
-            </p>
+            <div className="flex flex-col items-center gap-3">
+              <p className="flex items-center justify-center gap-2 text-stone-400">
+                <span className="h-2 w-2 rounded-full bg-amber-400 motion-safe:animate-pulse" />
+                {t.nextGameSoon}
+              </p>
+              {moneySession && (
+                <Button variant="ghost" className="text-sm text-red-300" onClick={() => setForfeiting(true)}>
+                  🏳 {t.endSession}
+                </Button>
+              )}
+            </div>
           ) : online ? null : match.winner === null ? (
             <div className="flex gap-2">
               <Button className="flex-1" onClick={onMenu}>

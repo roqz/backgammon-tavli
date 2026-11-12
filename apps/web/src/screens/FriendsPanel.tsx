@@ -3,7 +3,7 @@ import { type FriendView, type LiveMatch, MATCH_VARIANTS, type MatchVariantId } 
 import { useEffect, useState } from "react";
 import { Button, Card, Modal, Segmented } from "../components/ui";
 import { errorOf } from "../errors";
-import { useT } from "../i18n";
+import { lengthText, useT } from "../i18n";
 import {
   addFriend,
   answerChallenge,
@@ -226,7 +226,10 @@ function ChallengeDialog({
           label={t.matchLength}
           value={length}
           onChange={setLength}
-          options={([1, 3, 5, 7] as const).map((l) => ({ value: l, label: String(l) }))}
+          options={([0, 1, 3, 5, 7] as const).map((l) => ({
+            value: l,
+            label: l === 0 ? `💰 ${t.money}` : String(l),
+          }))}
         />
         <div className="flex gap-2">
           <Button className="flex-1" onClick={onClose}>
@@ -272,8 +275,8 @@ export function ChallengePrompt() {
         ⚔ {t.challengeFrom.replace("{name}", incoming.from.name)}
       </h2>
       <p className="mb-4 text-stone-300">
-        {variantLabel(incoming.variant, t.tavliMatch)} · {incoming.length}{" "}
-        {incoming.length === 1 ? t.point : t.points} · {incoming.from.rating}
+        {variantLabel(incoming.variant, t.tavliMatch)} · {lengthText(t, incoming.length)} ·{" "}
+        {incoming.from.rating}
       </p>
       <div className="flex gap-2">
         <Button className="flex-1" onClick={() => answerChallenge(incoming.id, false)}>
@@ -401,7 +404,7 @@ export function LivePanel({ onWatch }: { onWatch: (matchId: string) => void }) {
                   {m.players[0].name} ({m.players[0].rating}) – {m.players[1].name} ({m.players[1].rating})
                 </span>
                 <span className="block text-xs text-stone-500">
-                  {variantLabel(m.variant, t.tavliMatch)} · {m.length} {m.length === 1 ? t.point : t.points}
+                  {variantLabel(m.variant, t.tavliMatch)} · {lengthText(t, m.length)}
                   {m.tournament &&
                     ` · 🏆 ${m.tournament.name} · ${roundName(t, m.tournament.round, m.tournament.rounds, m.tournament.format)}`}
                   {m.spectators > 0 && ` · 👁 ${m.spectators}`}

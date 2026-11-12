@@ -8,7 +8,7 @@ import {
 import { useEffect, useState } from "react";
 import { Button, Card, Segmented, Tabs } from "../components/ui";
 import { errorOf, errorText } from "../errors";
-import { useT } from "../i18n";
+import { lengthText, useT } from "../i18n";
 import {
   connect,
   createInvite,
@@ -69,8 +69,7 @@ function PlayPanel() {
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-stone-700 border-t-amber-400" />
         <p className="text-lg text-stone-100">{t.searching}</p>
         <p className="text-sm text-stone-400">
-          {variantName(lobby.variant, t.tavliMatch)} · {lobby.length}{" "}
-          {lobby.length === 1 ? t.point : t.points}
+          {variantName(lobby.variant, t.tavliMatch)} · {lengthText(t, lobby.length)}
         </p>
         <Button onClick={() => unqueue()}>{t.cancel}</Button>
       </Card>
@@ -83,8 +82,7 @@ function PlayPanel() {
         <p className="text-sm text-stone-400">{t.inviteCode}</p>
         <p className="font-mono text-4xl font-bold tracking-[0.3em] text-amber-200">{lobby.code}</p>
         <p className="text-sm text-stone-400">
-          {variantName(lobby.variant, t.tavliMatch)} · {lobby.length}{" "}
-          {lobby.length === 1 ? t.point : t.points}
+          {variantName(lobby.variant, t.tavliMatch)} · {lengthText(t, lobby.length)}
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button
@@ -130,8 +128,12 @@ function PlayPanel() {
           label={t.matchLength}
           value={length}
           onChange={setLength}
-          options={([1, 3, 5, 7] as const).map((l) => ({ value: l, label: String(l) }))}
+          options={([0, 1, 3, 5, 7] as const).map((l) => ({
+            value: l,
+            label: l === 0 ? `💰 ${t.money}` : String(l),
+          }))}
         />
+        {length === 0 && <p className="-mt-2 text-xs text-stone-400">{t.moneyHint}</p>}
         <div className="grid gap-2 sm:grid-cols-2">
           <Button variant="primary" className="py-3" disabled={!ready} onClick={() => queue(variant, length)}>
             ⚔ {t.findOpponent}

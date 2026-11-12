@@ -245,3 +245,54 @@ describe("private watching, delay and challenge push", () => {
     await new Promise((r) => receiver.close(r));
   });
 });
+
+describe("money sessions", () => {
+  let server: RunningServer;
+  const clients: TestClient[] = [];
+  afterEach(async () => {
+    await Promise.all(clients.splice(0).map((c) => c.close()));
+    await server.close();
+  });
+
+  it("run game after game unrated until a player ends them; the score decides", async () => {
+    server = await start();
+    const a = await register(server, "Ann");
+    const b = await register(server, "Ben");
+    const ca = await TestClient.connect(server, a);
+    const cb = await TestClient.connect(server, b);
+    clients.push(ca, cb);
+    ca.send({ t: "queue", variant: "backgammon", length: 0 });
+    cb.send({ t: "queue", variant: "backgammon", length: 0 });
+    const started = await ca.next("match-start");
+    expect(started.rated).toBe(false);
+    expect(started.unratedReason).toBe("money");
+    expect(started.config).toMatchObject({ length: 0, jacoby: true });
+    // Ben resigns the first game: the session goes on with the next game
+    const seatB = started.seat === 0 ? 1 : 0;
+    const nextGame = ca.next(
+      "state",
+      (m) => m.match.results.length === 1 && m.match.game.result === null,
+      5000,
+    );
+    cb.send({ t: "action", action: { type: "resign", level: 1 } });
+    const s = await nextGame;
+    expect(s.match.winner).toBeNull();
+    expect(s.match.score[seatB]).toBe(0);
+    // Ben ends the session while the second game runs: he concedes it, then the score decides
+    const end = ca.next("match-end");
+    cb.send({ t: "leave" });
+    const e = await end;
+    expect(e.reason).toBe("ended");
+    expect(e.winner).toBe(started.seat);
+    expect(e.ratingDelta).toEqual([0, 0]);
+  });
+
+  it("money cannot be played in tournaments", async () => {
+    server = await start();
+    const a = await register(server, "Ann");
+    const ca = await TestClient.connect(server, a);
+    clients.push(ca);
+    ca.send({ t: "tournament-create", name: "Cash", variant: "backgammon", length: 0 as 1, size: 4 });
+    expect((await ca.next("error")).message).toBe("invalid message");
+  });
+});

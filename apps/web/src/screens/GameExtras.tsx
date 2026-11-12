@@ -7,6 +7,7 @@ import {
   opponent,
   type Player,
   type ResultLevel,
+  toGnubgId,
   toXgid,
   XGID_VARIANTS,
 } from "@tavli/engine";
@@ -48,6 +49,7 @@ export function ResignDialog({
   const t = useT();
   const dispatch = useGame((s) => s.dispatch);
   const hotseat = !online && players[0].kind === "human" && players[1].kind === "human";
+  const money = useOnline((s) => s.match?.length === 0);
   const max = maxResultLevel(g, opponent(me));
   const levels = ([1, 2, 3] as ResultLevel[]).filter((l) => l <= max);
   const label = (l: ResultLevel) => `${resultName(t, g, l)} (${l * g.cube.value})`;
@@ -99,7 +101,7 @@ export function ResignDialog({
               onForfeit();
             }}
           >
-            🏳 {t.forfeitMatch}
+            🏳 {money ? t.endSession : t.forfeitMatch}
           </Button>
         )}
         <Button variant="ghost" onClick={onClose}>
@@ -339,19 +341,21 @@ export function ReportDialog({
 /** XGID of the current position with a copy button (Backgammon and Portes). */
 export function XgidBox({ match }: { match: MatchState }) {
   const t = useT();
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"xgid" | "gnubg" | null>(null);
   const g = match.game;
   if (!XGID_VARIANTS.includes(g.variant) || g.phase === "opening" || g.phase === "finished") return null;
-  const id = toXgid(g, {
+  const info = {
     score: match.score,
     length: match.config.length,
     crawford: match.crawford === "crawford-game",
-  });
-  const copy = async () => {
+  } as const;
+  const id = toXgid(g, info);
+  const gnubg = toGnubgId(g, info);
+  const copy = async (text: string, which: "xgid" | "gnubg") => {
     try {
-      await navigator.clipboard.writeText(id);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      setTimeout(() => setCopied(null), 1500);
     } catch {
       // clipboard not available (e.g. insecure context): the text can still be selected
     }
@@ -360,19 +364,31 @@ export function XgidBox({ match }: { match: MatchState }) {
     <div className="rounded-2xl border border-stone-800 bg-stone-900/80 p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-medium text-stone-400">{t.xgid}</h2>
-        <button
-          type="button"
-          className="text-xs text-amber-300 hover:text-amber-200"
-          onClick={() => void copy()}
-        >
-          {copied ? t.copied : t.copy}
-        </button>
+        <span className="flex gap-3">
+          {(["xgid", "gnubg"] as const).map((which) => (
+            <button
+              key={which}
+              type="button"
+              className="text-xs text-amber-300 hover:text-amber-200"
+              onClick={() => void copy(which === "xgid" ? id : gnubg, which)}
+            >
+              {copied === which ? t.copied : `${t.copy} ${which === "xgid" ? "XGID" : "GNUbg"}`}
+            </button>
+          ))}
+        </span>
       </div>
       <p
         className="select-all break-all font-mono text-[11px] leading-snug text-stone-400"
         data-testid="xgid"
       >
         {id}
+      </p>
+      <p
+        className="mt-1 select-all break-all font-mono text-[11px] leading-snug text-stone-500"
+        data-testid="gnubgid"
+        title="GNU Backgammon"
+      >
+        {gnubg}
       </p>
     </div>
   );

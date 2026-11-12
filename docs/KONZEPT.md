@@ -269,6 +269,12 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Tutorial mit sechs Lektionen auf vorbereiteten Stellungen (Ziehen, Schlagen, Einsetzen, Abtragen, Plakoto-Einklemmen, Fevga-Läufer): selbst ziehen, Tipp mit Pfeilen, Ziel wird geprüft; jede Lektion ist per Test mit ihrem Tipp lösbar
 - Tagesrätsel: aus dem Datum erzeugt (Selbstspiel des starken Bots mit Seed), daher für alle gleich und offline verfügbar; erste Entscheidung ab dem 6. Zug mit mindestens 4 Möglichkeiten und klarem besten Zug (≥ 0,06 Punkte vor dem zweitbesten); Variante wechselt täglich; erster Versuch zählt, Serie gelöster Tage, Lösung mit Pfeilen
 
+### Geldspiel online, GNU-Backgammon-Formate ✅
+
+- Geldspiel online (Länge „Geld“ in Warteschlange, Einladung, Herausforderung): Spiel um Spiel mit Verdopplungswürfel und Jacoby-Regel, nie gewertet; die Session läuft, bis ein Spieler sie beendet – zwischen zwei Spielen regulär, während eines Spiels gibt er dieses zum höchstmöglichen Ergebnis ab; dann entscheidet der Punktestand (bei Gleichstand gewinnt, wer bleibt); keine Geldspiele in Turnieren; Beaver/Raccoon nicht umgesetzt
+- GNU-Backgammon-ID (Position-ID:Match-ID) als Export neben der XGID und als Import beim neuen Spiel (XGID oder GNUbg-ID); geprüft an der Startstellung (`4HPwATDgc/ABMA`) und der Match-ID eines neuen Geldspiels (`cAkAAAAAAAAA`), Rundlauf für Würfel, Würfelbesitz, Stand und Crawford
+- .mat-Import (GNU Backgammon, eXtreme Gammon, Jellyfish) in der Statistik: Partien werden in der Wiederholung geöffnet und können analysiert werden; jeder Zug wird über die Engine gegen die Endstellung geprüft (Ketten und Mehrfachzüge in beliebiger Schreibweise), Fehler nennen Spiel und Zug
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)

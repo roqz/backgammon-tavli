@@ -5,7 +5,7 @@ import { layoutFromBoard } from "../board/layout";
 import { THEMES } from "../board/themes";
 
 import { Button } from "../components/ui";
-import { useT } from "../i18n";
+import { lengthText, useT } from "../i18n";
 import { stopWatching } from "../online/client";
 import { useOnline } from "../online/store";
 import { useSettings } from "../store/settings";
@@ -46,8 +46,8 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
           ← <span className="hidden sm:inline">{t.back}</span>
         </Button>
         <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
-          <span className="font-semibold text-stone-200">👁 {t.watching}</span> · {rules.name} · {watch.length}{" "}
-          {watch.length === 1 ? t.point : t.points}
+          <span className="font-semibold text-stone-200">👁 {t.watching}</span> · {rules.name} ·{" "}
+          {lengthText(t, watch.length)}
           {watch.tournament &&
             ` · 🏆 ${watch.tournament.name} · ${roundName(t, watch.tournament.round, watch.tournament.rounds, watch.tournament.format)}`}
         </div>

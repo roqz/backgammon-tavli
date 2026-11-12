@@ -221,7 +221,11 @@ export const rankTurnOptions = (s: GameState): RankedOption[] => {
   const v = new Valuer(s, s.turn, w, {});
   const opp = opponent(s.turn);
   return options
-    .map((o) => ({ moves: o.moves, board: o.board, value: o.end ? v.end(o, s.turn) : v.position(o.board, opp) }))
+    .map((o) => ({
+      moves: o.moves,
+      board: o.board,
+      value: o.end ? v.end(o, s.turn) : v.position(o.board, opp),
+    }))
     .sort((a, b) => b.value - a.value);
 };
 

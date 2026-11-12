@@ -154,7 +154,7 @@ function CreateForm({ onDone, disabled }: { onDone: () => void; disabled: boolea
   const profile = useOnline((s) => s.profile);
   const [name, setName] = useState(t.tDefaultName.replace("{name}", profile?.name ?? ""));
   const [variant, setVariant] = useState<MatchVariantId>("backgammon");
-  const [length, setLength] = useState<MatchLength>(3);
+  const [length, setLength] = useState<Exclude<MatchLength, 0>>(3);
   const [size, setSize] = useState<4 | 8 | 16>(8);
   const [format, setFormat] = useState<TournamentFormat>("knockout");
   return (

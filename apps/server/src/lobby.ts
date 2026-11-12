@@ -112,6 +112,8 @@ const configFor = (variant: MatchVariantId, length: number): MatchConfig => ({
   variant,
   length,
   crawford: true,
+  // money sessions: gammons only count once the cube was turned
+  jacoby: length === 0,
 });
 
 export interface LobbyOptions {
@@ -519,7 +521,7 @@ export class Lobby {
     const { store, timings, log } = this.opts;
     const swap = !fixedSeats && this.opts.randomSeats !== false && randomInt(2) === 1;
     const ids: [string, string] = swap ? [b, a] : [a, b];
-    const rating = this.ratingPolicy(a, b);
+    const rating = length === 0 ? { rated: false, reason: "money" as const } : this.ratingPolicy(a, b);
     const room = new MatchRoom(
       variant,
       configFor(variant, length),

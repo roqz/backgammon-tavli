@@ -206,6 +206,7 @@ export function App() {
             onBack={() => setScreen("menu")}
             onReplay={(r) => openReplay(r, "stats")}
             onPlay={() => setScreen("new")}
+            onImport={(records) => openReplay(records, "stats")}
           />
         )}
         {screen === "replay" && replay && (

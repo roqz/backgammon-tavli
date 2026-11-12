@@ -1,9 +1,11 @@
 import { BOT_LEVELS, type BotLevel } from "@tavli/ai";
 import {
   gameFromXgid,
+  isGnubgId,
   type MatchConfig,
   type MatchStart,
   type MatchVariant,
+  parseGnubgId,
   parseXgid,
   type VariantId,
   XGID_VARIANTS,
@@ -180,7 +182,8 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
     let from: MatchStart | undefined;
     if (xgidPossible && xgidOpen && xgid.trim()) {
       try {
-        const x = parseXgid(xgid);
+        // XGID or GNU Backgammon "PositionID:MatchID"
+        const x = isGnubgId(xgid) ? parseGnubgId(xgid) : parseXgid(xgid);
         const matchLength = x.length > 0 ? x.length : length;
         config = { ...config, length: matchLength, jacoby: matchLength === 0 && x.jacoby };
         from = {
