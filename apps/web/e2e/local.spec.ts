@@ -99,3 +99,12 @@ test("a mirrored board (home board left) can still be played by tapping", async 
   await expect(page.getByRole("button", { name: /Zurück/ })).toBeEnabled();
   expect(await checkerCount(page)).toBe(30);
 });
+
+test("settings opened from the menu return to the menu, even with a game running", async ({ page }) => {
+  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await page.getByRole("button", { name: "Starten" }).click();
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("button", { name: /Einstellungen/ }).click();
+  await page.getByRole("button", { name: "←" }).click();
+  await expect(page.getByRole("button", { name: "Fortsetzen" })).toBeVisible();
+});

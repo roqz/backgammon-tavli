@@ -10,7 +10,6 @@ import { ReplayScreen } from "./screens/ReplayScreen";
 import { RulesScreen } from "./screens/RulesPanel";
 import { StatsScreen } from "./screens/StatsScreen";
 import type { GameRecord } from "./store/archive";
-import { useGame } from "./store/game";
 
 type Screen = "menu" | "new" | "game" | "settings" | "stats" | "replay" | "online" | "rules" | "admin";
 
@@ -25,7 +24,6 @@ const takeJoinCode = (): string | null => {
 };
 
 export function App() {
-  const hasGame = useGame((s) => s.match !== null && s.match.winner === null);
   const onlineMatchId = useOnline((s) => s.match?.matchId ?? null);
   // The moderation screen is only reachable through `?admin`.
   const [screen, setScreen] = useState<Screen>(() =>
@@ -69,7 +67,7 @@ export function App() {
         {screen === "admin" && (
           <AdminScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "admin")} />
         )}
-        {screen === "settings" && <SettingsScreen onBack={() => setScreen(hasGame ? "game" : "menu")} />}
+        {screen === "settings" && <SettingsScreen onBack={() => setScreen("menu")} />}
         {screen === "online" && (
           <OnlineScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "online")} />
         )}
