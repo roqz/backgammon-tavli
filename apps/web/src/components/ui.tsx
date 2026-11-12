@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { type ButtonHTMLAttributes, type ReactNode, useRef } from "react";
+import { useBackToClose, useDialogFocus } from "./overlay";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -56,6 +57,52 @@ export function Segmented<T extends string | number>({
         ))}
       </div>
     </fieldset>
+  );
+}
+
+/** Tab bar (ARIA tablist; arrow keys move between tabs). */
+export function Tabs<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: T;
+  options: readonly { value: T; label: ReactNode }[];
+  onChange: (v: T) => void;
+  label: string;
+}) {
+  const move = (dir: number) => {
+    const i = options.findIndex((o) => o.value === value);
+    const next = options[(i + dir + options.length) % options.length]!;
+    onChange(next.value);
+    requestAnimationFrame(() => document.getElementById(`tab-${String(next.value)}`)?.focus());
+  };
+  return (
+    <div role="tablist" aria-label={label} className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          id={`tab-${o.value}`}
+          type="button"
+          role="tab"
+          aria-selected={o.value === value}
+          tabIndex={o.value === value ? 0 : -1}
+          onClick={() => onChange(o.value)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight") move(1);
+            else if (e.key === "ArrowLeft") move(-1);
+          }}
+          className={`rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-amber-400 ${
+            o.value === value
+              ? "border-amber-400 bg-amber-400/15 text-amber-200"
+              : "border-stone-700 bg-stone-800/60 text-stone-200 hover:border-stone-500"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -122,19 +169,27 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
   );
 }
 
+/**
+ * Modal dialog: focus moves inside and stays there, Escape and the device Back button close it
+ * (when it can be closed), focus returns to the opener afterwards.
+ */
 export function Modal({ children, onClose }: { children: ReactNode; onClose?: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useDialogFocus(ref, true, onClose);
+  useBackToClose(true, onClose);
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click closes the dialog; Escape is handled too
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click closes the dialog; keys are handled in useDialogFocus
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose?.()}
       role="presentation"
     >
       <div
+        ref={ref}
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm rounded-2xl border border-stone-700 bg-stone-900 p-6 shadow-2xl"
+        tabIndex={-1}
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl border border-stone-700 bg-stone-900 p-6 shadow-2xl outline-none"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >

@@ -9,6 +9,7 @@ import { turnText, useT } from "../i18n";
 import { buildFrames } from "../replay";
 import type { GameRecord } from "../store/archive";
 import { useSettings } from "../store/settings";
+import { usePortraitPhone } from "./GameScreen";
 
 const STEP_MS = 750;
 
@@ -40,6 +41,10 @@ export function ReplayScreen({ records, onBack }: { records: readonly GameRecord
 
 function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: () => void; tabs: ReactNode }) {
   const t = useT();
+  // Same board view as in the game: portrait rotation, mirrored home, point numbers.
+  const portrait = usePortraitPhone();
+  const homeLeft = useSettings((s) => s.homeLeft);
+  const showNumbers = useSettings((s) => s.showNumbers);
   const style = useSettings((s) => s.style);
   const frames = useMemo(() => buildFrames(record.variant, record.history), [record]);
   const [index, setIndex] = useState(0);
@@ -97,7 +102,7 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
           </Button>
           <div className="text-center text-sm text-stone-400">
             <span className="font-semibold text-stone-200">{getVariant(record.variant).name}</span> ·{" "}
-            {new Date(record.date).toLocaleString()} · {name(r.winner)} {t.wins} (+{r.points})
+            {new Date(record.date).toLocaleString(t.locale)} · {name(r.winner)} {t.wins} (+{r.points})
           </div>
           <div className="w-16" />
         </div>
@@ -109,9 +114,11 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
             theme={THEMES[style]}
             interactive={false}
             openingDice={null}
-            numbersFor={seat ?? 0}
+            numbersFor={showNumbers ? (seat ?? 0) : null}
             viewer={seat ?? 0}
             onMoves={() => {}}
+            rotated={portrait}
+            mirrored={homeLeft}
           />
         </div>
         <div className="flex flex-col items-center gap-2">

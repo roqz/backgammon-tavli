@@ -1,17 +1,31 @@
 import { MotionConfig } from "motion/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { UpdatePrompt } from "./components/UpdatePrompt";
 import { joinInvite } from "./online/client";
 import { useOnline } from "./online/store";
 import { AdminScreen } from "./screens/AdminScreen";
 import { GameScreen } from "./screens/GameScreen";
+import { LegalScreen } from "./screens/LegalScreen";
 import { Menu, NewGame, SettingsScreen } from "./screens/MenuScreens";
 import { OnlineScreen } from "./screens/OnlineScreen";
 import { ReplayScreen } from "./screens/ReplayScreen";
 import { RulesScreen } from "./screens/RulesPanel";
 import { StatsScreen } from "./screens/StatsScreen";
 import type { GameRecord } from "./store/archive";
+import { useSettings } from "./store/settings";
 
-type Screen = "menu" | "new" | "game" | "settings" | "stats" | "replay" | "online" | "rules" | "admin";
+type Screen =
+  | "menu"
+  | "new"
+  | "game"
+  | "settings"
+  | "stats"
+  | "replay"
+  | "online"
+  | "rules"
+  | "admin"
+  | "imprint"
+  | "privacy";
 
 /** Invite links look like `…/?join=ABC234`. */
 const takeJoinCode = (): string | null => {
@@ -35,13 +49,45 @@ const takeTournament = (href: string): string | null => {
 
 export function App() {
   const onlineMatchId = useOnline((s) => s.match?.matchId ?? null);
+  const lang = useSettings((s) => s.lang);
+  // Screen readers and hyphenation follow the app language.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
   // The moderation screen is only reachable through `?admin`.
-  const [screen, setScreen] = useState<Screen>(() =>
+  const [screen, setScreenState] = useState<Screen>(() =>
     new URL(location.href).searchParams.has("admin") ? "admin" : "menu",
   );
+  /**
+   * Every screen change is a browser history entry, so the device Back button goes to the
+   * previous screen instead of leaving the app (dialogs add their own entries, see overlay.ts).
+   */
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+  const setScreen = useCallback((next: Screen | ((s: Screen) => Screen), replace = false) => {
+    const current = screenRef.current;
+    const target = typeof next === "function" ? next(current) : next;
+    if (target === current) return;
+    if (replace) history.replaceState({ tavli: target }, "");
+    else history.pushState({ tavli: target }, "");
+    screenRef.current = target;
+    setScreenState(target);
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: registered once; only the initial screen is recorded
+  useEffect(() => {
+    history.replaceState({ ...(history.state as object | null), tavli: screen }, "");
+    const onPop = (e: PopStateEvent) => {
+      const target = (e.state as { tavli?: Screen } | null)?.tavli ?? "menu";
+      setScreenState(target === "replay" && !replayRef.current ? "menu" : target);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   /** Tournament to show when opening the online screen from a tournament match. */
   const [onlineFocus, setOnlineFocus] = useState<string | null>(null);
   const [replay, setReplay] = useState<{ records: readonly GameRecord[]; back: Screen } | null>(null);
+  const replayRef = useRef(replay);
+  replayRef.current = replay;
   const openReplay = (records: GameRecord | readonly GameRecord[], back: Screen) => {
     setReplay({ records: Array.isArray(records) ? records : [records as GameRecord], back });
     setScreen("replay");
@@ -61,7 +107,7 @@ export function App() {
     };
     navigator.serviceWorker?.addEventListener("message", onMessage);
     return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
-  }, []);
+  }, [setScreen]);
 
   // Opened through an invite link: go to the online screen and join once connected.
   useEffect(() => {
@@ -70,12 +116,12 @@ export function App() {
     setScreen("online");
     if (useOnline.getState().profile) joinInvite(code);
     else useOnline.getState().set({ pendingJoin: code });
-  }, []);
+  }, [setScreen]);
 
   // A new online match was found: show the board.
   useEffect(() => {
     if (onlineMatchId) setScreen("game");
-  }, [onlineMatchId]);
+  }, [onlineMatchId, setScreen]);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -88,9 +134,15 @@ export function App() {
             onStats={() => setScreen("stats")}
             onOnline={() => setScreen(onlineMatchId ? "game" : "online")}
             onRules={() => setScreen("rules")}
+            onLegal={(page) => setScreen(page)}
           />
         )}
-        {screen === "new" && <NewGame onBack={() => setScreen("menu")} onStarted={() => setScreen("game")} />}
+        {(screen === "imprint" || screen === "privacy") && (
+          <LegalScreen page={screen} onBack={() => setScreen("menu")} />
+        )}
+        {screen === "new" && (
+          <NewGame onBack={() => setScreen("menu")} onStarted={() => setScreen("game", true)} />
+        )}
         {screen === "rules" && <RulesScreen onBack={() => setScreen("menu")} />}
         {screen === "admin" && (
           <AdminScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "admin")} />
@@ -114,11 +166,16 @@ export function App() {
           />
         )}
         {screen === "stats" && (
-          <StatsScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "stats")} />
+          <StatsScreen
+            onBack={() => setScreen("menu")}
+            onReplay={(r) => openReplay(r, "stats")}
+            onPlay={() => setScreen("new")}
+          />
         )}
         {screen === "replay" && replay && (
           <ReplayScreen records={replay.records} onBack={() => setScreen(replay.back)} />
         )}
+        <UpdatePrompt />
       </main>
     </MotionConfig>
   );

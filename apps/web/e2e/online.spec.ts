@@ -40,14 +40,14 @@ test("two players: invite link, play, resign, verified dice, leaderboard", async
 
   await alice.locator("[role=dialog]").getByRole("button", { name: /Menü/ }).click();
   await alice.getByRole("button", { name: /Online spielen/ }).click();
-  await alice.getByRole("button", { name: "Rangliste", exact: true }).click();
+  await alice.getByRole("tab", { name: "Rangliste", exact: true }).click();
   await expect(alice.getByText("Alice (du)")).toBeVisible();
 });
 
 test("a guest can secure an account and log in on a second device", async ({ browser }) => {
   const first = await onlineGuest(browser, "Carla");
   const username = `carla_${Date.now().toString(36)}`;
-  await first.getByRole("button", { name: "Profil", exact: true }).click();
+  await first.getByRole("tab", { name: "Profil", exact: true }).click();
   await first.getByLabel("Benutzername").fill(username);
   await first.getByLabel("Passwort").fill("e2e-password");
   await first
@@ -67,4 +67,20 @@ test("a guest can secure an account and log in on a second device", async ({ bro
   await second.locator("button", { hasText: "Anmelden" }).last().click();
   await expect(second.getByText("Verbunden")).toBeVisible();
   await expect(second.getByText("Carla")).toBeVisible();
+});
+
+test("a guest can export their data and delete the profile", async ({ browser }) => {
+  const page = await onlineGuest(browser, "Zoe");
+  await page.getByRole("tab", { name: "Profil", exact: true }).click();
+  await page.getByText(/Daten & Konto/).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Meine Daten herunterladen/ }).click();
+  expect((await download).suggestedFilename()).toBe("tavli-data.json");
+  await page.getByRole("button", { name: /Profil löschen/ }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Profil löschen/ })
+    .click();
+  // back to the start: a new profile can be created
+  await expect(page.getByRole("button", { name: "Profil anlegen" })).toBeVisible();
 });

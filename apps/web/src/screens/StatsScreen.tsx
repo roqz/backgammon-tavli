@@ -102,7 +102,15 @@ function Table({ title, rows, t }: { title: string; rows: [string, Tally][]; t: 
   );
 }
 
-export function StatsScreen({ onBack, onReplay }: { onBack: () => void; onReplay: (r: GameRecord) => void }) {
+export function StatsScreen({
+  onBack,
+  onReplay,
+  onPlay,
+}: {
+  onBack: () => void;
+  onReplay: (r: GameRecord) => void;
+  onPlay: () => void;
+}) {
   const t = useT();
   const records = useArchive((s) => s.records);
   const clear = useArchive((s) => s.clear);
@@ -120,8 +128,11 @@ export function StatsScreen({ onBack, onReplay }: { onBack: () => void; onReplay
       </div>
 
       {records.length === 0 ? (
-        <Card>
+        <Card className="flex flex-col items-start gap-3">
           <p className="text-stone-400">{t.noGames}</p>
+          <Button variant="primary" onClick={onPlay}>
+            {t.playNow}
+          </Button>
         </Card>
       ) : (
         <>
@@ -163,7 +174,7 @@ export function StatsScreen({ onBack, onReplay }: { onBack: () => void; onReplay
                       {r.players[0].name} – {r.players[1].name}
                     </div>
                     <div className="text-xs text-stone-500">
-                      {new Date(r.date).toLocaleString()} · {getVariant(r.variant).name} ·{" "}
+                      {new Date(r.date).toLocaleString(t.locale)} · {getVariant(r.variant).name} ·{" "}
                       {r.players[r.result.winner].name} +{r.result.points}
                     </div>
                   </div>

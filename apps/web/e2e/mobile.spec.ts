@@ -16,5 +16,5 @@ test("portrait phones get the rotated board and can move by tapping", async ({ p
 
   await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
   expect(await tapMove(page)).toBe(true);
-  await expect(page.getByRole("button", { name: /Zurück/ })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /Rückgängig/ })).toBeEnabled();
 });

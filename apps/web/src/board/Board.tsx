@@ -10,6 +10,7 @@ import {
 } from "@tavli/engine";
 import { AnimatePresence, motion } from "motion/react";
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "../i18n";
 import {
   BAR_W,
   BAR_X,
@@ -202,6 +203,7 @@ export function Board({
   // Stable render order by id keeps React from remounting; the dragged checker is drawn last.
   checkers.sort((a, b) => (a.id === drag?.id ? 1 : b.id === drag?.id ? -1 : a.i - b.i));
 
+  const t = useT();
   const targetPoints = new Set([...targets.keys()]);
   const activeSlot = active !== null ? slotOfFrom(turn, active) : null;
 
@@ -211,7 +213,7 @@ export function Board({
       viewBox={rotated ? `0 0 ${HEIGHT} ${WIDTH}` : `0 0 ${WIDTH} ${HEIGHT}`}
       className="block h-auto w-full touch-none select-none"
       role="img"
-      aria-label="Spielbrett"
+      aria-label={t.boardLabel}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -269,10 +271,14 @@ export function Board({
           targetPoints.has(String(abs)) ? (
             <path
               key={`hl${abs}`}
+              data-target=""
               d={pointPath(screen(abs) as number)}
               fill={theme.highlight}
-              opacity={0.55}
-              className="animate-pulse"
+              fillOpacity={0.55}
+              stroke="#fff"
+              strokeOpacity={0.85}
+              strokeWidth={3}
+              className="motion-safe:animate-pulse"
             />
           ) : null,
         )}
@@ -281,14 +287,18 @@ export function Board({
         )}
         {targetPoints.has("off") && (
           <rect
+            data-target=""
             x={TRAY_X}
             y={view.side(turn) === 0 ? MID_Y + 6 : TOP_Y}
             width={TRAY_W}
             height={BOTTOM_Y - MID_Y - 6}
             rx={6}
             fill={theme.highlight}
-            opacity={0.45}
-            className="animate-pulse"
+            fillOpacity={0.45}
+            stroke="#fff"
+            strokeOpacity={0.85}
+            strokeWidth={3}
+            className="motion-safe:animate-pulse"
           />
         )}
 
@@ -401,6 +411,7 @@ export function Board({
             color={theme.highlight}
             view={view}
             mirrored={mirrored}
+            rotated={rotated}
           />
         )}
       </g>
@@ -628,6 +639,7 @@ function HintArrows({
   color,
   view,
   mirrored,
+  rotated,
 }: {
   moves: readonly Move[];
   layout: Layout;
@@ -635,6 +647,7 @@ function HintArrows({
   color: string;
   view: View;
   mirrored: boolean;
+  rotated: boolean;
 }) {
   const counts = new Map<string, number>();
   const sizeOf = (slot: Slot) => counts.get(String(slot)) ?? stackAt(layout, slot).length;
@@ -672,7 +685,7 @@ function HintArrows({
             <text
               x={a.x}
               y={a.y}
-              transform={upright(a.x, a.y, false, mirrored)}
+              transform={upright(a.x, a.y, rotated, mirrored)}
               textAnchor="middle"
               dominantBaseline="central"
               fontSize={13}

@@ -10,6 +10,7 @@ import {
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { Button, Card, Segmented } from "../components/ui";
+import { errorText } from "../errors";
 import { useT } from "../i18n";
 import {
   createTournament,
@@ -56,26 +57,33 @@ export function TournamentPanel({
 }) {
   const t = useT();
   const { profile, status, tournaments: pushed, lastError } = useOnline();
-  const [list, setList] = useState<TournamentView[]>([]);
+  const [list, setList] = useState<TournamentView[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
   const [open, setOpen] = useState<string | null>(focus ?? null);
   const [creating, setCreating] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reload re-runs the fetch on purpose
   useEffect(() => {
     let alive = true;
     const load = () =>
       fetchTournaments()
-        .then((l) => alive && setList(l))
-        .catch(() => {});
+        .then((l) => {
+          if (!alive) return;
+          setList(l);
+          setLoadError(null);
+        })
+        .catch((e: unknown) => alive && setLoadError(e instanceof Error ? e.message : String(e)));
     void load();
     const id = setInterval(load, REFRESH_MS);
     return () => {
       alive = false;
       clearInterval(id);
     };
-  }, []);
+  }, [reload]);
 
   // Pushed updates are newer than the last list fetch.
-  const merged = list.map((x) => pushed[x.id] ?? x);
+  const merged = (list ?? []).map((x) => pushed[x.id] ?? x);
   for (const v of Object.values(pushed))
     if (!merged.some((x) => x.id === v.id) && (v.status === "open" || v.status === "running"))
       merged.unshift(v);
@@ -85,7 +93,19 @@ export function TournamentPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      {lastError && <p className="text-center text-sm text-red-400">{lastError}</p>}
+      {lastError && (
+        <p role="alert" className="text-center text-sm text-red-400">
+          {errorText(t, lastError)}
+        </p>
+      )}
+      {loadError && (
+        <p className="flex items-center justify-center gap-3 text-center text-sm text-red-400">
+          {errorText(t, loadError)}
+          <Button variant="ghost" className="px-3 py-1 text-sm" onClick={() => setReload((n) => n + 1)}>
+            {t.retry}
+          </Button>
+        </p>
+      )}
       {!mine && (
         <Card className="flex flex-col gap-3">
           {creating ? (
@@ -103,7 +123,8 @@ export function TournamentPanel({
           <PushToggle />
         </Card>
       )}
-      {merged.length === 0 && <p className="text-center text-stone-500">{t.tNone}</p>}
+      {list === null && !loadError && <p className="text-center text-stone-500">{t.loading}</p>}
+      {list !== null && merged.length === 0 && <p className="text-center text-stone-500">{t.tNone}</p>}
       {merged.map((x) => (
         <TournamentCard
           key={x.id}

@@ -41,7 +41,10 @@ export const useSettings = create<SettingsStore>()(
       autoRollCountdown: true,
       autoConfirmDelay: true,
       sound: true,
-      dice3d: true,
+      // The dice throw is a lot of motion: off by default when the system asks for less.
+      dice3d: !(
+        typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      ),
       homeLeft: false,
       showEmotes: true,
       update: (patch) => set(patch),

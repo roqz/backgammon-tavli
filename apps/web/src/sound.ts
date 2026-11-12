@@ -133,6 +133,14 @@ export const sounds = {
     const t = ac.currentTime;
     for (const [i, f] of [523, 659, 784, 1047].entries()) tone(ac, t + i * 0.11, f, 0.35, 0.14);
   },
+  /** Soft two-note chime: it is your turn (app in the background). */
+  yourTurn() {
+    const ac = audio();
+    if (!ac) return;
+    const t = ac.currentTime;
+    tone(ac, t, 784, 0.18, 0.12);
+    tone(ac, t + 0.14, 988, 0.3, 0.12);
+  },
   lose() {
     const ac = audio();
     if (!ac) return;

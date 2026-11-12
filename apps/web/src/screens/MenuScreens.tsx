@@ -8,9 +8,11 @@ import {
   type VariantId,
   XGID_VARIANTS,
 } from "@tavli/engine";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, Segmented } from "../components/ui";
 import { useT } from "../i18n";
+import { SOURCE_URL } from "../legal";
+import { unqueue } from "../online/client";
 import { useOnline } from "../online/store";
 import { type PlayerInfo, useGame } from "../store/game";
 import { SettingsPanel } from "./SettingsPanel";
@@ -22,6 +24,7 @@ export function Menu({
   onStats,
   onOnline,
   onRules,
+  onLegal,
 }: {
   onNew: () => void;
   onResume: () => void;
@@ -29,12 +32,15 @@ export function Menu({
   onStats: () => void;
   onOnline: () => void;
   onRules: () => void;
+  onLegal: (page: "imprint" | "privacy") => void;
 }) {
   const t = useT();
   const match = useGame((s) => s.match);
   const mode = useGame((s) => s.mode);
   const onlineActive = useOnline((s) => s.match !== null && s.match.end === null);
   const canResume = mode === "local" && match !== null && match.winner === null;
+  const lobby = useOnline((s) => s.lobby);
+  const online = useOnlineStatus();
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-8 p-6">
       <div className="text-center">
@@ -42,6 +48,22 @@ export function Menu({
         <h1 className="text-4xl font-bold tracking-tight text-amber-100">{t.appTitle}</h1>
         <p className="mt-2 text-stone-400">{t.tagline}</p>
       </div>
+      {lobby.kind === "queued" && (
+        <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-2 text-sm text-amber-100">
+          <button type="button" className="flex items-center gap-2" onClick={onOnline}>
+            <span className="h-2 w-2 rounded-full bg-amber-400 motion-safe:animate-pulse" />
+            {t.searching}
+          </button>
+          <button
+            type="button"
+            className="rounded-lg px-2 py-0.5 text-stone-300 hover:bg-stone-800"
+            onClick={() => unqueue()}
+          >
+            ✕ {t.cancel}
+          </button>
+        </div>
+      )}
+      {!online && <p className="text-center text-xs text-stone-500">📴 {t.offlineHint}</p>}
       <div className="flex w-full flex-col gap-3">
         {onlineActive ? (
           <Button variant="primary" className="py-4 text-lg" onClick={onResume}>
@@ -72,8 +94,45 @@ export function Menu({
           ⚙ {t.settings}
         </Button>
       </div>
+      <LegalFooter onLegal={onLegal} />
     </div>
   );
+}
+
+/** Imprint, privacy notice and source code (AGPL: the source must be reachable from the app). */
+export function LegalFooter({ onLegal }: { onLegal: (page: "imprint" | "privacy") => void }) {
+  const t = useT();
+  return (
+    <nav
+      className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-stone-500"
+      aria-label={t.imprint}
+    >
+      <button type="button" className="hover:text-stone-300" onClick={() => onLegal("imprint")}>
+        {t.imprint}
+      </button>
+      <button type="button" className="hover:text-stone-300" onClick={() => onLegal("privacy")}>
+        {t.privacy}
+      </button>
+      <a className="hover:text-stone-300" href={SOURCE_URL} target="_blank" rel="noreferrer noopener">
+        {t.sourceCode} (AGPL)
+      </a>
+    </nav>
+  );
+}
+
+/** Whether the browser is online. */
+function useOnlineStatus(): boolean {
+  const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+  return online;
 }
 
 const DEFAULT_LENGTH: Record<MatchVariant, number> = {
@@ -143,7 +202,7 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onBack} className="px-3">
+        <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
           ←
         </Button>
         <h1 className="text-2xl font-bold text-amber-100">{t.newGame}</h1>
@@ -164,6 +223,7 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
             { value: "tavli", label: t.tavliMatch },
           ]}
         />
+        <p className="-mt-2 text-xs text-stone-400">{t.variantInfo[variant]}</p>
         <Segmented
           label={t.matchLength}
           value={length}
@@ -262,7 +322,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onBack} className="px-3">
+        <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
           ←
         </Button>
         <h1 className="text-2xl font-bold text-amber-100">{t.settings}</h1>

@@ -6,7 +6,8 @@ import {
   type RatingEntry,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
-import { Button, Card, Segmented } from "../components/ui";
+import { Button, Card, Segmented, Tabs } from "../components/ui";
+import { errorOf, errorText } from "../errors";
 import { useT } from "../i18n";
 import {
   connect,
@@ -58,6 +59,7 @@ function PlayPanel() {
   const [length, setLength] = useState<MatchLength>(5);
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const ready = status === "ready";
 
   if (lobby.kind === "queued") {
@@ -66,7 +68,8 @@ function PlayPanel() {
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-stone-700 border-t-amber-400" />
         <p className="text-lg text-stone-100">{t.searching}</p>
         <p className="text-sm text-stone-400">
-          {variantName(lobby.variant, t.tavliMatch)} · {lobby.length} {t.points}
+          {variantName(lobby.variant, t.tavliMatch)} · {lobby.length}{" "}
+          {lobby.length === 1 ? t.point : t.points}
         </p>
         <Button onClick={() => unqueue()}>{t.cancel}</Button>
       </Card>
@@ -79,7 +82,8 @@ function PlayPanel() {
         <p className="text-sm text-stone-400">{t.inviteCode}</p>
         <p className="font-mono text-4xl font-bold tracking-[0.3em] text-amber-200">{lobby.code}</p>
         <p className="text-sm text-stone-400">
-          {variantName(lobby.variant, t.tavliMatch)} · {lobby.length} {t.points}
+          {variantName(lobby.variant, t.tavliMatch)} · {lobby.length}{" "}
+          {lobby.length === 1 ? t.point : t.points}
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button
@@ -87,8 +91,12 @@ function PlayPanel() {
             onClick={async () => {
               if (navigator.share) await navigator.share({ title: t.appTitle, url: link }).catch(() => {});
               else {
-                await navigator.clipboard.writeText(link);
-                setCopied(true);
+                try {
+                  await navigator.clipboard.writeText(link);
+                  setCopied(true);
+                } catch {
+                  setCopyFailed(true);
+                }
               }
             }}
           >
@@ -96,6 +104,11 @@ function PlayPanel() {
           </Button>
           <Button onClick={() => unqueue()}>{t.cancel}</Button>
         </div>
+        {copyFailed && (
+          <p className="text-xs text-stone-400">
+            {t.copyFailed} <span className="select-all break-all font-mono text-stone-200">{link}</span>
+          </p>
+        )}
         <p className="flex items-center gap-2 text-sm text-stone-500">
           <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
           {t.waitingForFriend}
@@ -128,9 +141,14 @@ function PlayPanel() {
         </div>
       </Card>
       <Card className="flex flex-col gap-2">
-        <span className="text-sm text-stone-400">{t.joinWithCode}</span>
+        <label htmlFor="join-code" className="text-sm text-stone-400">
+          {t.joinWithCode}
+        </label>
         <div className="flex gap-2">
           <input
+            id="join-code"
+            aria-label={t.joinCode}
+            autoComplete="off"
             className="min-w-0 flex-1 rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 font-mono uppercase tracking-widest text-stone-100 outline-none focus:border-amber-400"
             value={code}
             maxLength={6}
@@ -143,7 +161,9 @@ function PlayPanel() {
         </div>
       </Card>
       {lastError && (
-        <p className="text-center text-sm text-red-400">{lastError === "banned" ? t.banned : lastError}</p>
+        <p role="alert" className="text-center text-sm text-red-400">
+          {lastError === "banned" ? t.banned : errorText(t, lastError)}
+        </p>
       )}
     </div>
   );
@@ -163,8 +183,8 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
     setError(null);
     fetchLeaderboard(variant)
       .then(setRows)
-      .catch((e: unknown) => setError(String(e)));
-  }, [variant]);
+      .catch((e: unknown) => setError(errorOf(t, e)));
+  }, [variant, t]);
   useEffect(() => {
     if (profile)
       fetchProfile(profile.id)
@@ -258,7 +278,7 @@ export function OnlineScreen({
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onBack} className="px-3">
+        <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
           ←
         </Button>
         <h1 className="flex-1 text-2xl font-bold text-amber-100">{t.online}</h1>
@@ -275,8 +295,8 @@ export function OnlineScreen({
           <p className="text-sm text-stone-400">
             👤 <span className="text-stone-200">{profile.name}</span>
           </p>
-          <Segmented
-            label=""
+          <Tabs
+            label={t.online}
             value={tab}
             onChange={setTab}
             options={[

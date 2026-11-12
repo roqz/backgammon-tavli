@@ -10,7 +10,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      // Updates are offered, not forced: a reload must never interrupt a running game.
+      registerType: "prompt",
       includeAssets: ["icon.svg"],
       // Push notification handlers (public/push-sw.js) inside the generated service worker.
       workbox: { importScripts: ["push-sw.js"] },

@@ -24,7 +24,7 @@ test("plays against the computer, survives a reload and resumes", async ({ page 
     )
     .toBeGreaterThan(0);
   expect(await tapMove(page)).toBe(true);
-  await expect(page.getByRole("button", { name: /Zurück/ })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /Rückgängig/ })).toBeEnabled();
   expect(await checkerCount(page)).toBe(30);
 
   await page.reload();
@@ -81,8 +81,11 @@ test("imports an XGID position; the computer rejects a single but accepts a gamm
   await page.getByRole("button", { name: /Aufgabe anbieten: Einfach/ }).click();
   await expect(page.getByText("Aufgabe abgelehnt")).toBeVisible();
 
+  // No backgammon is possible any more (race, nothing in the computer's home board):
+  // resigning without consent concedes a gammon.
   await page.getByRole("button", { name: /Aufgeben/ }).click();
-  await page.getByRole("button", { name: /Aufgabe anbieten: Gammon/ }).click();
+  await expect(page.getByRole("button", { name: /Backgammon/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /Sofort aufgeben: Gammon/ }).click();
   await expect(page.getByText(/Gammon · \+2 Punkte/)).toBeVisible();
 });
 
@@ -96,7 +99,7 @@ test("a mirrored board (home board left) can still be played by tapping", async 
   await expect(page.getByRole("dialog")).toBeHidden();
   await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
   expect(await tapMove(page)).toBe(true);
-  await expect(page.getByRole("button", { name: /Zurück/ })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /Rückgängig/ })).toBeEnabled();
   expect(await checkerCount(page)).toBe(30);
 });
 
@@ -105,6 +108,29 @@ test("settings opened from the menu return to the menu, even with a game running
   await page.getByRole("button", { name: "Starten" }).click();
   await page.getByRole("button", { name: "Menü" }).click();
   await page.getByRole("button", { name: /Einstellungen/ }).click();
-  await page.getByRole("button", { name: "←" }).click();
+  await page.getByRole("button", { name: "Zurück" }).click();
   await expect(page.getByRole("button", { name: "Fortsetzen" })).toBeVisible();
+});
+
+test("the browser Back button closes dialogs and returns to the previous screen", async ({ page }) => {
+  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await page.getByRole("button", { name: "Starten" }).click();
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("dialog")).toBeHidden();
+  // still in the game
+  await expect(page.getByRole("button", { name: "Menü" })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("button", { name: "Neues Spiel" })).toBeVisible();
+});
+
+test("imprint, privacy notice and source code are linked from the menu", async ({ page }) => {
+  await page.getByRole("button", { name: "Datenschutz" }).click();
+  await expect(page.getByRole("heading", { name: "Fair-Play-Auswertung" })).toBeVisible();
+  await page.getByRole("button", { name: "Zurück" }).click();
+  await page.getByRole("button", { name: "Impressum" }).click();
+  await expect(page.getByRole("link", { name: /github\.com/ })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("link", { name: /Quellcode/ })).toBeVisible();
 });

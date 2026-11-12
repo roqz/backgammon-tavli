@@ -164,8 +164,23 @@ export function useResignRejected(g: GameState | undefined): boolean {
 export function EmoteButton() {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  // Closes on Escape and on a click outside.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [open]);
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <Button
         variant="ghost"
         className="px-3 py-1.5 text-lg"

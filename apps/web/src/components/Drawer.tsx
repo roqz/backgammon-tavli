@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useRef } from "react";
+import { useBackToClose, useDialogFocus } from "./overlay";
 
 /** Slide-in panel from the right over the current screen (the screen stays mounted). */
 export function Drawer({
@@ -15,12 +16,9 @@ export function Drawer({
   closeLabel: string;
   children: ReactNode;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const ref = useRef<HTMLElement>(null);
+  useDialogFocus(ref, open, onClose);
+  useBackToClose(open, onClose);
   return (
     <AnimatePresence>
       {open && (
@@ -32,9 +30,11 @@ export function Drawer({
           onClick={onClose}
         >
           <motion.aside
+            ref={ref}
             role="dialog"
             aria-modal="true"
-            className="h-full w-full max-w-md overflow-y-auto border-l border-stone-800 bg-stone-950 p-4 shadow-2xl sm:p-5"
+            tabIndex={-1}
+            className="h-full w-full max-w-md overflow-y-auto border-l border-stone-800 bg-stone-950 p-4 shadow-2xl outline-none sm:p-5"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}

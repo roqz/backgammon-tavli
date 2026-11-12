@@ -10,7 +10,7 @@ test("four players fill a tournament; first-round matches start and lead back to
   for (const n of names) pages.push(await onlineGuest(browser, n));
   const [host, ...others] = pages;
 
-  await host!.getByRole("button", { name: "Turniere", exact: true }).click();
+  await host!.getByRole("tab", { name: "Turniere", exact: true }).click();
   await host!.getByRole("button", { name: /Turnier erstellen/ }).click();
   await host!.getByLabel("Name").fill("Pokal");
   await host!.getByRole("button", { name: "4", exact: true }).click();
@@ -22,7 +22,7 @@ test("four players fill a tournament; first-round matches start and lead back to
   await expect(host!.getByText("Pokal")).toBeVisible();
 
   for (const p of others) {
-    await p.getByRole("button", { name: "Turniere", exact: true }).click();
+    await p.getByRole("tab", { name: "Turniere", exact: true }).click();
     await p.getByRole("button", { name: "Beitreten" }).click();
   }
 

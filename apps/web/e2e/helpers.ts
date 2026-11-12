@@ -42,7 +42,7 @@ export const tapMove = async (page: Page): Promise<boolean> => {
   const src = page.locator("svg circle[stroke-dasharray]").first();
   if (!(await src.count())) return false;
   await src.click({ force: true });
-  const tgt = page.locator("svg .animate-pulse").first();
+  const tgt = page.locator("svg [data-target]").first();
   if (!(await tgt.count())) return false;
   const box = (await tgt.boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);

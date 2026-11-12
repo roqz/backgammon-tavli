@@ -18,16 +18,19 @@ import {
 } from "@tavli/engine";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Board } from "../board/Board";
+import { HEIGHT, WIDTH } from "../board/geometry";
 import { layoutFromBoard, layoutMatches } from "../board/layout";
 import { THEMES } from "../board/themes";
 import { askBot } from "../bot/client";
 import { humanSeat, useBotDriver } from "../bot/useBotDriver";
 import { BLOCKED_VISIBLE_MS, EventBanner, noPlayDelay } from "../components/EventBanner";
 import { Button, Modal } from "../components/ui";
+import { errorText } from "../errors";
 import { turnText, useT } from "../i18n";
 import { leaveMatch, requestRematch } from "../online/client";
+import { notifyIfHidden } from "../online/push";
 import { useOnline } from "../online/store";
-import { useGameSounds } from "../sound";
+import { sounds, useGameSounds } from "../sound";
 import { type GameRecord, useArchive } from "../store/archive";
 import { useGame } from "../store/game";
 import { useSettings } from "../store/settings";
@@ -191,6 +194,21 @@ export function GameScreen({
   const [rulesOpen, setRulesOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
   const portrait = usePortraitPhone();
+  const landscape = useShortLandscape();
+  const connection = useOnline((s) => s.status);
+  /** The result dialog can be put aside to look at the final position. */
+  const [peekBoard, setPeekBoard] = useState(false);
+  const finishedGame = match?.game.phase === "finished" ? match.game : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset for every finished game
+  useEffect(() => setPeekBoard(false), [finishedGame]);
+  const mySeat = online && onlineInfo ? onlineInfo.seat : null;
+  useYourTurnAlert(
+    online &&
+      mySeat !== null &&
+      !!match &&
+      match.game.phase !== "finished" &&
+      playerToAct(match.game) === mySeat,
+  );
   const resignRejected = useResignRejected(match?.game);
   // Errors from the server fade out after a few seconds.
   useEffect(() => {
@@ -278,9 +296,68 @@ export function GameScreen({
       ? t.unlimited
       : `${match.config.length} ${match.config.length === 1 ? t.point : t.points}`;
 
+  const controls = (
+    <>
+      {g.phase === "opening" && (
+        <Button variant="primary" onClick={roll}>
+          {t.openingRoll}
+        </Button>
+      )}
+      {g.phase === "rolling" && humanToAct && !isClosedOut(g) && (
+        <>
+          {canDouble(g) && (
+            <Button onClick={() => dispatch({ type: "double" })}>
+              {t.double} ({g.cube.value * 2})
+            </Button>
+          )}
+          <Button variant="primary" onClick={roll}>
+            {t.roll}
+            {countdown?.kind === "roll" && <CountdownBadge seconds={countdown.seconds} />}
+          </Button>
+          {countdown?.kind === "roll" && (
+            <Button variant="ghost" onClick={cancelCountdown}>
+              ✕ {t.cancel}
+            </Button>
+          )}
+        </>
+      )}
+      {g.phase === "moving" && humanToAct && (
+        <>
+          {!online && (
+            <Button
+              variant="ghost"
+              disabled={busy || hintLoading || legalMoves(g).length === 0}
+              onClick={() => void askHint()}
+            >
+              💡 {t.hint}
+            </Button>
+          )}
+          <Button disabled={!canUndo(g) || busy} onClick={() => dispatch({ type: "undo" })}>
+            ↶ {t.undo}
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!canConfirm(g) || busy}
+            onClick={() => dispatch({ type: "confirm" })}
+          >
+            {t.confirm}
+            {countdown?.kind === "confirm" && <CountdownBadge seconds={countdown.seconds} />}
+          </Button>
+          {countdown?.kind === "confirm" && (
+            <Button variant="ghost" onClick={cancelCountdown}>
+              ✕ {t.cancel}
+            </Button>
+          )}
+        </>
+      )}
+    </>
+  );
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-2 sm:p-4 lg:flex-row lg:items-start">
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
+    <div
+      className={`mx-auto flex w-full max-w-7xl gap-3 p-2 sm:p-4 ${landscape ? "flex-row items-start" : "flex-col lg:flex-row lg:items-start"}`}
+    >
+      <div className={`flex min-w-0 flex-col gap-3 ${landscape ? "flex-none" : "flex-1"}`}>
         {/* header */}
         <div className="flex items-center justify-between gap-2 px-1">
           <Button
@@ -328,6 +405,17 @@ export function GameScreen({
               />
             )}
             {online && onlineInfo && !onlineInfo.end && <EmoteButton />}
+            {g.phase !== "finished" && !offer && (
+              <Button
+                variant="ghost"
+                className="px-3 py-1.5 text-lg lg:hidden"
+                onClick={() => setResigning(true)}
+                aria-label={t.resign}
+                title={t.resign}
+              >
+                🏳
+              </Button>
+            )}
             {online && onlineInfo && (
               <Button
                 variant="ghost"
@@ -360,7 +448,30 @@ export function GameScreen({
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+        {online && connection !== "ready" && (
+          <p
+            role="alert"
+            className="flex items-center justify-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-sm text-red-200"
+          >
+            <span className="h-2 w-2 rounded-full bg-red-400 motion-safe:animate-pulse" />
+            {t.connectionLost}
+          </p>
+        )}
+        {!landscape && (
+          <ScoreStrip
+            className="lg:hidden"
+            names={[name(0), name(1)]}
+            pips={settings.showPips ? [pipCount(rules, g.board, 0), pipCount(rules, g.board, 1)] : null}
+            score={match.score}
+            actor={actor}
+          />
+        )}
+        <div
+          className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40"
+          style={
+            landscape ? { width: `calc((100dvh - 4.5rem) * ${WIDTH / HEIGHT})`, maxWidth: "70vw" } : undefined
+          }
+        >
           <Board
             state={g}
             layout={safeLayout}
@@ -402,67 +513,20 @@ export function GameScreen({
         </div>
 
         {/* status + controls */}
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+        <div
+          className={`flex flex-col items-center gap-3 ${landscape ? "hidden" : "sm:flex-row sm:justify-between"}`}
+        >
           <div className="flex items-center gap-2 text-lg font-medium text-stone-100" aria-live="polite">
             {actor !== null && <Checker player={actor} />}
             {status}
           </div>
-          <div className="flex flex-wrap justify-center gap-2">
-            {g.phase === "opening" && (
-              <Button variant="primary" onClick={roll}>
-                {t.openingRoll}
-              </Button>
-            )}
-            {g.phase === "rolling" && humanToAct && !isClosedOut(g) && (
-              <>
-                {canDouble(g) && (
-                  <Button onClick={() => dispatch({ type: "double" })}>
-                    {t.double} ({g.cube.value * 2})
-                  </Button>
-                )}
-                <Button variant="primary" onClick={roll}>
-                  {t.roll}
-                  {countdown?.kind === "roll" && <CountdownBadge seconds={countdown.seconds} />}
-                </Button>
-                {countdown?.kind === "roll" && (
-                  <Button variant="ghost" onClick={cancelCountdown}>
-                    ✕ {t.cancel}
-                  </Button>
-                )}
-              </>
-            )}
-            {g.phase === "moving" && humanToAct && (
-              <>
-                {!online && (
-                  <Button
-                    variant="ghost"
-                    disabled={busy || hintLoading || legalMoves(g).length === 0}
-                    onClick={() => void askHint()}
-                  >
-                    💡 {t.hint}
-                  </Button>
-                )}
-                <Button disabled={!canUndo(g) || busy} onClick={() => dispatch({ type: "undo" })}>
-                  ↶ {t.undo}
-                </Button>
-                <Button
-                  variant="primary"
-                  disabled={!canConfirm(g) || busy}
-                  onClick={() => dispatch({ type: "confirm" })}
-                >
-                  {t.confirm}
-                  {countdown?.kind === "confirm" && <CountdownBadge seconds={countdown.seconds} />}
-                </Button>
-                {countdown?.kind === "confirm" && (
-                  <Button variant="ghost" onClick={cancelCountdown}>
-                    ✕ {t.cancel}
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
+          <div className="flex flex-wrap justify-center gap-2">{controls}</div>
         </div>
-        {online && onlineError && <p className="text-center text-sm text-red-400">⚠ {onlineError}</p>}
+        {online && onlineError && (
+          <p role="alert" className="text-center text-sm text-red-400">
+            ⚠ {errorText(t, onlineError)}
+          </p>
+        )}
         {hintText && (
           <p className="text-center text-sm text-amber-200">
             💡 {t.suggestion}: <span className="font-mono">{hintText}</span>
@@ -474,8 +538,19 @@ export function GameScreen({
       </div>
 
       {/* side panel */}
-      <aside className="flex w-full flex-col gap-3 lg:w-72">
-        <div className="rounded-2xl border border-stone-800 bg-stone-900/80 p-4">
+      <aside className={`flex flex-col gap-3 ${landscape ? "min-w-0 flex-1" : "w-full lg:w-72"}`}>
+        {landscape && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-base font-medium text-stone-100" aria-live="polite">
+              {actor !== null && <Checker player={actor} />}
+              {status}
+            </div>
+            <div className="flex flex-wrap gap-2">{controls}</div>
+          </div>
+        )}
+        <div
+          className={`rounded-2xl border border-stone-800 bg-stone-900/80 p-4 ${landscape ? "" : "hidden lg:block"}`}
+        >
           <h2 className="mb-2 text-sm font-medium text-stone-400">{t.score}</h2>
           {([0, 1] as Player[]).map((p) => (
             <div key={p} className="flex items-center gap-2 py-1">
@@ -513,7 +588,7 @@ export function GameScreen({
         <XgidBox match={match} />
 
         {g.phase !== "finished" && !offer && (
-          <Button variant="ghost" className="text-sm" onClick={() => setResigning(true)}>
+          <Button variant="ghost" className="hidden text-sm lg:block" onClick={() => setResigning(true)}>
             🏳 {t.resign}
           </Button>
         )}
@@ -580,7 +655,17 @@ export function GameScreen({
         </Modal>
       )}
 
-      {online && onlineInfo?.end && (
+      {peekBoard && g.phase === "finished" && (
+        <Button
+          variant="primary"
+          className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 shadow-2xl"
+          onClick={() => setPeekBoard(false)}
+        >
+          🏁 {t.showResult}
+        </Button>
+      )}
+
+      {online && onlineInfo?.end && !peekBoard && (
         <Modal>
           <p className="mb-1 text-2xl font-bold text-amber-200">
             {name(onlineInfo.end.winner)} {t.winsMatch}
@@ -599,15 +684,17 @@ export function GameScreen({
               {onlineInfo.unratedReason ? ` – ${t.unratedReason[onlineInfo.unratedReason]}` : ""}
             </p>
           )}
-          <p className={`mb-5 text-stone-300 ${onlineInfo.rated ? "" : "hidden"}`}>
-            {t.ratingChange}:{" "}
-            <span
-              className={`font-bold ${onlineInfo.end.ratingDelta[onlineInfo.seat] >= 0 ? "text-emerald-300" : "text-red-300"}`}
-            >
-              {onlineInfo.end.ratingDelta[onlineInfo.seat] >= 0 ? "+" : ""}
-              {onlineInfo.end.ratingDelta[onlineInfo.seat].toFixed(1)}
-            </span>
-          </p>
+          {onlineInfo.rated && (
+            <p className="mb-5 text-stone-300">
+              {t.ratingChange}:{" "}
+              <span
+                className={`font-bold ${onlineInfo.end.ratingDelta[onlineInfo.seat] >= 0 ? "text-emerald-300" : "text-red-300"}`}
+              >
+                {onlineInfo.end.ratingDelta[onlineInfo.seat] >= 0 ? "+" : ""}
+                {onlineInfo.end.ratingDelta[onlineInfo.seat].toFixed(1)}
+              </span>
+            </p>
+          )}
           {onlineInfo.fairCheck && (
             <p
               className={`mb-3 text-center text-sm ${
@@ -672,17 +759,26 @@ export function GameScreen({
               </Button>
             )}
           </div>
-          <Button
-            variant="ghost"
-            className="mt-2 w-full text-xs text-stone-500"
-            onClick={() => setReporting(true)}
-          >
-            ⚑ {t.report}
-          </Button>
+          <div className="mt-2 flex gap-2">
+            <Button
+              variant="ghost"
+              className="flex-1 text-xs text-stone-400"
+              onClick={() => setPeekBoard(true)}
+            >
+              👁 {t.viewBoard}
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex-1 text-xs text-stone-500"
+              onClick={() => setReporting(true)}
+            >
+              ⚑ {t.report}
+            </Button>
+          </div>
         </Modal>
       )}
 
-      {g.phase === "finished" && g.result && !(online && onlineInfo?.end) && (
+      {g.phase === "finished" && g.result && !(online && onlineInfo?.end) && !peekBoard && (
         <Modal>
           <p className="mb-1 text-2xl font-bold text-amber-200">
             {name(g.result.winner)} {match.winner !== null ? t.winsMatch : t.wins}
@@ -719,16 +815,23 @@ export function GameScreen({
               {t.toMenu}
             </Button>
           )}
-          <Button
-            variant="ghost"
-            className={`mt-2 w-full text-sm ${online ? "hidden" : ""}`}
-            onClick={() => {
-              const record = useArchive.getState().records[0];
-              if (record) onReplay(record);
-            }}
-          >
-            ▶ {t.watchGame}
-          </Button>
+          <div className="mt-2 flex gap-2">
+            <Button variant="ghost" className="flex-1 text-sm" onClick={() => setPeekBoard(true)}>
+              👁 {t.viewBoard}
+            </Button>
+            {!online && (
+              <Button
+                variant="ghost"
+                className="flex-1 text-sm"
+                onClick={() => {
+                  const record = useArchive.getState().records[0];
+                  if (record) onReplay(record);
+                }}
+              >
+                ▶ {t.watchGame}
+              </Button>
+            )}
+          </div>
         </Modal>
       )}
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
@@ -742,7 +845,7 @@ export function GameScreen({
 }
 
 /** Phones held upright: the board is drawn rotated to use the screen height. */
-function usePortraitPhone(): boolean {
+export function usePortraitPhone(): boolean {
   const query = "(orientation: portrait) and (max-width: 700px)";
   const [match, setMatch] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
   useEffect(() => {
@@ -752,6 +855,87 @@ function usePortraitPhone(): boolean {
     return () => mq.removeEventListener("change", onChange);
   }, []);
   return match;
+}
+
+/** Phones held sideways (short viewport): board and controls side by side, sized by the height. */
+function useShortLandscape(): boolean {
+  const query = "(orientation: landscape) and (max-height: 500px)";
+  const [match, setMatch] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = () => setMatch(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return match;
+}
+
+/**
+ * When it becomes the player's turn while the app is in the background: a sound, vibration and
+ * a marker in the tab title, so nobody loses on time without noticing.
+ */
+function useYourTurnAlert(myTurn: boolean): void {
+  const t = useT();
+  useEffect(() => {
+    if (!myTurn) return;
+    const base = document.title.replace(/^● /, "");
+    const mark = () => {
+      if (!document.hidden) return;
+      document.title = `● ${base}`;
+      sounds.yourTurn();
+      navigator.vibrate?.(200);
+      void notifyIfHidden(base, t.yourTurn, "your-turn");
+    };
+    mark();
+    const onVisible = () => {
+      if (!document.hidden) document.title = base;
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      document.title = base;
+    };
+  }, [myTurn, t]);
+}
+
+/** Names, pips and score above the board on small screens. */
+function ScoreStrip({
+  names,
+  pips,
+  score,
+  actor,
+  className = "",
+}: {
+  names: readonly [string, string];
+  pips: readonly [number, number] | null;
+  score: readonly [number, number];
+  actor: Player | null;
+  className?: string;
+}) {
+  const t = useT();
+  return (
+    <div className={`grid grid-cols-2 gap-2 text-sm ${className}`}>
+      {([0, 1] as Player[]).map((p) => (
+        <div
+          key={p}
+          className={`flex items-center gap-2 rounded-lg border px-2 py-1 ${actor === p ? "border-amber-400/60 bg-amber-400/10" : "border-stone-800 bg-stone-900/70"}`}
+        >
+          <Checker player={p} />
+          <span
+            className={`min-w-0 flex-1 truncate ${actor === p ? "font-semibold text-amber-100" : "text-stone-200"}`}
+          >
+            {names[p]}
+          </span>
+          {pips && (
+            <span className="text-xs text-stone-500" title={t.pips}>
+              {pips[p]}
+            </span>
+          )}
+          <span className="text-base font-bold tabular-nums text-stone-100">{score[p]}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /** Turn clock and opponent connection state in online matches. */

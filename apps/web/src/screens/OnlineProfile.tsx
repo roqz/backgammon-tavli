@@ -9,15 +9,19 @@ import {
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { Button, Card, Modal } from "../components/ui";
+import { errorOf } from "../errors";
 import { useT } from "../i18n";
 import {
   changePassword,
   claimAccount,
   connect,
+  deleteProfile,
+  exportData,
   fetchMatch,
   fetchProfile,
   login,
   logout,
+  logoutOthers,
   register,
 } from "../online/client";
 import { useOnline } from "../online/store";
@@ -27,8 +31,6 @@ const input =
   "rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-stone-100 outline-none focus:border-amber-400";
 
 const variantName = (v: MatchVariantId, tavli: string) => (v === "tavli" ? tavli : getVariant(v).name);
-
-const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 /** Converts a server match into replayable game records (one per game). */
 export const matchToRecords = (d: MatchDetailResponse, meId: string | undefined): GameRecord[] =>
@@ -49,6 +51,7 @@ export const matchToRecords = (d: MatchDetailResponse, meId: string | undefined)
 /** First screen without a profile: start as guest or log in with an existing account. */
 export function AuthForm() {
   const t = useT();
+  const pendingJoin = useOnline((s) => s.pendingJoin);
   const [mode, setMode] = useState<"guest" | "login">("guest");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -62,18 +65,24 @@ export function AuthForm() {
       await fn();
       connect();
     } catch (e) {
-      setError(errorText(e));
+      setError(errorOf(t, e));
     } finally {
       setBusy(false);
     }
   };
   return (
     <Card className="flex flex-col gap-4">
+      {pendingJoin && (
+        <p className="rounded-lg bg-amber-400/15 px-3 py-2 text-sm text-amber-100">
+          ✉ {t.inviteBanner.replace("{code}", pendingJoin)}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-2">
         {(["guest", "login"] as const).map((m) => (
           <button
             key={m}
             type="button"
+            aria-pressed={mode === m}
             onClick={() => setMode(m)}
             className={`rounded-lg border px-3 py-2 text-sm ${
               mode === m
@@ -143,6 +152,93 @@ export function AuthForm() {
 }
 
 /** Account state: secure the guest profile with username/password, or log out. */
+/** Data export, logging out other devices and deleting the profile. */
+function PrivacyCard() {
+  const t = useT();
+  const profile = useOnline((s) => s.profile)!;
+  const [info, setInfo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      await fn();
+    } catch (e) {
+      setError(errorOf(t, e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <details className="rounded-xl border border-stone-800 p-3 text-sm">
+      <summary className="cursor-pointer text-stone-300">🛡 {t.privacyTitle}</summary>
+      <div className="mt-3 flex flex-col gap-3">
+        <div>
+          <Button disabled={busy} onClick={() => void run(exportData)}>
+            ⬇ {t.exportData}
+          </Button>
+          <p className="mt-1 text-xs text-stone-500">{t.exportHint}</p>
+        </div>
+        {profile.username && (
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={() =>
+              void run(async () => setInfo(t.logoutOthersDone.replace("{n}", String(await logoutOthers()))))
+            }
+          >
+            {t.logoutOthers}
+          </Button>
+        )}
+        <div>
+          <Button variant="danger" disabled={busy} onClick={() => setDeleting(true)}>
+            🗑 {t.deleteProfile}
+          </Button>
+          <p className="mt-1 text-xs text-stone-500">{t.deleteHint}</p>
+        </div>
+        {info && <p className="text-emerald-300">{info}</p>}
+        {error && !deleting && <p className="text-red-400">{error}</p>}
+      </div>
+      {deleting && (
+        <Modal onClose={() => setDeleting(false)}>
+          <h2 className="mb-2 text-lg font-semibold text-stone-100">{t.deleteConfirm}</h2>
+          <p className="mb-3 text-sm text-stone-400">{t.deleteHint}</p>
+          {profile.username && (
+            <label className="mb-3 flex flex-col gap-1 text-sm text-stone-400">
+              {t.deletePasswordPrompt}
+              <input
+                className={input}
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
+          )}
+          {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={() => setDeleting(false)}>
+              {t.cancel}
+            </Button>
+            <Button
+              variant="danger"
+              className="flex-1"
+              disabled={busy || (!!profile.username && password.length === 0)}
+              onClick={() => void run(() => deleteProfile(profile.username ? password : undefined))}
+            >
+              {t.deleteProfile}
+            </Button>
+          </div>
+        </Modal>
+      )}
+    </details>
+  );
+}
+
 function AccountCard() {
   const t = useT();
   const profile = useOnline((s) => s.profile)!;
@@ -162,7 +258,7 @@ function AccountCard() {
       await claimAccount(username, password, email.trim());
       setPassword("");
     } catch (e) {
-      setError(errorText(e));
+      setError(errorOf(t, e));
     } finally {
       setBusy(false);
     }
@@ -231,6 +327,7 @@ function AccountCard() {
         </div>
       )}
       {profile.username && <PasswordChange />}
+      <PrivacyCard />
       {confirmLogout && (
         <Modal onClose={() => setConfirmLogout(false)}>
           <p className="mb-2 text-stone-100">{t.logout}?</p>
@@ -263,7 +360,7 @@ function PasswordChange() {
       setNewPw("");
       setState({ ok: true });
     } catch (e) {
-      setState({ error: errorText(e) });
+      setState({ error: errorOf(t, e) });
     }
   };
   if (!open) {
@@ -336,15 +433,15 @@ export function MatchList({
   useEffect(() => {
     fetchProfile(playerId)
       .then(setProfile)
-      .catch((e: unknown) => setError(errorText(e)));
-  }, [playerId]);
+      .catch((e: unknown) => setError(errorOf(t, e)));
+  }, [playerId, t]);
 
   const open = async (m: MatchSummary) => {
     setLoading(m.id);
     try {
       onReplay(matchToRecords(await fetchMatch(m.id), me ?? playerId));
     } catch (e) {
-      setError(errorText(e));
+      setError(errorOf(t, e));
     } finally {
       setLoading(null);
     }
@@ -389,7 +486,7 @@ export function MatchList({
                   </div>
                   <div className="text-xs text-stone-500">
                     {variantName(m.variant, t.tavliMatch)} · {m.length} ·{" "}
-                    {new Date(m.endedAt).toLocaleDateString()}
+                    {new Date(m.endedAt).toLocaleDateString(t.locale)}
                   </div>
                 </div>
                 <Button
@@ -435,11 +532,12 @@ export function PlayerSheet({
   onClose: () => void;
   onReplay: (records: GameRecord[]) => void;
 }) {
+  const t = useT();
   return (
     <Modal onClose={onClose}>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-stone-100">👤 {name}</h2>
-        <button type="button" className="text-stone-400" onClick={onClose} aria-label="close">
+        <button type="button" className="text-stone-400" onClick={onClose} aria-label={t.close}>
           ✕
         </button>
       </div>

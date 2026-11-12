@@ -210,6 +210,16 @@ export const connect = (): void => {
       wanted = false;
       return;
     }
+    if (e.code === 4004) {
+      set({ status: "offline", profile: null, lastError: "deleted" });
+      wanted = false;
+      return;
+    }
+    if (e.code === 4029) {
+      set({ status: "offline", lastError: "too many connections" });
+      wanted = false;
+      return;
+    }
     set({ status: "offline" });
     scheduleReconnect();
   };
@@ -361,6 +371,29 @@ export const logout = async () => {
   await rest("/api/account/logout", { method: "POST" }).catch(() => {});
   disconnect();
   set({ profile: null, match: null, lobby: { kind: "idle" } });
+};
+
+/** Downloads everything the server stores about the player as a JSON file. */
+export const exportData = async () => {
+  const data = await rest<unknown>("/api/account/export");
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tavli-data.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+/** Ends the sessions of all other devices; returns how many. */
+export const logoutOthers = async () =>
+  (await rest<{ ended: number }>("/api/account/logout-all", { method: "POST" })).ended;
+
+/** Deletes the profile on the server (accounts confirm with the password) and forgets it locally. */
+export const deleteProfile = async (password?: string) => {
+  await rest("/api/account/delete", { method: "POST", body: JSON.stringify(password ? { password } : {}) });
+  disconnect();
+  set({ profile: null, match: null, lobby: { kind: "idle" }, tournaments: {}, lastError: null });
+  useGame.getState().endOnline();
 };
 
 export const changePassword = (oldPassword: string, newPassword: string) =>

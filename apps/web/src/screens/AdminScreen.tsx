@@ -204,7 +204,7 @@ function ReportCard({
             </span>
           )}
         </button>
-        <span className="text-xs text-stone-500">{new Date(r.createdAt).toLocaleString()}</span>
+        <span className="text-xs text-stone-500">{new Date(r.createdAt).toLocaleString(t.locale)}</span>
       </div>
       <p className="text-amber-200">{reasonLabel}</p>
       {r.note && <p className="whitespace-pre-wrap text-stone-300">“{r.note}”</p>}

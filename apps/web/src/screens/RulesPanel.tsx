@@ -7,13 +7,14 @@ import { useSettings } from "../store/settings";
 
 /** The rule book: one chapter per variant plus basics and app notes. */
 export function RulesPanel({ initial = "general" }: { initial?: RulesTopic }) {
+  const t = useT();
   const lang = useSettings((s) => s.lang);
   const [topic, setTopic] = useState<RulesTopic>(initial);
   const chapters = RULES[lang];
   const chapter = chapters[topic];
   return (
     <div className="flex flex-col gap-4">
-      <nav className="flex flex-wrap gap-1.5" aria-label="chapters">
+      <nav className="flex flex-wrap gap-1.5" aria-label={t.chapters}>
         {RULES_TOPICS.map((k) => (
           <button
             key={k}
@@ -77,7 +78,7 @@ export function RulesScreen({ onBack }: { onBack: () => void }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onBack} className="px-3">
+        <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
           ←
         </Button>
         <h1 className="text-2xl font-bold text-amber-100">📖 {t.rules}</h1>
