@@ -173,7 +173,12 @@ const onMessage = (msg: ServerMessage) => {
       break;
     case "challenge-update": {
       if (online.incoming?.id === msg.id) set({ incoming: null });
-      if (msg.status === "sent" || online.outgoing?.id === msg.id || msg.id === "")
+      if (
+        msg.status === "sent" ||
+        msg.status === "notified" ||
+        online.outgoing?.id === msg.id ||
+        msg.id === ""
+      )
         set({ outgoing: { id: msg.id, to: msg.to, status: msg.status } });
       break;
     }
@@ -479,6 +484,13 @@ export const deleteProfile = async (password?: string) => {
 
 export const changePassword = (oldPassword: string, newPassword: string) =>
   rest("/api/account/password", { method: "POST", body: JSON.stringify({ oldPassword, newPassword }) });
+
+export const fetchAccount = () => rest<AccountResponse>("/api/account");
+export const setFriendsCanWatch = (friendsCanWatch: boolean) =>
+  rest<AccountResponse>("/api/account/settings", {
+    method: "POST",
+    body: JSON.stringify({ friendsCanWatch }),
+  });
 
 export const syncAccount = async () => {
   const acc = await rest<AccountResponse>("/api/account");

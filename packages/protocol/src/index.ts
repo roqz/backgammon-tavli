@@ -111,8 +111,11 @@ export interface PublicPlayer {
 
 // ---- friends and spectating --------------------------------------------------------------------
 
-/** sent: waiting for the answer · declined / cancelled / expired / busy: ended without a match */
-export type ChallengeStatus = "sent" | "declined" | "cancelled" | "expired" | "busy";
+/**
+ * sent: waiting for the answer · notified: the friend was offline and got a push notification ·
+ * declined / cancelled / expired / busy: ended without a match
+ */
+export type ChallengeStatus = "sent" | "notified" | "declined" | "cancelled" | "expired" | "busy";
 
 export const MAX_FRIENDS = 200;
 
@@ -213,6 +216,10 @@ export type ServerMessage =
       readonly deadline: number | null;
       readonly serverTime: number;
       readonly spectators: number;
+      /** Spectators see the match this much later (0 = live). */
+      readonly delayMs: number;
+      /** A private match watched as a friend of a player. */
+      readonly private: boolean;
     }
   | {
       readonly t: "watch-end";
@@ -527,7 +534,11 @@ export interface AccountResponse {
   /** null for guest profiles without login. */
   readonly username: string | null;
   readonly email: string | null;
+  /** Friends may watch this player's private matches (invites, challenges). */
+  readonly friendsCanWatch: boolean;
 }
+
+export const AccountSettingsSchema = z.object({ friendsCanWatch: z.boolean() });
 
 export interface StoredGameResponse {
   readonly variant: VariantId;

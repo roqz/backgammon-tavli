@@ -4,6 +4,7 @@ import { createServer as createHttpServer, type IncomingMessage, type ServerResp
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import {
+  AccountSettingsSchema,
   BanSchema,
   ClaimSchema,
   ClientMessageSchema,
@@ -23,7 +24,7 @@ import {
 import { WebSocket, WebSocketServer } from "ws";
 import { type AnalysisMode, Analyzer } from "./analysis";
 import { AccountError, Store } from "./db";
-import { type FairPlayOptions, Lobby, type MatchmakingOptions } from "./lobby";
+import { type FairPlayOptions, Lobby, type MatchmakingOptions, type SpectatorDelay } from "./lobby";
 import { Push, type PushOptions } from "./push";
 import type { Conn, RoomTimings } from "./room";
 import type { TournamentOptions } from "./tournaments";
@@ -50,6 +51,8 @@ export interface ServerOptions {
   /** Web Push notifications (VAPID keys are generated and stored when not given); false = off. */
   readonly push?: Partial<PushOptions> | false;
   readonly log?: (msg: string) => void;
+  /** How much later spectators see matches (default live). */
+  readonly spectatorDelay?: Partial<SpectatorDelay>;
   /** WebSocket connections per IP; default 20. */
   readonly maxConnectionsPerIp?: number;
   /** Daily copies of the database (VACUUM INTO) into this directory, keeping the newest `backupKeep`. */
@@ -172,6 +175,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     analyzer,
     tournaments: opts.tournaments,
     push: push ?? undefined,
+    spectatorDelay: opts.spectatorDelay,
   });
   const allowRegister = rateLimiter(10, 60_000);
   /** Per player: renames, password changes, exports. */
@@ -282,6 +286,12 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         log(`player ${player.id} deleted their profile`);
         return { ok: true };
       }
+      if (req.method === "POST" && path === "/api/account/settings") {
+        const body = AccountSettingsSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        store.setFriendsCanWatch(player.id, body.data.friendsCanWatch);
+        return store.account(player.id);
+      }
       if (req.method === "POST" && path === "/api/account/logout-all") {
         return { ok: true, ended: store.logoutOthers(player.id, credentials(req).token) };
       }
@@ -369,7 +379,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       const player = authPlayer(req);
       return store.friendsOf(player.id).map((f) => ({
         ...f,
-        ...(f.status === "accepted" ? lobby.presence(f.id) : { presence: null, matchId: null }),
+        ...(f.status === "accepted" ? lobby.presence(f.id, player.id) : { presence: null, matchId: null }),
       }));
     }
     if (path === "/api/friends" && req.method === "POST") {

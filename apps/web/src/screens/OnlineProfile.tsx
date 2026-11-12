@@ -9,7 +9,7 @@ import {
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { Sparkline } from "../components/Sparkline";
-import { Button, Card, Modal } from "../components/ui";
+import { Button, Card, Modal, Toggle } from "../components/ui";
 import { errorOf } from "../errors";
 import { useT } from "../i18n";
 import {
@@ -18,12 +18,14 @@ import {
   connect,
   deleteProfile,
   exportData,
+  fetchAccount,
   fetchMatch,
   fetchProfile,
   login,
   logout,
   logoutOthers,
   register,
+  setFriendsCanWatch,
 } from "../online/client";
 import { useOnline } from "../online/store";
 import type { GameRecord } from "../store/archive";
@@ -154,6 +156,29 @@ export function AuthForm() {
 }
 
 /** Account state: secure the guest profile with username/password, or log out. */
+/** Whether friends may watch one's private matches (invites, challenges). */
+function FriendsCanWatchToggle() {
+  const t = useT();
+  const [value, setValue] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetchAccount()
+      .then((a) => setValue(a.friendsCanWatch))
+      .catch(() => {});
+  }, []);
+  if (value === null) return null;
+  return (
+    <Toggle
+      checked={value}
+      label={t.friendsCanWatch}
+      description={t.friendsCanWatchHint}
+      onChange={(v) => {
+        setValue(v);
+        setFriendsCanWatch(v).catch(() => setValue(!v));
+      }}
+    />
+  );
+}
+
 /** Data export, logging out other devices and deleting the profile. */
 function PrivacyCard() {
   const t = useT();
@@ -179,6 +204,7 @@ function PrivacyCard() {
     <details className="rounded-xl border border-stone-800 p-3 text-sm">
       <summary className="cursor-pointer text-stone-300">🛡 {t.privacyTitle}</summary>
       <div className="mt-3 flex flex-col gap-3">
+        <FriendsCanWatchToggle />
         <div>
           <Button disabled={busy} onClick={() => void run(exportData)}>
             ⬇ {t.exportData}

@@ -124,3 +124,124 @@ describe("friends and spectators", () => {
     expect((await cw.next("error")).message).toBe("match not watchable");
   });
 });
+
+describe("private watching, delay and challenge push", () => {
+  let server: RunningServer;
+  const clients: TestClient[] = [];
+  afterEach(async () => {
+    await Promise.all(clients.splice(0).map((c) => c.close()));
+    await server.close();
+  });
+  const connect = async (p: RegisterResponse) => {
+    const c = await TestClient.connect(server, p);
+    clients.push(c);
+    return c;
+  };
+  const befriend = async (a: RegisterResponse, b: RegisterResponse) => {
+    for (const [x, y] of [
+      [a, b],
+      [b, a],
+    ] as const)
+      await api(server, "/api/friends", {
+        method: "POST",
+        headers: bearer(x),
+        body: JSON.stringify({ playerId: y.id }),
+      });
+  };
+  const privateMatch = async (ca: TestClient, cb: TestClient) => {
+    ca.send({ t: "create", variant: "backgammon", length: 1 });
+    const { code } = await ca.next("room-created");
+    cb.send({ t: "join", code });
+    return (await ca.next("match-start")).matchId;
+  };
+
+  it("friends may watch private matches unless a player turned it off", async () => {
+    server = await start();
+    const [a, b, f] = [
+      await register(server, "Ann"),
+      await register(server, "Ben"),
+      await register(server, "Fay"),
+    ];
+    await befriend(a, f);
+    const [ca, cb, cf] = [await connect(a), await connect(b), await connect(f)];
+    const matchId = await privateMatch(ca, cb);
+    const list = await api<FriendView[]>(server, "/api/friends", { headers: bearer(f) });
+    expect(list).toMatchObject([{ id: a.id, presence: "playing", matchId }]);
+    const view = cf.next("watch-state");
+    cf.send({ t: "watch", matchId });
+    expect((await view).private).toBe(true);
+    cf.send({ t: "unwatch" });
+    // Ben does not want friends of his opponent to watch
+    await api(server, "/api/account/settings", {
+      method: "POST",
+      headers: bearer(b),
+      body: JSON.stringify({ friendsCanWatch: false }),
+    });
+    cf.send({ t: "watch", matchId });
+    expect((await cf.next("error")).message).toBe("match not watchable");
+  });
+
+  it("spectators see changes only after the configured delay", async () => {
+    server = await start({}, {}, {}, undefined, { spectatorDelay: { matchMs: 400 } });
+    const [a, b, w] = [
+      await register(server, "Ann"),
+      await register(server, "Ben"),
+      await register(server, "Wes"),
+    ];
+    const [ca, cb, cw] = [await connect(a), await connect(b), await connect(w)];
+    ca.send({ t: "queue", variant: "backgammon", length: 1 });
+    cb.send({ t: "queue", variant: "backgammon", length: 1 });
+    const started = await ca.next("match-start");
+    await new Promise((r) => setTimeout(r, 500));
+    const first = cw.next("watch-state");
+    cw.send({ t: "watch", matchId: started.matchId });
+    const view = await first;
+    expect(view.delayMs).toBe(400);
+    expect(view.deadline).toBeNull();
+    const t0 = Date.now();
+    const ended = cw.next("watch-end", () => true, 3000);
+    cb.send({ t: "action", action: { type: "resign", level: 1 } });
+    await ended;
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(350);
+  });
+
+  it("an offline friend with notifications gets a push; the challenge waits for them", async () => {
+    const got: string[] = [];
+    const { createServer } = await import("node:http");
+    const receiver = createServer((req, res) => {
+      got.push(req.url ?? "");
+      res.statusCode = 201;
+      res.end();
+    });
+    await new Promise<void>((r) => receiver.listen(0, "127.0.0.1", r));
+    const port = (receiver.address() as { port: number }).port;
+    server = await start({}, {}, {}, undefined, {
+      push: { allowEndpoint: () => true, subject: "mailto:t@example.com" },
+    });
+    const [a, b] = [await register(server, "Ann"), await register(server, "Ben")];
+    await befriend(a, b);
+    // a real P-256 public key is needed for the encryption
+    const { createECDH } = await import("node:crypto");
+    const keys = {
+      p256dh: createECDH("prime256v1").generateKeys().toString("base64url"),
+      auth: "a".repeat(22),
+    };
+    await api(server, "/api/push/subscribe", {
+      method: "POST",
+      headers: bearer(b),
+      body: JSON.stringify({ endpoint: `http://127.0.0.1:${port}/push/b`, keys, lang: "de" }),
+    });
+    const ca = await connect(a);
+    ca.send({ t: "challenge", playerId: b.id, variant: "portes", length: 1 });
+    expect((await ca.next("challenge-update")).status).toBe("notified");
+    for (let i = 0; i < 50 && got.length === 0; i++) await new Promise((r) => setTimeout(r, 20));
+    expect(got).toEqual(["/push/b"]);
+    // Ben opens the app: the challenge is waiting
+    const ws = await TestClient.connect(server);
+    clients.push(ws);
+    const challenge = ws.next("challenge");
+    ws.send({ t: "hello", playerId: b.id, token: b.token });
+    expect((await challenge).from.id).toBe(a.id);
+    await new Promise((r) => receiver.close(r));
+  });
+});

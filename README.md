@@ -82,6 +82,8 @@ to `/data/backups` (14 kept) – copy those off the server as well.
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Pin the push keys (raw, base64url)                                                       |
 | `BACKUP_DIR`, `BACKUP_KEEP`             | Daily database copies and how many to keep                                               |
 | `ALLOW_SAME_NETWORK=1`                  | Local testing: pair profiles from the same network                                       |
+| `SPECTATOR_DELAY_SECONDS`               | Spectators see matches this much later (default 0 = live)                                |
+| `TOURNAMENT_SPECTATOR_DELAY_SECONDS`    | Separate delay for tournament matches (default: as above)                                |
 | `TOURNAMENT_GUEST_MIN_MATCHES`          | Finished matches a guest needs before creating a tournament (default 3)                  |
 
 The web build reads `VITE_SERVER_URL` (`same-origin` behind Caddy) and, for imprint and privacy notice,

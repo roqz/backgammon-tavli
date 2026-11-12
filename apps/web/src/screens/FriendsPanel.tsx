@@ -16,7 +16,7 @@ import {
   removeFriend,
 } from "../online/client";
 import { useOnline } from "../online/store";
-import { roundName } from "./TournamentPanel";
+import { PushToggle, roundName } from "./TournamentPanel";
 
 const REFRESH_MS = 10_000;
 const variantLabel = (v: MatchVariantId, tavli: string) => (v === "tavli" ? tavli : getVariant(v).name);
@@ -144,6 +144,10 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
         )}
       </Card>
       {profile && <FriendLinkCard playerId={profile.id} />}
+      <Card className="flex flex-col gap-2">
+        <p className="text-xs text-stone-500">{t.friendsPushHint}</p>
+        <PushToggle />
+      </Card>
       {challenging && (
         <ChallengeDialog
           friend={challenging}
@@ -242,7 +246,7 @@ function OutgoingChallenge() {
   const t = useT();
   const outgoing = useOnline((s) => s.outgoing);
   if (!outgoing) return null;
-  const waiting = outgoing.status === "sent";
+  const waiting = outgoing.status === "sent" || outgoing.status === "notified";
   return (
     <p
       role="status"

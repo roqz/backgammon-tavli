@@ -51,8 +51,10 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
           {watch.tournament &&
             ` · 🏆 ${watch.tournament.name} · ${roundName(t, watch.tournament.round, watch.tournament.rounds, watch.tournament.format)}`}
         </div>
-        <span className="text-xs text-stone-500" title={t.spectators}>
-          👁 {watch.spectators}
+        <span className="flex gap-2 text-xs text-stone-500">
+          {watch.private && <span title={t.watchPrivate}>🔒</span>}
+          {watch.delayMs > 0 && <span title={t.watchDelayHint}>⏳ {Math.round(watch.delayMs / 1000)} s</span>}
+          <span title={t.spectators}>👁 {watch.spectators}</span>
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2 text-sm">

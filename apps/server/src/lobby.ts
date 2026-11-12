@@ -3,7 +3,7 @@ import type { MatchConfig } from "@tavli/engine";
 import type { ClientMessage, LiveMatch, MatchVariantId, TournamentRef, UnratedReason } from "@tavli/protocol";
 import type { Analyzer } from "./analysis";
 import type { Store } from "./db";
-import { type Push, tournamentReadyMessage } from "./push";
+import { challengeMessage, type Push, tournamentReadyMessage } from "./push";
 import { type Conn, MatchRoom, type RoomTimings } from "./room";
 import { TournamentError, type TournamentOptions, Tournaments } from "./tournaments";
 
@@ -24,10 +24,19 @@ interface Challenge {
   readonly variant: MatchVariantId;
   readonly length: number;
   readonly createdAt: number;
+  /** Longer when the friend was offline and got a push notification. */
+  readonly ttlMs: number;
 }
 
-/** A challenge without an answer ends after this time. */
+/** A challenge without an answer ends after this time (friend online / notified by push). */
 export const CHALLENGE_TTL_MS = 60_000;
+export const CHALLENGE_PUSH_TTL_MS = 5 * 60_000;
+
+/** How much later spectators see matches (0 = live); tournaments may use their own delay. */
+export interface SpectatorDelay {
+  readonly matchMs: number;
+  readonly tournamentMs: number;
+}
 
 interface PrivateInvite {
   readonly hostId: string;
@@ -118,6 +127,7 @@ export interface LobbyOptions {
   readonly tournaments?: Partial<TournamentOptions>;
   /** Web Push for players who are not connected (tournament matches). */
   readonly push?: Push;
+  readonly spectatorDelay?: Partial<SpectatorDelay>;
 }
 
 /**
@@ -297,6 +307,7 @@ export class Lobby {
     this.connByPlayer.set(player.id, conn);
     const rating = Math.round(this.opts.store.rating(player.id, "backgammon").rating);
     conn.send({ t: "welcome", player: { id: player.id, name: player.name, rating } });
+    this.deliverChallenges(player.id);
     const room = this.roomByPlayer.get(player.id);
     const seat = room?.seatOf(player.id);
     if (room && seat !== null && seat !== undefined && !room.ended) room.reconnect(seat, conn);
@@ -400,7 +411,7 @@ export class Lobby {
     }
     const now = Date.now();
     for (const c of this.challenges.values())
-      if (now - c.createdAt > CHALLENGE_TTL_MS) this.endChallenge(c, "expired");
+      if (now - c.createdAt > c.ttlMs) this.endChallenge(c, "expired");
     for (const [key, list] of this.queues) {
       let waiting = list.filter((w) => this.connByPlayer.has(w.playerId));
       const { variant, length } = parseKey(key);
@@ -519,6 +530,9 @@ export class Lobby {
         rating,
         tournament: tournament?.ref,
         watchable,
+        spectatorDelayMs: tournament
+          ? (this.opts.spectatorDelay?.tournamentMs ?? this.opts.spectatorDelay?.matchMs ?? 0)
+          : (this.opts.spectatorDelay?.matchMs ?? 0),
         onEnd: (r, result) => {
           const endedAt = Date.now();
           for (const [seat, s] of r.seats.entries()) {
@@ -642,8 +656,23 @@ export class Lobby {
     session.watching?.unwatch(conn);
     session.watching = null;
     const room = this.roomById(matchId);
-    if (!room?.watch(conn)) return conn.send({ t: "error", message: "match not watchable" });
+    const allowed =
+      room && (room.isPublic || (session.playerId && this.friendMayWatch(session.playerId, room)));
+    if (!room || !allowed || !room.watch(conn))
+      return conn.send({ t: "error", message: "match not watchable" });
     session.watching = room;
+  }
+
+  /**
+   * Private matches (invites, challenges) can be watched by friends of a player, unless one of
+   * the two players turned that off.
+   */
+  private friendMayWatch(viewer: string, room: MatchRoom): boolean {
+    const { store } = this.opts;
+    const ids = room.seats.map((s) => s.player.id);
+    if (ids.includes(viewer)) return false;
+    if (!ids.every((id) => store.friendsCanWatch(id))) return false;
+    return ids.some((id) => store.areFriends(viewer, id));
   }
 
   private roomById(matchId: string): MatchRoom | undefined {
@@ -670,10 +699,16 @@ export class Lobby {
 
   // ---- friends -------------------------------------------------------------------------------
 
-  /** Online state of a player for friends; the match id only when it can be watched. */
-  presence(playerId: string): { presence: "offline" | "online" | "playing"; matchId: string | null } {
+  /** Online state of a player for a friend (`viewer`); the match id only when the viewer may watch. */
+  presence(
+    playerId: string,
+    viewer: string,
+  ): { presence: "offline" | "online" | "playing"; matchId: string | null } {
     const room = this.roomByPlayer.get(playerId);
-    if (room && !room.ended) return { presence: "playing", matchId: room.watchable ? room.id : null };
+    if (room && !room.ended) {
+      const may = room.isPublic || this.friendMayWatch(viewer, room);
+      return { presence: "playing", matchId: may ? room.id : null };
+    }
     return { presence: this.connByPlayer.has(playerId) ? "online" : "offline", matchId: null };
   }
 
@@ -687,15 +722,37 @@ export class Lobby {
     const publicTo = () => store.publicPlayer(to, variant);
     if (!store.areFriends(id, to)) return conn.send({ t: "error", message: "not friends" });
     if (this.busy(conn, id)) return;
-    if (!this.connByPlayer.has(to) || this.inMatch(to)) {
+    const online = this.connByPlayer.has(to);
+    // offline friends with notifications get a push and a few minutes to come
+    const pushable = !online && !!this.opts.push?.hasSubscription(to);
+    if (this.inMatch(to) || (!online && !pushable)) {
       return conn.send({ t: "challenge-update", id: "", to: publicTo(), status: "busy" });
     }
     // one open challenge per sender
     this.endChallengesOf(id, "cancelled", true);
-    const c: Challenge = { id: randomUUID(), from: id, to, variant, length, createdAt: Date.now() };
+    const c: Challenge = {
+      id: randomUUID(),
+      from: id,
+      to,
+      variant,
+      length,
+      createdAt: Date.now(),
+      ttlMs: online ? CHALLENGE_TTL_MS : CHALLENGE_PUSH_TTL_MS,
+    };
     this.challenges.set(c.id, c);
-    conn.send({ t: "challenge-update", id: c.id, to: publicTo(), status: "sent" });
-    this.notify(to, { t: "challenge", id: c.id, from: store.publicPlayer(id, variant), variant, length });
+    conn.send({ t: "challenge-update", id: c.id, to: publicTo(), status: online ? "sent" : "notified" });
+    const from = store.publicPlayer(id, variant);
+    if (online) this.notify(to, { t: "challenge", id: c.id, from, variant, length });
+    else void this.opts.push?.send(to, (lang) => challengeMessage(lang, c.id, from.name, variant, length));
+  }
+
+  /** Challenges waiting for a player who just connected (after a push notification). */
+  private deliverChallenges(playerId: string): void {
+    for (const c of this.challenges.values()) {
+      if (c.to !== playerId) continue;
+      const from = this.opts.store.publicPlayer(c.from, c.variant);
+      this.notify(playerId, { t: "challenge", id: c.id, from, variant: c.variant, length: c.length });
+    }
   }
 
   private answerChallenge(conn: Conn, id: string, challengeId: string, accept: boolean): void {

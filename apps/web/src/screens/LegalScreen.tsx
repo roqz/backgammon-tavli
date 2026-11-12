@@ -119,7 +119,9 @@ function PrivacyDe() {
       </ul>
       <p>
         Zweck ist die Bereitstellung des Online-Spiels, das du nutzen möchtest (Art. 6 Abs. 1 lit. b DSGVO).
-        Dein Anzeigename, deine Ratings und deine Matches sind für andere Spieler sichtbar.
+        Dein Anzeigename, deine Ratings und deine Matches sind für andere Spieler sichtbar. Laufende
+        öffentliche Matches können andere Spieler live ansehen, private Spiele nur Freunde – das kannst du im
+        Profil abschalten. Freunde sehen, ob du online bist.
       </p>
       <h2>IP-Adresse</h2>
       <p>
@@ -137,10 +139,10 @@ function PrivacyDe() {
       </p>
       <h2>Benachrichtigungen</h2>
       <p>
-        Wenn du Benachrichtigungen einschaltest, speichert der Server die Push-Adresse deines Browsers.
-        Benachrichtigungen laufen verschlüsselt über den Push-Dienst deines Browserherstellers (z. B. Google,
-        Mozilla, Apple, Microsoft), der dabei Server auch außerhalb der EU nutzen kann. Ausschalten jederzeit
-        im Turnier-Reiter.
+        Wenn du Benachrichtigungen einschaltest (für Turniermatches und Herausforderungen von Freunden),
+        speichert der Server die Push-Adresse deines Browsers. Benachrichtigungen laufen verschlüsselt über
+        den Push-Dienst deines Browserherstellers (z. B. Google, Mozilla, Apple, Microsoft), der dabei Server
+        auch außerhalb der EU nutzen kann. Ausschalten jederzeit im Reiter „Freunde“ oder „Turniere“.
       </p>
       <h2>Hosting</h2>
       <p>
@@ -196,7 +198,9 @@ function PrivacyEn() {
       </ul>
       <p>
         The purpose is providing the online game you want to use (Art. 6(1)(b) GDPR). Your display name,
-        ratings and matches are visible to other players.
+        ratings and matches are visible to other players. Running public matches can be watched live by other
+        players, private games only by friends – you can turn that off in your profile. Friends see whether
+        you are online.
       </p>
       <h2>IP address</h2>
       <p>
@@ -213,9 +217,10 @@ function PrivacyEn() {
       </p>
       <h2>Notifications</h2>
       <p>
-        If you turn on notifications, the server stores your browser's push address. Notifications are sent
-        encrypted through the push service of your browser vendor (e.g. Google, Mozilla, Apple, Microsoft),
-        which may use servers outside the EU. Turn them off at any time in the tournaments tab.
+        If you turn on notifications (for tournament matches and challenges from friends), the server stores
+        your browser's push address. Notifications are sent encrypted through the push service of your browser
+        vendor (e.g. Google, Mozilla, Apple, Microsoft), which may use servers outside the EU. Turn them off
+        at any time in the friends or tournaments tab.
       </p>
       <h2>Hosting</h2>
       <p>

@@ -71,8 +71,10 @@ export interface RoomDeps {
   readonly rating?: { readonly rated: boolean; readonly reason: UnratedReason | null };
   /** Set for tournament matches (shown to the players). */
   readonly tournament?: TournamentRef;
-  /** Public matches can be watched (queue and tournaments; private invites cannot). */
+  /** Public matches can be watched by anybody (queue, tournaments); private ones by friends. */
   readonly watchable?: boolean;
+  /** Spectators see every change this much later (against live advice to a player). */
+  readonly spectatorDelayMs?: number;
 }
 
 /** Spectators per match. */
@@ -105,6 +107,9 @@ export class MatchRoom {
   private readonly lastOffer: [number, number] = [-1, -1];
   private readonly lastEmote: [number, number] = [0, 0];
   private readonly spectators = new Set<Conn>();
+  /** What spectators saw at which time, kept as long as the delay needs it. */
+  private snapshots: { at: number; msg: Extract<ServerMessage, { t: "watch-state" }> }[] = [];
+  private readonly delayTimers = new Set<ReturnType<typeof setTimeout>>();
   private lastState: { action: MatchAction | null; by: Player | null; opening: Dice | null } = {
     action: null,
     by: null,
@@ -440,9 +445,26 @@ export class MatchRoom {
       ratingDelta,
       fairness: this.fairnessReveal(),
     });
-    for (const c of this.spectators)
-      c.send({ t: "watch-end", matchId: this.id, winner, reason, score: this.match.score });
-    this.spectators.clear();
+    const end: ServerMessage = { t: "watch-end", matchId: this.id, winner, reason, score: this.match.score };
+    this.later(() => {
+      for (const c of this.spectators) c.send(end);
+      this.spectators.clear();
+    });
+  }
+
+  /** Runs `fn` after the spectator delay (at once without delay). */
+  private later(fn: () => void): void {
+    const delay = this.delayMs;
+    if (delay <= 0) return fn();
+    const timer = setTimeout(() => {
+      this.delayTimers.delete(timer);
+      fn();
+    }, delay);
+    this.delayTimers.add(timer);
+  }
+
+  get delayMs(): number {
+    return this.deps.spectatorDelayMs ?? 0;
   }
 
   // ---- spectators ----------------------------------------------------------------------------
@@ -451,30 +473,68 @@ export class MatchRoom {
     return this.deps.tournament;
   }
 
+  /** Public and running: anybody may watch, and it is listed. */
   get watchable(): boolean {
     return !!this.deps.watchable && !this.ended;
+  }
+
+  get isPublic(): boolean {
+    return !!this.deps.watchable;
   }
 
   get spectatorCount(): number {
     return this.spectators.size;
   }
 
-  /** Adds a read-only viewer; false when the match is private, over or full. */
+  /**
+   * Adds a read-only viewer (the lobby checks who may watch a private match); false when the
+   * match is over or full. The viewer first gets the position as of the delay.
+   */
   watch(conn: Conn): boolean {
-    if (!this.watchable || this.spectators.size >= MAX_SPECTATORS) return false;
+    if (this.ended || this.spectators.size >= MAX_SPECTATORS) return false;
     this.spectators.add(conn);
-    this.showSpectators();
+    const now = Date.now();
+    const shown =
+      [...this.snapshots].reverse().find((s) => s.at <= now - this.delayMs) ?? this.snapshots[0] ?? null;
+    conn.send({ ...(shown?.msg ?? this.watchState()), spectators: this.spectators.size });
+    // changes still inside the delay window follow at their time
+    for (const snap of this.snapshots) {
+      const wait = snap.at + this.delayMs - now;
+      if (wait <= 0 || snap === shown) continue;
+      const timer = setTimeout(() => {
+        this.delayTimers.delete(timer);
+        if (this.spectators.has(conn)) conn.send({ ...snap.msg, spectators: this.spectators.size });
+      }, wait);
+      this.delayTimers.add(timer);
+    }
     return true;
   }
 
   unwatch(conn: Conn): void {
-    if (this.spectators.delete(conn)) this.showSpectators();
+    this.spectators.delete(conn);
   }
 
+  /** Records the current position and sends it to the spectators after the delay. */
   private showSpectators(): void {
+    const now = Date.now();
+    const msg = this.watchState();
+    this.snapshots.push({ at: now, msg });
+    // keep everything newer than the delay plus the last older one (what spectators see now)
+    const cutoff = now - this.delayMs;
+    const older = this.snapshots.filter((s) => s.at <= cutoff);
+    this.snapshots = [...older.slice(-1), ...this.snapshots.filter((s) => s.at > cutoff)];
     if (this.spectators.size === 0) return;
+    // only those watching now; later viewers get it from the snapshots in watch()
+    const viewers = [...this.spectators];
+    this.later(() => {
+      for (const c of viewers)
+        if (this.spectators.has(c)) c.send({ ...msg, spectators: this.spectators.size });
+    });
+  }
+
+  private watchState(): Extract<ServerMessage, { t: "watch-state" }> {
     const { action, by, opening } = this.lastState;
-    const msg: ServerMessage = {
+    return {
       t: "watch-state",
       matchId: this.id,
       variant: this.variant,
@@ -485,16 +545,20 @@ export class MatchRoom {
       action,
       by,
       opening,
-      deadline: this.deadline,
+      // a delayed clock would only mislead
+      deadline: this.delayMs > 0 ? null : this.deadline,
       serverTime: Date.now(),
       spectators: this.spectators.size,
+      delayMs: this.delayMs,
+      private: !this.deps.watchable,
     };
-    for (const c of this.spectators) c.send(msg);
   }
 
   /** Stops timers without persisting (server shutdown). */
   dispose(): void {
     this.ended = true;
+    for (const timer of this.delayTimers) clearTimeout(timer);
+    this.delayTimers.clear();
     if (this.clock) clearTimeout(this.clock);
     if (this.nextGameTimer) clearTimeout(this.nextGameTimer);
     if (this.seedTimer) clearTimeout(this.seedTimer);

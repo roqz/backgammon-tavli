@@ -117,6 +117,11 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["players", "ban_reason", "ALTER TABLE players ADD COLUMN ban_reason TEXT"],
   ["players", "last_seen", "ALTER TABLE players ADD COLUMN last_seen TEXT"],
   ["players", "deleted_at", "ALTER TABLE players ADD COLUMN deleted_at TEXT"],
+  [
+    "players",
+    "friends_can_watch",
+    "ALTER TABLE players ADD COLUMN friends_can_watch INTEGER NOT NULL DEFAULT 1",
+  ],
 ];
 
 /** How many reports one player may file per day. */
@@ -255,6 +260,7 @@ export interface AccountRow {
   readonly name: string;
   readonly username: string | null;
   readonly email: string | null;
+  readonly friendsCanWatch: boolean;
 }
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest();
@@ -378,10 +384,24 @@ export class Store {
   private readonly lastSeen = new Map<string, number>();
 
   account(id: string): AccountRow | null {
-    const row = this.db.prepare("SELECT id, name, username, email FROM players WHERE id = ?").get(id) as
-      | AccountRow
+    const row = this.db
+      .prepare("SELECT id, name, username, email, friends_can_watch FROM players WHERE id = ?")
+      .get(id) as (Omit<AccountRow, "friendsCanWatch"> & { friends_can_watch: number }) | undefined;
+    if (!row) return null;
+    const { friends_can_watch, ...rest } = row;
+    return { ...rest, friendsCanWatch: friends_can_watch !== 0 };
+  }
+
+  /** Whether friends may watch this player's private matches. */
+  friendsCanWatch(id: string): boolean {
+    const row = this.db.prepare("SELECT friends_can_watch FROM players WHERE id = ?").get(id) as
+      | { friends_can_watch: number }
       | undefined;
-    return row ?? null;
+    return row?.friends_can_watch !== 0;
+  }
+
+  setFriendsCanWatch(id: string, allowed: boolean): void {
+    this.db.prepare("UPDATE players SET friends_can_watch = ? WHERE id = ?").run(allowed ? 1 : 0, id);
   }
 
   /**

@@ -9,6 +9,13 @@ const server = await startServer({
   // Daily database copies (VACUUM INTO); copy them off the server, too.
   backupDir: env.BACKUP_DIR || undefined,
   backupKeep: env.BACKUP_KEEP ? Number(env.BACKUP_KEEP) : undefined,
+  // Spectators see matches this many seconds later (tournaments separately; default live).
+  spectatorDelay: {
+    matchMs: Number(env.SPECTATOR_DELAY_SECONDS ?? 0) * 1000,
+    ...(env.TOURNAMENT_SPECTATOR_DELAY_SECONDS
+      ? { tournamentMs: Number(env.TOURNAMENT_SPECTATOR_DELAY_SECONDS) * 1000 }
+      : {}),
+  },
   // Guests need this many finished matches before creating a tournament (default 3).
   ...(env.TOURNAMENT_GUEST_MIN_MATCHES
     ? { tournaments: { guestMinMatches: Number(env.TOURNAMENT_GUEST_MIN_MATCHES) } }

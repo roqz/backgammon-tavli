@@ -18,6 +18,9 @@ services:
       # Contact for the browser push services (VAPID keys are generated and stored in /data)
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       # Daily database copies inside the volume (keep 14); copy /data/backups off the server too
+      # Spectators see matches later (seconds), e.g. against live advice in tournaments
+      SPECTATOR_DELAY_SECONDS: ${SPECTATOR_DELAY_SECONDS:-0}
+      TOURNAMENT_SPECTATOR_DELAY_SECONDS: ${TOURNAMENT_SPECTATOR_DELAY_SECONDS:-60}
       BACKUP_DIR: /data/backups
       BACKUP_KEEP: ${BACKUP_KEEP:-14}
     logging: &logging

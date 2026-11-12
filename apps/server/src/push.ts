@@ -94,6 +94,26 @@ export const tournamentReadyMessage = (lang: PushLang, ref: TournamentRef, oppon
   };
 };
 
+/** "A friend challenges you" for a player who is not connected. */
+export const challengeMessage = (
+  lang: PushLang,
+  id: string,
+  from: string,
+  variant: string,
+  length: number,
+): PushMessage => {
+  const name = variant === "tavli" ? "Tavli" : variant.charAt(0).toUpperCase() + variant.slice(1);
+  return {
+    title: `⚔ ${from}`,
+    body:
+      lang === "de"
+        ? `${from} fordert dich heraus: ${name}, ${length} ${length === 1 ? "Punkt" : "Punkte"}. Öffne die App innerhalb von 5 Minuten.`
+        : `${from} challenges you: ${name}, ${length} ${length === 1 ? "point" : "points"}. Open the app within 5 minutes.`,
+    tag: `challenge-${id}`,
+    url: "./",
+  };
+};
+
 const b64u = (b: Uint8Array): string => Buffer.from(b).toString("base64url");
 const unb64u = (s: string): Buffer => Buffer.from(s, "base64url");
 

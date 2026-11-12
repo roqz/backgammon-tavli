@@ -460,6 +460,7 @@ const de = {
     declined: "{name} hat abgelehnt.",
     cancelled: "Herausforderung zurückgezogen.",
     expired: "{name} hat nicht geantwortet.",
+    notified: "{name} ist offline und wurde benachrichtigt – die Herausforderung gilt 5 Minuten.",
     busy: "{name} ist gerade nicht frei.",
   },
   removeFriend: "Freund entfernen",
@@ -474,6 +475,13 @@ const de = {
     accepted: "Ihr seid jetzt Freunde.",
     already: "Schon befreundet oder angefragt.",
   },
+  watchPrivate: "Privates Match – du siehst es als Freund eines Spielers.",
+  watchDelayHint: "Zuschauer sehen das Match mit Verzögerung, damit niemand live Tipps geben kann.",
+  friendsCanWatch: "Freunde dürfen zuschauen",
+  friendsCanWatchHint:
+    "Freunde können deine privaten Spiele (Einladungen, Herausforderungen) ansehen. Gilt nur, wenn beide Spieler es erlauben.",
+  friendsPushHint:
+    "Mit Benachrichtigungen erreichen dich Herausforderungen von Freunden auch, wenn die App geschlossen ist.",
   liveTitle: "Live-Matches",
   liveHint:
     "Laufende Matches aus der Warteschlange und aus Turnieren. Private Einladungsspiele sind nicht zu sehen.",
@@ -940,6 +948,7 @@ const en: Dict = {
     declined: "{name} declined.",
     cancelled: "Challenge withdrawn.",
     expired: "{name} did not answer.",
+    notified: "{name} is offline and was notified – the challenge stays open for 5 minutes.",
     busy: "{name} is not available right now.",
   },
   removeFriend: "Remove friend",
@@ -954,6 +963,12 @@ const en: Dict = {
     accepted: "You are friends now.",
     already: "Already friends or requested.",
   },
+  watchPrivate: "Private match – you see it as a friend of a player.",
+  watchDelayHint: "Spectators see the match with a delay, so nobody can give live advice.",
+  friendsCanWatch: "Friends may watch",
+  friendsCanWatchHint:
+    "Friends can watch your private games (invites, challenges). Only when both players allow it.",
+  friendsPushHint: "With notifications, challenges from friends reach you even when the app is closed.",
   liveTitle: "Live matches",
   liveHint: "Running matches from the queue and from tournaments. Private invite games are not shown.",
   liveNone: "No public match is running right now.",
