@@ -206,6 +206,23 @@ export interface ProfileResponse {
 export const REPORT_REASONS = ["cheating", "abuse", "stalling", "other"] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
+// ---- push notifications -------------------------------------------------------------------------
+
+export const PUSH_LANGS = ["de", "en"] as const;
+export type PushLang = (typeof PUSH_LANGS)[number];
+
+/** A browser PushSubscription (toJSON()) plus the language for the notification texts. */
+export const PushSubscribeSchema = z.object({
+  endpoint: z.url().max(1000),
+  keys: z.object({
+    p256dh: z.string().regex(/^[A-Za-z0-9_-]{80,100}$/),
+    auth: z.string().regex(/^[A-Za-z0-9_-]{16,32}$/),
+  }),
+  lang: z.enum(PUSH_LANGS),
+});
+
+export const PushUnsubscribeSchema = z.object({ endpoint: z.url().max(1000) });
+
 export const ReportSchema = z.object({
   playerId: z.string().min(1).max(64),
   matchId: z.string().min(1).max(64).optional(),
@@ -248,6 +265,16 @@ export interface ModerationInfo {
   readonly forfeits: number;
   /** Comparison of the player's checker play with the strong bot (last 90 days). */
   readonly analysis: AnalysisSummary | null;
+  /** Think times for checker play with a real choice (last 90 days). */
+  readonly timing: TimingSummary | null;
+}
+
+export interface TimingSummary {
+  readonly decisions: number;
+  /** Geometric mean of the think time in seconds. */
+  readonly typicalSeconds: number;
+  /** Standard deviation of ln(think time): people vary a lot (fast obvious moves, slow hard ones). */
+  readonly spread: number;
 }
 
 export interface AnalysisSummary {
@@ -275,7 +302,11 @@ export interface ModerationSignals {
     readonly winner: PublicPlayerRef;
     readonly matches: number;
   }[];
+  /** Nearly constant think times regardless of the position. */
+  readonly steadyTiming: readonly (TimingSummary & { readonly player: PublicPlayerRef })[];
   readonly thresholds: {
+    readonly timingDecisions: number;
+    readonly timingSpread: number;
     readonly botLikeDecisions: number;
     readonly botLikeAgreement: number;
     readonly forfeitMatches: number;

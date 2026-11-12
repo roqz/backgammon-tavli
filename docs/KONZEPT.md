@@ -237,10 +237,16 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Turniere: K.-o. mit 4/8/16 Spielern, Setzliste nach Rating (1 gegen n …), Start sobald voll; jedes Match ein normales gewertetes Online-Match, startet wenn beide online und frei sind (10 s Pause nach dem vorigen Match); 5 Minuten Abwesenheit oder Rückzug = kampflos verloren; offene Turniere verfallen nach 24 h; ein aktives Turnier je Spieler; Zustand in SQLite, nach Neustart werden laufende Matches neu angesetzt
 - Oberfläche: Reiter „Turniere“ (Erstellen, Beitreten, Verlassen/Zurückziehen, Turnierbaum mit Wiederholung beendeter Matches), Abzeichen im Spiel, nach dem Match „Zum Turnier“
 
+### Schweizer System, Push, Zugzeiten ✅
+
+- Turniere im Schweizer System (3 Runden, bei 16 Spielern 4; mit 4 Spielern ein Jeder-gegen-jeden): Paarung nach Siegen ohne Wiederholungen (Backtracking), Freilos für den Schwächsten ohne bisheriges Freilos, Tabelle nach Siegen, Buchholz, Setzplatz; zurückgezogene Spieler werden nicht mehr gepaart
+- Web Push ohne Fremddienst-Konto: VAPID-Schlüssel erzeugt der Server selbst (in SQLite), Verschlüsselung nach RFC 8291 mit node:crypto; Benachrichtigung, wenn ein Turniermatch bereit ist und der Spieler nicht verbunden ist; bei offener App im Hintergrund-Tab eine lokale Benachrichtigung; nur Endpunkte der bekannten Push-Dienste
+- Fair-Play-Signal „auffällig gleichmäßige Zugzeiten“: Bedenkzeit je Zugentscheidung mit echter Wahl (Würfeln bis Bestätigen), Streuung von ln(Sekunden) ≤ 0,35 über ≥ 100 Züge; Menschen liegen meist bei 0,7–1,0. Schwelle noch nicht mit echten Spielerdaten kalibriert
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)
-- Turniere: Schweizer System, Zeitpläne, Turniere nur für Konten; Fair-Play: Zugzeit-Muster als weiteres Signal
+- Turniere: Zeitpläne, Turniere nur für Konten
 
 ### Gammons und Matchstand im Bot ✅
 

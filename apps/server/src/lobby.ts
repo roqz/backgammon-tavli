@@ -3,6 +3,7 @@ import type { MatchConfig } from "@tavli/engine";
 import type { ClientMessage, MatchVariantId, TournamentRef, UnratedReason } from "@tavli/protocol";
 import type { Analyzer } from "./analysis";
 import type { Store } from "./db";
+import { type Push, tournamentReadyMessage } from "./push";
 import { type Conn, MatchRoom, type RoomTimings } from "./room";
 import { TournamentError, type TournamentOptions, Tournaments } from "./tournaments";
 
@@ -100,6 +101,8 @@ export interface LobbyOptions {
   /** Fair-play analysis of finished matches (stored per player). */
   readonly analyzer?: Analyzer;
   readonly tournaments?: Partial<TournamentOptions>;
+  /** Web Push for players who are not connected (tournament matches). */
+  readonly push?: Push;
 }
 
 /**
@@ -129,6 +132,13 @@ export class Lobby {
         startTournamentMatch: (variant, length, p0, p1, ref, slot) =>
           this.startMatch(variant, length, p0, p1, true, { ref, slot }),
         push: (id, tournament) => this.connByPlayer.get(id)?.send({ t: "tournament", tournament }),
+        matchReady: (id, view, ref) => {
+          // Connected players see it in the app (and get a local notification when it is hidden).
+          if (this.connByPlayer.has(id) || !opts.push) return;
+          const m = view.rounds[ref.round]?.find((x) => x.players.includes(id));
+          const opponent = view.players.find((p) => p.id !== id && m?.players.includes(p.id))?.name ?? "?";
+          void opts.push.send(id, (lang) => tournamentReadyMessage(lang, ref, opponent));
+        },
       },
       opts.tournaments,
       opts.log,

@@ -53,6 +53,25 @@ describe("fair-play analysis", () => {
       });
     for (let i = 0; i < 3; i++) match(a, b, "forfeit"); // Ben dumps three matches to Ann
     for (let i = 0; i < 5; i++) match(b, c, "won");
+    // think times: Ann always ~4.5 s (spread 0.2), Ben varies like a person (spread 0.9)
+    const stats = (n: number, mean: number, sd: number) => ({
+      n,
+      sumLog: n * mean,
+      sumLog2: n * (sd * sd + mean * mean),
+    });
+    store.saveMatch({
+      id: "m-timing",
+      variant: "backgammon",
+      length: 1,
+      players: [a, b],
+      winner: 0,
+      score: [1, 0],
+      reason: "won",
+      games: [],
+      startedAt: new Date().toISOString(),
+      rated: false,
+      timing: [stats(120, 1.5, 0.2), stats(120, 1.5, 0.9)],
+    });
     const s: ModerationSignals = store.signals();
     expect(s.botLike.map((x) => x.player.name)).toEqual(["Ann"]);
     expect(s.botLike[0]!.agreement).toBeCloseTo(0.97, 2);
@@ -64,6 +83,10 @@ describe("fair-play analysis", () => {
         matches: 3,
       },
     ]);
+    expect(s.steadyTiming.map((x) => x.player.name)).toEqual(["Ann"]);
+    expect(s.steadyTiming[0]!.spread).toBeCloseTo(0.2, 5);
+    expect(s.steadyTiming[0]!.typicalSeconds).toBeCloseTo(Math.exp(1.5), 5);
+    expect(store.moderationInfo(b)?.timing?.spread).toBeCloseTo(0.9, 5);
     expect(store.moderationInfo(a)?.analysis).toMatchObject({ decisions: 200, agreement: 0.97 });
     store.close();
   });
@@ -117,6 +140,8 @@ describe("fair-play analysis", () => {
         info = await api<ModerationInfo>(server, `/api/admin/players/${pa.id}`, { headers: admin });
       }
       expect(info?.analysis?.decisions).toBeGreaterThan(0);
+      // think times of turns with a real choice were recorded with the match
+      expect(info?.timing?.decisions).toBeGreaterThan(0);
       const signals = await api<ModerationSignals>(server, "/api/admin/signals", { headers: admin });
       expect(signals.thresholds.botLikeAgreement).toBe(0.92);
     }, 60_000);

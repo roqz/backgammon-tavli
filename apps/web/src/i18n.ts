@@ -268,6 +268,11 @@ const de = {
   adminAgreement: "Übereinstimmung mit Bot",
   adminAvgLoss: "Ø Fehler",
   adminDecisions: "Entscheidungen",
+  adminSteadyTiming: "Auffällig gleichmäßige Zugzeiten",
+  adminSteadyTimingHint:
+    "Streuung von ln(Bedenkzeit) ≤ {spread} über mindestens {n} Züge mit echter Wahl. Menschen ziehen offensichtliche Züge schnell und denken bei schweren länger nach (Streuung meist 0,7–1,0).",
+  adminTypicalTime: "typische Bedenkzeit",
+  adminSpread: "Streuung",
   tournamentsTab: "Turniere",
   tCreate: "Turnier erstellen",
   tCreateHint: "Setzliste nach Rating. Das Turnier startet, sobald es voll ist.",
@@ -308,6 +313,16 @@ const de = {
   tWins: "Siege",
   tBuchholz: "Buchholz",
   tPlayed: "Sp.",
+  tPushReady: "Runde {round}: Dein Match gegen {name} ist bereit.",
+  pushTitle: "Benachrichtigungen",
+  pushHint:
+    "Bekomme eine Benachrichtigung, wenn dein nächstes Turniermatch bereit ist – auch wenn die App geschlossen ist.",
+  pushOn: "Benachrichtigungen an",
+  pushOff: "Benachrichtigungen aktivieren",
+  pushDisable: "Ausschalten",
+  pushDenied: "Benachrichtigungen sind im Browser blockiert. Erlaube sie in den Website-Einstellungen.",
+  pushUnsupported:
+    "Dieser Browser unterstützt keine Push-Benachrichtigungen (auf dem iPhone: App zum Home-Bildschirm hinzufügen).",
 };
 
 type Dict = typeof de;
@@ -578,6 +593,11 @@ const en: Dict = {
   adminAgreement: "Agreement with bot",
   adminAvgLoss: "avg. error",
   adminDecisions: "decisions",
+  adminSteadyTiming: "Unusually even think times",
+  adminSteadyTimingHint:
+    "Spread of ln(think time) ≤ {spread} over at least {n} moves with a real choice. People play obvious moves fast and think longer on hard ones (spread usually 0.7–1.0).",
+  adminTypicalTime: "typical think time",
+  adminSpread: "spread",
   tournamentsTab: "Tournaments",
   tCreate: "Create tournament",
   tCreateHint: "Seeded by rating. The tournament starts as soon as it is full.",
@@ -618,6 +638,15 @@ const en: Dict = {
   tWins: "Wins",
   tBuchholz: "Buchholz",
   tPlayed: "Pl.",
+  tPushReady: "Round {round}: your match against {name} is ready.",
+  pushTitle: "Notifications",
+  pushHint: "Get notified when your next tournament match is ready – even when the app is closed.",
+  pushOn: "Notifications on",
+  pushOff: "Turn on notifications",
+  pushDisable: "Turn off",
+  pushDenied: "Notifications are blocked in the browser. Allow them in the site settings.",
+  pushUnsupported:
+    "This browser does not support push notifications (on iPhone: add the app to the home screen).",
 };
 
 export const DICTS = { de, en };

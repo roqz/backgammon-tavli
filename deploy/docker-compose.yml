@@ -15,6 +15,8 @@ services:
       TRUST_PROXY: "1"
       # Moderation API (reports, bans): set a long random secret to enable it
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      # Contact for the browser push services (VAPID keys are generated and stored in /data)
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
     volumes:
       - tavli-data:/data
     expose:

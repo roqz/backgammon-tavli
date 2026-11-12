@@ -10,6 +10,8 @@ import {
   type MatchVariantId,
   NameSchema,
   PasswordChangeSchema,
+  PushSubscribeSchema,
+  PushUnsubscribeSchema,
   ReportSchema,
   ResolveSchema,
   type ServerMessage,
@@ -18,6 +20,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { type AnalysisMode, Analyzer } from "./analysis";
 import { AccountError, Store } from "./db";
 import { type FairPlayOptions, Lobby, type MatchmakingOptions } from "./lobby";
+import { Push, type PushOptions } from "./push";
 import type { Conn, RoomTimings } from "./room";
 import type { TournamentOptions } from "./tournaments";
 
@@ -40,6 +43,8 @@ export interface ServerOptions {
   /** Fair-play analysis of finished matches: worker thread (production), inline or off. */
   readonly analysis?: AnalysisMode;
   readonly tournaments?: Partial<TournamentOptions>;
+  /** Web Push notifications (VAPID keys are generated and stored when not given); false = off. */
+  readonly push?: Partial<PushOptions> | false;
   readonly log?: (msg: string) => void;
 }
 
@@ -109,6 +114,10 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
   const log = opts.log ?? (() => {});
   const store = new Store(opts.dbPath);
   const analyzer = new Analyzer(opts.analysis ?? "inline", log);
+  const push =
+    opts.push === false
+      ? null
+      : new Push(store, { subject: "https://github.com/roqz/backgammon-tavli", ...opts.push }, log);
   const lobby = new Lobby({
     store,
     timings: { ...DEFAULT_TIMINGS, ...opts.timings },
@@ -118,6 +127,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     fairPlay: opts.fairPlay,
     analyzer,
     tournaments: opts.tournaments,
+    push: push ?? undefined,
   });
   const allowRegister = rateLimiter(10, 60_000);
   const cors = opts.corsOrigin ?? "*";
@@ -256,6 +266,26 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       return store.leaderboard(variant as MatchVariantId);
     }
     if (req.method === "GET" && path === "/api/tournaments") return lobby.tournaments.list();
+    if (path === "/api/push/key" && req.method === "GET") {
+      if (!push) throw new HttpError(404, "push disabled");
+      return { publicKey: push.publicKey };
+    }
+    if (path === "/api/push/subscribe" && req.method === "POST") {
+      if (!push) throw new HttpError(404, "push disabled");
+      const player = authPlayer(req);
+      const body = PushSubscribeSchema.safeParse(await readJson(req));
+      if (!body.success) throw new HttpError(400, "invalid subscription");
+      if (!push.subscribe(player.id, body.data)) throw new HttpError(400, "unsupported push service");
+      return { ok: true };
+    }
+    if (path === "/api/push/unsubscribe" && req.method === "POST") {
+      if (!push) throw new HttpError(404, "push disabled");
+      const player = authPlayer(req);
+      const body = PushUnsubscribeSchema.safeParse(await readJson(req));
+      if (!body.success) throw new HttpError(400, "invalid request");
+      push.unsubscribe(player.id, body.data.endpoint);
+      return { ok: true };
+    }
     let m = /^\/api\/players\/([\w-]{1,64})$/.exec(path);
     if (req.method === "GET" && m) {
       const profile = store.profile(m[1]!);

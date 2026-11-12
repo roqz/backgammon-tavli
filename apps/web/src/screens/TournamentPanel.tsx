@@ -19,6 +19,7 @@ import {
   leaveTournament,
   type MatchLength,
 } from "../online/client";
+import { usePushState } from "../online/push";
 import { useOnline } from "../online/store";
 import type { GameRecord } from "../store/archive";
 import { matchToRecords } from "./OnlineProfile";
@@ -96,7 +97,12 @@ export function TournamentPanel({
           )}
         </Card>
       )}
-      {mine && <p className="rounded-lg bg-amber-400/10 px-3 py-2 text-sm text-amber-200">{t.tKeepOpen}</p>}
+      {mine && (
+        <Card className="flex flex-col gap-2">
+          <p className="text-sm text-amber-200">{t.tKeepOpen}</p>
+          <PushToggle />
+        </Card>
+      )}
       {merged.length === 0 && <p className="text-center text-stone-500">{t.tNone}</p>}
       {merged.map((x) => (
         <TournamentCard
@@ -389,5 +395,33 @@ function Standings({ tournament: x, me }: { tournament: TournamentView; me: stri
         })}
       </tbody>
     </table>
+  );
+}
+
+/** Turns Web Push notifications for tournament matches on or off. */
+export function PushToggle() {
+  const t = useT();
+  const [state, toggle, error] = usePushState();
+  if (state === "unsupported") return <p className="text-xs text-stone-500">{t.pushUnsupported}</p>;
+  if (state === "denied") return <p className="text-xs text-stone-500">{t.pushDenied}</p>;
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-2">
+        {state === "on" ? (
+          <>
+            <span className="text-sm text-emerald-300">🔔 {t.pushOn}</span>
+            <Button variant="ghost" onClick={() => toggle(false)}>
+              {t.pushDisable}
+            </Button>
+          </>
+        ) : (
+          <Button disabled={state === "busy"} onClick={() => toggle(true)}>
+            🔔 {t.pushOff}
+          </Button>
+        )}
+      </div>
+      <p className="text-xs text-stone-500">{t.pushHint}</p>
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </div>
   );
 }

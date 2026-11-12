@@ -11,10 +11,14 @@ import type {
   ReportReason,
   ServerMessage,
   TournamentFormat,
+  TournamentMatchView,
   TournamentView,
 } from "@tavli/protocol";
+import { DICTS } from "../i18n";
 import { type PlayerInfo, setRemoteSender, useGame } from "../store/game";
+import { useSettings } from "../store/settings";
 import { newClientSeed, verifyDice } from "./fairness";
+import { notifyIfHidden } from "./push";
 import { httpUrl, useOnline, wsUrl } from "./store";
 
 export type MatchLength = 1 | 3 | 5 | 7;
@@ -137,9 +141,11 @@ const onMessage = (msg: ServerMessage) => {
       if (info) set({ match: { ...info, rematch: "declined" } });
       break;
     }
-    case "tournament":
+    case "tournament": {
+      announceReadyMatch(online.tournaments[msg.tournament.id], msg.tournament, online.profile?.id);
       set({ tournaments: { ...online.tournaments, [msg.tournament.id]: msg.tournament } });
       break;
+    }
     case "emote": {
       const info = online.match;
       if (info)
@@ -241,6 +247,29 @@ export const requestRematch = () => {
 };
 
 export const sendEmote = (id: EmoteId) => send({ t: "emote", id });
+
+/** Local notification (app open in a background tab) when the player's next match becomes ready. */
+const announceReadyMatch = (
+  before: TournamentView | undefined,
+  after: TournamentView,
+  me: string | undefined,
+) => {
+  if (!me) return;
+  const key = (m: TournamentMatchView) => `${m.round}/${m.slot}`;
+  const wasReady = new Set(
+    (before?.rounds.flat() ?? []).filter((m) => m.status === "ready" && m.players.includes(me)).map(key),
+  );
+  const m = after.rounds
+    .flat()
+    .find((x) => x.status === "ready" && x.players.includes(me) && !wasReady.has(key(x)));
+  if (!m) return;
+  const t = DICTS[useSettings.getState().lang];
+  const opponent = after.players.find((p) => p.id !== me && m.players.includes(p.id))?.name ?? "?";
+  const body = t.tPushReady
+    .replace("{round}", `${m.round + 1}/${after.roundCount}`)
+    .replace("{name}", opponent);
+  void notifyIfHidden(`🏆 ${after.name}`, body, `tournament-${after.id}`);
+};
 
 export const createTournament = (
   name: string,

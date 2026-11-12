@@ -74,3 +74,9 @@ Moderation: start the server with `ADMIN_TOKEN=<long random secret>` (at least 1
 enable the admin API; open the app with `?admin` to review player reports and fair-play signals
 (agreement with the bot, forfeits, repeated cheap losses) and ban or unban profiles. The move analysis
 runs in a worker thread (`dist/analysis-worker.js`, shipped next to `server.js`); `ANALYSIS=off` disables it.
+
+Push notifications (tournament match ready while the app is closed) work without configuration: the
+server creates a VAPID key pair on first start and keeps it in the database. Set `VAPID_SUBJECT` to a
+contact (`mailto:you@example.org` or an https URL) for the push services; `VAPID_PUBLIC_KEY` /
+`VAPID_PRIVATE_KEY` (raw, base64url) pin the keys, `PUSH=off` disables push. The server only posts to the
+browsers' push services (Google, Mozilla, Apple, Microsoft).

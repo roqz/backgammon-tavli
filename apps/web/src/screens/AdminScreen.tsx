@@ -5,6 +5,7 @@ import type {
   ModerationInfo,
   ModerationSignals,
   PublicPlayerRef,
+  TimingSummary,
 } from "@tavli/protocol";
 import { useState } from "react";
 import { Button, Card, Segmented } from "../components/ui";
@@ -219,6 +220,7 @@ function ReportCard({
         </p>
       )}
       {info?.analysis && <AnalysisLine a={info.analysis} />}
+      {info?.timing && <TimingLine a={info.timing} />}
       <div className="mt-1 flex flex-wrap items-center gap-2">
         {onMatch && (
           <Button variant="ghost" className="px-3 py-1.5 text-sm" onClick={onMatch}>
@@ -274,6 +276,16 @@ function AnalysisLine({ a }: { a: AnalysisSummary }) {
   );
 }
 
+function TimingLine({ a }: { a: TimingSummary }) {
+  const t = useT();
+  return (
+    <p className="font-mono text-xs text-stone-400">
+      ⏱ {t.adminTypicalTime}: {a.typicalSeconds.toFixed(1)} s · {t.adminSpread}: {a.spread.toFixed(2)} ·{" "}
+      {a.decisions} {t.adminDecisions}
+    </p>
+  );
+}
+
 /** Fair-play signals: hints for moderators, never automatic penalties. */
 function SignalsView({
   signals: s,
@@ -304,6 +316,21 @@ function SignalsView({
           <div key={x.player.id}>
             {person(x.player, t.adminBotLike)}
             <AnalysisLine a={x} />
+          </div>
+        ))}
+      </Card>
+      <Card className="flex flex-col gap-2 text-sm">
+        <h2 className="font-semibold text-stone-100">⏱ {t.adminSteadyTiming}</h2>
+        <p className="text-xs text-stone-500">
+          {t.adminSteadyTimingHint
+            .replace("{spread}", th.timingSpread.toFixed(2))
+            .replace("{n}", String(th.timingDecisions))}
+        </p>
+        {s.steadyTiming.length === 0 && <p className="text-stone-500">—</p>}
+        {s.steadyTiming.map((x) => (
+          <div key={x.player.id}>
+            {person(x.player, t.adminSteadyTiming)}
+            <TimingLine a={x} />
           </div>
         ))}
       </Card>

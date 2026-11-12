@@ -12,6 +12,7 @@ import {
   type MatchConfig,
   type MatchState,
   maxResultLevel,
+  moveGenerator,
   opponent,
   type Player,
   playerToAct,
@@ -30,7 +31,7 @@ import {
   type TournamentRef,
   type UnratedReason,
 } from "@tavli/protocol";
-import type { FinishedMatch, StoredGame } from "./db";
+import type { FinishedMatch, StoredGame, TimingStats } from "./db";
 
 export interface Conn {
   send(msg: ServerMessage): void;
@@ -98,6 +99,13 @@ export class MatchRoom {
   /** History length when each seat last offered to resign: one offer per turn (no clock resets). */
   private readonly lastOffer: [number, number] = [-1, -1];
   private readonly lastEmote: [number, number] = [0, 0];
+  /** The checker-play decision running now: whose, since when, and whether there was a choice. */
+  private turnClock: { seat: Player; since: number; choice: boolean; key: number } | null = null;
+  /** Think times of decisions with a real choice (fair-play signal). */
+  private readonly timing: [TimingStats, TimingStats] = [
+    { n: 0, sumLog: 0, sumLog2: 0 },
+    { n: 0, sumLog: 0, sumLog2: 0 },
+  ];
 
   constructor(
     readonly variant: MatchVariantId,
@@ -230,7 +238,10 @@ export class MatchRoom {
     }
     try {
       this.seats[seat].timeouts = 0;
+      const clock = this.turnClock;
       this.advance(matchAction, seat);
+      if (matchAction.type === "confirm" && clock?.seat === seat && clock.choice)
+        this.recordThinkTime(seat, Date.now() - clock.since);
     } catch (e) {
       if (e instanceof IllegalActionError) this.sendTo(seat, { t: "error", message: e.message });
       else throw e;
@@ -260,6 +271,7 @@ export class MatchRoom {
       this.games.push({ variant: g.variant, history: g.history, result: g.result });
     }
     this.scheduleClock();
+    this.startTurnClock();
     this.broadcast(this.stateMessage(action, by, opening));
 
     if (gameJustEnded) {
@@ -271,6 +283,33 @@ export class MatchRoom {
         }, this.deps.timings.nextGameMs);
       }
     }
+  }
+
+  // ---- think times ---------------------------------------------------------------------------
+
+  /** Starts timing when a player begins a checker-play decision (dice rolled, nothing moved yet). */
+  private startTurnClock(): void {
+    const g = this.match.game;
+    if (g.phase !== "moving") {
+      this.turnClock = null;
+      return;
+    }
+    const key = this.match.results.length * 10_000 + g.history.length;
+    if (this.turnClock?.key === key) return;
+    let choice = false;
+    try {
+      choice = moveGenerator(g.variant, g.turn).turnOptions(g.board, g.remaining).length > 1;
+    } catch {
+      // timing is only a hint; never disturb the game
+    }
+    this.turnClock = { seat: g.turn, since: Date.now(), choice, key };
+  }
+
+  private recordThinkTime(seat: Player, ms: number): void {
+    // Clamped: sub-second confirms are pre-moves or auto-play, very long ones were interrupted.
+    const ln = Math.log(Math.min(Math.max(ms, 300), this.deps.timings.turnMs) / 1000);
+    const t = this.timing[seat];
+    this.timing[seat] = { n: t.n + 1, sumLog: t.sumLog + ln, sumLog2: t.sumLog2 + ln * ln };
   }
 
   // ---- clock ---------------------------------------------------------------------------------
@@ -378,6 +417,7 @@ export class MatchRoom {
       // Leaving before anybody moved is not rated.
       rated: (this.deps.rating?.rated ?? true) && (this.moved || reason === "won"),
       fairness: this.fairnessReveal(),
+      timing: this.timing,
     });
     this.broadcast({
       t: "match-end",

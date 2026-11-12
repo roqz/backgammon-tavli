@@ -11,6 +11,16 @@ const server = await startServer({
   adminToken: env.ADMIN_TOKEN,
   // Fair-play analysis in a worker thread (falls back to inline when the worker file is missing).
   analysis: env.ANALYSIS === "off" ? "off" : "worker",
+  // Web Push for tournament matches. Keys are generated and stored in the database unless pinned;
+  // the subject should be a contact (mailto: or https:) for the push services.
+  push:
+    env.PUSH === "off"
+      ? false
+      : {
+          ...(env.VAPID_SUBJECT ? { subject: env.VAPID_SUBJECT } : {}),
+          publicKey: env.VAPID_PUBLIC_KEY,
+          privateKey: env.VAPID_PRIVATE_KEY,
+        },
   // Allow pairing players from the same network (local testing, LAN events).
   fairPlay: { blockSameNetwork: env.ALLOW_SAME_NETWORK !== "1" },
   log: (msg) => console.log(`[${new Date().toISOString()}] ${msg}`),

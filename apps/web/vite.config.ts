@@ -12,6 +12,8 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg"],
+      // Push notification handlers (public/push-sw.js) inside the generated service worker.
+      workbox: { importScripts: ["push-sw.js"] },
       manifest: {
         name: "Backgammon & Tavli",
         short_name: "Tavli",

@@ -23,6 +23,16 @@ const takeJoinCode = (): string | null => {
   return code.toUpperCase();
 };
 
+/** Notification links look like `…/?tournament=<id>`. */
+const takeTournament = (href: string): string | null => {
+  const url = new URL(href);
+  const id = url.searchParams.get("tournament");
+  if (!id) return null;
+  url.searchParams.delete("tournament");
+  if (href === location.href) history.replaceState(null, "", url);
+  return id;
+};
+
 export function App() {
   const onlineMatchId = useOnline((s) => s.match?.matchId ?? null);
   // The moderation screen is only reachable through `?admin`.
@@ -36,6 +46,22 @@ export function App() {
     setReplay({ records: Array.isArray(records) ? records : [records as GameRecord], back });
     setScreen("replay");
   };
+
+  // Opened from a tournament notification (on load, or the service worker focuses this window).
+  useEffect(() => {
+    const open = (id: string | null) => {
+      if (!id) return;
+      setOnlineFocus(id);
+      setScreen((s) => (s === "game" && useOnline.getState().match ? s : "online"));
+    };
+    open(takeTournament(location.href));
+    const onMessage = (e: MessageEvent) => {
+      const data = e.data as { type?: string; url?: string } | null;
+      if (data?.type === "open-url" && data.url) open(takeTournament(data.url));
+    };
+    navigator.serviceWorker?.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
+  }, []);
 
   // Opened through an invite link: go to the online screen and join once connected.
   useEffect(() => {

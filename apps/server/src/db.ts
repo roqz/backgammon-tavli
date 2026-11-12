@@ -15,6 +15,7 @@ import type {
   PublicPlayer,
   PublicPlayerRef,
   RatingEntry,
+  TimingSummary,
 } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
 
@@ -83,6 +84,16 @@ CREATE TABLE IF NOT EXISTS analyses (
   PRIMARY KEY (match_id, player_id)
 );
 CREATE INDEX IF NOT EXISTS analyses_player ON analyses(player_id, created_at);
+CREATE TABLE IF NOT EXISTS timings (
+  match_id TEXT NOT NULL,
+  player_id TEXT NOT NULL REFERENCES players(id),
+  n INTEGER NOT NULL,
+  sum_log REAL NOT NULL,
+  sum_log2 REAL NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (match_id, player_id)
+);
+CREATE INDEX IF NOT EXISTS timings_player ON timings(player_id, created_at);
 CREATE INDEX IF NOT EXISTS matches_ended ON matches(ended_at);
 `;
 
@@ -113,7 +124,29 @@ export const SIGNALS = {
   dumpingDays: 30,
   /** A game resigned within this many history records counts as an early resignation. */
   earlyResignRecords: 10,
+  /**
+   * Think times: people spread widely in ln(seconds) (quick obvious moves, long thought on hard
+   * ones, typically around 0.7–1.0); a tool relaying moves with a fixed delay hardly varies.
+   */
+  timingDecisions: 100,
+  timingSpread: 0.35,
 } as const;
+
+/** Think-time statistics of one player in one match: count, Σ ln(s), Σ ln(s)². */
+export interface TimingStats {
+  readonly n: number;
+  readonly sumLog: number;
+  readonly sumLog2: number;
+}
+
+export const timingSummary = (n: number, sumLog: number, sumLog2: number): TimingSummary => {
+  const mean = sumLog / n;
+  return {
+    decisions: n,
+    typicalSeconds: Math.exp(mean),
+    spread: Math.sqrt(Math.max(0, sumLog2 / n - mean * mean)),
+  };
+};
 
 /** Errors a client may see, with an HTTP status. */
 export class AccountError extends Error {
@@ -186,6 +219,8 @@ export interface FinishedMatch {
   readonly rated: boolean;
   /** Seeds and rolls to verify the dice later. */
   readonly fairness?: FairnessReveal;
+  /** Think times per seat (fair-play signal). */
+  readonly timing?: readonly [TimingStats, TimingStats];
 }
 
 /** Persistence on SQLite (node:sqlite): guest players, per-variant FIBS ratings, match archive. */
@@ -375,6 +410,16 @@ export class Store {
           new Date().toISOString(),
           m.fairness ? JSON.stringify(m.fairness) : null,
         );
+      const now = new Date().toISOString();
+      for (const seat of [0, 1] as const) {
+        const tm = m.timing?.[seat];
+        if (!tm || tm.n === 0) continue;
+        this.db
+          .prepare(
+            "INSERT OR REPLACE INTO timings (match_id, player_id, n, sum_log, sum_log2, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+          )
+          .run(m.id, m.players[seat], tm.n, tm.sumLog, tm.sumLog2, now);
+      }
       this.db.exec("COMMIT");
     } catch (e) {
       this.db.exec("ROLLBACK");
@@ -565,7 +610,18 @@ export class Store {
         "SELECT COUNT(*) AS n FROM matches WHERE reason != 'won' AND ((p0 = ?1 AND winner = 1) OR (p1 = ?1 AND winner = 0))",
       ),
       analysis: this.analysisSummary(playerId),
+      timing: this.timingSummary(playerId),
     };
+  }
+
+  /** Think times over the last `SIGNALS.days` days (null without timed decisions). */
+  timingSummary(playerId: string): TimingSummary | null {
+    const r = this.db
+      .prepare(
+        "SELECT SUM(n) AS n, SUM(sum_log) AS s, SUM(sum_log2) AS q FROM timings WHERE player_id = ? AND created_at >= ?",
+      )
+      .get(playerId, this.since(SIGNALS.days)) as { n: number | null; s: number | null; q: number | null };
+    return r.n ? timingSummary(r.n, r.s ?? 0, r.q ?? 0) : null;
   }
 
   // ---- fair-play analysis ------------------------------------------------------------------------
@@ -680,11 +736,28 @@ export class Store {
         return { loser: this.playerRef(loser), winner: this.playerRef(winner), matches: n };
       });
 
+    const steadyTiming = (
+      this.db
+        .prepare(
+          `SELECT player_id, SUM(n) AS n, SUM(sum_log) AS s, SUM(sum_log2) AS q FROM timings
+           WHERE created_at >= ? GROUP BY player_id HAVING SUM(n) >= ?`,
+        )
+        .all(since, SIGNALS.timingDecisions) as { player_id: string; n: number; s: number; q: number }[]
+    )
+      .map((r) => ({ player: r.player_id, ...timingSummary(r.n, r.s, r.q) }))
+      .filter((r) => r.spread <= SIGNALS.timingSpread)
+      .sort((a, b) => a.spread - b.spread)
+      .slice(0, 100)
+      .map(({ player, ...rest }) => ({ player: this.playerRef(player), ...rest }));
+
     return {
       botLike,
       forfeits,
       dumping,
+      steadyTiming,
       thresholds: {
+        timingDecisions: SIGNALS.timingDecisions,
+        timingSpread: SIGNALS.timingSpread,
         botLikeDecisions: SIGNALS.botLikeDecisions,
         botLikeAgreement: SIGNALS.botLikeAgreement,
         forfeitMatches: SIGNALS.forfeitMatches,
