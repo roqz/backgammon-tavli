@@ -10,3 +10,6 @@ coverage/
 packages/ai/tuning/*.log
 test-results/
 playwright-report/
+
+# Claude Code agent worktrees
+.claude/worktrees/
