@@ -2,7 +2,9 @@ import { getVariant } from "@tavli/engine";
 import {
   MATCH_VARIANTS,
   type MatchVariantId,
+  TOURNAMENT_FORMATS,
   TOURNAMENT_NAME_MAX,
+  type TournamentFormat,
   type TournamentMatchView,
   type TournamentView,
 } from "@tavli/protocol";
@@ -25,8 +27,14 @@ type T = ReturnType<typeof useT>;
 
 const REFRESH_MS = 5_000;
 
-/** "Final", "Semi-final", … counted from the last round. */
-export const roundName = (t: T, round: number, rounds: number): string => {
+/** Knockout: "Final", "Semi-final", … counted from the last round; Swiss: "Round 2/3". */
+export const roundName = (
+  t: T,
+  round: number,
+  rounds: number,
+  format: TournamentFormat = "knockout",
+): string => {
+  if (format === "swiss") return t.tRound.replace("{n}", String(round + 1)).replace("{of}", String(rounds));
   const fromEnd = rounds - 1 - round;
   return [t.tRounds.final, t.tRounds.semi, t.tRounds.quarter, t.tRounds.r16][fromEnd] ?? `${round + 1}`;
 };
@@ -105,11 +113,12 @@ export function TournamentPanel({
   );
 }
 
-/** Still taking part: entered, not withdrawn and not knocked out. */
+/** Still taking part: entered, not withdrawn and (knockout) not knocked out. */
 const isActive = (x: TournamentView, me: string | undefined): boolean => {
   if (!me || (x.status !== "open" && x.status !== "running")) return false;
   const p = x.players.find((pl) => pl.id === me);
   if (!p || p.withdrawn) return false;
+  if (x.format === "swiss") return true;
   return !x.rounds.flat().some((m) => m.status === "done" && m.players.includes(me) && m.winner !== me);
 };
 
@@ -120,9 +129,18 @@ function CreateForm({ onDone, disabled }: { onDone: () => void; disabled: boolea
   const [variant, setVariant] = useState<MatchVariantId>("backgammon");
   const [length, setLength] = useState<MatchLength>(3);
   const [size, setSize] = useState<4 | 8 | 16>(8);
+  const [format, setFormat] = useState<TournamentFormat>("knockout");
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs text-stone-400">{t.tCreateHint}</p>
+      <Segmented
+        label={t.tFormat}
+        value={format}
+        onChange={setFormat}
+        options={TOURNAMENT_FORMATS.map((f) => ({ value: f, label: t.tFormats[f] }))}
+      />
+      <p className="text-xs text-stone-400">
+        {t.tFormatHint[format]} {t.tCreateHint}
+      </p>
       <label className="flex flex-col gap-1 text-sm text-stone-400">
         {t.tName}
         <input
@@ -159,7 +177,7 @@ function CreateForm({ onDone, disabled }: { onDone: () => void; disabled: boolea
           className="flex-[2]"
           disabled={disabled || !name.trim()}
           onClick={() => {
-            createTournament(name.trim(), variant, length, size);
+            createTournament(name.trim(), variant, length, size, format);
             onDone();
           }}
         >
@@ -205,7 +223,8 @@ function TournamentCard({
         <span className={`rounded-full px-2 py-0.5 text-xs ${badge}`}>{t.tStatus[x.status]}</span>
       </div>
       <p className="text-sm text-stone-400">
-        {variantLabel(x.variant, t.tavliMatch)} · {x.length} {x.length === 1 ? t.point : t.points} ·{" "}
+        {t.tFormats[x.format]} · {variantLabel(x.variant, t.tavliMatch)} · {x.length}{" "}
+        {x.length === 1 ? t.point : t.points} ·{" "}
         {t.tPlayers.replace("{n}", String(x.players.length)).replace("{size}", String(x.size))}
       </p>
       {winner && (
@@ -239,6 +258,7 @@ function TournamentCard({
           </Button>
         )}
       </div>
+      {expanded && x.standings && <Standings tournament={x} me={me} />}
       {expanded && x.rounds.length > 0 && <Bracket tournament={x} me={me} onReplay={onReplay} />}
     </Card>
   );
@@ -262,7 +282,7 @@ function Bracket({
           className="flex min-w-36 flex-1 flex-col justify-around gap-2"
         >
           <h4 className="text-center text-xs font-semibold uppercase tracking-wider text-stone-500">
-            {roundName(t, r, x.rounds.length)}
+            {roundName(t, r, x.roundCount, x.format)}
           </h4>
           {round.map((m) => (
             <MatchBox key={m.slot} m={m} tournament={x} me={me} onReplay={onReplay} />
@@ -295,7 +315,15 @@ function MatchBox({
     }
   };
   const status =
-    m.status === "playing" ? t.tPlaying : m.status === "ready" ? t.tReady : m.walkover ? t.tWalkover : null;
+    m.status === "playing"
+      ? t.tPlaying
+      : m.status === "ready"
+        ? t.tReady
+        : m.walkover
+          ? m.players[1] === null
+            ? t.tBye
+            : t.tWalkover
+          : null;
   return (
     <button
       type="button"
@@ -321,5 +349,45 @@ function MatchBox({
       })}
       {status && <div className="mt-0.5 text-[10px] uppercase tracking-wide text-stone-500">{status}</div>}
     </button>
+  );
+}
+
+/** Swiss table: wins, Buchholz, matches played. */
+function Standings({ tournament: x, me }: { tournament: TournamentView; me: string | undefined }) {
+  const t = useT();
+  const name = (id: string) => x.players.find((p) => p.id === id);
+  return (
+    <table className="w-full text-sm" data-testid="standings">
+      <caption className="pb-1 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
+        {t.tStandings}
+      </caption>
+      <thead>
+        <tr className="text-xs text-stone-500">
+          <th className="w-6 text-left font-normal">#</th>
+          <th className="text-left font-normal">{t.tName}</th>
+          <th className="w-12 text-right font-normal">{t.tWins}</th>
+          <th className="w-16 text-right font-normal">{t.tBuchholz}</th>
+          <th className="w-8 text-right font-normal">{t.tPlayed}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(x.standings ?? []).map((r, i) => {
+          const p = name(r.id);
+          return (
+            <tr key={r.id} className={r.id === me ? "text-amber-200" : "text-stone-200"}>
+              <td className="tabular-nums text-stone-500">{i + 1}</td>
+              <td className="truncate">
+                {p?.name ?? "?"}
+                {r.id === me && ` (${t.tYou})`}
+                {p?.withdrawn && <span className="ml-1 text-stone-500">({t.tWithdrawn})</span>}
+              </td>
+              <td className="text-right font-semibold tabular-nums">{r.wins}</td>
+              <td className="text-right tabular-nums text-stone-400">{r.buchholz}</td>
+              <td className="text-right tabular-nums text-stone-400">{r.played}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }

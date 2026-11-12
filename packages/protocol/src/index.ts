@@ -9,8 +9,13 @@ export const MATCH_VARIANTS = ["backgammon", "portes", "plakoto", "fevga", "tavl
 export type MatchVariantId = (typeof MATCH_VARIANTS)[number];
 export const MATCH_LENGTHS = [1, 3, 5, 7] as const;
 
-/** Knockout tournaments for 4, 8 or 16 players. */
+/** Tournaments for 4, 8 or 16 players. */
 export const TOURNAMENT_SIZES = [4, 8, 16] as const;
+/** knockout: losers are out · swiss: everyone plays every round against players with the same score. */
+export const TOURNAMENT_FORMATS = ["knockout", "swiss"] as const;
+export type TournamentFormat = (typeof TOURNAMENT_FORMATS)[number];
+/** Rounds of a Swiss tournament by size (4 players: a full round robin). */
+export const swissRounds = (size: number): number => (size <= 8 ? 3 : 4);
 export const TOURNAMENT_NAME_MAX = 40;
 
 export const NAME_MAX = 24;
@@ -80,6 +85,7 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
     name: z.string().trim().min(1).max(TOURNAMENT_NAME_MAX),
     ...matchSetup,
     size: z.union([z.literal(4), z.literal(8), z.literal(16)]),
+    format: z.enum(TOURNAMENT_FORMATS).optional(),
   }),
   z.object({ t: z.literal("tournament-join"), id: z.string().min(1).max(64) }),
   /** Leave an open tournament, or withdraw from a running one (remaining matches are walkovers). */
@@ -295,6 +301,7 @@ export interface TournamentRef {
   /** 0-based round of this match. */
   readonly round: number;
   readonly rounds: number;
+  readonly format: TournamentFormat;
 }
 
 export interface TournamentPlayer extends PublicPlayer {
@@ -313,7 +320,7 @@ export interface TournamentMatchView {
   readonly winner: string | null;
   readonly matchId: string | null;
   readonly score: readonly [number, number] | null;
-  /** Decided without play (opponent absent or withdrawn). */
+  /** Decided without play (opponent absent or withdrawn; in Swiss also a bye, players[1] = null). */
   readonly walkover: boolean;
 }
 
@@ -324,12 +331,26 @@ export interface TournamentView {
   readonly length: number;
   readonly size: number;
   readonly status: TournamentStatus;
+  readonly format: TournamentFormat;
   readonly createdBy: { readonly id: string; readonly name: string };
   readonly createdAt: string;
   readonly players: readonly TournamentPlayer[];
-  /** rounds[r][slot]; empty while open. */
+  /** rounds[r][slot]; empty while open. Swiss rounds are paired one after the other. */
   readonly rounds: readonly (readonly TournamentMatchView[])[];
+  /** Number of rounds the tournament will have. */
+  readonly roundCount: number;
+  /** Swiss only: the table, best first (null for knockout). */
+  readonly standings: readonly TournamentStanding[] | null;
   readonly winner: string | null;
+}
+
+export interface TournamentStanding {
+  readonly id: string;
+  /** Matches won (a bye counts as a win). */
+  readonly wins: number;
+  readonly played: number;
+  /** Tie-break: sum of the opponents' wins. */
+  readonly buchholz: number;
 }
 
 export const NameSchema = z.object({ name: z.string().trim().min(1).max(NAME_MAX) });

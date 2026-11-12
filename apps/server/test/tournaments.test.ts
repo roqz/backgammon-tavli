@@ -1,7 +1,7 @@
 import type { RegisterResponse, ServerMessage, TournamentView } from "@tavli/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import type { RunningServer } from "../src/server";
-import { seedOrder } from "../src/tournaments";
+import { seedOrder, swissPairs, swissStandings } from "../src/tournaments";
 import { api, register, start, TestClient } from "./helpers";
 
 type Start = Extract<ServerMessage, { t: "match-start" }>;
@@ -10,6 +10,72 @@ describe("bracket", () => {
   it("seeds so that the best players meet last", () => {
     expect(seedOrder(4)).toEqual([1, 4, 2, 3]);
     expect(seedOrder(8)).toEqual([1, 8, 4, 5, 2, 7, 3, 6]);
+  });
+});
+
+describe("swiss", () => {
+  const pairsOf = (games: [string, string][]) => (a: string, b: string) =>
+    games.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+
+  it("pairs top-down without rematches, backtracking when needed", () => {
+    expect(swissPairs(["a", "b", "c", "d"], () => false).pairs).toEqual([
+      ["a", "b"],
+      ["c", "d"],
+    ]);
+    // a met b and c met d: a–c, b–d
+    expect(
+      swissPairs(
+        ["a", "b", "c", "d"],
+        pairsOf([
+          ["a", "b"],
+          ["c", "d"],
+        ]),
+      ).pairs,
+    ).toEqual([
+      ["a", "c"],
+      ["b", "d"],
+    ]);
+    // greedy a–c would leave b–d (already met): backtrack to a–d, b–c
+    expect(
+      swissPairs(
+        ["a", "b", "c", "d"],
+        pairsOf([
+          ["a", "b"],
+          ["b", "d"],
+        ]),
+      ).pairs,
+    ).toEqual([
+      ["a", "d"],
+      ["b", "c"],
+    ]);
+  });
+
+  it("gives the bye to the lowest player who has not had one", () => {
+    const r = swissPairs(
+      ["a", "b", "c", "d", "e"],
+      () => false,
+      (p) => p === "e",
+    );
+    expect(r.bye).toBe("d");
+    expect(r.pairs.flat().sort()).toEqual(["a", "b", "c", "e"]);
+  });
+
+  it("ranks by wins, then Buchholz, then seed", () => {
+    const players = ["a", "b", "c", "d"].map((id, i) => ({ id, seed: i + 1 }));
+    const m = (p0: string, p1: string | null, winner: string | null) => ({ p0, p1, status: "done", winner });
+    const table = swissStandings(players, [
+      m("a", "b", "b"),
+      m("c", "d", "c"),
+      m("b", "c", "c"),
+      m("a", "d", "d"),
+    ]);
+    // c 2 wins; b and d 1 win each: b beat a (0 wins) and lost to c (2) → Buchholz 2; d beat a, lost to c → 2; seed decides
+    expect(table.map((r) => [r.id, r.wins, r.buchholz])).toEqual([
+      ["c", 2, 2],
+      ["b", 1, 2],
+      ["d", 1, 2],
+      ["a", 0, 2],
+    ]);
   });
 });
 
@@ -72,6 +138,47 @@ describe("tournaments", () => {
     const list = await api<TournamentView[]>(server, "/api/tournaments");
     expect(list.map((x) => x.id)).toContain(t.id);
   }, 30_000);
+
+  it("runs a 4-player Swiss tournament over three rounds without rematches", async () => {
+    const { players, conns } = await setup(["A", "B", "C", "D"]);
+    conns[0]!.send({
+      t: "tournament-create",
+      name: "Swiss",
+      variant: "backgammon",
+      length: 1,
+      size: 4,
+      format: "swiss",
+    });
+    const t = (await conns[0]!.next("tournament")).tournament;
+    expect(t.format).toBe("swiss");
+    expect(t.roundCount).toBe(3);
+    let starts = conns.map((c) => c.next("match-start"));
+    for (const c of conns.slice(1)) c.send({ t: "tournament-join", id: t.id });
+    for (let round = 0; round < 3; round++) {
+      const s = (await Promise.all(starts)) as Start[];
+      expect(s.every((x) => x.tournament?.round === round && x.tournament.format === "swiss")).toBe(true);
+      const last = round === 2;
+      starts = last
+        ? []
+        : conns.map((c) => c.next("match-start", (m) => m.tournament?.round === round + 1, 8000));
+      const done = conns[0]!.next(
+        "tournament",
+        (m) => (last ? m.tournament.status === "finished" : m.tournament.rounds.length === round + 2),
+        8000,
+      );
+      // the player in seat 1 resigns every match
+      for (const [i, c] of conns.entries())
+        if (s[i]!.seat === 1) c.send({ t: "action", action: { type: "resign", level: 1 } });
+      const v = (await done).tournament;
+      if (last) {
+        const pairs = v.rounds.flat().map((m) => [...m.players].sort().join());
+        expect(new Set(pairs).size).toBe(6); // a full round robin
+        expect(v.standings!.reduce((n, r) => n + r.wins, 0)).toBe(6);
+        expect(v.winner).toBe(v.standings![0]!.id);
+        expect(players.map((p) => p.id)).toContain(v.winner);
+      }
+    }
+  }, 40_000);
 
   it("an absent player loses by walkover, a withdrawn one at once", async () => {
     const { conns } = await setup(["A", "B", "C", "D"], 300, 500);

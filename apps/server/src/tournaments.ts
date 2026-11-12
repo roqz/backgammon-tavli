@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
-import type {
-  MatchVariantId,
-  TournamentMatchView,
-  TournamentPlayer,
-  TournamentRef,
-  TournamentStatus,
-  TournamentView,
+import {
+  type MatchVariantId,
+  swissRounds,
+  type TournamentFormat,
+  type TournamentMatchView,
+  type TournamentPlayer,
+  type TournamentRef,
+  type TournamentStanding,
+  type TournamentStatus,
+  type TournamentView,
 } from "@tavli/protocol";
 import type { Store } from "./db";
 
@@ -21,7 +24,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
   created_at TEXT NOT NULL,
   started_at TEXT,
   finished_at TEXT,
-  winner TEXT
+  winner TEXT,
+  format TEXT NOT NULL DEFAULT 'knockout'
 );
 CREATE INDEX IF NOT EXISTS tournaments_status ON tournaments(status, created_at);
 CREATE TABLE IF NOT EXISTS tournament_entries (
@@ -79,6 +83,8 @@ export interface TournamentHost {
   ): string;
   /** Sends the tournament state to a connected player. */
   push(playerId: string, view: TournamentView): void;
+  /** A match of this player became ready (used for notifications). */
+  matchReady?(playerId: string, view: TournamentView, ref: TournamentRef): void;
 }
 
 export class TournamentError extends Error {}
@@ -90,6 +96,7 @@ interface TournamentRow {
   length: number;
   size: number;
   status: TournamentStatus;
+  format: TournamentFormat;
   created_by: string;
   created_at: string;
   winner: string | null;
@@ -125,13 +132,83 @@ export const seedOrder = (n: number): number[] => {
   return order;
 };
 
-const rounds = (size: number) => Math.round(Math.log2(size));
+const knockoutRounds = (size: number) => Math.round(Math.log2(size));
+const roundCount = (t: { size: number; format: TournamentFormat }) =>
+  t.format === "swiss" ? swissRounds(t.size) : knockoutRounds(t.size);
+
+const inOrder = (ranked: readonly string[]): [string, string][] => {
+  const out: [string, string][] = [];
+  for (let i = 0; i + 1 < ranked.length; i += 2) out.push([ranked[i]!, ranked[i + 1]!]);
+  return out;
+};
 
 /**
- * Knockout tournaments: players join until the bracket is full, seeds follow the rating, every
- * match is a normal online match that starts once both players are online and free. Absent or
- * withdrawn players lose by walkover. State lives in SQLite and survives restarts (a match that
- * was running during a restart is played again).
+ * Swiss pairing: players in ranking order, each paired with the best-ranked opponent they have
+ * not met yet (backtracking when the rest could not be paired). With an odd count the
+ * lowest-ranked player without a bye so far sits out. Rematches only when nothing else works
+ * (possible after withdrawals). Returns [better, worse] pairs and the player with the bye.
+ */
+export const swissPairs = (
+  ranked: readonly string[],
+  met: (a: string, b: string) => boolean,
+  hadBye: (p: string) => boolean = () => false,
+): { pairs: [string, string][]; bye: string | null } => {
+  const pairUp = (rest: readonly string[]): [string, string][] | null => {
+    if (rest.length === 0) return [];
+    const [first, ...others] = rest as [string, ...string[]];
+    for (const [i, o] of others.entries()) {
+      if (met(first, o)) continue;
+      const tail = pairUp(others.filter((_, j) => j !== i));
+      if (tail) return [[first, o], ...tail];
+    }
+    return null;
+  };
+  if (ranked.length % 2 === 0) return { pairs: pairUp(ranked) ?? inOrder(ranked), bye: null };
+  const fromBottom = [...ranked].reverse();
+  for (const bye of [...fromBottom.filter((p) => !hadBye(p)), ...fromBottom.filter(hadBye)]) {
+    const pairs = pairUp(ranked.filter((p) => p !== bye));
+    if (pairs) return { pairs, bye };
+  }
+  const bye = fromBottom[0]!;
+  return { pairs: inOrder(ranked.filter((p) => p !== bye)), bye };
+};
+
+/** Swiss table: wins, then Buchholz (sum of the opponents' wins), then seed. */
+export const swissStandings = (
+  players: readonly { id: string; seed: number | null }[],
+  matches: readonly { p0: string | null; p1: string | null; status: string; winner: string | null }[],
+): TournamentStanding[] => {
+  const wins = new Map(players.map((p) => [p.id, 0]));
+  const played = new Map(players.map((p) => [p.id, 0]));
+  const opponents = new Map<string, string[]>(players.map((p) => [p.id, []]));
+  for (const m of matches) {
+    if (m.status !== "done") continue;
+    for (const p of [m.p0, m.p1]) if (p) played.set(p, (played.get(p) ?? 0) + 1);
+    if (m.winner) wins.set(m.winner, (wins.get(m.winner) ?? 0) + 1);
+    if (m.p0 && m.p1) {
+      opponents.get(m.p0)?.push(m.p1);
+      opponents.get(m.p1)?.push(m.p0);
+    }
+  }
+  const seed = (id: string) => players.find((p) => p.id === id)?.seed ?? 999;
+  return players
+    .map((p) => ({
+      id: p.id,
+      wins: wins.get(p.id) ?? 0,
+      played: played.get(p.id) ?? 0,
+      buchholz: (opponents.get(p.id) ?? []).reduce((s, o) => s + (wins.get(o) ?? 0), 0),
+    }))
+    .sort((a, b) => b.wins - a.wins || b.buchholz - a.buchholz || seed(a.id) - seed(b.id));
+};
+
+/**
+ * Tournaments for 4, 8 or 16 players, seeded by rating. Every match is a normal online match that
+ * starts once both players are online and free; absent or withdrawn players lose by walkover.
+ * - knockout: the bracket is created at the start, winners move on.
+ * - swiss: a fixed number of rounds, each paired after the previous one ended among players with
+ *   the same number of wins; the table (wins, Buchholz) decides.
+ * State lives in SQLite and survives restarts (a match that was running during a restart is
+ * played again).
  */
 export class Tournaments {
   private readonly opts: TournamentOptions;
@@ -144,6 +221,9 @@ export class Tournaments {
   ) {
     this.opts = { ...DEFAULT_TOURNAMENT_OPTIONS, ...opts };
     store.db.exec(SCHEMA);
+    const cols = store.db.prepare("PRAGMA table_info(tournaments)").all() as { name: string }[];
+    if (!cols.some((c) => c.name === "format"))
+      store.db.exec("ALTER TABLE tournaments ADD COLUMN format TEXT NOT NULL DEFAULT 'knockout'");
     // Rooms do not survive a restart: replay those matches.
     store.db
       .prepare(
@@ -176,6 +256,13 @@ export class Tournaments {
       .all(id) as unknown as MatchRow[];
   }
 
+  private standings(id: string, all: readonly MatchRow[] = this.matches(id)): TournamentStanding[] {
+    return swissStandings(
+      this.entries(id).map((e) => ({ id: e.player_id, seed: e.seed })),
+      all,
+    );
+  }
+
   view(id: string): TournamentView | null {
     const t = this.row(id);
     if (!t) return null;
@@ -184,11 +271,15 @@ export class Tournaments {
       seed: e.seed,
       withdrawn: e.withdrawn === 1,
     }));
-    const byRound: TournamentMatchView[][] = Array.from(
-      { length: t.status === "open" ? 0 : rounds(t.size) },
-      () => [],
-    );
-    for (const m of this.matches(id)) {
+    const all = this.matches(id);
+    const shown =
+      t.status === "open"
+        ? 0
+        : t.format === "swiss"
+          ? Math.max(0, ...all.map((m) => m.round + 1))
+          : knockoutRounds(t.size);
+    const byRound: TournamentMatchView[][] = Array.from({ length: shown }, () => []);
+    for (const m of all) {
       byRound[m.round]?.push({
         round: m.round,
         slot: m.slot,
@@ -207,10 +298,13 @@ export class Tournaments {
       length: t.length,
       size: t.size,
       status: t.status,
+      format: t.format,
       createdBy: { id: t.created_by, name: this.store.getPlayer(t.created_by)?.name ?? "?" },
       createdAt: t.created_at,
       players,
       rounds: byRound,
+      roundCount: roundCount(t),
+      standings: t.format === "swiss" && t.status !== "open" ? this.standings(id, all) : null,
       winner: t.winner,
     };
   }
@@ -227,17 +321,25 @@ export class Tournaments {
     return ids.map((r) => this.view(r.id)!).filter(Boolean);
   }
 
-  /** A tournament the player is still active in (open, or running and not yet eliminated). */
+  /**
+   * A tournament the player is still active in: open, Swiss and not withdrawn, or knockout and
+   * not yet eliminated.
+   */
   private activeTournamentOf(playerId: string): string | null {
     const rows = this.db
       .prepare(
-        `SELECT t.id, t.status, e.withdrawn FROM tournament_entries e JOIN tournaments t ON t.id = e.tournament_id
+        `SELECT t.id, t.status, t.format, e.withdrawn FROM tournament_entries e JOIN tournaments t ON t.id = e.tournament_id
          WHERE e.player_id = ? AND t.status IN ('open', 'running')`,
       )
-      .all(playerId) as { id: string; status: TournamentStatus; withdrawn: number }[];
+      .all(playerId) as {
+      id: string;
+      status: TournamentStatus;
+      format: TournamentFormat;
+      withdrawn: number;
+    }[];
     for (const r of rows) {
       if (r.withdrawn) continue;
-      if (r.status === "open") return r.id;
+      if (r.status === "open" || r.format === "swiss") return r.id;
       const lost = this.db
         .prepare(
           `SELECT 1 FROM tournament_matches WHERE tournament_id = ? AND status = 'done'
@@ -257,17 +359,18 @@ export class Tournaments {
     variant: MatchVariantId,
     length: number,
     size: number,
+    format: TournamentFormat = "knockout",
   ): TournamentView {
     if (this.activeTournamentOf(playerId)) throw new TournamentError("already in a tournament");
     const id = randomUUID();
     this.db
       .prepare(
-        `INSERT INTO tournaments (id, name, variant, length, size, status, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, 'open', ?, ?)`,
+        `INSERT INTO tournaments (id, name, variant, length, size, status, created_by, created_at, format)
+         VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?)`,
       )
-      .run(id, name, variant, length, size, playerId, new Date().toISOString());
+      .run(id, name, variant, length, size, playerId, new Date().toISOString(), format);
     this.addEntry(id, playerId);
-    this.log(`tournament ${id} created (${variant}/${length}, ${size} players)`);
+    this.log(`tournament ${id} created (${format}, ${variant}/${length}, ${size} players)`);
     return this.changed(id)!;
   }
 
@@ -318,13 +421,21 @@ export class Tournaments {
       "UPDATE tournament_entries SET seed = ? WHERE tournament_id = ? AND player_id = ?",
     );
     for (const [i, p] of seeded.entries()) setSeed.run(i + 1, id, p.id);
+    this.db
+      .prepare("UPDATE tournaments SET status = 'running', started_at = ? WHERE id = ?")
+      .run(new Date().toISOString(), id);
+    this.log(`tournament ${id} started`);
+    if (t.format === "swiss") {
+      this.pairSwissRound(id, 0);
+      return;
+    }
     const order = seedOrder(t.size);
     const insert = this.db.prepare(
       `INSERT INTO tournament_matches (tournament_id, round, slot, p0, p1, status, ready_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     );
     const now = Date.now();
-    for (let r = 0; r < rounds(t.size); r++) {
+    for (let r = 0; r < knockoutRounds(t.size); r++) {
       const slots = t.size >> (r + 1);
       for (let slot = 0; slot < slots; slot++) {
         if (r === 0) {
@@ -334,10 +445,52 @@ export class Tournaments {
         } else insert.run(id, r, slot, null, null, "waiting", null);
       }
     }
+  }
+
+  /** Pairs a Swiss round among the players who have not withdrawn. */
+  private pairSwissRound(id: string, round: number): void {
+    const entries = this.entries(id);
+    const all = this.matches(id);
+    const out = new Set(entries.filter((e) => e.withdrawn).map((e) => e.player_id));
+    const ranked = this.standings(id, all)
+      .map((r) => r.id)
+      .filter((p) => !out.has(p));
+    const met = (a: string, b: string) =>
+      all.some((m) => (m.p0 === a && m.p1 === b) || (m.p0 === b && m.p1 === a));
+    const hadBye = (p: string) => all.some((m) => m.p0 === p && m.p1 === null);
+    const { pairs, bye } = swissPairs(ranked, met, hadBye);
+    const insert = this.db.prepare(
+      `INSERT INTO tournament_matches (tournament_id, round, slot, p0, p1, status, ready_at, winner, walkover)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const now = Date.now();
+    for (const [slot, [a, b]] of pairs.entries()) insert.run(id, round, slot, a, b, "ready", now, null, 0);
+    if (bye) insert.run(id, round, pairs.length, bye, null, "done", null, bye, 1);
+    this.log(`tournament ${id}: round ${round + 1} paired`);
+    if (pairs.length === 0) this.afterSwissMatch(id, round);
+  }
+
+  /** Pairs the next Swiss round once the current one is complete, or ends the tournament. */
+  private afterSwissMatch(id: string, round: number): void {
+    const t = this.row(id)!;
+    const pending = this.db
+      .prepare("SELECT 1 FROM tournament_matches WHERE tournament_id = ? AND round = ? AND status != 'done'")
+      .get(id, round);
+    if (pending) return;
+    const active = this.entries(id).filter((e) => !e.withdrawn).length;
+    if (round + 1 < roundCount(t) && active >= 2) {
+      this.pairSwissRound(id, round + 1);
+      return;
+    }
+    const winner = this.standings(id)[0]?.id ?? null;
+    this.finish(id, winner);
+  }
+
+  private finish(id: string, winner: string | null): void {
     this.db
-      .prepare("UPDATE tournaments SET status = 'running', started_at = ? WHERE id = ?")
-      .run(new Date().toISOString(), id);
-    this.log(`tournament ${id} started`);
+      .prepare("UPDATE tournaments SET status = 'finished', finished_at = ?, winner = ? WHERE id = ?")
+      .run(new Date().toISOString(), winner, id);
+    this.log(`tournament ${id} won by ${winner}`);
   }
 
   /** A tournament room ended (also by forfeit). */
@@ -350,7 +503,7 @@ export class Tournaments {
     id: string,
     round: number,
     slot: number,
-    winner: string,
+    winner: string | null,
     walkover: boolean,
     score: readonly [number, number] | null = null,
   ): void {
@@ -361,11 +514,12 @@ export class Tournaments {
       )
       .run(winner, walkover ? 1 : 0, score?.[0] ?? null, score?.[1] ?? null, id, round, slot);
     const t = this.row(id)!;
-    if (round === rounds(t.size) - 1) {
-      this.db
-        .prepare("UPDATE tournaments SET status = 'finished', finished_at = ?, winner = ? WHERE id = ?")
-        .run(new Date().toISOString(), winner, id);
-      this.log(`tournament ${id} won by ${winner}`);
+    if (t.format === "swiss") {
+      this.afterSwissMatch(id, round);
+      return;
+    }
+    if (round === knockoutRounds(t.size) - 1) {
+      this.finish(id, winner);
       return;
     }
     const next = Math.floor(slot / 2);
@@ -387,7 +541,7 @@ export class Tournaments {
 
   /**
    * Periodic work: start ready matches whose players are both available, decide walkovers for
-   * absent or withdrawn players, cancel stale open tournaments.
+   * absent or withdrawn players, cancel stale open tournaments, notify players of new matches.
    */
   tick(): void {
     const now = Date.now();
@@ -400,7 +554,7 @@ export class Tournaments {
     }
     const ready = this.db
       .prepare(
-        `SELECT m.tournament_id AS id, m.round, m.slot, m.p0, m.p1, m.ready_at, t.variant, t.length, t.name, t.size
+        `SELECT m.tournament_id AS id, m.round, m.slot, m.p0, m.p1, m.ready_at, t.variant, t.length, t.name, t.size, t.format
          FROM tournament_matches m JOIN tournaments t ON t.id = m.tournament_id
          WHERE m.status = 'ready' AND t.status = 'running' ORDER BY m.round, m.slot`,
       )
@@ -415,8 +569,22 @@ export class Tournaments {
       length: number;
       name: string;
       size: number;
+      format: TournamentFormat;
     }[];
     for (const m of ready) {
+      const ref: TournamentRef = {
+        id: m.id,
+        name: m.name,
+        round: m.round,
+        rounds: roundCount(m),
+        format: m.format,
+      };
+      const key = `${m.id}/${m.round}/${m.slot}`;
+      if (!this.announced.has(key)) {
+        this.announced.add(key);
+        const v = this.view(m.id);
+        if (v) for (const p of [m.p0, m.p1]) this.host.matchReady?.(p, v, ref);
+      }
       const withdrawn = new Set(
         this.entries(m.id)
           .filter((e) => e.withdrawn)
@@ -425,15 +593,17 @@ export class Tournaments {
       const out0 = withdrawn.has(m.p0);
       const out1 = withdrawn.has(m.p1);
       if (out0 || out1) {
-        // Withdrawn players lose; if both withdrew, the better seed (p0) goes on as a formality.
-        this.decide(m.id, m.round, m.slot, out0 && !out1 ? m.p1 : m.p0, true);
+        // Withdrawn players lose. If both withdrew, the better seed goes on as a formality in a
+        // knockout; in Swiss nobody gets the win.
+        const both = out0 && out1;
+        const winner = both ? (m.format === "swiss" ? null : m.p0) : out0 ? m.p1 : m.p0;
+        this.decide(m.id, m.round, m.slot, winner, true);
         this.changed(m.id);
         continue;
       }
       const a0 = this.host.isAvailable(m.p0);
       const a1 = this.host.isAvailable(m.p1);
       if (a0 && a1 && now - m.ready_at >= this.opts.startDelayMs) {
-        const ref: TournamentRef = { id: m.id, name: m.name, round: m.round, rounds: rounds(m.size) };
         const matchId = this.host.startTournamentMatch(m.variant, m.length, m.p0, m.p1, ref, m.slot);
         this.db
           .prepare(
@@ -448,11 +618,14 @@ export class Tournaments {
         this.decide(m.id, m.round, m.slot, a0 ? m.p0 : m.p1, true);
         this.changed(m.id);
       } else if (waited > 2 * this.opts.noShowMs && !a0 && !a1) {
-        this.decide(m.id, m.round, m.slot, m.p0, true);
+        this.decide(m.id, m.round, m.slot, m.format === "swiss" ? null : m.p0, true);
         this.changed(m.id);
       }
     }
   }
+
+  /** Ready matches whose players have been notified (in memory: after a restart they are again). */
+  private readonly announced = new Set<string>();
 
   /** Pushes the new state to all participants (and `extra` players) and returns it. */
   private changed(id: string, extra: readonly string[] = []): TournamentView | null {

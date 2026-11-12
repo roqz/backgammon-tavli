@@ -270,7 +270,7 @@ const de = {
   adminDecisions: "Entscheidungen",
   tournamentsTab: "Turniere",
   tCreate: "Turnier erstellen",
-  tCreateHint: "K.-o.-System, Setzliste nach Rating. Das Turnier startet, sobald es voll ist.",
+  tCreateHint: "Setzliste nach Rating. Das Turnier startet, sobald es voll ist.",
   tName: "Name",
   tDefaultName: "Turnier von {name}",
   tSize: "Teilnehmer",
@@ -295,6 +295,19 @@ const de = {
   tEliminated: "ausgeschieden",
   tWithdrawn: "zurückgezogen",
   tYou: "du",
+  tFormat: "Modus",
+  tFormats: { knockout: "K.-o.", swiss: "Schweizer System" },
+  tFormatHint: {
+    knockout: "K.-o.-System: Wer ein Match verliert, scheidet aus.",
+    swiss:
+      "Schweizer System: Alle spielen jede Runde gegen Gegner mit gleich vielen Siegen, niemand scheidet aus. Es entscheiden Siege, dann Buchholz (Siege der Gegner).",
+  },
+  tRound: "Runde {n}/{of}",
+  tBye: "Freilos",
+  tStandings: "Tabelle",
+  tWins: "Siege",
+  tBuchholz: "Buchholz",
+  tPlayed: "Sp.",
 };
 
 type Dict = typeof de;
@@ -567,7 +580,7 @@ const en: Dict = {
   adminDecisions: "decisions",
   tournamentsTab: "Tournaments",
   tCreate: "Create tournament",
-  tCreateHint: "Knockout, seeded by rating. The tournament starts as soon as it is full.",
+  tCreateHint: "Seeded by rating. The tournament starts as soon as it is full.",
   tName: "Name",
   tDefaultName: "{name}'s tournament",
   tSize: "Players",
@@ -592,6 +605,19 @@ const en: Dict = {
   tEliminated: "eliminated",
   tWithdrawn: "withdrawn",
   tYou: "you",
+  tFormat: "Format",
+  tFormats: { knockout: "Knockout", swiss: "Swiss" },
+  tFormatHint: {
+    knockout: "Knockout: the loser of a match is out.",
+    swiss:
+      "Swiss system: every round everyone plays an opponent with the same number of wins, nobody is knocked out. Wins decide, then Buchholz (the opponents' wins).",
+  },
+  tRound: "Round {n}/{of}",
+  tBye: "bye",
+  tStandings: "Standings",
+  tWins: "Wins",
+  tBuchholz: "Buchholz",
+  tPlayed: "Pl.",
 };
 
 export const DICTS = { de, en };

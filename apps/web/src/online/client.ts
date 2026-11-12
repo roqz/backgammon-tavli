@@ -10,6 +10,7 @@ import type {
   RegisterResponse,
   ReportReason,
   ServerMessage,
+  TournamentFormat,
   TournamentView,
 } from "@tavli/protocol";
 import { type PlayerInfo, setRemoteSender, useGame } from "../store/game";
@@ -246,7 +247,8 @@ export const createTournament = (
   variant: MatchVariantId,
   length: MatchLength,
   size: 4 | 8 | 16,
-) => send({ t: "tournament-create", name, variant, length, size });
+  format: TournamentFormat = "knockout",
+) => send({ t: "tournament-create", name, variant, length, size, format });
 export const joinTournament = (id: string) => send({ t: "tournament-join", id });
 export const leaveTournament = (id: string) => send({ t: "tournament-leave", id });
 export const fetchTournaments = () => rest<TournamentView[]>("/api/tournaments");

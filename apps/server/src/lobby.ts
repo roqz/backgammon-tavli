@@ -210,7 +210,7 @@ export class Lobby {
         try {
           if (msg.t === "tournament-create") {
             if (this.busy(conn, id)) return;
-            this.tournaments.create(id, msg.name, msg.variant, msg.length, msg.size);
+            this.tournaments.create(id, msg.name, msg.variant, msg.length, msg.size, msg.format);
           } else if (msg.t === "tournament-join") this.tournaments.join(id, msg.id);
           else this.tournaments.leave(id, msg.id);
         } catch (e) {

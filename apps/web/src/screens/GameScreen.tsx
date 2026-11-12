@@ -305,7 +305,12 @@ export function GameScreen({
             {online && onlineInfo?.tournament && (
               <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-200">
                 🏆 {onlineInfo.tournament.name} ·{" "}
-                {roundName(t, onlineInfo.tournament.round, onlineInfo.tournament.rounds)}
+                {roundName(
+                  t,
+                  onlineInfo.tournament.round,
+                  onlineInfo.tournament.rounds,
+                  onlineInfo.tournament.format,
+                )}
               </span>
             )}
             {match.crawford === "crawford-game" && (
