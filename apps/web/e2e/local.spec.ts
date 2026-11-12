@@ -66,6 +66,9 @@ test("hotseat game can be resigned and replayed from the statistics", async ({ p
   await page.getByRole("button", { name: /Partie ansehen/ }).click();
   await expect(page.locator("input[type=range]")).toBeVisible();
   expect(await checkerCount(page)).toBe(30);
+  // the game can be analysed (the bot worker reviews every move)
+  await page.getByRole("button", { name: /Partie analysieren/ }).click();
+  await expect(page.getByTestId("review")).toBeVisible({ timeout: 30_000 });
 });
 
 test("imports an XGID position; the computer rejects a single but accepts a gammon", async ({ page }) => {

@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { chooseMoves, shouldAcceptResign, shouldDouble, shouldTake } from "@tavli/ai";
 import { cryptoRng } from "@tavli/engine";
+import { reviewGame } from "../review";
 import type { BotEnvelope, BotReply } from "./protocol";
 
 /** Runs bot decisions off the main thread so animations stay smooth while the bot thinks. */
@@ -23,6 +24,9 @@ self.onmessage = (e: MessageEvent<BotEnvelope>) => {
         break;
       case "accept-resign":
         reply = { id, result: shouldAcceptResign(request.state, request.match) };
+        break;
+      case "review":
+        reply = { id, result: reviewGame(request.variant, request.history) };
         break;
     }
   } catch (err) {

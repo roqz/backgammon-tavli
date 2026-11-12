@@ -1,5 +1,6 @@
 import {
   type Board,
+  type PlayedMove,
   bearOffLevel,
   boardKey,
   canDouble,
@@ -199,6 +200,44 @@ export const analyseTurn = (
     choices: options.length,
     agrees: bot !== null && boardKey(bot.board) === key,
     loss: best - chosen,
+  };
+};
+
+/** A played turn compared with the best option (for players reviewing their games). */
+export interface TurnReview extends TurnAnalysis {
+  /** The best option by the same 1-ply evaluation the loss is measured against. */
+  readonly best: readonly PlayedMove[];
+}
+
+/**
+ * Like {@link analyseTurn}, but also returns the best option's moves, so a player can see
+ * what would have been better. Null for forced turns.
+ */
+export const reviewTurn = (s: GameState, played: Board): TurnReview | null => {
+  if (s.phase !== "moving") return null;
+  const options = moveGenerator(s.variant, s.turn).turnOptions(s.board, s.remaining);
+  if (options.length < 2) return null;
+  const key = boardKey(played);
+  const w = weightsFor(s.variant);
+  const v = new Valuer(s, s.turn, w, {});
+  const opp = opponent(s.turn);
+  let best = Number.NEGATIVE_INFINITY;
+  let bestOption = options[0]!;
+  let chosen: number | null = null;
+  for (const o of options) {
+    const value = o.end ? v.end(o, s.turn) : v.position(o.board, opp);
+    if (value > best) {
+      best = value;
+      bestOption = o;
+    }
+    if (boardKey(o.board) === key) chosen = value;
+  }
+  if (chosen === null) return null;
+  return {
+    choices: options.length,
+    agrees: boardKey(bestOption.board) === key,
+    loss: best - chosen,
+    best: bestOption.moves,
   };
 };
 

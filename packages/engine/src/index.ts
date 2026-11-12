@@ -1,5 +1,6 @@
 export * from "./board";
 export * from "./game";
+export * from "./mat";
 export * from "./match";
 export * from "./movegen";
 export * from "./notation";
