@@ -1,9 +1,11 @@
 import type { Player } from "@tavli/engine";
 import type {
+  ChallengeStatus,
   EmoteId,
   MatchEndReason,
   MatchVariantId,
   PublicPlayer,
+  ServerMessage,
   TournamentRef,
   TournamentView,
   UnratedReason,
@@ -62,6 +64,25 @@ export interface OnlineMatchInfo {
   } | null;
 }
 
+export type WatchView = Omit<Extract<ServerMessage, { t: "watch-state" }>, "t"> & {
+  /** serverTime - local time. */
+  readonly clockOffset: number;
+  readonly end: Omit<Extract<ServerMessage, { t: "watch-end" }>, "t" | "matchId"> | null;
+};
+
+export interface IncomingChallenge {
+  readonly id: string;
+  readonly from: PublicPlayer;
+  readonly variant: MatchVariantId;
+  readonly length: number;
+}
+
+export interface OutgoingChallenge {
+  readonly id: string;
+  readonly to: PublicPlayer;
+  readonly status: ChallengeStatus;
+}
+
 /**
  * Default game server: build-time VITE_SERVER_URL ("same-origin" when app and server share a
  * domain behind a reverse proxy), otherwise the local dev server when running on localhost.
@@ -89,6 +110,16 @@ interface OnlineStore {
   pendingJoin: string | null;
   /** Tournaments the player takes part in, as last pushed by the server. */
   tournaments: Record<string, TournamentView>;
+  /** The match being watched (latest spectator view). */
+  watch: WatchView | null;
+  /** A friend's challenge waiting for an answer. */
+  incoming: IncomingChallenge | null;
+  /** Our own challenge and its state. */
+  outgoing: OutgoingChallenge | null;
+  /** Increments when the server says friendships changed. */
+  friendsVersion: number;
+  /** Player id from a friend link, shown once a profile exists. */
+  pendingFriend: string | null;
   set: (patch: Partial<Omit<OnlineStore, "set">>) => void;
 }
 
@@ -104,6 +135,11 @@ export const useOnline = create<OnlineStore>()(
       lastError: null,
       pendingJoin: null,
       tournaments: {},
+      watch: null,
+      incoming: null,
+      outgoing: null,
+      friendsVersion: 0,
+      pendingFriend: null,
       set: (patch) => set(patch),
     }),
     {

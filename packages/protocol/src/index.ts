@@ -90,6 +90,13 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
   z.object({ t: z.literal("tournament-join"), id: z.string().min(1).max(64) }),
   /** Leave an open tournament, or withdraw from a running one (remaining matches are walkovers). */
   z.object({ t: z.literal("tournament-leave"), id: z.string().min(1).max(64) }),
+  /** Watch a running match (read-only); one at a time. */
+  z.object({ t: z.literal("watch"), matchId: z.string().min(1).max(64) }),
+  z.object({ t: z.literal("unwatch") }),
+  /** Challenge a friend who is online and free. */
+  z.object({ t: z.literal("challenge"), playerId: z.string().min(1).max(64), ...matchSetup }),
+  z.object({ t: z.literal("challenge-answer"), id: z.string().min(1).max(64), accept: z.boolean() }),
+  z.object({ t: z.literal("challenge-cancel"), id: z.string().min(1).max(64) }),
   z.object({ t: z.literal("ping") }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -100,6 +107,37 @@ export interface PublicPlayer {
   readonly id: string;
   readonly name: string;
   readonly rating: number;
+}
+
+// ---- friends and spectating --------------------------------------------------------------------
+
+/** sent: waiting for the answer · declined / cancelled / expired / busy: ended without a match */
+export type ChallengeStatus = "sent" | "declined" | "cancelled" | "expired" | "busy";
+
+export const MAX_FRIENDS = 200;
+
+export interface FriendView {
+  readonly id: string;
+  readonly name: string;
+  /** accepted: friends · incoming: they asked you · outgoing: you asked them */
+  readonly status: "accepted" | "incoming" | "outgoing";
+  /** Only for accepted friends. */
+  readonly presence: "offline" | "online" | "playing" | null;
+  /** The match a friend is playing, to watch it (public matches only). */
+  readonly matchId: string | null;
+}
+
+export const FriendRequestSchema = z.object({ playerId: z.string().min(1).max(64) });
+
+/** A running match that can be watched. */
+export interface LiveMatch {
+  readonly matchId: string;
+  readonly variant: MatchVariantId;
+  readonly length: number;
+  readonly players: readonly [PublicPlayer, PublicPlayer];
+  readonly score: readonly [number, number];
+  readonly tournament: TournamentRef | null;
+  readonly spectators: number;
 }
 
 /** Why a match does not change ratings. */
@@ -160,6 +198,46 @@ export type ServerMessage =
   | { readonly t: "rematch-declined" }
   /** A tournament the player takes part in has changed (also sent after create/join). */
   | { readonly t: "tournament"; readonly tournament: TournamentView }
+  /** Watching: the match as seen by spectators (sent on start and after every change). */
+  | {
+      readonly t: "watch-state";
+      readonly matchId: string;
+      readonly variant: MatchVariantId;
+      readonly length: number;
+      readonly players: readonly [PublicPlayer, PublicPlayer];
+      readonly tournament: TournamentRef | null;
+      readonly match: MatchState;
+      readonly action: MatchAction | null;
+      readonly by: Player | null;
+      readonly opening: Dice | null;
+      readonly deadline: number | null;
+      readonly serverTime: number;
+      readonly spectators: number;
+    }
+  | {
+      readonly t: "watch-end";
+      readonly matchId: string;
+      readonly winner: Player;
+      readonly reason: MatchEndReason;
+      readonly score: readonly [number, number];
+    }
+  /** A friend challenges you. */
+  | {
+      readonly t: "challenge";
+      readonly id: string;
+      readonly from: PublicPlayer;
+      readonly variant: MatchVariantId;
+      readonly length: number;
+    }
+  /** Your challenge was sent, or an open challenge ended without a match. */
+  | {
+      readonly t: "challenge-update";
+      readonly id: string;
+      readonly to: PublicPlayer;
+      readonly status: ChallengeStatus;
+    }
+  /** Friend requests or friendships changed: reload the list. */
+  | { readonly t: "friends-changed" }
   /** A quick message from a seat (also echoed to the sender). */
   | { readonly t: "emote"; readonly seat: Player; readonly id: EmoteId }
   | { readonly t: "error"; readonly message: string }

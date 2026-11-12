@@ -1,6 +1,37 @@
 import { type RefObject, useEffect, useId, useRef } from "react";
 
 /**
+ * Closing an overlay in the UI removes its history entry with history.back(), which completes
+ * asynchronously. Until its popstate arrived, screen changes must wait (otherwise the late
+ * popstate would undo them) and that popstate must not be taken as a navigation.
+ */
+let settling: (() => void)[] | null = null;
+
+/** True while an overlay's own history entry is being removed (ignore that popstate). */
+export const historySettling = (): boolean => settling !== null;
+
+/** Runs `fn` now, or once a pending overlay history removal has finished. */
+export const afterHistory = (fn: () => void): void => {
+  if (settling) settling.push(fn);
+  else fn();
+};
+
+const backQuietly = () => {
+  settling = [];
+  const done = () => {
+    window.removeEventListener("popstate", done, true);
+    // after every popstate listener ran (they check historySettling)
+    setTimeout(() => {
+      const queue = settling ?? [];
+      settling = null;
+      for (const fn of queue) fn();
+    }, 0);
+  };
+  window.addEventListener("popstate", done, true);
+  history.back();
+};
+
+/**
  * Overlays (dialogs, drawers) add a browser history entry while they are open, so the device's
  * Back button closes them instead of leaving the app. Closing them in the UI removes the entry.
  */
@@ -10,9 +41,14 @@ export function useBackToClose(open: boolean, onClose: (() => void) | undefined)
   closeRef.current = onClose;
   useEffect(() => {
     if (!open || !closeRef.current) return;
-    history.pushState({ ...(history.state as object | null), overlay: id }, "");
     let poppedByBack = false;
+    let pushed = false;
+    afterHistory(() => {
+      history.pushState({ ...(history.state as object | null), overlay: id }, "");
+      pushed = true;
+    });
     const onPop = () => {
+      if (historySettling() || !pushed) return;
       poppedByBack = true;
       closeRef.current?.();
     };
@@ -20,7 +56,7 @@ export function useBackToClose(open: boolean, onClose: (() => void) | undefined)
     return () => {
       window.removeEventListener("popstate", onPop);
       // Closed in the UI: drop our entry (only if it is still the current one).
-      if (!poppedByBack && (history.state as { overlay?: string } | null)?.overlay === id) history.back();
+      if (!poppedByBack && (history.state as { overlay?: string } | null)?.overlay === id) backQuietly();
     };
   }, [open, id]);
 }

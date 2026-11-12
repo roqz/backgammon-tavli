@@ -1,6 +1,6 @@
-import { randomInt } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import type { MatchConfig } from "@tavli/engine";
-import type { ClientMessage, MatchVariantId, TournamentRef, UnratedReason } from "@tavli/protocol";
+import type { ClientMessage, LiveMatch, MatchVariantId, TournamentRef, UnratedReason } from "@tavli/protocol";
 import type { Analyzer } from "./analysis";
 import type { Store } from "./db";
 import { type Push, tournamentReadyMessage } from "./push";
@@ -12,7 +12,22 @@ interface Session {
   /** Remote address (kept in memory only). */
   readonly ip: string;
   deviceId: string | null;
+  /** The match this connection watches. */
+  watching: MatchRoom | null;
 }
+
+/** An open challenge between two friends. */
+interface Challenge {
+  readonly id: string;
+  readonly from: string;
+  readonly to: string;
+  readonly variant: MatchVariantId;
+  readonly length: number;
+  readonly createdAt: number;
+}
+
+/** A challenge without an answer ends after this time. */
+export const CHALLENGE_TTL_MS = 60_000;
 
 interface PrivateInvite {
   readonly hostId: string;
@@ -118,6 +133,7 @@ export class Lobby {
   private readonly finished = new Map<string, FinishedPairing & { endedAt: number }>();
   private readonly rematchOffers = new Map<string, Set<string>>();
   private readonly failedJoins = new Map<string, { n: number; since: number }>();
+  private readonly challenges = new Map<string, Challenge>();
   private readonly mm: MatchmakingOptions;
   private readonly fair: FairPlayOptions;
   private readonly sweepTimer: ReturnType<typeof setInterval>;
@@ -131,7 +147,7 @@ export class Lobby {
       {
         isAvailable: (id) => this.connByPlayer.has(id) && !this.inMatch(id),
         startTournamentMatch: (variant, length, p0, p1, ref, slot) =>
-          this.startMatch(variant, length, p0, p1, true, { ref, slot }),
+          this.startMatch(variant, length, p0, p1, true, { ref, slot }, true),
         push: (id, tournament) => this.connByPlayer.get(id)?.send({ t: "tournament", tournament }),
         matchReady: (id, view, ref) => {
           // Connected players see it in the app (and get a local notification when it is hidden).
@@ -152,7 +168,7 @@ export class Lobby {
   }
 
   connect(conn: Conn, ip = ""): void {
-    this.sessions.set(conn, { playerId: null, ip, deviceId: null });
+    this.sessions.set(conn, { playerId: null, ip, deviceId: null, watching: null });
   }
 
   isAuthenticated(conn: Conn): boolean {
@@ -162,9 +178,11 @@ export class Lobby {
   disconnect(conn: Conn): void {
     const session = this.sessions.get(conn);
     this.sessions.delete(conn);
+    session?.watching?.unwatch(conn);
     const id = session?.playerId;
     if (!id || this.connByPlayer.get(id) !== conn) return;
     this.connByPlayer.delete(id);
+    this.endChallengesOf(id, "cancelled");
     this.removeFromQueues(id);
     this.removeInvites(id);
     this.declineRematch(id);
@@ -234,6 +252,21 @@ export class Lobby {
           else throw e;
         }
         return;
+      case "watch":
+        return this.watch(conn, session, msg.matchId);
+      case "unwatch":
+        session.watching?.unwatch(conn);
+        session.watching = null;
+        return;
+      case "challenge":
+        return this.challenge(conn, id, msg.playerId, msg.variant, msg.length);
+      case "challenge-answer":
+        return this.answerChallenge(conn, id, msg.id, msg.accept);
+      case "challenge-cancel": {
+        const c = this.challenges.get(msg.id);
+        if (c?.from === id) this.endChallenge(c, "cancelled");
+        return;
+      }
       case "emote": {
         const room = this.roomByPlayer.get(id);
         const seat = room?.seatOf(id);
@@ -351,7 +384,7 @@ export class Lobby {
         key,
         waiting.filter((w) => w !== partner),
       );
-      this.startMatch(variant, length, partner.playerId, id);
+      this.startMatch(variant, length, partner.playerId, id, false, undefined, true);
       return;
     }
     this.queues.set(key, [...waiting, entry]);
@@ -366,6 +399,8 @@ export class Lobby {
       this.opts.log?.(`tournament tick failed: ${String(e)}`);
     }
     const now = Date.now();
+    for (const c of this.challenges.values())
+      if (now - c.createdAt > CHALLENGE_TTL_MS) this.endChallenge(c, "expired");
     for (const [key, list] of this.queues) {
       let waiting = list.filter((w) => this.connByPlayer.has(w.playerId));
       const { variant, length } = parseKey(key);
@@ -378,7 +413,7 @@ export class Lobby {
         );
         if (!partner) continue;
         waiting = waiting.filter((w) => w !== entry && w !== partner);
-        this.startMatch(variant, length, entry.playerId, partner.playerId);
+        this.startMatch(variant, length, entry.playerId, partner.playerId, false, undefined, true);
       }
       this.queues.set(key, waiting);
     }
@@ -468,6 +503,7 @@ export class Lobby {
     b: string,
     fixedSeats = false,
     tournament?: { readonly ref: TournamentRef; readonly slot: number },
+    watchable = false,
   ): string {
     const { store, timings, log } = this.opts;
     const swap = !fixedSeats && this.opts.randomSeats !== false && randomInt(2) === 1;
@@ -482,6 +518,7 @@ export class Lobby {
         log,
         rating,
         tournament: tournament?.ref,
+        watchable,
         onEnd: (r, result) => {
           const endedAt = Date.now();
           for (const [seat, s] of r.seats.entries()) {
@@ -599,6 +636,94 @@ export class Lobby {
   }
 
   /** Stops all rooms and timers (server shutdown). */
+  // ---- spectators ----------------------------------------------------------------------------
+
+  private watch(conn: Conn, session: Session, matchId: string): void {
+    session.watching?.unwatch(conn);
+    session.watching = null;
+    const room = this.roomById(matchId);
+    if (!room?.watch(conn)) return conn.send({ t: "error", message: "match not watchable" });
+    session.watching = room;
+  }
+
+  private roomById(matchId: string): MatchRoom | undefined {
+    for (const room of this.roomByPlayer.values()) if (room.id === matchId) return room;
+    return undefined;
+  }
+
+  /** Running public matches (queue and tournaments), best rated first. */
+  liveMatches(): LiveMatch[] {
+    return [...new Set(this.roomByPlayer.values())]
+      .filter((r) => r.watchable)
+      .map((r) => ({
+        matchId: r.id,
+        variant: r.variant,
+        length: r.config.length,
+        players: [r.seats[0].player, r.seats[1].player] as const,
+        score: r.match.score,
+        tournament: r.tournamentRef ?? null,
+        spectators: r.spectatorCount,
+      }))
+      .sort((a, b) => b.players[0].rating + b.players[1].rating - a.players[0].rating - a.players[1].rating)
+      .slice(0, 50);
+  }
+
+  // ---- friends -------------------------------------------------------------------------------
+
+  /** Online state of a player for friends; the match id only when it can be watched. */
+  presence(playerId: string): { presence: "offline" | "online" | "playing"; matchId: string | null } {
+    const room = this.roomByPlayer.get(playerId);
+    if (room && !room.ended) return { presence: "playing", matchId: room.watchable ? room.id : null };
+    return { presence: this.connByPlayer.has(playerId) ? "online" : "offline", matchId: null };
+  }
+
+  /** Sends a message to a player if connected. */
+  notify(playerId: string, msg: Parameters<Conn["send"]>[0]): void {
+    this.connByPlayer.get(playerId)?.send(msg);
+  }
+
+  private challenge(conn: Conn, id: string, to: string, variant: MatchVariantId, length: number): void {
+    const { store } = this.opts;
+    const publicTo = () => store.publicPlayer(to, variant);
+    if (!store.areFriends(id, to)) return conn.send({ t: "error", message: "not friends" });
+    if (this.busy(conn, id)) return;
+    if (!this.connByPlayer.has(to) || this.inMatch(to)) {
+      return conn.send({ t: "challenge-update", id: "", to: publicTo(), status: "busy" });
+    }
+    // one open challenge per sender
+    this.endChallengesOf(id, "cancelled", true);
+    const c: Challenge = { id: randomUUID(), from: id, to, variant, length, createdAt: Date.now() };
+    this.challenges.set(c.id, c);
+    conn.send({ t: "challenge-update", id: c.id, to: publicTo(), status: "sent" });
+    this.notify(to, { t: "challenge", id: c.id, from: store.publicPlayer(id, variant), variant, length });
+  }
+
+  private answerChallenge(conn: Conn, id: string, challengeId: string, accept: boolean): void {
+    const c = this.challenges.get(challengeId);
+    if (!c || c.to !== id) return conn.send({ t: "error", message: "challenge not found" });
+    if (!accept) return this.endChallenge(c, "declined");
+    if (this.busy(conn, id)) return;
+    if (!this.connByPlayer.has(c.from) || this.inMatch(c.from)) return this.endChallenge(c, "busy");
+    this.challenges.delete(c.id);
+    this.removeFromQueues(c.from);
+    this.removeFromQueues(id);
+    this.removeInvites(c.from);
+    this.removeInvites(id);
+    this.startMatch(c.variant, c.length, c.from, id);
+  }
+
+  /** Ends a challenge without a match and tells both sides. */
+  private endChallenge(c: Challenge, status: "declined" | "cancelled" | "expired" | "busy"): void {
+    this.challenges.delete(c.id);
+    const to = this.opts.store.publicPlayer(c.to, c.variant);
+    for (const p of [c.from, c.to]) this.notify(p, { t: "challenge-update", id: c.id, to, status });
+  }
+
+  private endChallengesOf(id: string, status: "cancelled", sentOnly = false): void {
+    for (const c of [...this.challenges.values()])
+      if (c.from === id || (!sentOnly && c.to === id)) this.endChallenge(c, status);
+  }
+
   /** Tells every connected player that the server goes down (before dispose). */
   announceShutdown(): void {
     for (const conn of this.connByPlayer.values()) conn.send({ t: "error", message: "server restarting" });

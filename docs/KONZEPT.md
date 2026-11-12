@@ -33,6 +33,7 @@ pnpm-Monorepo (Turborepo erst bei Bedarf)
 ```
 
 **Umgesetzt wurde bewusst schlanker** (Stand heute):
+
 - `packages/engine`, `packages/ai`, `packages/protocol` wie geplant; kein eigenes `ui-board`-Paket, das SVG-Brett liegt in `apps/web/src/board`
 - `apps/web`: React 19, Vite, Zustand, Tailwind 4, Motion, eigene History-Navigation statt TanStack Router, eigene UI-Bausteine statt shadcn/ui, Archiv in localStorage (200 Partien) statt Dexie; 3D-Würfel mit three.js ohne Physik-Engine
 - `apps/server`: eigener WebSocket-Server (`ws`) statt Colyseus, SQLite (`node:sqlite`) statt Postgres/Drizzle, eigene Konten (scrypt, Sitzungen) statt Better Auth; reicht für eine Instanz mit einigen hundert gleichzeitigen Spielern
@@ -254,6 +255,13 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Datenschutz: Datenexport und Profil löschen in der App, Aufbewahrungsfristen (Gäste ohne Matches 30 Tage, Fair-Play-Daten 180 Tage, Meldungen 1 Jahr), Impressum und Datenschutzerklärung (Betreiberangaben per Build-Variablen), Quellcode-Link
 - Betrieb: tägliche Sicherung per `VACUUM INTO`, Health-Check mit Datenbank, Absturzschutz, Hinweis vor Neustart, Log-Rotation, Docker-Build und Audit in der CI, Dependabot, CodeQL, Pages erst nach grüner CI
 - Bedienung: Zurück-Taste, Fokus in Dialogen, Hoch-/Querformat auf dem Handy, Verbindungs- und „Du bist dran“-Hinweise, übersetzte Fehler, Update-Hinweis statt automatischem Neuladen
+
+### Freunde und Zuschauen ✅
+
+- Freundschaften: Anfrage per Freundes-Link (`?friend=<id>`), aus der Rangliste oder nach einem Match; annehmen, ablehnen, entfernen; höchstens 200 Einträge, 30 Anfragen pro Stunde
+- Freundesliste mit Online-Status (online, spielt, offline); mit Profil bleibt die App verbunden, damit Freunde einen sehen
+- Herausforderung eines Freundes (Variante, Länge): erscheint beim Freund als Dialog auf jedem Bildschirm, verfällt nach 60 Sekunden, Status für den Herausforderer (wartet, abgelehnt, nicht frei, abgelaufen); das Match ist privat
+- Zuschauen: Reiter „Live“ mit laufenden öffentlichen Matches (Warteschlange und Turniere, beste Ratings zuerst), Ansicht nur zum Lesen mit Stand, Pips, Uhr und Zuschauerzahl; laufende öffentliche Matches von Freunden direkt aus der Freundesliste; private Einladungs- und Freundesspiele sind nicht zu sehen; höchstens 50 Zuschauer je Match
 
 ### Offen / nächste Schritte Online
 

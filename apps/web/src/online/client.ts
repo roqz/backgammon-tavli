@@ -3,7 +3,9 @@ import type {
   AccountResponse,
   ClientMessage,
   EmoteId,
+  FriendView,
   LeaderboardEntry,
+  LiveMatch,
   MatchDetailResponse,
   MatchVariantId,
   ProfileResponse,
@@ -60,6 +62,12 @@ const onMessage = (msg: ServerMessage) => {
       set({ lobby: { kind: "idle" } });
       break;
     case "match-start": {
+      // A started match ends open challenges and watching.
+      if (online.outgoing || online.incoming) set({ outgoing: null, incoming: null });
+      if (online.watch) {
+        send({ t: "unwatch" });
+        set({ watch: null });
+      }
       // Contribute to the dice randomness once per match (not again after a reconnect).
       const sameMatch = online.match?.matchId === msg.matchId;
       const seed = sameMatch ? null : newClientSeed();
@@ -141,6 +149,37 @@ const onMessage = (msg: ServerMessage) => {
       if (info) set({ match: { ...info, rematch: "declined" } });
       break;
     }
+    case "watch-state": {
+      const prev = online.watch;
+      set({
+        watch: {
+          ...msg,
+          clockOffset: msg.serverTime - Date.now(),
+          end: prev?.matchId === msg.matchId ? prev.end : null,
+        },
+      });
+      break;
+    }
+    case "watch-end": {
+      const w = online.watch;
+      if (w?.matchId === msg.matchId)
+        set({
+          watch: { ...w, deadline: null, end: { winner: msg.winner, reason: msg.reason, score: msg.score } },
+        });
+      break;
+    }
+    case "challenge":
+      set({ incoming: { id: msg.id, from: msg.from, variant: msg.variant, length: msg.length } });
+      break;
+    case "challenge-update": {
+      if (online.incoming?.id === msg.id) set({ incoming: null });
+      if (msg.status === "sent" || online.outgoing?.id === msg.id || msg.id === "")
+        set({ outgoing: { id: msg.id, to: msg.to, status: msg.status } });
+      break;
+    }
+    case "friends-changed":
+      set({ friendsVersion: online.friendsVersion + 1 });
+      break;
     case "tournament": {
       announceReadyMatch(online.tournaments[msg.tournament.id], msg.tournament, online.profile?.id);
       set({ tournaments: { ...online.tournaments, [msg.tournament.id]: msg.tournament } });
@@ -289,6 +328,48 @@ export const createTournament = (
   format: TournamentFormat = "knockout",
 ) => send({ t: "tournament-create", name, variant, length, size, format });
 export const joinTournament = (id: string) => send({ t: "tournament-join", id });
+
+// ---- friends and spectating -------------------------------------------------------------------
+
+export const fetchFriends = () => rest<FriendView[]>("/api/friends");
+export const addFriend = (playerId: string) =>
+  rest<{ result: "requested" | "accepted" | "already" }>("/api/friends", {
+    method: "POST",
+    body: JSON.stringify({ playerId }),
+  });
+export const removeFriend = (playerId: string) =>
+  rest("/api/friends/remove", { method: "POST", body: JSON.stringify({ playerId }) });
+export const fetchLive = () => rest<LiveMatch[]>("/api/live");
+
+export const challengeFriend = (playerId: string, variant: MatchVariantId, length: MatchLength) =>
+  send({ t: "challenge", playerId, variant, length });
+export const answerChallenge = (id: string, accept: boolean) => {
+  send({ t: "challenge-answer", id, accept });
+  set({ incoming: null });
+};
+export const cancelChallenge = () => {
+  const c = useOnline.getState().outgoing;
+  if (c?.status === "sent") send({ t: "challenge-cancel", id: c.id });
+  set({ outgoing: null });
+};
+
+export const watchMatch = (matchId: string) => {
+  set({ watch: null });
+  if (!send({ t: "watch", matchId })) set({ lastError: "not connected" });
+};
+export const stopWatching = () => {
+  send({ t: "unwatch" });
+  set({ watch: null });
+};
+
+/** Link that opens the app and offers to send a friend request to this player. */
+export const friendLink = (playerId: string) => {
+  const url = new URL(location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("friend", playerId);
+  return url.toString();
+};
 export const leaveTournament = (id: string) => send({ t: "tournament-leave", id });
 export const fetchTournaments = () => rest<TournamentView[]>("/api/tournaments");
 export const fetchTournament = (id: string) => rest<TournamentView>(`/api/tournaments/${id}`);

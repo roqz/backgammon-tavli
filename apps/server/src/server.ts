@@ -8,6 +8,7 @@ import {
   ClaimSchema,
   ClientMessageSchema,
   DeleteAccountSchema,
+  FriendRequestSchema,
   LoginSchema,
   MATCH_VARIANTS,
   type MatchVariantId,
@@ -177,6 +178,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
   const allowRename = rateLimiter(5, 60 * 60_000);
   const allowPasswordChange = rateLimiter(5, 15 * 60_000);
   const allowExport = rateLimiter(5, 60 * 60_000);
+  const allowFriendRequest = rateLimiter(30, 60 * 60_000);
   /** Failed logins per username: after 10 in 15 minutes the account waits (against password guessing). */
   const failedLogins = rateLimiter(10, 15 * 60_000);
   const cors = opts.corsOrigin ?? "*";
@@ -362,6 +364,31 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       return store.leaderboard(variant as MatchVariantId);
     }
     if (req.method === "GET" && path === "/api/tournaments") return lobby.tournaments.list();
+    if (req.method === "GET" && path === "/api/live") return lobby.liveMatches();
+    if (path === "/api/friends" && req.method === "GET") {
+      const player = authPlayer(req);
+      return store.friendsOf(player.id).map((f) => ({
+        ...f,
+        ...(f.status === "accepted" ? lobby.presence(f.id) : { presence: null, matchId: null }),
+      }));
+    }
+    if (path === "/api/friends" && req.method === "POST") {
+      const player = authPlayer(req);
+      const body = FriendRequestSchema.safeParse(await readJson(req));
+      if (!body.success) throw new HttpError(400, "invalid request");
+      if (!allowFriendRequest(player.id)) throw new HttpError(429, "too many requests");
+      const result = await account(() => store.befriend(player.id, body.data.playerId));
+      if (result !== "already") lobby.notify(body.data.playerId, { t: "friends-changed" });
+      return { ok: true, result };
+    }
+    if (path === "/api/friends/remove" && req.method === "POST") {
+      const player = authPlayer(req);
+      const body = FriendRequestSchema.safeParse(await readJson(req));
+      if (!body.success) throw new HttpError(400, "invalid request");
+      if (store.unfriend(player.id, body.data.playerId))
+        lobby.notify(body.data.playerId, { t: "friends-changed" });
+      return { ok: true };
+    }
     if (path === "/api/push/key" && req.method === "GET") {
       if (!push) throw new HttpError(404, "push disabled");
       return { publicKey: push.publicKey };

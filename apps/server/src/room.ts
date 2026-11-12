@@ -71,7 +71,12 @@ export interface RoomDeps {
   readonly rating?: { readonly rated: boolean; readonly reason: UnratedReason | null };
   /** Set for tournament matches (shown to the players). */
   readonly tournament?: TournamentRef;
+  /** Public matches can be watched (queue and tournaments; private invites cannot). */
+  readonly watchable?: boolean;
 }
+
+/** Spectators per match. */
+export const MAX_SPECTATORS = 50;
 
 /**
  * One online match between two players. The server is authoritative: it rolls the dice,
@@ -99,6 +104,12 @@ export class MatchRoom {
   /** History length when each seat last offered to resign: one offer per turn (no clock resets). */
   private readonly lastOffer: [number, number] = [-1, -1];
   private readonly lastEmote: [number, number] = [0, 0];
+  private readonly spectators = new Set<Conn>();
+  private lastState: { action: MatchAction | null; by: Player | null; opening: Dice | null } = {
+    action: null,
+    by: null,
+    opening: null,
+  };
   /** The checker-play decision running now: whose, since when, and whether there was a choice. */
   private turnClock: { seat: Player; since: number; choice: boolean; key: number } | null = null;
   /** Think times of decisions with a real choice (fair-play signal). */
@@ -273,6 +284,8 @@ export class MatchRoom {
     this.scheduleClock();
     this.startTurnClock();
     this.broadcast(this.stateMessage(action, by, opening));
+    this.lastState = { action, by, opening };
+    this.showSpectators();
 
     if (gameJustEnded) {
       if (this.match.winner !== null) this.finish("won");
@@ -427,6 +440,56 @@ export class MatchRoom {
       ratingDelta,
       fairness: this.fairnessReveal(),
     });
+    for (const c of this.spectators)
+      c.send({ t: "watch-end", matchId: this.id, winner, reason, score: this.match.score });
+    this.spectators.clear();
+  }
+
+  // ---- spectators ----------------------------------------------------------------------------
+
+  get tournamentRef(): TournamentRef | undefined {
+    return this.deps.tournament;
+  }
+
+  get watchable(): boolean {
+    return !!this.deps.watchable && !this.ended;
+  }
+
+  get spectatorCount(): number {
+    return this.spectators.size;
+  }
+
+  /** Adds a read-only viewer; false when the match is private, over or full. */
+  watch(conn: Conn): boolean {
+    if (!this.watchable || this.spectators.size >= MAX_SPECTATORS) return false;
+    this.spectators.add(conn);
+    this.showSpectators();
+    return true;
+  }
+
+  unwatch(conn: Conn): void {
+    if (this.spectators.delete(conn)) this.showSpectators();
+  }
+
+  private showSpectators(): void {
+    if (this.spectators.size === 0) return;
+    const { action, by, opening } = this.lastState;
+    const msg: ServerMessage = {
+      t: "watch-state",
+      matchId: this.id,
+      variant: this.variant,
+      length: this.config.length,
+      players: [this.seats[0].player, this.seats[1].player],
+      tournament: this.deps.tournament ?? null,
+      match: this.match,
+      action,
+      by,
+      opening,
+      deadline: this.deadline,
+      serverTime: Date.now(),
+      spectators: this.spectators.size,
+    };
+    for (const c of this.spectators) c.send(msg);
   }
 
   /** Stops timers without persisting (server shutdown). */

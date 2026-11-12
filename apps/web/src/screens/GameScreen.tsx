@@ -34,6 +34,7 @@ import { sounds, useGameSounds } from "../sound";
 import { type GameRecord, useArchive } from "../store/archive";
 import { useGame } from "../store/game";
 import { useSettings } from "../store/settings";
+import { AddFriendButton } from "./FriendsPanel";
 import {
   EmoteBubbles,
   EmoteButton,
@@ -60,7 +61,7 @@ const levelName = (t: T, g: GameState, r: GameResult): string => {
   return t.single;
 };
 
-function Checker({ player }: { player: Player }) {
+export function Checker({ player }: { player: Player }) {
   const look = THEMES[useSettings((s) => s.style)].checkers[player];
   const fill = look.fill.startsWith("url") ? (player === 0 ? "#efe6d0" : "#3a2418") : look.fill;
   return (
@@ -775,6 +776,9 @@ export function GameScreen({
               ⚑ {t.report}
             </Button>
           </div>
+          {opponentSeat !== null && (
+            <AddFriendButton playerId={onlineInfo.players[opponentSeat].id} className="mt-1 w-full text-xs" />
+          )}
         </Modal>
       )}
 

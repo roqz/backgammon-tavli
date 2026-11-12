@@ -22,6 +22,7 @@ import {
 } from "../online/client";
 import { useOnline } from "../online/store";
 import type { GameRecord } from "../store/archive";
+import { FriendsPanel, LivePanel } from "./FriendsPanel";
 import { AuthForm, PlayerSheet, ProfileTab } from "./OnlineProfile";
 import { TournamentPanel } from "./TournamentPanel";
 
@@ -254,15 +255,17 @@ export function OnlineScreen({
   onBack,
   onReplay,
   tournament,
+  onWatch,
 }: {
   onBack: () => void;
   onReplay: (records: GameRecord[]) => void;
   /** Open the tournaments tab with this tournament expanded. */
   tournament?: string | null;
+  onWatch: (matchId: string) => void;
 }) {
   const t = useT();
   const { profile, serverUrl } = useOnline();
-  const [tab, setTab] = useState<"play" | "tournaments" | "ranking" | "profile">(
+  const [tab, setTab] = useState<"play" | "friends" | "live" | "tournaments" | "ranking" | "profile">(
     tournament ? "tournaments" : "play",
   );
 
@@ -301,17 +304,33 @@ export function OnlineScreen({
             onChange={setTab}
             options={[
               { value: "play", label: t.playTab },
+              { value: "friends", label: <FriendsTabLabel /> },
+              { value: "live", label: t.liveTab },
               { value: "tournaments", label: t.tournamentsTab },
               { value: "ranking", label: t.leaderboard },
               { value: "profile", label: t.profileTab },
             ]}
           />
           {tab === "play" && <PlayPanel />}
+          {tab === "friends" && <FriendsPanel onWatch={onWatch} />}
+          {tab === "live" && <LivePanel onWatch={onWatch} />}
           {tab === "tournaments" && <TournamentPanel focus={tournament} onReplay={onReplay} />}
           {tab === "ranking" && <LeaderboardPanel onReplay={onReplay} />}
           {tab === "profile" && <ProfileTab onReplay={onReplay} />}
         </>
       )}
     </div>
+  );
+}
+
+/** Tab label with a marker while a challenge or friend request waits. */
+function FriendsTabLabel() {
+  const t = useT();
+  const waiting = useOnline((s) => s.incoming !== null);
+  return (
+    <>
+      {t.friendsTab}
+      {waiting && <span className="ml-1 inline-block h-2 w-2 rounded-full bg-amber-400" aria-hidden />}
+    </>
   );
 }

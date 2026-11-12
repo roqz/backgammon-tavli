@@ -18,6 +18,7 @@ import type {
   RatingPoint,
   TimingSummary,
 } from "@tavli/protocol";
+import { MAX_FRIENDS } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
 
 const SCHEMA = `
@@ -85,6 +86,14 @@ CREATE TABLE IF NOT EXISTS analyses (
   PRIMARY KEY (match_id, player_id)
 );
 CREATE INDEX IF NOT EXISTS analyses_player ON analyses(player_id, created_at);
+CREATE TABLE IF NOT EXISTS friends (
+  requester TEXT NOT NULL REFERENCES players(id),
+  addressee TEXT NOT NULL REFERENCES players(id),
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (requester, addressee)
+);
+CREATE INDEX IF NOT EXISTS friends_addressee ON friends(addressee);
 CREATE TABLE IF NOT EXISTS timings (
   match_id TEXT NOT NULL,
   player_id TEXT NOT NULL REFERENCES players(id),
@@ -509,6 +518,7 @@ export class Store {
       reportsFiled: all(
         "SELECT reported, match_id, reason, note, created_at FROM reports WHERE reporter = ?",
       ),
+      friends: this.friendsOf(id),
       fairPlayAnalyses: all(
         "SELECT match_id, decisions, agree, loss, created_at FROM analyses WHERE player_id = ?",
       ),
@@ -544,6 +554,7 @@ export class Store {
       run("DELETE FROM analyses WHERE player_id = ?");
       run("DELETE FROM timings WHERE player_id = ?");
       run("DELETE FROM reports WHERE reporter = ?1 OR reported = ?1");
+      run("DELETE FROM friends WHERE requester = ?1 OR addressee = ?1");
       if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
       this.db.exec("COMMIT");
     } catch (e) {
@@ -576,6 +587,7 @@ export class Store {
       for (const { id } of guests) {
         for (const table of ["sessions", "ratings", "analyses", "timings"])
           this.db.prepare(`DELETE FROM ${table} WHERE player_id = ?`).run(id);
+        this.db.prepare("DELETE FROM friends WHERE requester = ?1 OR addressee = ?1").run(id);
         if (this.tableExists("push_subscriptions"))
           this.db.prepare("DELETE FROM push_subscriptions WHERE player_id = ?").run(id);
         this.db.prepare("DELETE FROM players WHERE id = ?").run(id);
@@ -609,6 +621,80 @@ export class Store {
     } catch {
       return false;
     }
+  }
+
+  // ---- friends ---------------------------------------------------------------------------------
+
+  /**
+   * Sends a friend request, or accepts the other player's pending one. Returns what happened;
+   * throws for unknown players, yourself or a full list.
+   */
+  befriend(me: string, other: string): "requested" | "accepted" | "already" {
+    if (me === other) throw new AccountError(400, "cannot befriend yourself");
+    const target = this.db.prepare("SELECT 1 FROM players WHERE id = ? AND deleted_at IS NULL").get(other);
+    if (!target) throw new AccountError(404, "unknown player");
+    const row = this.friendRow(me, other);
+    if (row?.status === "accepted") return "already";
+    if (row && row.requester === other) {
+      this.db
+        .prepare("UPDATE friends SET status = 'accepted' WHERE requester = ? AND addressee = ?")
+        .run(other, me);
+      return "accepted";
+    }
+    if (row) return "already";
+    const count = (id: string) =>
+      (
+        this.db
+          .prepare("SELECT COUNT(*) AS n FROM friends WHERE requester = ?1 OR addressee = ?1")
+          .get(id) as {
+          n: number;
+        }
+      ).n;
+    if (count(me) >= MAX_FRIENDS || count(other) >= MAX_FRIENDS)
+      throw new AccountError(409, "friend list full");
+    this.db
+      .prepare("INSERT INTO friends (requester, addressee, status, created_at) VALUES (?, ?, 'pending', ?)")
+      .run(me, other, new Date().toISOString());
+    return "requested";
+  }
+
+  /** Ends a friendship, withdraws a request or declines one. */
+  unfriend(me: string, other: string): boolean {
+    const r = this.db
+      .prepare(
+        "DELETE FROM friends WHERE (requester = ?1 AND addressee = ?2) OR (requester = ?2 AND addressee = ?1)",
+      )
+      .run(me, other);
+    return Number(r.changes) > 0;
+  }
+
+  areFriends(a: string, b: string): boolean {
+    return this.friendRow(a, b)?.status === "accepted";
+  }
+
+  private friendRow(a: string, b: string) {
+    return this.db
+      .prepare(
+        "SELECT requester, addressee, status FROM friends WHERE (requester = ?1 AND addressee = ?2) OR (requester = ?2 AND addressee = ?1)",
+      )
+      .get(a, b) as { requester: string; addressee: string; status: "pending" | "accepted" } | undefined;
+  }
+
+  /** Friends and open requests of a player, by name. */
+  friendsOf(me: string): { id: string; name: string; status: "accepted" | "incoming" | "outgoing" }[] {
+    const rows = this.db
+      .prepare(
+        `SELECT f.requester, f.addressee, f.status, p.id, p.name FROM friends f
+         JOIN players p ON p.id = CASE WHEN f.requester = ?1 THEN f.addressee ELSE f.requester END
+         WHERE (f.requester = ?1 OR f.addressee = ?1) AND p.deleted_at IS NULL
+         ORDER BY lower(p.name)`,
+      )
+      .all(me) as { requester: string; status: string; id: string; name: string }[];
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: r.status === "accepted" ? "accepted" : r.requester === me ? "outgoing" : "incoming",
+    }));
   }
 
   /** Finished matches of a player. */

@@ -46,24 +46,21 @@ export function ReplayScreen({ records, onBack }: { records: readonly GameRecord
   const exportable = records.every((r) => MAT_VARIANTS.includes(r.variant));
   const tabs = (
     <div className="flex flex-wrap items-center justify-center gap-2">
-      {records.length > 1 && (
-        <>
-          {records.map((r, i) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => setGame(i)}
-              className={`rounded-lg border px-3 py-1 text-sm ${
-                i === game
-                  ? "border-amber-400 bg-amber-400/15 text-amber-200"
-                  : "border-stone-700 text-stone-300"
-              }`}
-            >
-              {t.game} {i + 1}
-            </button>
-          ))}
-        </>
-      )}
+      {records.length > 1 &&
+        records.map((r, i) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => setGame(i)}
+            className={`rounded-lg border px-3 py-1 text-sm ${
+              i === game
+                ? "border-amber-400 bg-amber-400/15 text-amber-200"
+                : "border-stone-700 text-stone-300"
+            }`}
+          >
+            {t.game} {i + 1}
+          </button>
+        ))}
       {exportable && (
         <Button
           variant="ghost"

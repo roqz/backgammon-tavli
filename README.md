@@ -2,7 +2,8 @@
 
 Open-source Backgammon and Greek Tavli (Portes, Plakoto, Fevga) for the web: an offline-first PWA with
 games against the computer and on one device, plus online play with ratings, matchmaking, private
-invites, tournaments (knockout and Swiss) and provably fair dice.
+invites, friends and challenges, live spectating, tournaments (knockout and Swiss) and provably fair
+dice.
 
 > Status: rewrite on branch `rewrite/foundation`. The original 2018 Angular proof of concept lives in
 > [`legacy/`](legacy/). Concept and roadmap (German): [`docs/KONZEPT.md`](docs/KONZEPT.md); latest review and
@@ -70,18 +71,18 @@ Caddy serves the web app with security headers (CSP, HSTS) and proxies `/api` an
 the same domain. The SQLite database lives in the `tavli-data` volume; a daily consistent copy is written
 to `/data/backups` (14 kept) – copy those off the server as well.
 
-| Server variable                         | Purpose                                                                                   |
-| --------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `PORT`, `HOST`, `DB_PATH`               | Listen address and database file                                                          |
-| `TRUST_PROXY=1`                         | Behind a reverse proxy: client address from the last `X-Forwarded-For` entry              |
-| `CORS_ORIGIN`                           | Allowed origin for REST calls from a separately hosted frontend (default `*`)             |
+| Server variable                         | Purpose                                                                                  |
+| --------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `PORT`, `HOST`, `DB_PATH`               | Listen address and database file                                                         |
+| `TRUST_PROXY=1`                         | Behind a reverse proxy: client address from the last `X-Forwarded-For` entry             |
+| `CORS_ORIGIN`                           | Allowed origin for REST calls from a separately hosted frontend (default `*`)            |
 | `ADMIN_TOKEN`                           | Enables moderation (at least 16 characters); open the app with `?admin`                  |
-| `ANALYSIS=off`                          | Disables the fair-play move analysis (worker thread `dist/analysis-worker.js`)            |
+| `ANALYSIS=off`                          | Disables the fair-play move analysis (worker thread `dist/analysis-worker.js`)           |
 | `VAPID_SUBJECT`, `PUSH=off`             | Contact for the browser push services; push is on by default (keys generated and stored) |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Pin the push keys (raw, base64url)                                                        |
-| `BACKUP_DIR`, `BACKUP_KEEP`             | Daily database copies and how many to keep                                                |
-| `ALLOW_SAME_NETWORK=1`                  | Local testing: pair profiles from the same network                                        |
-| `TOURNAMENT_GUEST_MIN_MATCHES`          | Finished matches a guest needs before creating a tournament (default 3)                   |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Pin the push keys (raw, base64url)                                                       |
+| `BACKUP_DIR`, `BACKUP_KEEP`             | Daily database copies and how many to keep                                               |
+| `ALLOW_SAME_NETWORK=1`                  | Local testing: pair profiles from the same network                                       |
+| `TOURNAMENT_GUEST_MIN_MATCHES`          | Finished matches a guest needs before creating a tournament (default 3)                  |
 
 The web build reads `VITE_SERVER_URL` (`same-origin` behind Caddy) and, for imprint and privacy notice,
 `VITE_OPERATOR_NAME`, `VITE_OPERATOR_ADDRESS` (lines separated by `|`), `VITE_OPERATOR_EMAIL` and

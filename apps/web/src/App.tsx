@@ -1,9 +1,11 @@
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { afterHistory, historySettling } from "./components/overlay";
 import { UpdatePrompt } from "./components/UpdatePrompt";
-import { joinInvite } from "./online/client";
+import { connect, joinInvite, watchMatch } from "./online/client";
 import { useOnline } from "./online/store";
 import { AdminScreen } from "./screens/AdminScreen";
+import { ChallengePrompt, FriendLinkPrompt } from "./screens/FriendsPanel";
 import { GameScreen } from "./screens/GameScreen";
 import { LegalScreen } from "./screens/LegalScreen";
 import { Menu, NewGame, SettingsScreen } from "./screens/MenuScreens";
@@ -11,6 +13,7 @@ import { OnlineScreen } from "./screens/OnlineScreen";
 import { ReplayScreen } from "./screens/ReplayScreen";
 import { RulesScreen } from "./screens/RulesPanel";
 import { StatsScreen } from "./screens/StatsScreen";
+import { WatchScreen } from "./screens/WatchScreen";
 import type { GameRecord } from "./store/archive";
 import { useSettings } from "./store/settings";
 
@@ -25,7 +28,8 @@ type Screen =
   | "rules"
   | "admin"
   | "imprint"
-  | "privacy";
+  | "privacy"
+  | "watch";
 
 /** Invite links look like `…/?join=ABC234`. */
 const takeJoinCode = (): string | null => {
@@ -68,8 +72,10 @@ export function App() {
     const current = screenRef.current;
     const target = typeof next === "function" ? next(current) : next;
     if (target === current) return;
-    if (replace) history.replaceState({ tavli: target }, "");
-    else history.pushState({ tavli: target }, "");
+    afterHistory(() => {
+      if (replace) history.replaceState({ tavli: target }, "");
+      else history.pushState({ tavli: target }, "");
+    });
     screenRef.current = target;
     setScreenState(target);
   }, []);
@@ -77,6 +83,8 @@ export function App() {
   useEffect(() => {
     history.replaceState({ ...(history.state as object | null), tavli: screen }, "");
     const onPop = (e: PopStateEvent) => {
+      // an overlay removing its own entry, not a navigation
+      if (historySettling()) return;
       const target = (e.state as { tavli?: Screen } | null)?.tavli ?? "menu";
       setScreenState(target === "replay" && !replayRef.current ? "menu" : target);
     };
@@ -108,6 +116,24 @@ export function App() {
     navigator.serviceWorker?.addEventListener("message", onMessage);
     return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
   }, [setScreen]);
+
+  // Friend links (`?friend=<id>`): the prompt appears once a profile exists.
+  useEffect(() => {
+    const url = new URL(location.href);
+    const id = url.searchParams.get("friend");
+    if (!id) return;
+    url.searchParams.delete("friend");
+    history.replaceState(history.state, "", url);
+    useOnline.getState().set({ pendingFriend: id });
+    if (!useOnline.getState().profile) setScreen("online");
+  }, [setScreen]);
+
+  // With a profile the app stays connected, so friends see you online and can challenge you.
+  const profileId = useOnline((s) => s.profile?.id);
+  const serverUrl = useOnline((s) => s.serverUrl);
+  useEffect(() => {
+    if (profileId && serverUrl) connect();
+  }, [profileId, serverUrl]);
 
   // Opened through an invite link: go to the online screen and join once connected.
   useEffect(() => {
@@ -153,6 +179,10 @@ export function App() {
             onBack={() => setScreen("menu")}
             onReplay={(r) => openReplay(r, "online")}
             tournament={onlineFocus}
+            onWatch={(id) => {
+              watchMatch(id);
+              setScreen("watch");
+            }}
           />
         )}
         {screen === "game" && (
@@ -175,6 +205,9 @@ export function App() {
         {screen === "replay" && replay && (
           <ReplayScreen records={replay.records} onBack={() => setScreen(replay.back)} />
         )}
+        {screen === "watch" && <WatchScreen onBack={() => setScreen("online")} />}
+        <ChallengePrompt />
+        <FriendLinkPrompt />
         <UpdatePrompt />
       </main>
     </MotionConfig>

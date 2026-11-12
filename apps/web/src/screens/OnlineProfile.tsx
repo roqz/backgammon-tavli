@@ -27,6 +27,7 @@ import {
 } from "../online/client";
 import { useOnline } from "../online/store";
 import type { GameRecord } from "../store/archive";
+import { AddFriendButton } from "./FriendsPanel";
 
 const input =
   "rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-stone-100 outline-none focus:border-amber-400";
@@ -545,6 +546,7 @@ export function PlayerSheet({
           ✕
         </button>
       </div>
+      <AddFriendButton playerId={playerId} className="mb-2" />
       <div className="max-h-[70vh] overflow-y-auto">
         <MatchList playerId={playerId} onReplay={onReplay} />
       </div>
