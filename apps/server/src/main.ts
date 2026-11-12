@@ -9,6 +9,8 @@ const server = await startServer({
   trustProxy: env.TRUST_PROXY === "1" || env.TRUST_PROXY === "true",
   // Moderation API (reports, bans); disabled unless set.
   adminToken: env.ADMIN_TOKEN,
+  // Fair-play analysis in a worker thread (falls back to inline when the worker file is missing).
+  analysis: env.ANALYSIS === "off" ? "off" : "worker",
   // Allow pairing players from the same network (local testing, LAN events).
   fairPlay: { blockSameNetwork: env.ALLOW_SAME_NETWORK !== "1" },
   log: (msg) => console.log(`[${new Date().toISOString()}] ${msg}`),

@@ -71,4 +71,6 @@ device or network in the public queue (set `ALLOW_SAME_NETWORK=1` for local test
 Pages) set the repository variable `TAVLI_SERVER_URL` and `CORS_ORIGIN` on the server.
 
 Moderation: start the server with `ADMIN_TOKEN=<long random secret>` (at least 16 characters) to
-enable the admin API; open the app with `?admin` to review player reports and ban or unban profiles.
+enable the admin API; open the app with `?admin` to review player reports and fair-play signals
+(agreement with the bot, forfeits, repeated cheap losses) and ban or unban profiles. The move analysis
+runs in a worker thread (`dist/analysis-worker.js`, shipped next to `server.js`); `ANALYSIS=off` disables it.

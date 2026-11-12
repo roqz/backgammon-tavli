@@ -13,6 +13,7 @@ export const start = (
 ) =>
   startServer({
     ...extra,
+    analysis: extra.analysis ?? "off",
     fairPlay: { blockSameNetwork: false, ...fairPlay },
     messageRate,
     matchmaking: { sweepMs: 50, ...matchmaking },

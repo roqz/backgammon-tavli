@@ -1,4 +1,11 @@
-import type { AdminReport, MatchDetailResponse, ModerationInfo } from "@tavli/protocol";
+import type {
+  AdminReport,
+  AnalysisSummary,
+  MatchDetailResponse,
+  ModerationInfo,
+  ModerationSignals,
+  PublicPlayerRef,
+} from "@tavli/protocol";
 import { useState } from "react";
 import { Button, Card, Segmented } from "../components/ui";
 import { useT } from "../i18n";
@@ -41,8 +48,9 @@ export function AdminScreen({
 }) {
   const t = useT();
   const [token, setToken] = useState(readToken);
-  const [status, setStatus] = useState<"open" | "resolved">("open");
+  const [status, setStatus] = useState<"open" | "resolved" | "signals">("open");
   const [reports, setReports] = useState<AdminReport[] | null>(null);
+  const [signals, setSignals] = useState<ModerationSignals | null>(null);
   const [players, setPlayers] = useState<Record<string, ModerationInfo>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -55,14 +63,20 @@ export function AdminScreen({
     }
   };
 
-  const load = (which: "open" | "resolved" = status) =>
+  const load = (which: "open" | "resolved" | "signals" = status) =>
     run(async () => {
       try {
         sessionStorage.setItem(TOKEN_KEY, token);
       } catch {
         // storage blocked: the token simply is not remembered
       }
-      setReports(await adminApi<AdminReport[]>(token, `/api/admin/reports?status=${which}`));
+      if (which === "signals") {
+        setSignals(await adminApi<ModerationSignals>(token, "/api/admin/signals"));
+        setReports(null);
+      } else {
+        setReports(await adminApi<AdminReport[]>(token, `/api/admin/reports?status=${which}`));
+        setSignals(null);
+      }
     });
 
   const inspect = (id: string) =>
@@ -116,11 +130,12 @@ export function AdminScreen({
             value={status}
             onChange={(v) => {
               setStatus(v);
-              if (reports) void load(v);
+              if (reports || signals) void load(v);
             }}
             options={[
               { value: "open", label: t.adminOpen },
               { value: "resolved", label: t.adminResolved },
+              { value: "signals", label: t.adminSignals },
             ]}
           />
           <Button variant="primary" disabled={token.length < 16} onClick={() => void load()}>
@@ -130,6 +145,14 @@ export function AdminScreen({
         {error && <p className="text-sm text-red-400">{error}</p>}
       </Card>
 
+      {signals && (
+        <SignalsView
+          signals={signals}
+          players={players}
+          onInspect={(id) => void inspect(id)}
+          onBan={(id, reason) => void ban(id, reason)}
+        />
+      )}
       {reports?.length === 0 && <p className="text-center text-stone-500">{t.adminNone}</p>}
       {reports?.map((r) => (
         <ReportCard
@@ -195,6 +218,7 @@ function ReportCard({
           {info.banReason ? ` · ban: ${info.banReason}` : ""}
         </p>
       )}
+      {info?.analysis && <AnalysisLine a={info.analysis} />}
       <div className="mt-1 flex flex-wrap items-center gap-2">
         {onMatch && (
           <Button variant="ghost" className="px-3 py-1.5 text-sm" onClick={onMatch}>
@@ -235,5 +259,128 @@ function ReportCard({
         )}
       </div>
     </Card>
+  );
+}
+
+const pct = (x: number) => `${(100 * x).toFixed(1)} %`;
+
+function AnalysisLine({ a }: { a: AnalysisSummary }) {
+  const t = useT();
+  return (
+    <p className="font-mono text-xs text-stone-400">
+      🤖 {t.adminAgreement}: {pct(a.agreement)} · {t.adminAvgLoss}: {a.averageLoss.toFixed(3)} · {a.decisions}{" "}
+      {t.adminDecisions}
+    </p>
+  );
+}
+
+/** Fair-play signals: hints for moderators, never automatic penalties. */
+function SignalsView({
+  signals: s,
+  players,
+  onInspect,
+  onBan,
+}: {
+  signals: ModerationSignals;
+  players: Record<string, ModerationInfo>;
+  onInspect: (id: string) => void;
+  onBan: (id: string, reason: string | null) => void;
+}) {
+  const t = useT();
+  const th = s.thresholds;
+  const person = (p: PublicPlayerRef, reason: string) => (
+    <PlayerLine player={p} info={players[p.id]} reason={reason} onInspect={onInspect} onBan={onBan} />
+  );
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs text-stone-500">{t.adminSignalsHint.replace("{days}", String(th.days))}</p>
+      <Card className="flex flex-col gap-2 text-sm">
+        <h2 className="font-semibold text-stone-100">🤖 {t.adminBotLike}</h2>
+        <p className="text-xs text-stone-500">
+          ≥ {pct(th.botLikeAgreement)} · ≥ {th.botLikeDecisions} {t.adminDecisions}
+        </p>
+        {s.botLike.length === 0 && <p className="text-stone-500">—</p>}
+        {s.botLike.map((x) => (
+          <div key={x.player.id}>
+            {person(x.player, t.adminBotLike)}
+            <AnalysisLine a={x} />
+          </div>
+        ))}
+      </Card>
+      <Card className="flex flex-col gap-2 text-sm">
+        <h2 className="font-semibold text-stone-100">🏳 {t.adminForfeits}</h2>
+        <p className="text-xs text-stone-500">
+          ≥ {pct(th.forfeitRate)} · ≥ {th.forfeitMatches} Matches
+        </p>
+        {s.forfeits.length === 0 && <p className="text-stone-500">—</p>}
+        {s.forfeits.map((x) => (
+          <div key={x.player.id}>
+            {person(x.player, t.adminForfeits)}
+            <p className="font-mono text-xs text-stone-400">
+              {x.forfeits} / {x.matches}
+            </p>
+          </div>
+        ))}
+      </Card>
+      <Card className="flex flex-col gap-2 text-sm">
+        <h2 className="font-semibold text-stone-100">🤝 {t.adminDumping}</h2>
+        <p className="text-xs text-stone-500">
+          {t.adminDumpingHint.replace("{n}", String(th.dumpingMatches))}
+        </p>
+        {s.dumping.length === 0 && <p className="text-stone-500">—</p>}
+        {s.dumping.map((x) => (
+          <div key={`${x.loser.id}-${x.winner.id}`} className="flex flex-col gap-1">
+            <p className="text-stone-300">
+              {x.loser.name} → {x.winner.name}: {x.matches}×
+            </p>
+            {person(x.loser, t.adminDumping)}
+            {person(x.winner, t.adminDumping)}
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+function PlayerLine({
+  player,
+  info,
+  reason,
+  onInspect,
+  onBan,
+}: {
+  player: PublicPlayerRef;
+  info: ModerationInfo | undefined;
+  reason: string;
+  onInspect: (id: string) => void;
+  onBan: (id: string, reason: string | null) => void;
+}) {
+  const t = useT();
+  const banned = info ? info.bannedAt !== null : player.banned;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        className="font-semibold text-stone-100 hover:text-amber-200"
+        onClick={() => onInspect(player.id)}
+      >
+        {player.name}
+      </button>
+      {banned && (
+        <span className="rounded bg-red-900 px-1.5 py-0.5 text-xs text-red-100">{t.adminBanned}</span>
+      )}
+      {info && (
+        <span className="font-mono text-xs text-stone-500">
+          {info.matches} matches · {info.forfeits} forfeits · {info.reportsAgainst} reports
+        </span>
+      )}
+      <Button
+        variant={banned ? "secondary" : "danger"}
+        className="ml-auto px-2 py-1 text-xs"
+        onClick={() => onBan(player.id, banned ? null : reason)}
+      >
+        {banned ? t.adminUnban : t.adminBan}
+      </Button>
+    </div>
   );
 }

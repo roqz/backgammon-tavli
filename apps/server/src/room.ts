@@ -27,6 +27,7 @@ import {
   type MatchVariantId,
   type PublicPlayer,
   type ServerMessage,
+  type TournamentRef,
   type UnratedReason,
 } from "@tavli/protocol";
 import type { FinishedMatch, StoredGame } from "./db";
@@ -67,6 +68,8 @@ export interface RoomDeps {
   readonly log?: (msg: string) => void;
   /** Whether the match may change ratings at all (fair-play checks done by the lobby). */
   readonly rating?: { readonly rated: boolean; readonly reason: UnratedReason | null };
+  /** Set for tournament matches (shown to the players). */
+  readonly tournament?: TournamentRef;
 }
 
 /**
@@ -419,6 +422,7 @@ export class MatchRoom {
       rated: this.deps.rating?.rated ?? true,
       unratedReason: this.deps.rating?.reason ?? null,
       fairness: { commit: this.commit },
+      tournament: this.deps.tournament ?? null,
     });
   }
 

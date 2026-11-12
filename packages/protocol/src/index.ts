@@ -9,6 +9,10 @@ export const MATCH_VARIANTS = ["backgammon", "portes", "plakoto", "fevga", "tavl
 export type MatchVariantId = (typeof MATCH_VARIANTS)[number];
 export const MATCH_LENGTHS = [1, 3, 5, 7] as const;
 
+/** Knockout tournaments for 4, 8 or 16 players. */
+export const TOURNAMENT_SIZES = [4, 8, 16] as const;
+export const TOURNAMENT_NAME_MAX = 40;
+
 export const NAME_MAX = 24;
 
 // ---- client -> server -------------------------------------------------------------------------
@@ -71,6 +75,15 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
   z.object({ t: z.literal("rematch-decline") }),
   /** Quick message to the opponent during a match. */
   z.object({ t: z.literal("emote"), id: z.enum(EMOTES) }),
+  z.object({
+    t: z.literal("tournament-create"),
+    name: z.string().trim().min(1).max(TOURNAMENT_NAME_MAX),
+    ...matchSetup,
+    size: z.union([z.literal(4), z.literal(8), z.literal(16)]),
+  }),
+  z.object({ t: z.literal("tournament-join"), id: z.string().min(1).max(64) }),
+  /** Leave an open tournament, or withdraw from a running one (remaining matches are walkovers). */
+  z.object({ t: z.literal("tournament-leave"), id: z.string().min(1).max(64) }),
   z.object({ t: z.literal("ping") }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -108,6 +121,8 @@ export type ServerMessage =
       readonly rated: boolean;
       readonly unratedReason: UnratedReason | null;
       readonly fairness: FairnessCommit;
+      /** Set when this is a tournament match. */
+      readonly tournament: TournamentRef | null;
     }
   | {
       readonly t: "state";
@@ -137,6 +152,8 @@ export type ServerMessage =
   | { readonly t: "rematch-offer" }
   /** The opponent declined or left; no rematch possible. */
   | { readonly t: "rematch-declined" }
+  /** A tournament the player takes part in has changed (also sent after create/join). */
+  | { readonly t: "tournament"; readonly tournament: TournamentView }
   /** A quick message from a seat (also echoed to the sender). */
   | { readonly t: "emote"; readonly seat: Player; readonly id: EmoteId }
   | { readonly t: "error"; readonly message: string }
@@ -223,6 +240,96 @@ export interface ModerationInfo {
   readonly matches: number;
   /** Matches lost by forfeit or abandonment. */
   readonly forfeits: number;
+  /** Comparison of the player's checker play with the strong bot (last 90 days). */
+  readonly analysis: AnalysisSummary | null;
+}
+
+export interface AnalysisSummary {
+  /** Non-forced checker decisions analysed. */
+  readonly decisions: number;
+  /** Share of decisions identical to the strong bot (0..1). */
+  readonly agreement: number;
+  /** Average equity lost per decision against the best 1-ply move, in points. */
+  readonly averageLoss: number;
+}
+
+/** Fair-play signals for moderators – hints to look closer, never automatic penalties. */
+export interface ModerationSignals {
+  /** Checker play almost identical to the strong bot over many decisions. */
+  readonly botLike: readonly (AnalysisSummary & { readonly player: PublicPlayerRef })[];
+  /** Many matches lost by leaving or timing out. */
+  readonly forfeits: readonly {
+    readonly player: PublicPlayerRef;
+    readonly matches: number;
+    readonly forfeits: number;
+  }[];
+  /** Repeated cheap losses (forfeit, early resignation) to the same opponent in rated matches. */
+  readonly dumping: readonly {
+    readonly loser: PublicPlayerRef;
+    readonly winner: PublicPlayerRef;
+    readonly matches: number;
+  }[];
+  readonly thresholds: {
+    readonly botLikeDecisions: number;
+    readonly botLikeAgreement: number;
+    readonly forfeitMatches: number;
+    readonly forfeitRate: number;
+    readonly dumpingMatches: number;
+    readonly days: number;
+  };
+}
+
+export interface PublicPlayerRef {
+  readonly id: string;
+  readonly name: string;
+  readonly banned: boolean;
+}
+
+// ---- tournaments --------------------------------------------------------------------------------
+
+export type TournamentStatus = "open" | "running" | "finished" | "cancelled";
+
+export interface TournamentRef {
+  readonly id: string;
+  readonly name: string;
+  /** 0-based round of this match. */
+  readonly round: number;
+  readonly rounds: number;
+}
+
+export interface TournamentPlayer extends PublicPlayer {
+  /** 1 = best seed; null while the tournament is open. */
+  readonly seed: number | null;
+  readonly withdrawn: boolean;
+}
+
+export interface TournamentMatchView {
+  readonly round: number;
+  readonly slot: number;
+  /** Player ids (null = not decided yet). */
+  readonly players: readonly [string | null, string | null];
+  /** waiting: players not known yet · ready: waiting for both to be online · playing · done */
+  readonly status: "waiting" | "ready" | "playing" | "done";
+  readonly winner: string | null;
+  readonly matchId: string | null;
+  readonly score: readonly [number, number] | null;
+  /** Decided without play (opponent absent or withdrawn). */
+  readonly walkover: boolean;
+}
+
+export interface TournamentView {
+  readonly id: string;
+  readonly name: string;
+  readonly variant: MatchVariantId;
+  readonly length: number;
+  readonly size: number;
+  readonly status: TournamentStatus;
+  readonly createdBy: { readonly id: string; readonly name: string };
+  readonly createdAt: string;
+  readonly players: readonly TournamentPlayer[];
+  /** rounds[r][slot]; empty while open. */
+  readonly rounds: readonly (readonly TournamentMatchView[])[];
+  readonly winner: string | null;
 }
 
 export const NameSchema = z.object({ name: z.string().trim().min(1).max(NAME_MAX) });

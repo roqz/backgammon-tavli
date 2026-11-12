@@ -1,5 +1,7 @@
 import {
+  type Board,
   bearOffLevel,
+  boardKey,
   canDouble,
   diceToPlay,
   type GameState,
@@ -110,14 +112,25 @@ export const chooseMoves = (
   opts: ChooseOptions = {},
 ): Move[] => {
   if (s.phase !== "moving") return [];
+  const options = moveGenerator(s.variant, s.turn).turnOptions(s.board, s.remaining);
+  const best = chooseOption(s, options, level, rng, w, opts);
+  return best ? best.moves.map(({ from, to, die }) => ({ from, to, die })) : [];
+};
+
+const chooseOption = (
+  s: GameState,
+  options: readonly TurnOption[],
+  level: BotLevel,
+  rng: Rng,
+  w: Weights,
+  opts: ChooseOptions,
+): TurnOption | null => {
   const p = s.turn;
-  const options = moveGenerator(s.variant, p).turnOptions(s.board, s.remaining);
-  if (options.length === 0) return [];
-  const pick = (o: TurnOption): Move[] => o.moves.map(({ from, to, die }) => ({ from, to, die }));
-  if (options.length === 1) return pick(options[0]!);
+  if (options.length === 0) return null;
+  if (options.length === 1) return options[0]!;
 
   if (level === "easy") {
-    if (rng() < 0.25) return pick(options[Math.floor(rng() * options.length)]!);
+    if (rng() < 0.25) return options[Math.floor(rng() * options.length)]!;
     let best = options[0]!;
     let bestValue = Number.NEGATIVE_INFINITY;
     for (const o of options) {
@@ -127,14 +140,14 @@ export const chooseMoves = (
         best = o;
       }
     }
-    return pick(best);
+    return best;
   }
 
   const v = new Valuer(s, p, w, opts);
   const opp = opponent(p);
   const scored = options.map((o) => ({ o, v: o.end ? v.end(o, p) : v.position(o.board, opp) }));
   scored.sort((a, b) => b.v - a.v);
-  if (level !== "hard" || scored[0]!.o.end) return pick(scored[0]!.o);
+  if (level !== "hard" || scored[0]!.o.end) return scored[0]!.o;
 
   let best = scored[0]!;
   let bestValue = Number.NEGATIVE_INFINITY;
@@ -145,7 +158,48 @@ export const chooseMoves = (
       best = c;
     }
   }
-  return pick(best.o);
+  return best.o;
+};
+
+export interface TurnAnalysis {
+  /** Distinct positions the player could reach with this roll. */
+  readonly choices: number;
+  /** The player chose the same position as the reference bot. */
+  readonly agrees: boolean;
+  /** Equity lost against the best 1-ply option, in points (0 = best). */
+  readonly loss: number;
+}
+
+/**
+ * Compares a played turn with the bot (fair-play analysis): `s` is the state after the roll,
+ * `played` the board after the player's moves. Returns null for forced turns (one option).
+ */
+export const analyseTurn = (
+  s: GameState,
+  played: Board,
+  reference: BotLevel = "hard",
+): TurnAnalysis | null => {
+  if (s.phase !== "moving") return null;
+  const options = moveGenerator(s.variant, s.turn).turnOptions(s.board, s.remaining);
+  if (options.length < 2) return null;
+  const key = boardKey(played);
+  const w = weightsFor(s.variant);
+  const v = new Valuer(s, s.turn, w, {});
+  const opp = opponent(s.turn);
+  let best = Number.NEGATIVE_INFINITY;
+  let chosen: number | null = null;
+  for (const o of options) {
+    const value = o.end ? v.end(o, s.turn) : v.position(o.board, opp);
+    if (value > best) best = value;
+    if (boardKey(o.board) === key) chosen = value;
+  }
+  if (chosen === null) return null;
+  const bot = chooseOption(s, options, reference, () => 0.5, w, {});
+  return {
+    choices: options.length,
+    agrees: bot !== null && boardKey(bot.board) === key,
+    loss: best - chosen,
+  };
 };
 
 /**

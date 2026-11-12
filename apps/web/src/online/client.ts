@@ -10,6 +10,7 @@ import type {
   RegisterResponse,
   ReportReason,
   ServerMessage,
+  TournamentView,
 } from "@tavli/protocol";
 import { type PlayerInfo, setRemoteSender, useGame } from "../store/game";
 import { newClientSeed, verifyDice } from "./fairness";
@@ -80,6 +81,7 @@ const onMessage = (msg: ServerMessage) => {
           unratedReason: msg.unratedReason,
           rematch: "none",
           emote: null,
+          tournament: msg.tournament ?? null,
           end: null,
         },
       });
@@ -134,6 +136,9 @@ const onMessage = (msg: ServerMessage) => {
       if (info) set({ match: { ...info, rematch: "declined" } });
       break;
     }
+    case "tournament":
+      set({ tournaments: { ...online.tournaments, [msg.tournament.id]: msg.tournament } });
+      break;
     case "emote": {
       const info = online.match;
       if (info)
@@ -235,6 +240,17 @@ export const requestRematch = () => {
 };
 
 export const sendEmote = (id: EmoteId) => send({ t: "emote", id });
+
+export const createTournament = (
+  name: string,
+  variant: MatchVariantId,
+  length: MatchLength,
+  size: 4 | 8 | 16,
+) => send({ t: "tournament-create", name, variant, length, size });
+export const joinTournament = (id: string) => send({ t: "tournament-join", id });
+export const leaveTournament = (id: string) => send({ t: "tournament-leave", id });
+export const fetchTournaments = () => rest<TournamentView[]>("/api/tournaments");
+export const fetchTournament = (id: string) => rest<TournamentView>(`/api/tournaments/${id}`);
 
 /** Reports an opponent of a match to the moderators; resolves to false for a repeated report. */
 export const reportPlayer = async (playerId: string, matchId: string, reason: ReportReason, note: string) => {

@@ -228,11 +228,19 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Melden von Gegnern (nur aus gemeinsamen Matches, je Match einmal, max. 10 pro Tag)
 - Moderation: `ADMIN_TOKEN` aktiviert die Admin-API (Meldungen, Spielerinfo, Sperren/Entsperren, Erledigt); Oberfläche unter `?admin`; gesperrte Profile werden getrennt, können sich nicht mehr anmelden und fehlen in der Rangliste
 
+### Fair-Play-Signale und Turniere ✅
+
+- Zuganalyse nach jedem Online-Match (Worker-Thread, `dist/analysis-worker.js`; ohne die Datei inline in kleinen Schritten): jede nicht erzwungene Zugentscheidung wird mit dem starken Bot verglichen (Übereinstimmung) und 1-Zug-bewertet (Fehler in Punkten); gespeichert je Match und Spieler
+- Referenzwerte aus Selbstspiel: Einsteiger-Bot 24–34 %, Mittel 70–88 %, Stark 100 % Übereinstimmung; Signal „spielt wie der Bot“ ab 92 % über mindestens 150 Entscheidungen (90 Tage)
+- Weitere Signale: häufige Abbrüche/Aufgaben (≥ 30 % von ≥ 8 Matches), „Dumping“ (≥ 3 gewertete Matches in 30 Tagen an denselben Gegner verloren durch Abbruch oder Aufgabe in den ersten Zügen)
+- Moderation: Reiter „Signale“ mit Kennzahlen und Sperren-Knopf; Spielerinfo zeigt Übereinstimmung und Ø-Fehler. Nur Hinweise, keine automatischen Strafen
+- Turniere: K.-o. mit 4/8/16 Spielern, Setzliste nach Rating (1 gegen n …), Start sobald voll; jedes Match ein normales gewertetes Online-Match, startet wenn beide online und frei sind (10 s Pause nach dem vorigen Match); 5 Minuten Abwesenheit oder Rückzug = kampflos verloren; offene Turniere verfallen nach 24 h; ein aktives Turnier je Spieler; Zustand in SQLite, nach Neustart werden laufende Matches neu angesetzt
+- Oberfläche: Reiter „Turniere“ (Erstellen, Beitreten, Verlassen/Zurückziehen, Turnierbaum mit Wiederholung beendeter Matches), Abzeichen im Spiel, nach dem Match „Zum Turnier“
+
 ### Offen / nächste Schritte Online
 
-- Weitere Fair-Play-Signale: Zuggenauigkeit im Vergleich zum Bot (Bot-Nutzung), auffällige Aufgabe-Muster
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)
-- Turniere
+- Turniere: Schweizer System, Zeitpläne, Turniere nur für Konten; Fair-Play: Zugzeit-Muster als weiteres Signal
 
 ### Gammons und Matchstand im Bot ✅
 

@@ -29,6 +29,8 @@ export function App() {
   const [screen, setScreen] = useState<Screen>(() =>
     new URL(location.href).searchParams.has("admin") ? "admin" : "menu",
   );
+  /** Tournament to show when opening the online screen from a tournament match. */
+  const [onlineFocus, setOnlineFocus] = useState<string | null>(null);
   const [replay, setReplay] = useState<{ records: readonly GameRecord[]; back: Screen } | null>(null);
   const openReplay = (records: GameRecord | readonly GameRecord[], back: Screen) => {
     setReplay({ records: Array.isArray(records) ? records : [records as GameRecord], back });
@@ -69,10 +71,21 @@ export function App() {
         )}
         {screen === "settings" && <SettingsScreen onBack={() => setScreen("menu")} />}
         {screen === "online" && (
-          <OnlineScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "online")} />
+          <OnlineScreen
+            onBack={() => setScreen("menu")}
+            onReplay={(r) => openReplay(r, "online")}
+            tournament={onlineFocus}
+          />
         )}
         {screen === "game" && (
-          <GameScreen onMenu={() => setScreen("menu")} onReplay={(r) => openReplay(r, "game")} />
+          <GameScreen
+            onMenu={() => setScreen("menu")}
+            onReplay={(r) => openReplay(r, "game")}
+            onTournament={(id) => {
+              setOnlineFocus(id);
+              setScreen("online");
+            }}
+          />
         )}
         {screen === "stats" && (
           <StatsScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "stats")} />

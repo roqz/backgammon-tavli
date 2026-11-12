@@ -42,6 +42,7 @@ import {
 } from "./GameExtras";
 import { RulesDrawer } from "./RulesPanel";
 import { SettingsDrawer } from "./SettingsPanel";
+import { roundName } from "./TournamentPanel";
 
 /** three.js is only loaded when the 3D dice are used. */
 const Dice3D = lazy(() => import("../dice3d/Dice3D"));
@@ -165,7 +166,15 @@ function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
   };
 }
 
-export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay: (r: GameRecord) => void }) {
+export function GameScreen({
+  onMenu,
+  onReplay,
+  onTournament,
+}: {
+  onMenu: () => void;
+  onReplay: (r: GameRecord) => void;
+  onTournament: (id: string) => void;
+}) {
   const t = useT();
   const settings = useSettings();
   const { match, players, layout, opening, busy, roll, dispatch, playChain, leave } = useGame();
@@ -291,6 +300,12 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
                 title={onlineInfo.unratedReason ? t.unratedReason[onlineInfo.unratedReason] : undefined}
               >
                 {t.unrated}
+              </span>
+            )}
+            {online && onlineInfo?.tournament && (
+              <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-200">
+                🏆 {onlineInfo.tournament.name} ·{" "}
+                {roundName(t, onlineInfo.tournament.round, onlineInfo.tournament.rounds)}
               </span>
             )}
             {match.crawford === "crawford-game" && (
@@ -624,18 +639,33 @@ export function GameScreen({ onMenu, onReplay }: { onMenu: () => void; onReplay:
             >
               {t.toMenu}
             </Button>
-            <Button
-              variant="primary"
-              className="flex-[2]"
-              disabled={onlineInfo.rematch === "requested" || onlineInfo.rematch === "declined"}
-              onClick={requestRematch}
-            >
-              {onlineInfo.rematch === "requested"
-                ? t.rematchWaiting
-                : onlineInfo.rematch === "offered"
-                  ? `🔁 ${t.rematchAccept}`
-                  : `🔁 ${t.rematch}`}
-            </Button>
+            {onlineInfo.tournament ? (
+              // Tournaments have no rematch: back to the bracket.
+              <Button
+                variant="primary"
+                className="flex-[2]"
+                onClick={() => {
+                  const id = onlineInfo.tournament!.id;
+                  leaveMatch();
+                  onTournament(id);
+                }}
+              >
+                🏆 {t.tToTournament}
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                className="flex-[2]"
+                disabled={onlineInfo.rematch === "requested" || onlineInfo.rematch === "declined"}
+                onClick={requestRematch}
+              >
+                {onlineInfo.rematch === "requested"
+                  ? t.rematchWaiting
+                  : onlineInfo.rematch === "offered"
+                    ? `🔁 ${t.rematchAccept}`
+                    : `🔁 ${t.rematch}`}
+              </Button>
+            )}
           </div>
           <Button
             variant="ghost"

@@ -1,8 +1,10 @@
 import { randomInt } from "node:crypto";
 import type { MatchConfig } from "@tavli/engine";
-import type { ClientMessage, MatchVariantId, UnratedReason } from "@tavli/protocol";
+import type { ClientMessage, MatchVariantId, TournamentRef, UnratedReason } from "@tavli/protocol";
+import type { Analyzer } from "./analysis";
 import type { Store } from "./db";
 import { type Conn, MatchRoom, type RoomTimings } from "./room";
+import { TournamentError, type TournamentOptions, Tournaments } from "./tournaments";
 
 interface Session {
   playerId: string | null;
@@ -95,6 +97,9 @@ export interface LobbyOptions {
   readonly log?: (msg: string) => void;
   /** Deterministic seat assignment for tests. */
   readonly randomSeats?: boolean;
+  /** Fair-play analysis of finished matches (stored per player). */
+  readonly analyzer?: Analyzer;
+  readonly tournaments?: Partial<TournamentOptions>;
 }
 
 /**
@@ -112,10 +117,22 @@ export class Lobby {
   private readonly mm: MatchmakingOptions;
   private readonly fair: FairPlayOptions;
   private readonly sweepTimer: ReturnType<typeof setInterval>;
+  readonly tournaments: Tournaments;
 
   constructor(private readonly opts: LobbyOptions) {
     this.mm = { ...DEFAULT_MATCHMAKING, ...opts.matchmaking };
     this.fair = { ...DEFAULT_FAIR_PLAY, ...opts.fairPlay };
+    this.tournaments = new Tournaments(
+      opts.store,
+      {
+        isAvailable: (id) => this.connByPlayer.has(id) && !this.inMatch(id),
+        startTournamentMatch: (variant, length, p0, p1, ref, slot) =>
+          this.startMatch(variant, length, p0, p1, true, { ref, slot }),
+        push: (id, tournament) => this.connByPlayer.get(id)?.send({ t: "tournament", tournament }),
+      },
+      opts.tournaments,
+      opts.log,
+    );
     this.sweepTimer = setInterval(() => this.sweep(), this.mm.sweepMs);
   }
 
@@ -187,6 +204,20 @@ export class Lobby {
       }
       case "rematch-decline":
         return this.declineRematch(id);
+      case "tournament-create":
+      case "tournament-join":
+      case "tournament-leave":
+        try {
+          if (msg.t === "tournament-create") {
+            if (this.busy(conn, id)) return;
+            this.tournaments.create(id, msg.name, msg.variant, msg.length, msg.size);
+          } else if (msg.t === "tournament-join") this.tournaments.join(id, msg.id);
+          else this.tournaments.leave(id, msg.id);
+        } catch (e) {
+          if (e instanceof TournamentError) conn.send({ t: "error", message: e.message });
+          else throw e;
+        }
+        return;
       case "emote": {
         const room = this.roomByPlayer.get(id);
         const seat = room?.seatOf(id);
@@ -220,6 +251,11 @@ export class Lobby {
     const room = this.roomByPlayer.get(player.id);
     const seat = room?.seatOf(player.id);
     if (room && seat !== null && seat !== undefined && !room.ended) room.reconnect(seat, conn);
+  }
+
+  private inMatch(id: string): boolean {
+    const room = this.roomByPlayer.get(id);
+    return !!room && !room.ended;
   }
 
   private busy(conn: Conn, id: string): boolean {
@@ -299,7 +335,8 @@ export class Lobby {
         key,
         waiting.filter((w) => w !== partner),
       );
-      return this.startMatch(variant, length, partner.playerId, id);
+      this.startMatch(variant, length, partner.playerId, id);
+      return;
     }
     this.queues.set(key, [...waiting, entry]);
     conn.send({ t: "queued", variant, length });
@@ -307,6 +344,11 @@ export class Lobby {
 
   /** Pairs waiting players whose windows have grown enough, longest waiting first. */
   private sweep(): void {
+    try {
+      this.tournaments.tick();
+    } catch (e) {
+      this.opts.log?.(`tournament tick failed: ${String(e)}`);
+    }
     const now = Date.now();
     for (const [key, list] of this.queues) {
       let waiting = list.filter((w) => this.connByPlayer.has(w.playerId));
@@ -400,7 +442,8 @@ export class Lobby {
     a: string,
     b: string,
     fixedSeats = false,
-  ): void {
+    tournament?: { readonly ref: TournamentRef; readonly slot: number },
+  ): string {
     const { store, timings, log } = this.opts;
     const swap = !fixedSeats && this.opts.randomSeats !== false && randomInt(2) === 1;
     const ids: [string, string] = swap ? [b, a] : [a, b];
@@ -413,10 +456,12 @@ export class Lobby {
         timings,
         log,
         rating,
+        tournament: tournament?.ref,
         onEnd: (r, result) => {
           const endedAt = Date.now();
           for (const [seat, s] of r.seats.entries()) {
             if (this.roomByPlayer.get(s.player.id) === r) this.roomByPlayer.delete(s.player.id);
+            if (tournament) continue; // no rematch offers in tournaments
             this.finished.set(s.player.id, {
               matchId: r.id,
               opponentId: r.seats[seat === 0 ? 1 : 0].player.id,
@@ -426,16 +471,33 @@ export class Lobby {
               endedAt,
             });
           }
+          let deltas: [number, number] = [0, 0];
           try {
-            return store.saveMatch(result);
+            deltas = store.saveMatch(result);
           } catch (e) {
             log?.(`saving match ${r.id} failed: ${String(e)}`);
-            return [0, 0];
+            return deltas;
           }
+          this.analyse(r.id, result.players, result.games);
+          if (tournament) {
+            try {
+              this.tournaments.matchEnded(
+                tournament.ref,
+                tournament.slot,
+                result.players[result.winner],
+                result.score,
+              );
+            } catch (e) {
+              log?.(`tournament update after ${r.id} failed: ${String(e)}`);
+            }
+          }
+          return deltas;
         },
       },
     );
     for (const [seat, pid] of ids.entries()) {
+      this.removeFromQueues(pid);
+      this.removeInvites(pid);
       this.roomByPlayer.set(pid, room);
       const conn = this.connByPlayer.get(pid);
       if (conn) room.attach(seat as 0 | 1, conn);
@@ -444,6 +506,26 @@ export class Lobby {
       `match ${room.id} started: ${variant}/${length}${rating.rated ? "" : ` (unrated: ${rating.reason})`}`,
     );
     room.start();
+    return room.id;
+  }
+
+  /** Compares both players' checker play with the bot in the background and stores it. */
+  private analyse(
+    matchId: string,
+    players: readonly [string, string],
+    games: Parameters<Analyzer["analyse"]>[0],
+  ) {
+    const { analyzer, store, log } = this.opts;
+    if (!analyzer) return;
+    analyzer
+      .analyse(games)
+      .then((a) => {
+        if (!a) return;
+        for (const seat of [0, 1] as const) {
+          if (a[seat].decisions > 0) store.saveAnalysis(matchId, players[seat], a[seat]);
+        }
+      })
+      .catch((e) => log?.(`analysis of ${matchId} failed: ${String(e)}`));
   }
 
   private removeFromQueues(id: string): void {
@@ -466,7 +548,6 @@ export class Lobby {
       if (now - inv.createdAt > INVITE_TTL_MS) this.invites.delete(code);
   }
 
-  /** Stops all rooms and timers (server shutdown). */
   /** Ends a banned player's connection; a running match is forfeited after the grace period. */
   kick(playerId: string): void {
     this.removeFromQueues(playerId);
@@ -485,6 +566,7 @@ export class Lobby {
     return done?.matchId === matchId && done.opponentId === b;
   }
 
+  /** Stops all rooms and timers (server shutdown). */
   dispose(): void {
     clearInterval(this.sweepTimer);
     for (const room of new Set(this.roomByPlayer.values())) room.dispose();

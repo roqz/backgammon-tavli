@@ -22,6 +22,7 @@ import {
 import { useOnline } from "../online/store";
 import type { GameRecord } from "../store/archive";
 import { AuthForm, PlayerSheet, ProfileTab } from "./OnlineProfile";
+import { TournamentPanel } from "./TournamentPanel";
 
 const variantName = (v: MatchVariantId, tavli: string) => (v === "tavli" ? tavli : getVariant(v).name);
 
@@ -232,13 +233,18 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
 export function OnlineScreen({
   onBack,
   onReplay,
+  tournament,
 }: {
   onBack: () => void;
   onReplay: (records: GameRecord[]) => void;
+  /** Open the tournaments tab with this tournament expanded. */
+  tournament?: string | null;
 }) {
   const t = useT();
   const { profile, serverUrl } = useOnline();
-  const [tab, setTab] = useState<"play" | "ranking" | "profile">("play");
+  const [tab, setTab] = useState<"play" | "tournaments" | "ranking" | "profile">(
+    tournament ? "tournaments" : "play",
+  );
 
   // Connect and refresh account data once per profile (not on every profile field change).
   const profileId = profile?.id;
@@ -275,11 +281,13 @@ export function OnlineScreen({
             onChange={setTab}
             options={[
               { value: "play", label: t.playTab },
+              { value: "tournaments", label: t.tournamentsTab },
               { value: "ranking", label: t.leaderboard },
               { value: "profile", label: t.profileTab },
             ]}
           />
           {tab === "play" && <PlayPanel />}
+          {tab === "tournaments" && <TournamentPanel focus={tournament} onReplay={onReplay} />}
           {tab === "ranking" && <LeaderboardPanel onReplay={onReplay} />}
           {tab === "profile" && <ProfileTab onReplay={onReplay} />}
         </>

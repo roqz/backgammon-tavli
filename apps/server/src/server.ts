@@ -15,9 +15,11 @@ import {
   type ServerMessage,
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
+import { type AnalysisMode, Analyzer } from "./analysis";
 import { AccountError, Store } from "./db";
 import { type FairPlayOptions, Lobby, type MatchmakingOptions } from "./lobby";
 import type { Conn, RoomTimings } from "./room";
+import type { TournamentOptions } from "./tournaments";
 
 export interface ServerOptions {
   readonly port: number;
@@ -35,6 +37,9 @@ export interface ServerOptions {
   readonly trustProxy?: boolean;
   /** Enables the moderation API (header `X-Admin-Token`); at least 16 characters. */
   readonly adminToken?: string;
+  /** Fair-play analysis of finished matches: worker thread (production), inline or off. */
+  readonly analysis?: AnalysisMode;
+  readonly tournaments?: Partial<TournamentOptions>;
   readonly log?: (msg: string) => void;
 }
 
@@ -103,6 +108,7 @@ export interface RunningServer {
 export const startServer = async (opts: ServerOptions): Promise<RunningServer> => {
   const log = opts.log ?? (() => {});
   const store = new Store(opts.dbPath);
+  const analyzer = new Analyzer(opts.analysis ?? "inline", log);
   const lobby = new Lobby({
     store,
     timings: { ...DEFAULT_TIMINGS, ...opts.timings },
@@ -110,6 +116,8 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     randomSeats: opts.randomSeats,
     matchmaking: opts.matchmaking,
     fairPlay: opts.fairPlay,
+    analyzer,
+    tournaments: opts.tournaments,
   });
   const allowRegister = rateLimiter(10, 60_000);
   const cors = opts.corsOrigin ?? "*";
@@ -214,6 +222,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     if (path.startsWith("/api/admin/")) {
       if (!allowAdmin(clientIpOf(req))) throw new HttpError(429, "too many requests");
       requireAdmin(req);
+      if (req.method === "GET" && path === "/api/admin/signals") return store.signals();
       if (req.method === "GET" && path === "/api/admin/reports")
         return store.reports(url.searchParams.get("status") !== "resolved");
       let a = /^\/api\/admin\/reports\/(\d{1,12})\/resolve$/.exec(path);
@@ -246,11 +255,18 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         throw new HttpError(400, "unknown variant");
       return store.leaderboard(variant as MatchVariantId);
     }
+    if (req.method === "GET" && path === "/api/tournaments") return lobby.tournaments.list();
     let m = /^\/api\/players\/([\w-]{1,64})$/.exec(path);
     if (req.method === "GET" && m) {
       const profile = store.profile(m[1]!);
       if (!profile) throw new HttpError(404, "not found");
       return profile;
+    }
+    m = /^\/api\/tournaments\/([\w-]{1,64})$/.exec(path);
+    if (req.method === "GET" && m) {
+      const view = lobby.tournaments.view(m[1]!);
+      if (!view) throw new HttpError(404, "not found");
+      return view;
     }
     m = /^\/api\/matches\/([\w-]{1,64})$/.exec(path);
     if (req.method === "GET" && m) {
@@ -353,6 +369,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     close: async () => {
       clearInterval(heartbeat);
       lobby.dispose();
+      await analyzer.close();
       for (const ws of wss.clients) ws.terminate();
       await new Promise<void>((resolve) => wss.close(() => resolve()));
       await new Promise<void>((resolve) => http.close(() => resolve()));

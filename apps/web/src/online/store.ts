@@ -1,5 +1,13 @@
 import type { Player } from "@tavli/engine";
-import type { EmoteId, MatchEndReason, MatchVariantId, PublicPlayer, UnratedReason } from "@tavli/protocol";
+import type {
+  EmoteId,
+  MatchEndReason,
+  MatchVariantId,
+  PublicPlayer,
+  TournamentRef,
+  TournamentView,
+  UnratedReason,
+} from "@tavli/protocol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -41,6 +49,8 @@ export interface OnlineMatchInfo {
   readonly fairCommit: string;
   readonly mySeed: string | null;
   fairCheck: "pending" | "ok" | "failed" | null;
+  /** Set for tournament matches. */
+  readonly tournament: TournamentRef | null;
   /** Latest quick message per seat (with a counter so repeats re-trigger the bubble). */
   emote: { readonly seat: Player; readonly id: EmoteId; readonly seq: number } | null;
   /** Rematch negotiation after the match ended. */
@@ -77,6 +87,8 @@ interface OnlineStore {
   lastError: string | null;
   /** Invite code from a link, joined as soon as the connection is ready. */
   pendingJoin: string | null;
+  /** Tournaments the player takes part in, as last pushed by the server. */
+  tournaments: Record<string, TournamentView>;
   set: (patch: Partial<Omit<OnlineStore, "set">>) => void;
 }
 
@@ -91,6 +103,7 @@ export const useOnline = create<OnlineStore>()(
       match: null,
       lastError: null,
       pendingJoin: null,
+      tournaments: {},
       set: (patch) => set(patch),
     }),
     {

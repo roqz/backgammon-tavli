@@ -3,14 +3,17 @@ import { DatabaseSync } from "node:sqlite";
 import type { GameResult, TurnRecord } from "@tavli/engine";
 import type {
   AdminReport,
+  AnalysisSummary,
   FairnessReveal,
   LeaderboardEntry,
   MatchEndReason,
   MatchSummary,
   MatchVariantId,
   ModerationInfo,
+  ModerationSignals,
   ProfileResponse,
   PublicPlayer,
+  PublicPlayerRef,
   RatingEntry,
 } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
@@ -70,6 +73,17 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS reports_once ON reports(reporter, reported, coalesce(match_id, ''));
 CREATE INDEX IF NOT EXISTS reports_open ON reports(resolved_at, created_at);
+CREATE TABLE IF NOT EXISTS analyses (
+  match_id TEXT NOT NULL,
+  player_id TEXT NOT NULL REFERENCES players(id),
+  decisions INTEGER NOT NULL,
+  agree INTEGER NOT NULL,
+  loss REAL NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (match_id, player_id)
+);
+CREATE INDEX IF NOT EXISTS analyses_player ON analyses(player_id, created_at);
+CREATE INDEX IF NOT EXISTS matches_ended ON matches(ended_at);
 `;
 
 /** Columns added after the first release (applied once, idempotent). */
@@ -84,6 +98,22 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
 
 /** How many reports one player may file per day. */
 export const REPORTS_PER_DAY = 10;
+
+/**
+ * Fair-play signal thresholds. Bot agreement: the medium bot reaches 70–88 % in self-play, the
+ * strong bot itself 100 %; 92 % over 150+ decisions is very unusual for a person.
+ */
+export const SIGNALS = {
+  days: 90,
+  botLikeDecisions: 150,
+  botLikeAgreement: 0.92,
+  forfeitMatches: 8,
+  forfeitRate: 0.3,
+  dumpingMatches: 3,
+  dumpingDays: 30,
+  /** A game resigned within this many history records counts as an early resignation. */
+  earlyResignRecords: 10,
+} as const;
 
 /** Errors a client may see, with an HTTP status. */
 export class AccountError extends Error {
@@ -160,7 +190,8 @@ export interface FinishedMatch {
 
 /** Persistence on SQLite (node:sqlite): guest players, per-variant FIBS ratings, match archive. */
 export class Store {
-  private readonly db: DatabaseSync;
+  /** Also used by the tournament tables (tournaments.ts). */
+  readonly db: DatabaseSync;
 
   constructor(path: string) {
     this.db = new DatabaseSync(path);
@@ -533,6 +564,134 @@ export class Store {
       forfeits: count(
         "SELECT COUNT(*) AS n FROM matches WHERE reason != 'won' AND ((p0 = ?1 AND winner = 1) OR (p1 = ?1 AND winner = 0))",
       ),
+      analysis: this.analysisSummary(playerId),
+    };
+  }
+
+  // ---- fair-play analysis ------------------------------------------------------------------------
+
+  saveAnalysis(
+    matchId: string,
+    playerId: string,
+    a: { decisions: number; agree: number; loss: number },
+  ): void {
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO analyses (match_id, player_id, decisions, agree, loss, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(matchId, playerId, a.decisions, a.agree, a.loss, new Date().toISOString());
+  }
+
+  private since(days: number): string {
+    return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  /** Agreement with the bot over the last `SIGNALS.days` days (null without analysed decisions). */
+  analysisSummary(playerId: string): AnalysisSummary | null {
+    const row = this.db
+      .prepare(
+        "SELECT SUM(decisions) AS d, SUM(agree) AS a, SUM(loss) AS l FROM analyses WHERE player_id = ? AND created_at >= ?",
+      )
+      .get(playerId, this.since(SIGNALS.days)) as { d: number | null; a: number | null; l: number | null };
+    if (!row.d) return null;
+    return { decisions: row.d, agreement: (row.a ?? 0) / row.d, averageLoss: (row.l ?? 0) / row.d };
+  }
+
+  private playerRef(id: string): PublicPlayerRef {
+    const row = this.db.prepare("SELECT name, banned_at FROM players WHERE id = ?").get(id) as
+      | { name: string; banned_at: string | null }
+      | undefined;
+    return { id, name: row?.name ?? "?", banned: !!row?.banned_at };
+  }
+
+  /** Fair-play signals for the moderation screen. */
+  signals(): ModerationSignals {
+    const since = this.since(SIGNALS.days);
+    const botLike = (
+      this.db
+        .prepare(
+          `SELECT player_id, SUM(decisions) AS d, SUM(agree) AS a, SUM(loss) AS l FROM analyses
+           WHERE created_at >= ? GROUP BY player_id
+           HAVING SUM(decisions) >= ? AND 1.0 * SUM(agree) / SUM(decisions) >= ?
+           ORDER BY 1.0 * SUM(agree) / SUM(decisions) DESC LIMIT 100`,
+        )
+        .all(since, SIGNALS.botLikeDecisions, SIGNALS.botLikeAgreement) as {
+        player_id: string;
+        d: number;
+        a: number;
+        l: number;
+      }[]
+    ).map((r) => ({
+      player: this.playerRef(r.player_id),
+      decisions: r.d,
+      agreement: r.a / r.d,
+      averageLoss: r.l / r.d,
+    }));
+
+    const forfeits = (
+      this.db
+        .prepare(
+          `SELECT pid, COUNT(*) AS n, SUM(lost_cheap) AS f FROM (
+             SELECT p0 AS pid, CASE WHEN winner = 1 AND reason != 'won' THEN 1 ELSE 0 END AS lost_cheap FROM matches WHERE ended_at >= ?1
+             UNION ALL
+             SELECT p1 AS pid, CASE WHEN winner = 0 AND reason != 'won' THEN 1 ELSE 0 END AS lost_cheap FROM matches WHERE ended_at >= ?1
+           ) GROUP BY pid HAVING COUNT(*) >= ?2 AND 1.0 * SUM(lost_cheap) / COUNT(*) >= ?3
+           ORDER BY 1.0 * SUM(lost_cheap) / COUNT(*) DESC LIMIT 100`,
+        )
+        .all(since, SIGNALS.forfeitMatches, SIGNALS.forfeitRate) as { pid: string; n: number; f: number }[]
+    ).map((r) => ({ player: this.playerRef(r.pid), matches: r.n, forfeits: r.f }));
+
+    // Cheap losses in rated matches: forfeit/abandon, or a game resigned right at the start.
+    const rows = this.db
+      .prepare(
+        `SELECT p0, p1, winner, reason, games FROM matches
+         WHERE ended_at >= ? AND (rating_delta0 != 0 OR rating_delta1 != 0)`,
+      )
+      .all(this.since(SIGNALS.dumpingDays)) as {
+      p0: string;
+      p1: string;
+      winner: number;
+      reason: string;
+      games: string;
+    }[];
+    const pairs = new Map<string, number>();
+    for (const r of rows) {
+      const loserSeat = r.winner === 0 ? 1 : 0;
+      let cheap = r.reason !== "won";
+      if (!cheap) {
+        const games = JSON.parse(r.games) as StoredGame[];
+        cheap = games.some(
+          (g) =>
+            g.history.length <= SIGNALS.earlyResignRecords &&
+            g.history.some((h) => h.kind === "resign" && h.player === loserSeat),
+        );
+      }
+      if (!cheap) continue;
+      const key = `${loserSeat === 0 ? r.p0 : r.p1}|${loserSeat === 0 ? r.p1 : r.p0}`;
+      pairs.set(key, (pairs.get(key) ?? 0) + 1);
+    }
+    const dumping = [...pairs]
+      .filter(([, n]) => n >= SIGNALS.dumpingMatches)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 100)
+      .map(([key, n]) => {
+        const [loser, winner] = key.split("|") as [string, string];
+        return { loser: this.playerRef(loser), winner: this.playerRef(winner), matches: n };
+      });
+
+    return {
+      botLike,
+      forfeits,
+      dumping,
+      thresholds: {
+        botLikeDecisions: SIGNALS.botLikeDecisions,
+        botLikeAgreement: SIGNALS.botLikeAgreement,
+        forfeitMatches: SIGNALS.forfeitMatches,
+        forfeitRate: SIGNALS.forfeitRate,
+        dumpingMatches: SIGNALS.dumpingMatches,
+        days: SIGNALS.days,
+      },
     };
   }
 }
