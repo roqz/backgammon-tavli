@@ -34,6 +34,12 @@ services:
     build:
       context: ..
       dockerfile: deploy/web.Dockerfile
+      # Imprint and privacy notice: name, address ("street|zip city"), e-mail, hosting provider
+      args:
+        VITE_OPERATOR_NAME: ${OPERATOR_NAME:-}
+        VITE_OPERATOR_ADDRESS: ${OPERATOR_ADDRESS:-}
+        VITE_OPERATOR_EMAIL: ${OPERATOR_EMAIL:-}
+        VITE_HOSTING: ${HOSTING:-}
     restart: unless-stopped
     depends_on:
       server:

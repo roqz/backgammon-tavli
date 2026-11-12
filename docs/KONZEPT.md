@@ -1,6 +1,6 @@
 # Backgammon/Tavli – Neuaufbau: Konzept & Plan
 
-Stand: 2026-11-11
+Stand: 2026-11-12
 
 ## Entscheidungen
 
@@ -31,6 +31,11 @@ pnpm-Monorepo (Turborepo erst bei Bedarf)
 ├─ apps/web            React 19, Vite, TS strict, Zustand, TanStack Router, Tailwind + shadcn/ui, PWA, Dexie
 └─ apps/server         (Online-Phase) Colyseus + Better Auth + Postgres (Drizzle)
 ```
+
+**Umgesetzt wurde bewusst schlanker** (Stand heute):
+- `packages/engine`, `packages/ai`, `packages/protocol` wie geplant; kein eigenes `ui-board`-Paket, das SVG-Brett liegt in `apps/web/src/board`
+- `apps/web`: React 19, Vite, Zustand, Tailwind 4, Motion, eigene History-Navigation statt TanStack Router, eigene UI-Bausteine statt shadcn/ui, Archiv in localStorage (200 Partien) statt Dexie; 3D-Würfel mit three.js ohne Physik-Engine
+- `apps/server`: eigener WebSocket-Server (`ws`) statt Colyseus, SQLite (`node:sqlite`) statt Postgres/Drizzle, eigene Konten (scrypt, Sitzungen) statt Better Auth; reicht für eine Instanz mit einigen hundert gleichzeitigen Spielern
 
 Grundprinzip: Eine Partie ist ein Protokoll von Actions. `apply(state, action)` ist rein.
 Dieselbe Engine läuft im Browser, im Bot-Worker und auf dem Server. Wiederholung, Statistik, Undo und Netzwerk-Sync
@@ -130,9 +135,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 ### Offen in Phase 2
 
-- Playwright-E2E-Tests ins Repo übernehmen (lokal per Headless-Edge geprüft)
-- ~~Brett-Orientierung~~ (erledigt), Sounds, schönere Würfelwurf-Animation (3D kommt in Phase 4)
-- Hochformat auf dem Handy: Brett nutzt die Breite noch nicht optimal
+- alles erledigt (E2E-Tests, Sounds, 3D-Würfel, Hoch- und Querformat)
 
 ### Phase 3 – Computergegner (`packages/ai`) ✅
 
@@ -150,11 +153,10 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 | Plakoto    | 92 %                  | 63 % (24 Partien)  |
 | Fevga      | 87 %                  | 58 % (24 Partien)  |
 
-### Offen in Phase 3 / Ausblick Phase 5
+### Offen in Phase 3 / Ausblick Experten-KI
 
-- Bewertungsgewichte per Selbstspiel optimieren (z. B. Hill-Climbing/CMA-ES) – größter Hebel vor einem neuronalen Netz
-- ~~Gammon-Bewusstsein im Spiel, Match-Equity-Table~~ (erledigt, siehe „Gammons und Matchstand“)
-- Hinweis-Funktion („bester Zug“) für Menschen auf Basis desselben Bots
+- ~~Gewichte per Selbstspiel~~, ~~Gammons, Match-Equity-Table~~, ~~Hinweis-Funktion~~ (erledigt)
+- Neuronales Netz je Variante (Selbstspiel, TD(λ)); wildbg per WASM als Alternative für Backgammon
 
 ### Phase 4 – Feinschliff ✅
 
@@ -177,6 +179,8 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Ereignis-Banner über dem Brett (kein Zug möglich inkl. Grund, nur n von m Würfeln spielbar, ausgesperrt, Anwurf, Pasch, geschlagen/eingeklemmt, Verdopplung, Crawford); würfelbezogene Banner erscheinen erst, wenn die 3D-Würfel liegen
 - Ausgesperrt (Bar gegen geschlossenes Heimfeld): Zug entfällt ohne Würfeln (Engine-Aktion `pass`)
 - Ruhiger Übergang 3D → 2D-Würfel, Ausblenden statt Flackern; realistischerer synthetischer Würfelsound
+
+> Hinweis: Die folgenden „Phase 5“-Abschnitte entsprechen in der Phasentabelle oben Phase 6 (Online); die Experten-KI (Tabelle: Phase 5) steht noch aus.
 
 ### Phase 5 – Online-Modus ✅ (Basis)
 
@@ -243,10 +247,18 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Web Push ohne Fremddienst-Konto: VAPID-Schlüssel erzeugt der Server selbst (in SQLite), Verschlüsselung nach RFC 8291 mit node:crypto; Benachrichtigung, wenn ein Turniermatch bereit ist und der Spieler nicht verbunden ist; bei offener App im Hintergrund-Tab eine lokale Benachrichtigung; nur Endpunkte der bekannten Push-Dienste
 - Fair-Play-Signal „auffällig gleichmäßige Zugzeiten“: Bedenkzeit je Zugentscheidung mit echter Wahl (Würfeln bis Bestätigen), Streuung von ln(Sekunden) ≤ 0,35 über ≥ 100 Züge; Menschen liegen meist bei 0,7–1,0. Schwelle noch nicht mit echten Spielerdaten kalibriert
 
+### Härtung, Datenschutz, Bedienung ✅ (nach dem Review, siehe `docs/REVIEW.md`)
+
+- Aufgabe gibt nie mehr ab als noch möglich (Backgammon nur mit Kontakt, Stein auf der Bar oder im Heimfeld des Gewinners)
+- Server: asynchrones scrypt, Sitzungsablauf, Passwortwechsel beendet andere Sitzungen, Limits (IPv6 je /64, Verbindungen je Adresse, Fehlversuche je Konto, Einladungscodes), Namensfilter, Turniere für Gäste erst nach 3 Matches, Security-Header in Caddy
+- Datenschutz: Datenexport und Profil löschen in der App, Aufbewahrungsfristen (Gäste ohne Matches 30 Tage, Fair-Play-Daten 180 Tage, Meldungen 1 Jahr), Impressum und Datenschutzerklärung (Betreiberangaben per Build-Variablen), Quellcode-Link
+- Betrieb: tägliche Sicherung per `VACUUM INTO`, Health-Check mit Datenbank, Absturzschutz, Hinweis vor Neustart, Log-Rotation, Docker-Build und Audit in der CI, Dependabot, CodeQL, Pages erst nach grüner CI
+- Bedienung: Zurück-Taste, Fokus in Dialogen, Hoch-/Querformat auf dem Handy, Verbindungs- und „Du bist dran“-Hinweise, übersetzte Fehler, Update-Hinweis statt automatischem Neuladen
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)
-- Turniere: Zeitpläne, Turniere nur für Konten
+- Turniere: Zeitpläne
 
 ### Gammons und Matchstand im Bot ✅
 
