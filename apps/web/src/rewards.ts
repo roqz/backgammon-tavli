@@ -1,3 +1,4 @@
+import type { Frame } from "@tavli/protocol";
 import { useAchievements } from "./achievements";
 import { type BoardStyle, type BoardTheme, THEMES } from "./board/themes";
 import { useSettings } from "./store/settings";
@@ -15,12 +16,14 @@ export const DICE_SKINS: Record<Exclude<DiceSkin, "theme">, BoardTheme["die"]> =
  * contrast board is an accessibility feature, not a reward).
  */
 export const REWARDS = {
-  style: { night: "puzzle", marble: "all-variants", tournament: "online-win" } as Partial<
+  style: { night: "puzzle", marble: "all-variants", tournament: "online-win", olive: "ten-wins" } as Partial<
     Record<BoardStyle, string>
   >,
   dice: { gold: "beat-hard", ruby: "fifty-wins" } as Partial<Record<DiceSkin, string>>,
   /** Confetti after a won game. */
   fireworks: "first-win",
+  /** Dice rattling in a cup before they land. */
+  diceCup: "gammon",
 } as const;
 
 export const isUnlocked = (achievement: string | undefined, unlocked: Record<string, string>): boolean =>
@@ -41,3 +44,17 @@ export function useFireworks(): boolean {
   const unlocked = useAchievements((s) => s.unlocked);
   return on && isUnlocked(REWARDS.fireworks, unlocked);
 }
+
+/** Whether the dice cup sound is chosen and unlocked. */
+export const diceCupOn = (): boolean =>
+  useSettings.getState().diceSound === "cup" &&
+  isUnlocked(REWARDS.diceCup, useAchievements.getState().unlocked);
+
+/** Avatar frames: icon and ring colour; the achievement comes from the protocol (FRAMES). */
+export const FRAME_LOOK: Record<Frame, { icon: string; ring: string }> = {
+  gold: { icon: "👑", ring: "ring-amber-400" },
+  laurel: { icon: "🌿", ring: "ring-emerald-400" },
+  flame: { icon: "🔥", ring: "ring-orange-500" },
+  star: { icon: "🌟", ring: "ring-yellow-300" },
+  scholar: { icon: "🎓", ring: "ring-sky-400" },
+};

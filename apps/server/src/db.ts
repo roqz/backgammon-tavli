@@ -18,7 +18,7 @@ import type {
   RatingPoint,
   TimingSummary,
 } from "@tavli/protocol";
-import { MAX_FRIENDS } from "@tavli/protocol";
+import { FRAMES, type Frame, MAX_FRIENDS, type Progress } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
 
 const SCHEMA = `
@@ -94,6 +94,11 @@ CREATE TABLE IF NOT EXISTS friends (
   PRIMARY KEY (requester, addressee)
 );
 CREATE INDEX IF NOT EXISTS friends_addressee ON friends(addressee);
+CREATE TABLE IF NOT EXISTS player_progress (
+  player_id TEXT PRIMARY KEY REFERENCES players(id),
+  data TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS timings (
   match_id TEXT NOT NULL,
   player_id TEXT NOT NULL REFERENCES players(id),
@@ -117,6 +122,7 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["players", "ban_reason", "ALTER TABLE players ADD COLUMN ban_reason TEXT"],
   ["players", "last_seen", "ALTER TABLE players ADD COLUMN last_seen TEXT"],
   ["players", "deleted_at", "ALTER TABLE players ADD COLUMN deleted_at TEXT"],
+  ["players", "frame", "ALTER TABLE players ADD COLUMN frame TEXT"],
   [
     "players",
     "friends_can_watch",
@@ -261,6 +267,7 @@ export interface AccountRow {
   readonly username: string | null;
   readonly email: string | null;
   readonly friendsCanWatch: boolean;
+  readonly frame: Frame | null;
 }
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest();
@@ -385,11 +392,13 @@ export class Store {
 
   account(id: string): AccountRow | null {
     const row = this.db
-      .prepare("SELECT id, name, username, email, friends_can_watch FROM players WHERE id = ?")
-      .get(id) as (Omit<AccountRow, "friendsCanWatch"> & { friends_can_watch: number }) | undefined;
+      .prepare("SELECT id, name, username, email, friends_can_watch, frame FROM players WHERE id = ?")
+      .get(id) as
+      | (Omit<AccountRow, "friendsCanWatch" | "frame"> & { friends_can_watch: number; frame: string | null })
+      | undefined;
     if (!row) return null;
-    const { friends_can_watch, ...rest } = row;
-    return { ...rest, friendsCanWatch: friends_can_watch !== 0 };
+    const { friends_can_watch, frame, ...rest } = row;
+    return { ...rest, friendsCanWatch: friends_can_watch !== 0, frame: (frame as Frame | null) ?? null };
   }
 
   /** Whether friends may watch this player's private matches. */
@@ -575,6 +584,8 @@ export class Store {
       run("DELETE FROM timings WHERE player_id = ?");
       run("DELETE FROM reports WHERE reporter = ?1 OR reported = ?1");
       run("DELETE FROM friends WHERE requester = ?1 OR addressee = ?1");
+      run("DELETE FROM player_progress WHERE player_id = ?");
+      run("UPDATE players SET frame = NULL WHERE id = ?");
       if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
       this.db.exec("COMMIT");
     } catch (e) {
@@ -609,6 +620,7 @@ export class Store {
         for (const table of ["sessions", "ratings", "analyses", "timings"])
           this.db.prepare(`DELETE FROM ${table} WHERE player_id = ?`).run(id);
         this.db.prepare("DELETE FROM friends WHERE requester = ?1 OR addressee = ?1").run(id);
+        this.db.prepare("DELETE FROM player_progress WHERE player_id = ?").run(id);
         if (this.tableExists("push_subscriptions"))
           this.db.prepare("DELETE FROM push_subscriptions WHERE player_id = ?").run(id);
         this.db.prepare("DELETE FROM players WHERE id = ?").run(id);
@@ -702,18 +714,24 @@ export class Store {
   }
 
   /** Friends and open requests of a player, by name. */
-  friendsOf(me: string): { id: string; name: string; status: "accepted" | "incoming" | "outgoing" }[] {
+  friendsOf(me: string): {
+    id: string;
+    name: string;
+    frame: Frame | null;
+    status: "accepted" | "incoming" | "outgoing";
+  }[] {
     const rows = this.db
       .prepare(
-        `SELECT f.requester, f.addressee, f.status, p.id, p.name FROM friends f
+        `SELECT f.requester, f.addressee, f.status, p.id, p.name, p.frame FROM friends f
          JOIN players p ON p.id = CASE WHEN f.requester = ?1 THEN f.addressee ELSE f.requester END
          WHERE (f.requester = ?1 OR f.addressee = ?1) AND p.deleted_at IS NULL
          ORDER BY lower(p.name)`,
       )
-      .all(me) as { requester: string; status: string; id: string; name: string }[];
+      .all(me) as { requester: string; status: string; id: string; name: string; frame: Frame | null }[];
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
+      frame: r.frame,
       status: r.status === "accepted" ? "accepted" : r.requester === me ? "outgoing" : "incoming",
     }));
   }
@@ -745,7 +763,62 @@ export class Store {
 
   publicPlayer(playerId: string, variant: MatchVariantId): PublicPlayer {
     const p = this.getPlayer(playerId);
-    return { id: playerId, name: p?.name ?? "?", rating: Math.round(this.rating(playerId, variant).rating) };
+    return {
+      id: playerId,
+      name: p?.name ?? "?",
+      rating: Math.round(this.rating(playerId, variant).rating),
+      frame: this.frameOf(playerId),
+    };
+  }
+
+  private frameOf(playerId: string): Frame | null {
+    const row = this.db.prepare("SELECT frame FROM players WHERE id = ?").get(playerId) as
+      | { frame: string | null }
+      | undefined;
+    return (row?.frame as Frame | null) ?? null;
+  }
+
+  // ---- progress (achievements, tutorial, puzzles) -------------------------------------------
+
+  progress(playerId: string): Progress {
+    const row = this.db.prepare("SELECT data FROM player_progress WHERE player_id = ?").get(playerId) as
+      | { data: string }
+      | undefined;
+    return row ? (JSON.parse(row.data) as Progress) : { unlocked: {}, lessons: [], puzzles: {} };
+  }
+
+  /**
+   * Merges a device's progress into the stored one and returns the result: achievements keep
+   * the earliest date, lessons are united, and for puzzles the first answer of a day counts.
+   */
+  mergeProgress(playerId: string, incoming: Progress): Progress {
+    const current = this.progress(playerId);
+    const unlocked = { ...incoming.unlocked, ...current.unlocked };
+    for (const [id, at] of Object.entries(incoming.unlocked))
+      if (current.unlocked[id] && at < current.unlocked[id]!) unlocked[id] = at;
+    const puzzles = { ...incoming.puzzles, ...current.puzzles };
+    // keep about a year of puzzle days
+    const days = Object.keys(puzzles).sort().reverse();
+    for (const d of days.slice(400)) delete puzzles[d];
+    const merged: Progress = {
+      unlocked,
+      lessons: [...new Set([...current.lessons, ...incoming.lessons])].sort((a, b) => a - b),
+      puzzles,
+    };
+    this.db
+      .prepare(
+        `INSERT INTO player_progress (player_id, data, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(player_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+      )
+      .run(playerId, JSON.stringify(merged), new Date().toISOString());
+    return merged;
+  }
+
+  /** Chooses an avatar frame; only frames whose achievement is in the stored progress. */
+  setFrame(playerId: string, frame: Frame | null): boolean {
+    if (frame !== null && !this.progress(playerId).unlocked[FRAMES[frame]]) return false;
+    this.db.prepare("UPDATE players SET frame = ? WHERE id = ?").run(frame, playerId);
+    return true;
   }
 
   /** Sets a rating directly (administration and tests). */
@@ -842,13 +915,14 @@ export class Store {
   leaderboard(variant: MatchVariantId, limit = 50): LeaderboardEntry[] {
     const rows = this.db
       .prepare(
-        `SELECT r.player_id, p.name, r.rating, r.matches, r.wins FROM ratings r
+        `SELECT r.player_id, p.name, p.frame, r.rating, r.matches, r.wins FROM ratings r
          JOIN players p ON p.id = r.player_id
          WHERE r.variant = ? AND r.matches > 0 AND p.banned_at IS NULL ORDER BY r.rating DESC LIMIT ?`,
       )
       .all(variant, limit) as {
       player_id: string;
       name: string;
+      frame: Frame | null;
       rating: number;
       matches: number;
       wins: number;
@@ -856,6 +930,7 @@ export class Store {
     return rows.map((r) => ({
       playerId: r.player_id,
       name: r.name,
+      frame: r.frame,
       variant,
       rating: Math.round(r.rating),
       matches: r.matches,

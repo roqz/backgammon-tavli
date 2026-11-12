@@ -258,3 +258,27 @@ describe("rating history", () => {
     store.close();
   });
 });
+
+describe("progress and frames", () => {
+  it("merges progress from several devices; frames need their achievement", () => {
+    const store = new Store(":memory:");
+    const a = store.createPlayer("Ann").id;
+    store.mergeProgress(a, {
+      unlocked: { "first-win": "2026-11-10T00:00:00Z" },
+      lessons: [0, 1],
+      puzzles: { "2026-11-10": { solved: false, loss: 0.1 } },
+    });
+    const merged = store.mergeProgress(a, {
+      unlocked: { "first-win": "2026-11-12T00:00:00Z", tutorial: "2026-11-12T00:00:00Z" },
+      lessons: [1, 2],
+      puzzles: { "2026-11-10": { solved: true, loss: 0 }, "2026-11-11": { solved: true, loss: 0 } },
+    });
+    expect(merged.unlocked["first-win"]).toBe("2026-11-10T00:00:00Z");
+    expect(merged.lessons).toEqual([0, 1, 2]);
+    expect(merged.puzzles["2026-11-10"]!.solved).toBe(false); // the first answer counts
+    expect(store.setFrame(a, "gold")).toBe(false); // no tournament win
+    expect(store.setFrame(a, "scholar")).toBe(true);
+    expect(store.publicPlayer(a, "backgammon").frame).toBe("scholar");
+    store.close();
+  });
+});

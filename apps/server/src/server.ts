@@ -12,12 +12,14 @@ import {
   CorrAnswerSchema,
   CorrCreateSchema,
   DeleteAccountSchema,
+  FrameSchema,
   FriendRequestSchema,
   LoginSchema,
   MATCH_VARIANTS,
   type MatchVariantId,
   NameSchema,
   PasswordChangeSchema,
+  ProgressSchema,
   PushSubscribeSchema,
   PushUnsubscribeSchema,
   ReportSchema,
@@ -90,12 +92,12 @@ class HttpError extends Error {
   }
 }
 
-const readJson = async (req: IncomingMessage): Promise<unknown> => {
+const readJson = async (req: IncomingMessage, maxBytes = MAX_BODY): Promise<unknown> => {
   let size = 0;
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
     size += (chunk as Buffer).length;
-    if (size > MAX_BODY) throw new HttpError(413, "body too large");
+    if (size > maxBytes) throw new HttpError(413, "body too large");
     chunks.push(chunk as Buffer);
   }
   try {
@@ -209,6 +211,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
   const allowPasswordChange = rateLimiter(5, 15 * 60_000);
   const allowExport = rateLimiter(5, 60 * 60_000);
   const allowFriendRequest = rateLimiter(30, 60 * 60_000);
+  const allowProgress = rateLimiter(60, 60 * 60_000);
   /** Failed logins per username: after 10 in 15 minutes the account waits (against password guessing). */
   const failedLogins = rateLimiter(10, 15 * 60_000);
   const cors = opts.corsOrigin ?? "*";
@@ -311,6 +314,19 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         store.deletePlayer(player.id);
         log(`player ${player.id} deleted their profile`);
         return { ok: true };
+      }
+      if (path === "/api/account/progress" && req.method === "GET") return store.progress(player.id);
+      if (path === "/api/account/progress" && req.method === "POST") {
+        if (!allowProgress(player.id)) throw new HttpError(429, "too many requests");
+        const body = ProgressSchema.safeParse(await readJson(req, 64 * 1024));
+        if (!body.success) throw new HttpError(400, "invalid progress");
+        return store.mergeProgress(player.id, body.data);
+      }
+      if (path === "/api/account/frame" && req.method === "POST") {
+        const body = FrameSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid frame");
+        if (!store.setFrame(player.id, body.data.frame)) throw new HttpError(403, "frame not unlocked");
+        return store.account(player.id);
       }
       if (req.method === "POST" && path === "/api/account/settings") {
         const body = AccountSettingsSchema.safeParse(await readJson(req));

@@ -1,6 +1,7 @@
 import { getVariant } from "@tavli/engine";
 import { type FriendView, type LiveMatch, MATCH_VARIANTS, type MatchVariantId } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { PlayerName } from "../components/PlayerName";
 import { Button, Card, Modal, Segmented } from "../components/ui";
 import { errorOf } from "../errors";
 import { lengthText, useT } from "../i18n";
@@ -109,7 +110,7 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
             .map((f) => (
               <li key={f.id} className="flex items-center gap-2 py-2">
                 <PresenceDot presence={f.presence} />
-                <span className="min-w-0 flex-1 truncate text-stone-100">{f.name}</span>
+                <PlayerName className="min-w-0 flex-1 text-stone-100" name={f.name} frame={f.frame} />
                 <span className="text-xs text-stone-500">{t.presence[f.presence ?? "offline"]}</span>
                 {f.presence === "playing" && f.matchId && (
                   <Button variant="ghost" className="px-2 py-1 text-sm" onClick={() => onWatch(f.matchId!)}>

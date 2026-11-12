@@ -1,10 +1,11 @@
+import { FRAME_IDS, FRAMES } from "@tavli/protocol";
 import { ACHIEVEMENTS, useAchievements } from "../achievements";
 import type { THEMES } from "../board/themes";
 import { Card } from "../components/ui";
 import { useT } from "../i18n";
 import { useOnline } from "../online/store";
 import { usePuzzles } from "../puzzle";
-import { REWARDS } from "../rewards";
+import { FRAME_LOOK, REWARDS } from "../rewards";
 import { useArchive } from "../store/archive";
 import { useSettings } from "../store/settings";
 import { LESSONS } from "./TutorialScreen";
@@ -17,7 +18,13 @@ const rewardOf = (t: ReturnType<typeof useT>, id: string): string | null => {
   const dice = Object.entries(REWARDS.dice)
     .filter(([, a]) => a === id)
     .map(([d]) => `🎲 ${t.diceSkins[d as keyof typeof t.diceSkins]}`);
-  const extra = REWARDS.fireworks === id ? [`🎆 ${t.fireworks}`] : [];
+  const extra = [
+    ...(REWARDS.fireworks === id ? [`🎆 ${t.fireworks}`] : []),
+    ...(REWARDS.diceCup === id ? [`🔊 ${t.diceCup}`] : []),
+    ...FRAME_IDS.filter((f) => FRAMES[f] === id).map(
+      (f) => `${FRAME_LOOK[f].icon} ${t.frame}: ${t.frameNames[f]}`,
+    ),
+  ];
   const all = [...styles, ...dice, ...extra];
   return all.length ? all.join(", ") : null;
 };

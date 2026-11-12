@@ -178,6 +178,18 @@ export function SettingsPanel() {
       <Section title={t.appearance} icon="🎨">
         <StylePicker />
         <DicePicker />
+        {isUnlocked(REWARDS.diceCup, unlocked) ? (
+          <Toggle
+            label={t.diceCup}
+            description={t.diceCupDesc}
+            checked={s.diceSound === "cup"}
+            onChange={(on) => s.update({ diceSound: on ? "cup" : "classic" })}
+          />
+        ) : (
+          <p className="py-2 text-xs text-stone-500">
+            🔒 {t.diceCup} – {lockText(t, REWARDS.diceCup)}
+          </p>
+        )}
         {isUnlocked(REWARDS.fireworks, unlocked) && (
           <Toggle
             label={t.fireworks}

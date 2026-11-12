@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { ACHIEVEMENTS, reached, useAchievements } from "../achievements";
 import { useT } from "../i18n";
-import { fetchProfile } from "../online/client";
+import { fetchProfile, syncProgress } from "../online/client";
 import { useOnline } from "../online/store";
 import { usePuzzles } from "../puzzle";
 import { LESSONS } from "../screens/TutorialScreen";
@@ -46,6 +46,27 @@ export function AchievementLayer() {
       }),
     );
   }, [records, puzzles, lessons, profile, tournaments, profileId]);
+
+  // keep achievements, lessons and puzzle results with the profile (all devices)
+  const unlocked = useAchievements((s) => s.unlocked);
+  useEffect(() => {
+    if (!profileId || status !== "ready") return;
+    const id = setTimeout(() => {
+      const puzzleResults = Object.fromEntries(
+        Object.entries(puzzles).map(([d, r]) => [
+          d,
+          { solved: r.solved, loss: Number.isFinite(r.loss) ? r.loss : null },
+        ]),
+      );
+      syncProgress({ unlocked, lessons, puzzles: puzzleResults })
+        .then((merged) => {
+          useAchievements.getState().absorb(merged.unlocked, merged.lessons);
+          usePuzzles.getState().absorb(merged.puzzles);
+        })
+        .catch(() => {});
+    }, 1500);
+    return () => clearTimeout(id);
+  }, [profileId, status, unlocked, lessons, puzzles]);
 
   return <AchievementToast />;
 }

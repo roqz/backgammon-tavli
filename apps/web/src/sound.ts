@@ -1,5 +1,6 @@
 import type { GameState } from "@tavli/engine";
 import { useEffect, useRef } from "react";
+import { diceCupOn } from "./rewards";
 import { useGame } from "./store/game";
 import { useSettings } from "./store/settings";
 
@@ -89,7 +90,11 @@ export const sounds = {
   dice() {
     const ac = audio();
     if (!ac) return;
-    const t = ac.currentTime + 0.02;
+    // the cup: a short rattle of the dice against the leather before the throw
+    const cup = diceCupOn() ? 0.45 : 0;
+    for (let i = 0; cup > 0 && i < 9; i++)
+      noiseBurst(ac, ac.currentTime + i * rand(0.035, 0.05), 0.02, rand(1400, 2200), 0.35, "bandpass", 2);
+    const t = ac.currentTime + 0.02 + cup;
     for (let d = 0; d < 2; d++) {
       let at = t + d * rand(0.03, 0.07);
       let gap = rand(0.1, 0.14);

@@ -25,6 +25,8 @@ export interface Settings {
   diceSkin: DiceSkin;
   /** Confetti after a won game (a reward). */
   fireworks: boolean;
+  /** Dice sound: plain or rattling in a cup (a reward). */
+  diceSound: "classic" | "cup";
 }
 
 interface SettingsStore extends Settings {
@@ -54,6 +56,7 @@ export const useSettings = create<SettingsStore>()(
       showEmotes: true,
       diceSkin: "theme",
       fireworks: true,
+      diceSound: "classic",
       update: (patch) => set(patch),
     }),
     { name: "tavli.settings", version: 1 },

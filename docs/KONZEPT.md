@@ -279,7 +279,9 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 - Fernpartien mit Freunden (ein Zug pro Tag): Einladung mit Variante, Länge (auch Geldspiel) und 1, 3 oder 7 Tagen pro Entscheidung; Zustand in SQLite, Würfel vom Server, jede Entscheidung ein Request; Push „Du bist am Zug“ mit Link in die Partie; wer die Frist verpasst, verliert; beendete Partien im Match-Archiv (ungewertet); höchstens 20 offene je Spieler
 - Erfolge (15) aus lokalen Spielen, Rätseln, Tutorial, Online-Profil und Turnieren, mit Fortschritt in der Statistik und Hinweis beim Freischalten
-- Freischaltbares: Bretter Marmor, Nacht, Turnier, goldene und Rubin-Würfel, Siegesfeuerwerk; Klassisch, Modern und Hoher Kontrast sind immer frei (Kontrast ist Barrierefreiheit, keine Belohnung)
+- Freischaltbares: Bretter Marmor, Nacht, Turnier, Olive, goldene und Rubin-Würfel, Würfelbecher-Sound, Siegesfeuerwerk, Avatar-Rahmen (Gold, Lorbeer, Flamme, Stern, Doktorhut – für alle sichtbar neben dem Namen); Klassisch, Modern und Hoher Kontrast sind immer frei (Kontrast ist Barrierefreiheit, keine Belohnung)
+
+- Erfolge, Tutorial-Fortschritt und Rätsel-Ergebnisse werden mit dem Profil synchronisiert und geräteübergreifend zusammengeführt (früheste Freischaltung, erste Rätsel-Antwort zählt); der Server erlaubt einen Rahmen nur, wenn der Erfolg im gespeicherten Fortschritt steht. Erfolge sind kosmetisch und werden vom Gerät gemeldet, nicht serverseitig nachgerechnet
 
 ### Offen / nächste Schritte Online
 

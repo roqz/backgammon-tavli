@@ -5,12 +5,14 @@ import type {
   ClientMessage,
   CorrView,
   EmoteId,
+  Frame,
   FriendView,
   LeaderboardEntry,
   LiveMatch,
   MatchDetailResponse,
   MatchVariantId,
   ProfileResponse,
+  Progress,
   RegisterResponse,
   ReportReason,
   ServerMessage,
@@ -504,6 +506,11 @@ export const changePassword = (oldPassword: string, newPassword: string) =>
   rest("/api/account/password", { method: "POST", body: JSON.stringify({ oldPassword, newPassword }) });
 
 export const fetchAccount = () => rest<AccountResponse>("/api/account");
+export const setFrame = (frame: Frame | null) =>
+  rest<AccountResponse>("/api/account/frame", { method: "POST", body: JSON.stringify({ frame }) });
+/** Sends this device's achievements, lessons and puzzle results; returns the merged state. */
+export const syncProgress = (progress: Progress) =>
+  rest<Progress>("/api/account/progress", { method: "POST", body: JSON.stringify(progress) });
 export const setFriendsCanWatch = (friendsCanWatch: boolean) =>
   rest<AccountResponse>("/api/account/settings", {
     method: "POST",

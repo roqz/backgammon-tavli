@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type BoardStyle = "classic" | "modern" | "marble" | "night" | "tournament" | "contrast";
+export type BoardStyle = "classic" | "modern" | "marble" | "night" | "tournament" | "olive" | "contrast";
 
 /** Order in the settings. */
 export const BOARD_STYLES: readonly BoardStyle[] = [
@@ -9,6 +9,7 @@ export const BOARD_STYLES: readonly BoardStyle[] = [
   "marble",
   "night",
   "tournament",
+  "olive",
   "contrast",
 ];
 
@@ -216,6 +217,40 @@ export const THEMES: Record<BoardStyle, BoardTheme> = {
     ],
     die: { fill: "#fafaf9", pip: "#1c1917", edge: "#a8a29e" },
     cube: { fill: "#fafaf9", text: "#1f6b3a" },
+  },
+  /** Olive wood frame, olive-green felt, cream and dark olive points. */
+  olive: {
+    id: "olive",
+    defs: (
+      <>
+        <linearGradient id="ol-wood" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#8a7a4f" />
+          <stop offset="0.5" stopColor="#6e6038" />
+          <stop offset="1" stopColor="#57492a" />
+        </linearGradient>
+        <pattern id="ol-grain" width="180" height="16" patternUnits="userSpaceOnUse">
+          <rect width="180" height="16" fill="url(#ol-wood)" />
+          <path d="M0 5 Q45 2 90 6 T180 5" stroke="#3f3519" strokeOpacity="0.3" fill="none" />
+          <path d="M0 12 Q60 15 120 11 T180 12" stroke="#b5a46f" strokeOpacity="0.2" fill="none" />
+        </pattern>
+        {shadow(0.4)}
+      </>
+    ),
+    frame: "url(#ol-grain)",
+    felt: "#4d5a2c",
+    bar: "url(#ol-grain)",
+    tray: "#3a3220",
+    pointA: "#ece3c4",
+    pointB: "#2f3a17",
+    label: "#ece3c4",
+    highlight: "#fcd34d",
+    selected: "#93c5fd",
+    checkers: [
+      { fill: "#f7f1de", edge: "#a99d74", ring: "#d6cba6" },
+      { fill: "#3b2f1d", edge: "#1a140b", ring: "#6b5a3c" },
+    ],
+    die: { fill: "#f7f1de", pip: "#2f3a17", edge: "#a99d74" },
+    cube: { fill: "#ece3c4", text: "#2f3a17" },
   },
   /**
    * High contrast for low vision and colour blindness: black board, white and yellow points,

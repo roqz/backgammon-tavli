@@ -114,7 +114,39 @@ export interface PublicPlayer {
   readonly id: string;
   readonly name: string;
   readonly rating: number;
+  /** Avatar frame the player chose (unlocked by an achievement). */
+  readonly frame?: Frame | null;
 }
+
+// ---- progress and rewards ----------------------------------------------------------------------
+
+/** Avatar frames shown next to the name, and the achievement that unlocks each. */
+export const FRAMES = {
+  gold: "tournament-win",
+  laurel: "rating-1600",
+  flame: "puzzle-week",
+  star: "puzzle-month",
+  scholar: "tutorial",
+} as const;
+export type Frame = keyof typeof FRAMES;
+export const FRAME_IDS = Object.keys(FRAMES) as Frame[];
+
+/** Achievements, tutorial lessons and puzzle results, kept with the profile for all devices. */
+export const ProgressSchema = z.object({
+  unlocked: z
+    .record(z.string().regex(/^[a-z0-9-]{1,40}$/), z.string().max(40))
+    .refine((r) => Object.keys(r).length <= 200),
+  lessons: z.array(z.number().int().min(0).max(100)).max(100),
+  puzzles: z
+    .record(
+      z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      z.object({ solved: z.boolean(), loss: z.number().nullable() }),
+    )
+    .refine((r) => Object.keys(r).length <= 800),
+});
+export type Progress = z.infer<typeof ProgressSchema>;
+
+export const FrameSchema = z.object({ frame: z.enum(FRAME_IDS as [Frame, ...Frame[]]).nullable() });
 
 // ---- friends and spectating --------------------------------------------------------------------
 
@@ -129,6 +161,7 @@ export const MAX_FRIENDS = 200;
 export interface FriendView {
   readonly id: string;
   readonly name: string;
+  readonly frame?: Frame | null;
   /** accepted: friends · incoming: they asked you · outgoing: you asked them */
   readonly status: "accepted" | "incoming" | "outgoing";
   /** Only for accepted friends. */
@@ -314,6 +347,7 @@ export interface RatingEntry {
 export interface LeaderboardEntry extends RatingEntry {
   readonly playerId: string;
   readonly name: string;
+  readonly frame?: Frame | null;
 }
 
 export interface MatchSummary {
@@ -582,6 +616,7 @@ export interface AccountResponse {
   readonly email: string | null;
   /** Friends may watch this player's private matches (invites, challenges). */
   readonly friendsCanWatch: boolean;
+  readonly frame: Frame | null;
 }
 
 export const AccountSettingsSchema = z.object({ friendsCanWatch: z.boolean() });

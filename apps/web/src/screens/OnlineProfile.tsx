@@ -1,5 +1,8 @@
 import { getVariant } from "@tavli/engine";
 import {
+  FRAME_IDS,
+  FRAMES,
+  type Frame,
   type MatchDetailResponse,
   type MatchSummary,
   type MatchVariantId,
@@ -8,6 +11,7 @@ import {
   USERNAME_PATTERN,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { ACHIEVEMENTS, useAchievements } from "../achievements";
 import { Sparkline } from "../components/Sparkline";
 import { Button, Card, Modal, Toggle } from "../components/ui";
 import { errorOf } from "../errors";
@@ -25,9 +29,11 @@ import {
   logout,
   logoutOthers,
   register,
+  setFrame as setFrameRemote,
   setFriendsCanWatch,
 } from "../online/client";
 import { useOnline } from "../online/store";
+import { FRAME_LOOK } from "../rewards";
 import type { GameRecord } from "../store/archive";
 import { AddFriendButton } from "./FriendsPanel";
 
@@ -156,6 +162,65 @@ export function AuthForm() {
 }
 
 /** Account state: secure the guest profile with username/password, or log out. */
+/** Avatar frame next to the name; frames need their achievement. */
+function FramePicker() {
+  const t = useT();
+  const unlocked = useAchievements((s) => s.unlocked);
+  const [frame, setFrame] = useState<Frame | null | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    fetchAccount()
+      .then((a) => setFrame(a.frame))
+      .catch(() => {});
+  }, []);
+  if (frame === undefined) return null;
+  const choose = (f: Frame | null) => {
+    setError(null);
+    setFrameRemote(f)
+      .then((a) => setFrame(a.frame))
+      .catch((e: unknown) => setError(errorOf(t, e)));
+  };
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1 text-stone-100">{t.frame}</legend>
+      <p className="text-xs text-stone-500">{t.frameHint}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={frame === null ? "primary" : "ghost"}
+          className="px-3 py-1.5 text-sm"
+          onClick={() => choose(null)}
+        >
+          {t.frameNone}
+        </Button>
+        {FRAME_IDS.map((f) => {
+          const open = !!unlocked[FRAMES[f]];
+          const a = ACHIEVEMENTS.find((x) => x.id === FRAMES[f]);
+          return (
+            <Button
+              key={f}
+              variant={frame === f ? "primary" : "ghost"}
+              className="px-3 py-1.5 text-sm"
+              disabled={!open}
+              title={
+                open
+                  ? undefined
+                  : t.unlockBy.replace(
+                      "{name}",
+                      a ? `${a.icon} ${a.title[t.locale.startsWith("de") ? "de" : "en"]}` : FRAMES[f],
+                    )
+              }
+              onClick={() => choose(f)}
+            >
+              {open ? FRAME_LOOK[f].icon : "🔒"} {t.frameNames[f]}
+            </Button>
+          );
+        })}
+      </div>
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </fieldset>
+  );
+}
+
 /** Whether friends may watch one's private matches (invites, challenges). */
 function FriendsCanWatchToggle() {
   const t = useT();
@@ -204,6 +269,7 @@ function PrivacyCard() {
     <details className="rounded-xl border border-stone-800 p-3 text-sm">
       <summary className="cursor-pointer text-stone-300">🛡 {t.privacyTitle}</summary>
       <div className="mt-3 flex flex-col gap-3">
+        <FramePicker />
         <FriendsCanWatchToggle />
         <div>
           <Button disabled={busy} onClick={() => void run(exportData)}>

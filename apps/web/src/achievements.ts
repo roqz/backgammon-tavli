@@ -164,6 +164,8 @@ interface AchievementStore {
   unlock: (ids: readonly string[]) => void;
   solveLesson: (index: number) => void;
   dismiss: () => void;
+  /** Takes over what another device unlocked (no announcement). */
+  absorb: (unlocked: Record<string, string>, lessons: readonly number[]) => void;
 }
 
 export const useAchievements = create<AchievementStore>()(
@@ -185,6 +187,14 @@ export const useAchievements = create<AchievementStore>()(
       solveLesson: (index) =>
         set((s) => (s.lessons.includes(index) ? s : { lessons: [...s.lessons, index] })),
       dismiss: () => set((s) => ({ fresh: s.fresh.slice(1) })),
+      absorb: (unlocked, lessons) =>
+        set((s) => {
+          const u = { ...s.unlocked, ...unlocked };
+          const l = [...new Set([...s.lessons, ...lessons])].sort((a, b) => a - b);
+          const same =
+            Object.keys(u).length === Object.keys(s.unlocked).length && l.length === s.lessons.length;
+          return same ? s : { unlocked: u, lessons: l };
+        }),
     }),
     {
       name: "tavli.achievements",

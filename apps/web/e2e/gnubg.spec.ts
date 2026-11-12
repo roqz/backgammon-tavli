@@ -55,3 +55,26 @@ test("money session: games go on until a player ends the session", async ({ brow
     .click();
   await expect(ann.getByText(/Session beendet/)).toBeVisible({ timeout: 15_000 });
 });
+
+test("achievements sync with the profile; an unlocked frame can be chosen", async ({ browser }) => {
+  const page = await onlineGuest(browser, "Ida");
+  // as if the tutorial had been completed on this device
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "tavli.achievements",
+      JSON.stringify({
+        state: { unlocked: { tutorial: new Date().toISOString() }, lessons: [0, 1, 2, 3, 4, 5] },
+        version: 1,
+      }),
+    ),
+  );
+  await page.reload();
+  await page.getByRole("button", { name: /Online spielen/ }).click();
+  await page.getByRole("tab", { name: "Profil", exact: true }).click();
+  await page.getByText(/Daten & Konto/).click();
+  // the frame is accepted by the server only once the progress was synced
+  await expect(async () => {
+    await page.getByRole("button", { name: /Doktorhut/ }).click();
+    await expect(page.getByRole("button", { name: /Doktorhut/ })).toHaveClass(/bg-amber-500/);
+  }).toPass({ timeout: 15_000 });
+});

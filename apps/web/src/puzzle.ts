@@ -92,6 +92,8 @@ interface PuzzleStore {
   /** First answer per date. */
   results: Record<string, { solved: boolean; loss: number }>;
   record: (date: string, r: { solved: boolean; loss: number }) => void;
+  /** Results from other devices (the first answer of a day counts). */
+  absorb: (results: Record<string, { solved: boolean; loss: number | null }>) => void;
 }
 
 export const usePuzzles = create<PuzzleStore>()(
@@ -99,6 +101,19 @@ export const usePuzzles = create<PuzzleStore>()(
     (set) => ({
       results: {},
       record: (date, r) => set((s) => (s.results[date] ? s : { results: { ...s.results, [date]: r } })),
+      absorb: (results) =>
+        set((s) => {
+          const added = Object.entries(results).filter(([d]) => !s.results[d]);
+          if (added.length === 0) return s;
+          return {
+            results: {
+              ...s.results,
+              ...Object.fromEntries(
+                added.map(([d, r]) => [d, { solved: r.solved, loss: r.loss ?? Number.POSITIVE_INFINITY }]),
+              ),
+            },
+          };
+        }),
     }),
     { name: "tavli.puzzles", version: 1 },
   ),

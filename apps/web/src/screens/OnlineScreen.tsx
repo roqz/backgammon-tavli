@@ -6,6 +6,7 @@ import {
   type RatingEntry,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { PlayerName } from "../components/PlayerName";
 import { Button, Card, Segmented, Tabs } from "../components/ui";
 import { errorOf, errorText } from "../errors";
 import { lengthText, useT } from "../i18n";
@@ -230,7 +231,7 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
                 >
                   <span className="w-6 text-right text-stone-500 tabular-nums">{i + 1}</span>
                   <span className="min-w-0 flex-1 truncate">
-                    {r.name} {r.playerId === profile?.id && t.you2}
+                    <PlayerName name={r.name} frame={r.frame} /> {r.playerId === profile?.id && t.you2}
                   </span>
                   <span className="text-xs text-stone-500 tabular-nums">
                     {r.wins}/{r.matches}

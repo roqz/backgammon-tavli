@@ -16,6 +16,7 @@ import {
   pipCount,
   playerToAct,
 } from "@tavli/engine";
+import type { Frame } from "@tavli/protocol";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Board } from "../board/Board";
 import { HEIGHT, WIDTH } from "../board/geometry";
@@ -24,6 +25,7 @@ import { askBot } from "../bot/client";
 import { humanSeat, useBotDriver } from "../bot/useBotDriver";
 import { Fireworks } from "../components/AchievementLayer";
 import { BLOCKED_VISIBLE_MS, EventBanner, noPlayDelay } from "../components/EventBanner";
+import { PlayerName } from "../components/PlayerName";
 import { Button, Modal } from "../components/ui";
 import { errorText } from "../errors";
 import { turnText, useT } from "../i18n";
@@ -281,6 +283,7 @@ export function GameScreen({
   // Against the computer the board is always numbered from the human's side.
   const seat = humanSeat(players);
   const mine: Player | null = online && onlineInfo ? onlineInfo.seat : seat;
+  const frameOf = (p: Player) => (online && onlineInfo ? onlineInfo.players[p].frame : null);
   const won = g.phase === "finished" && g.result !== null && mine !== null && g.result.winner === mine;
   const opponentSeat: Player | null = online && onlineInfo ? opponent(onlineInfo.seat) : null;
 
@@ -470,6 +473,7 @@ export function GameScreen({
           <ScoreStrip
             className="lg:hidden"
             names={[name(0), name(1)]}
+            frames={[frameOf(0), frameOf(1)]}
             pips={settings.showPips ? [pipCount(rules, g.board, 0), pipCount(rules, g.board, 1)] : null}
             score={match.score}
             actor={actor}
@@ -567,7 +571,7 @@ export function GameScreen({
               <span
                 className={`flex-1 truncate ${actor === p ? "font-bold text-amber-200" : "text-stone-200"}`}
               >
-                {name(p)}
+                <PlayerName name={name(p)} frame={frameOf(p)} />
               </span>
               {settings.showPips && (
                 <span className="text-xs text-stone-500">
@@ -925,12 +929,14 @@ function useYourTurnAlert(myTurn: boolean): void {
 /** Names, pips and score above the board on small screens. */
 function ScoreStrip({
   names,
+  frames,
   pips,
   score,
   actor,
   className = "",
 }: {
   names: readonly [string, string];
+  frames?: readonly [Frame | null | undefined, Frame | null | undefined];
   pips: readonly [number, number] | null;
   score: readonly [number, number];
   actor: Player | null;
@@ -948,7 +954,7 @@ function ScoreStrip({
           <span
             className={`min-w-0 flex-1 truncate ${actor === p ? "font-semibold text-amber-100" : "text-stone-200"}`}
           >
-            {names[p]}
+            <PlayerName name={names[p]} frame={frames?.[p]} />
           </span>
           {pips && (
             <span className="text-xs text-stone-500" title={t.pips}>
