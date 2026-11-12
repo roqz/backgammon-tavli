@@ -12,12 +12,13 @@ import {
   type Move,
   type VariantId,
 } from "@tavli/engine";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAchievements } from "../achievements";
 import { Board } from "../board/Board";
 import { layoutFromBoard } from "../board/layout";
-import { THEMES } from "../board/themes";
 import { Button, Card } from "../components/ui";
 import { type Lang, useT } from "../i18n";
+import { useBoardTheme } from "../rewards";
 import { useSettings } from "../store/settings";
 import { usePortraitPhone } from "./GameScreen";
 
@@ -182,7 +183,7 @@ export { setup as lessonState };
 export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay: () => void }) {
   const t = useT();
   const lang = useSettings((s) => s.lang);
-  const style = useSettings((s) => s.style);
+  const theme = useBoardTheme();
   const portrait = usePortraitPhone();
   const [index, setIndex] = useState(0);
   const lesson = LESSONS[index]!;
@@ -191,6 +192,10 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
   const layout = useMemo(() => layoutFromBoard(state.board), [state]);
   const finished = state.phase === "moving" && canConfirm(state);
   const success = finished && lesson.goal(state);
+  const solveLesson = useAchievements((s) => s.solveLesson);
+  useEffect(() => {
+    if (success) solveLesson(index);
+  }, [success, index, solveLesson]);
 
   const go = (i: number) => {
     setIndex(i);
@@ -223,7 +228,7 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
         <Board
           state={state}
           layout={layout}
-          theme={THEMES[style]}
+          theme={theme}
           interactive={!finished}
           openingDice={null}
           numbersFor={0}

@@ -2,12 +2,12 @@ import { getVariant, type Player, pipCount } from "@tavli/engine";
 import { useEffect, useMemo, useState } from "react";
 import { Board } from "../board/Board";
 import { layoutFromBoard } from "../board/layout";
-import { THEMES } from "../board/themes";
 
 import { Button } from "../components/ui";
 import { lengthText, useT } from "../i18n";
 import { stopWatching } from "../online/client";
 import { useOnline } from "../online/store";
+import { useBoardTheme } from "../rewards";
 import { useSettings } from "../store/settings";
 import { Checker, usePortraitPhone } from "./GameScreen";
 import { roundName } from "./TournamentPanel";
@@ -18,6 +18,7 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
   const watch = useOnline((s) => s.watch);
   const lastError = useOnline((s) => s.lastError);
   const settings = useSettings();
+  const theme = useBoardTheme();
   const portrait = usePortraitPhone();
   const board = watch?.match.game.board;
   const layout = useMemo(() => (board ? layoutFromBoard(board) : null), [board]);
@@ -79,7 +80,7 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
         <Board
           state={g}
           layout={layout}
-          theme={THEMES[settings.style]}
+          theme={theme}
           interactive={false}
           openingDice={watch.opening ? { dice: watch.opening, seq: 0 } : null}
           numbersFor={settings.showNumbers ? 0 : null}

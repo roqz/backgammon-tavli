@@ -20,9 +20,9 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Board } from "../board/Board";
 import { HEIGHT, WIDTH } from "../board/geometry";
 import { layoutFromBoard, layoutMatches } from "../board/layout";
-import { THEMES } from "../board/themes";
 import { askBot } from "../bot/client";
 import { humanSeat, useBotDriver } from "../bot/useBotDriver";
+import { Fireworks } from "../components/AchievementLayer";
 import { BLOCKED_VISIBLE_MS, EventBanner, noPlayDelay } from "../components/EventBanner";
 import { Button, Modal } from "../components/ui";
 import { errorText } from "../errors";
@@ -30,6 +30,7 @@ import { turnText, useT } from "../i18n";
 import { leaveMatch, requestRematch } from "../online/client";
 import { notifyIfHidden } from "../online/push";
 import { useOnline } from "../online/store";
+import { useBoardTheme, useFireworks } from "../rewards";
 import { sounds, useGameSounds } from "../sound";
 import { type GameRecord, useArchive } from "../store/archive";
 import { useGame } from "../store/game";
@@ -62,7 +63,7 @@ const levelName = (t: T, g: GameState, r: GameResult): string => {
 };
 
 export function Checker({ player }: { player: Player }) {
-  const look = THEMES[useSettings((s) => s.style)].checkers[player];
+  const look = useBoardTheme().checkers[player];
   const fill = look.fill.startsWith("url") ? (player === 0 ? "#efe6d0" : "#3a2418") : look.fill;
   return (
     <span
@@ -181,6 +182,8 @@ export function GameScreen({
 }) {
   const t = useT();
   const settings = useSettings();
+  const theme = useBoardTheme();
+  const fireworks = useFireworks();
   const { match, players, layout, opening, busy, roll, dispatch, playChain, leave } = useGame();
   const [resigning, setResigning] = useState(false);
   const historyRef = useRef<HTMLOListElement>(null);
@@ -277,6 +280,8 @@ export function GameScreen({
   }
   // Against the computer the board is always numbered from the human's side.
   const seat = humanSeat(players);
+  const mine: Player | null = online && onlineInfo ? onlineInfo.seat : seat;
+  const won = g.phase === "finished" && g.result !== null && mine !== null && g.result.winner === mine;
   const opponentSeat: Player | null = online && onlineInfo ? opponent(onlineInfo.seat) : null;
 
   const activeHint = hint?.game === g ? hint.moves : null;
@@ -479,7 +484,7 @@ export function GameScreen({
           <Board
             state={g}
             layout={safeLayout}
-            theme={THEMES[settings.style]}
+            theme={theme}
             interactive={interactive}
             openingDice={opening}
             numbersFor={settings.showNumbers ? (seat ?? actor ?? 0) : null}
@@ -506,8 +511,8 @@ export function GameScreen({
                     ? { ...rollFx, dice: rollFx.dice.map((d) => ({ ...d, half: d.half === 0 ? 1 : 0 })) }
                     : rollFx
                 }
-                faceColor={THEMES[settings.style].die.fill}
-                pipColor={THEMES[settings.style].die.pip}
+                faceColor={theme.die.fill}
+                pipColor={theme.die.pip}
                 onDone={setDoneSeq}
                 rotated={portrait}
                 mirrored={settings.homeLeft}
@@ -852,6 +857,7 @@ export function GameScreen({
           </div>
         </Modal>
       )}
+      {won && fireworks && <Fireworks key={match.results.length} />}
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <RulesDrawer
         open={rulesOpen}

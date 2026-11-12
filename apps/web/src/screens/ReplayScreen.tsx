@@ -1,14 +1,15 @@
 import { getVariant, MAT_VARIANTS, type Player, toMat } from "@tavli/engine";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { useAchievements } from "../achievements";
 import { Board } from "../board/Board";
 import { applyMoveToLayout, layoutFromBoard } from "../board/layout";
-import { THEMES } from "../board/themes";
 import { askBot } from "../bot/client";
 import { humanSeat } from "../bot/useBotDriver";
 import { Button } from "../components/ui";
 import { turnText, useT } from "../i18n";
 import { buildFrames } from "../replay";
 import type { GameReview, MistakeClass, ReviewedTurn } from "../review";
+import { useBoardTheme } from "../rewards";
 import type { GameRecord } from "../store/archive";
 import { useSettings } from "../store/settings";
 import { usePortraitPhone } from "./GameScreen";
@@ -82,7 +83,7 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
   const portrait = usePortraitPhone();
   const homeLeft = useSettings((s) => s.homeLeft);
   const showNumbers = useSettings((s) => s.showNumbers);
-  const style = useSettings((s) => s.style);
+  const theme = useBoardTheme();
   const frames = useMemo(() => buildFrames(record.variant, record.history), [record]);
   const [index, setIndex] = useState(0);
   const [layout, setLayout] = useState(() => layoutFromBoard(frames[0]!.state.board));
@@ -99,6 +100,7 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
     setReview("running");
     try {
       setReview(await askBot({ kind: "review", variant: record.variant, history: record.history }));
+      useAchievements.getState().unlock(["analyst"]);
     } catch {
       setReview(null);
     }
@@ -163,7 +165,7 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
           <Board
             state={frame.state}
             layout={layout}
-            theme={THEMES[style]}
+            theme={theme}
             interactive={false}
             openingDice={null}
             numbersFor={showNumbers ? (seat ?? 0) : null}

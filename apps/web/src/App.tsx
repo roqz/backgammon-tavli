@@ -1,5 +1,6 @@
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AchievementLayer } from "./components/AchievementLayer";
 import { afterHistory, historySettling } from "./components/overlay";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { connect, joinInvite, watchMatch } from "./online/client";
@@ -219,6 +220,7 @@ export function App() {
         {screen === "puzzle" && <PuzzleScreen onBack={() => setScreen("menu")} />}
         <ChallengePrompt />
         <FriendLinkPrompt />
+        <AchievementLayer />
         <UpdatePrompt />
       </main>
     </MotionConfig>

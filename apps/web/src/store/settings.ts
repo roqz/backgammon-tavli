@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { BoardStyle } from "../board/themes";
+import type { DiceSkin } from "../rewards";
 
 export interface Settings {
   style: BoardStyle;
@@ -20,6 +21,10 @@ export interface Settings {
   homeLeft: boolean;
   /** Show the opponent's quick messages in online games. */
   showEmotes: boolean;
+  /** Dice look (rewards unlock more). */
+  diceSkin: DiceSkin;
+  /** Confetti after a won game (a reward). */
+  fireworks: boolean;
 }
 
 interface SettingsStore extends Settings {
@@ -47,6 +52,8 @@ export const useSettings = create<SettingsStore>()(
       ),
       homeLeft: false,
       showEmotes: true,
+      diceSkin: "theme",
+      fireworks: true,
       update: (patch) => set(patch),
     }),
     { name: "tavli.settings", version: 1 },

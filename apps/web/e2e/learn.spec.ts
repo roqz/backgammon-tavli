@@ -37,3 +37,13 @@ test("the rule book shows board diagrams", async ({ page }) => {
   await page.getByRole("button", { name: "Plakoto" }).click();
   await expect(page.getByText(/klemmt ihn ein/)).toBeVisible();
 });
+
+test("achievements: locked boards show their condition; solving a lesson counts", async ({ page }) => {
+  await page.getByRole("button", { name: /Einstellungen/ }).click();
+  await expect(page.getByRole("button", { name: /Marmor/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Hoher Kontrast/ })).toBeEnabled();
+  await page.getByRole("button", { name: "Zurück" }).click();
+  await page.getByRole("button", { name: /Statistik/ }).click();
+  await expect(page.getByTestId("achievements")).toBeVisible();
+  await expect(page.getByText(/Freischalten|Belohnung/).first()).toBeVisible();
+});

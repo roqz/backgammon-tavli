@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { type BoardStyle, THEMES } from "../board/themes";
+import { ACHIEVEMENTS, useAchievements } from "../achievements";
+import { BOARD_STYLES, type BoardStyle, THEMES } from "../board/themes";
 import { Drawer } from "../components/Drawer";
 import { Section, Toggle } from "../components/ui";
 import { useT } from "../i18n";
 import { disconnect } from "../online/client";
 import { useOnline } from "../online/store";
+import { DICE_SKINS, type DiceSkin, isUnlocked, REWARDS } from "../rewards";
 import { useSettings } from "../store/settings";
 
 /** Miniature board in the colours of a style. */
@@ -39,28 +41,98 @@ function StylePreview({ style }: { style: BoardStyle }) {
 function StylePicker() {
   const t = useT();
   const { style, update } = useSettings();
+  const unlocked = useAchievements((a) => a.unlocked);
   return (
     <div className="grid grid-cols-2 gap-3 py-3">
-      {(["classic", "modern"] as const).map((s) => (
-        <button
-          key={s}
-          type="button"
-          aria-pressed={style === s}
-          onClick={() => update({ style: s })}
-          className={`rounded-xl border-2 p-2 text-left transition-colors ${
-            style === s ? "border-amber-400 bg-amber-400/10" : "border-stone-800 hover:border-stone-600"
-          }`}
-        >
-          <StylePreview style={s} />
-          <div className="mt-2 flex items-center justify-between px-1 text-sm">
-            <span className={style === s ? "font-semibold text-amber-200" : "text-stone-300"}>
-              {s === "classic" ? t.classic : t.modern}
-            </span>
-            {style === s && <span className="text-amber-300">✓</span>}
-          </div>
-        </button>
-      ))}
+      {BOARD_STYLES.map((s) => {
+        const need = REWARDS.style[s];
+        const open = isUnlocked(need, unlocked);
+        return (
+          <button
+            key={s}
+            type="button"
+            aria-pressed={style === s}
+            disabled={!open}
+            title={open ? undefined : lockText(t, need!)}
+            onClick={() => update({ style: s })}
+            className={`rounded-xl border-2 p-2 text-left transition-colors ${
+              style === s ? "border-amber-400 bg-amber-400/10" : "border-stone-800 hover:border-stone-600"
+            }`}
+          >
+            <div className={open ? "" : "opacity-40 grayscale"}>
+              <StylePreview style={s} />
+            </div>
+            <div className="mt-2 flex items-center justify-between px-1 text-sm">
+              <span className={style === s ? "font-semibold text-amber-200" : "text-stone-300"}>
+                {open ? "" : "🔒 "}
+                {t.styleNames[s]}
+              </span>
+              {style === s && <span className="text-amber-300">✓</span>}
+            </div>
+            {!open && (
+              <div className="px-1 text-[11px] leading-snug text-stone-500">{lockText(t, need!)}</div>
+            )}
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+/** "Unlock: <achievement>" */
+const lockText = (t: ReturnType<typeof useT>, achievement: string) => {
+  const a = ACHIEVEMENTS.find((x) => x.id === achievement);
+  return t.unlockBy.replace(
+    "{name}",
+    a ? `${a.icon} ${a.title[t.locale.startsWith("de") ? "de" : "en"]}` : achievement,
+  );
+};
+
+/** Dice looks: the board's own dice or unlocked skins. */
+function DicePicker() {
+  const t = useT();
+  const { diceSkin, update } = useSettings();
+  const unlocked = useAchievements((a) => a.unlocked);
+  const skins: { id: DiceSkin; color: string; pip: string }[] = [
+    { id: "theme", color: "#fbf7ec", pip: "#2a1a10" },
+    { id: "gold", color: DICE_SKINS.gold.fill, pip: DICE_SKINS.gold.pip },
+    { id: "ruby", color: DICE_SKINS.ruby.fill, pip: DICE_SKINS.ruby.pip },
+  ];
+  return (
+    <fieldset className="flex flex-col gap-2 py-3">
+      <legend className="mb-2 text-stone-100">{t.diceSkin}</legend>
+      <div className="flex flex-wrap gap-2">
+        {skins.map((d) => {
+          const need = REWARDS.dice[d.id];
+          const open = isUnlocked(need, unlocked);
+          return (
+            <button
+              key={d.id}
+              type="button"
+              aria-pressed={diceSkin === d.id}
+              disabled={!open}
+              title={open ? undefined : lockText(t, need!)}
+              onClick={() => update({ diceSkin: d.id })}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-50 ${
+                diceSkin === d.id
+                  ? "border-amber-400 bg-amber-400/15 text-amber-200"
+                  : "border-stone-700 text-stone-200"
+              }`}
+            >
+              <span
+                aria-hidden
+                className="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold"
+                style={{ background: d.color, color: d.pip }}
+              >
+                ⚃
+              </span>
+              {open ? "" : "🔒 "}
+              {t.diceSkins[d.id]}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 
@@ -100,10 +172,20 @@ function ServerUrlField() {
 export function SettingsPanel() {
   const t = useT();
   const s = useSettings();
+  const unlocked = useAchievements((a) => a.unlocked);
   return (
     <div className="flex flex-col gap-4">
       <Section title={t.appearance} icon="🎨">
         <StylePicker />
+        <DicePicker />
+        {isUnlocked(REWARDS.fireworks, unlocked) && (
+          <Toggle
+            label={t.fireworks}
+            description={t.fireworksDesc}
+            checked={s.fireworks}
+            onChange={(fireworks) => s.update({ fireworks })}
+          />
+        )}
         <Toggle
           label={t.dice3d}
           description={t.dice3dDesc}

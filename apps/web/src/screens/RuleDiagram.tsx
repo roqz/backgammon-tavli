@@ -14,9 +14,8 @@ import {
 import { useMemo } from "react";
 import { Board } from "../board/Board";
 import { layoutFromBoard } from "../board/layout";
-import { THEMES } from "../board/themes";
 import type { Lang } from "../i18n";
-import { useSettings } from "../store/settings";
+import { useBoardTheme } from "../rewards";
 
 type Point = number | "bar" | "off";
 
@@ -122,7 +121,7 @@ export const stateOf = (d: Diagram): { state: GameState; hint: Move[] | null } =
 /** A small, read-only board with arrows and a caption, inside a rule chapter. */
 export function RuleDiagram({ id, lang }: { id: DiagramId; lang: Lang }) {
   const d: Diagram = DIAGRAMS[id];
-  const style = useSettings((s) => s.style);
+  const theme = useBoardTheme();
   const { state, hint } = useMemo(() => stateOf(d), [d]);
   const layout = useMemo(() => layoutFromBoard(state.board), [state]);
   return (
@@ -131,7 +130,7 @@ export function RuleDiagram({ id, lang }: { id: DiagramId; lang: Lang }) {
         <Board
           state={state}
           layout={layout}
-          theme={THEMES[style]}
+          theme={theme}
           interactive={false}
           openingDice={null}
           numbersFor={0}

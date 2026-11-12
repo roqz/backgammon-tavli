@@ -4,6 +4,7 @@ import { humanSeat } from "../bot/useBotDriver";
 import { Button, Card, Modal } from "../components/ui";
 import { useT } from "../i18n";
 import { type GameRecord, useArchive } from "../store/archive";
+import { AchievementsPanel } from "./AchievementsPanel";
 
 interface Tally {
   played: number;
@@ -131,6 +132,7 @@ export function StatsScreen({
         <MatImport onImport={onImport} />
       </div>
 
+      <AchievementsPanel />
       {records.length === 0 ? (
         <Card className="flex flex-col items-start gap-3">
           <p className="text-stone-400">{t.noGames}</p>

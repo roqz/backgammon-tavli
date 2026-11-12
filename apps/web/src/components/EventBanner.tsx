@@ -8,8 +8,8 @@ import {
 } from "@tavli/engine";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { THEMES } from "../board/themes";
 import { useT } from "../i18n";
+import { useBoardTheme } from "../rewards";
 import { useGame } from "../store/game";
 import { useSettings } from "../store/settings";
 
@@ -224,8 +224,8 @@ function useGameEvents(): GameEvent | null {
  */
 export function EventBanner({ placement = "top" }: { placement?: "top" | "middle" }) {
   const event = useGameEvents();
-  const style = useSettings((s) => s.style);
-  const look = event?.player !== undefined ? THEMES[style].checkers[event.player] : null;
+  const theme = useBoardTheme();
+  const look = event?.player !== undefined ? theme.checkers[event.player] : null;
   const dot = look
     ? look.fill.startsWith("url")
       ? event?.player === 0

@@ -2,18 +2,17 @@ import { applyAction, canConfirm, getVariant, type Move } from "@tavli/engine";
 import { useEffect, useMemo, useState } from "react";
 import { Board } from "../board/Board";
 import { layoutFromBoard } from "../board/layout";
-import { THEMES } from "../board/themes";
 import { askBot } from "../bot/client";
 import { Button, Card } from "../components/ui";
 import { useT } from "../i18n";
 import { gradePuzzle, type Puzzle, streak, today, usePuzzles } from "../puzzle";
-import { useSettings } from "../store/settings";
+import { useBoardTheme } from "../rewards";
 import { usePortraitPhone } from "./GameScreen";
 
 /** The puzzle of the day: find the best move; the first answer counts for the streak. */
 export function PuzzleScreen({ onBack }: { onBack: () => void }) {
   const t = useT();
-  const style = useSettings((s) => s.style);
+  const theme = useBoardTheme();
   const portrait = usePortraitPhone();
   const date = useMemo(() => today(), []);
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
@@ -89,7 +88,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
         <Board
           state={shownState}
           layout={showBest ? layoutFromBoard(puzzle.state.board) : layout}
-          theme={THEMES[style]}
+          theme={theme}
           interactive={!done && !graded}
           openingDice={null}
           numbersFor={solver}
