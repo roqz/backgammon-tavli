@@ -6,6 +6,7 @@ import { UpdatePrompt } from "./components/UpdatePrompt";
 import { connect, joinInvite, watchMatch } from "./online/client";
 import { useOnline } from "./online/store";
 import { AdminScreen } from "./screens/AdminScreen";
+import { CorrGameScreen } from "./screens/CorrScreens";
 import { ChallengePrompt, FriendLinkPrompt } from "./screens/FriendsPanel";
 import { GameScreen } from "./screens/GameScreen";
 import { LegalScreen } from "./screens/LegalScreen";
@@ -34,7 +35,8 @@ type Screen =
   | "privacy"
   | "watch"
   | "tutorial"
-  | "puzzle";
+  | "puzzle"
+  | "corr";
 
 /** Invite links look like `…/?join=ABC234`. */
 const takeJoinCode = (): string | null => {
@@ -98,6 +100,8 @@ export function App() {
   }, []);
   /** Tournament to show when opening the online screen from a tournament match. */
   const [onlineFocus, setOnlineFocus] = useState<string | null>(null);
+  /** Correspondence game shown on the "corr" screen (also from `?corr=<id>` links). */
+  const [corrId, setCorrId] = useState<string | null>(() => new URL(location.href).searchParams.get("corr"));
   const [replay, setReplay] = useState<{ records: readonly GameRecord[]; back: Screen } | null>(null);
   const replayRef = useRef(replay);
   replayRef.current = replay;
@@ -120,6 +124,15 @@ export function App() {
     };
     navigator.serviceWorker?.addEventListener("message", onMessage);
     return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
+  }, [setScreen]);
+
+  // Links from "your move" notifications open the correspondence game.
+  useEffect(() => {
+    const url = new URL(location.href);
+    if (!url.searchParams.get("corr")) return;
+    url.searchParams.delete("corr");
+    history.replaceState(history.state, "", url);
+    setScreen("corr");
   }, [setScreen]);
 
   // Friend links (`?friend=<id>`): the prompt appears once a profile exists.
@@ -186,6 +199,10 @@ export function App() {
             onBack={() => setScreen("menu")}
             onReplay={(r) => openReplay(r, "online")}
             tournament={onlineFocus}
+            onCorr={(id) => {
+              setCorrId(id);
+              setScreen("corr");
+            }}
             onWatch={(id) => {
               watchMatch(id);
               setScreen("watch");
@@ -218,6 +235,7 @@ export function App() {
           <TutorialScreen onBack={() => setScreen("menu")} onPlay={() => setScreen("new")} />
         )}
         {screen === "puzzle" && <PuzzleScreen onBack={() => setScreen("menu")} />}
+        {screen === "corr" && corrId && <CorrGameScreen id={corrId} onBack={() => setScreen("online")} />}
         <ChallengePrompt />
         <FriendLinkPrompt />
         <AchievementLayer />

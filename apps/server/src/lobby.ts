@@ -183,6 +183,10 @@ export class Lobby {
     this.sessions.set(conn, { playerId: null, ip, deviceId: null, watching: null });
   }
 
+  isConnected(playerId: string): boolean {
+    return this.connByPlayer.has(playerId);
+  }
+
   isAuthenticated(conn: Conn): boolean {
     return !!this.sessions.get(conn)?.playerId;
   }

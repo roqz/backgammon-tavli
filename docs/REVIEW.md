@@ -280,7 +280,7 @@ S = bis 1 Tag, M = einige Tage, L = mehrere Wochen
 
 **Offen ohne Eingaben von dir:**
 
-- Neuronales Netz, Korrespondenzspiel, Clubs/Ligen, weitere Varianten, Play Store per TWA
+- Neuronales Netz, Clubs/Ligen, weitere Varianten, Play Store per TWA
 
 **Offen mit Eingaben von dir:**
 

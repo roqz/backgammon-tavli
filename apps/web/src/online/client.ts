@@ -1,7 +1,9 @@
 import { createMatch } from "@tavli/engine";
 import type {
   AccountResponse,
+  ClientAction,
   ClientMessage,
+  CorrView,
   EmoteId,
   FriendView,
   LeaderboardEntry,
@@ -183,6 +185,9 @@ const onMessage = (msg: ServerMessage) => {
         set({ outgoing: { id: msg.id, to: msg.to, status: msg.status } });
       break;
     }
+    case "corr-changed":
+      set({ corrVersion: online.corrVersion + 1 });
+      break;
     case "friends-changed":
       set({ friendsVersion: online.friendsVersion + 1 });
       break;
@@ -346,6 +351,18 @@ export const addFriend = (playerId: string) =>
 export const removeFriend = (playerId: string) =>
   rest("/api/friends/remove", { method: "POST", body: JSON.stringify({ playerId }) });
 export const fetchLive = () => rest<LiveMatch[]>("/api/live");
+
+// ---- correspondence games ---------------------------------------------------------------------
+
+export const fetchCorrGames = () => rest<CorrView[]>("/api/corr");
+export const fetchCorrGame = (id: string) => rest<CorrView>(`/api/corr/${id}`);
+export const inviteCorr = (playerId: string, variant: MatchVariantId, length: MatchLength, days: 1 | 3 | 7) =>
+  rest<CorrView>("/api/corr", { method: "POST", body: JSON.stringify({ playerId, variant, length, days }) });
+export const answerCorr = (id: string, accept: boolean) =>
+  rest<CorrView>(`/api/corr/${id}/answer`, { method: "POST", body: JSON.stringify({ accept }) });
+export const corrAction = (id: string, action: ClientAction) =>
+  rest<CorrView>(`/api/corr/${id}/action`, { method: "POST", body: JSON.stringify({ action }) });
+export const abandonCorr = (id: string) => rest<CorrView>(`/api/corr/${id}/abandon`, { method: "POST" });
 
 export const challengeFriend = (playerId: string, variant: MatchVariantId, length: MatchLength) =>
   send({ t: "challenge", playerId, variant, length });

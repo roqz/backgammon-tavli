@@ -120,6 +120,8 @@ interface OnlineStore {
   friendsVersion: number;
   /** Player id from a friend link, shown once a profile exists. */
   pendingFriend: string | null;
+  /** Increments when a correspondence game changed. */
+  corrVersion: number;
   set: (patch: Partial<Omit<OnlineStore, "set">>) => void;
 }
 
@@ -140,6 +142,7 @@ export const useOnline = create<OnlineStore>()(
       outgoing: null,
       friendsVersion: 0,
       pendingFriend: null,
+      corrVersion: 0,
       set: (patch) => set(patch),
     }),
     {

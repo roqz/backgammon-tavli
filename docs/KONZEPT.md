@@ -275,6 +275,12 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - GNU-Backgammon-ID (Position-ID:Match-ID) als Export neben der XGID und als Import beim neuen Spiel (XGID oder GNUbg-ID); geprüft an der Startstellung (`4HPwATDgc/ABMA`) und der Match-ID eines neuen Geldspiels (`cAkAAAAAAAAA`), Rundlauf für Würfel, Würfelbesitz, Stand und Crawford
 - .mat-Import (GNU Backgammon, eXtreme Gammon, Jellyfish) in der Statistik: Partien werden in der Wiederholung geöffnet und können analysiert werden; jeder Zug wird über die Engine gegen die Endstellung geprüft (Ketten und Mehrfachzüge in beliebiger Schreibweise), Fehler nennen Spiel und Zug
 
+### Fernpartien, Erfolge, Designs ✅
+
+- Fernpartien mit Freunden (ein Zug pro Tag): Einladung mit Variante, Länge (auch Geldspiel) und 1, 3 oder 7 Tagen pro Entscheidung; Zustand in SQLite, Würfel vom Server, jede Entscheidung ein Request; Push „Du bist am Zug“ mit Link in die Partie; wer die Frist verpasst, verliert; beendete Partien im Match-Archiv (ungewertet); höchstens 20 offene je Spieler
+- Erfolge (15) aus lokalen Spielen, Rätseln, Tutorial, Online-Profil und Turnieren, mit Fortschritt in der Statistik und Hinweis beim Freischalten
+- Freischaltbares: Bretter Marmor, Nacht, Turnier, goldene und Rubin-Würfel, Siegesfeuerwerk; Klassisch, Modern und Hoher Kontrast sind immer frei (Kontrast ist Barrierefreiheit, keine Belohnung)
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)

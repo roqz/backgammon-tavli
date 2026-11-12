@@ -25,6 +25,7 @@ export function AchievementLayer() {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
 
   // the own online profile (ratings, wins), again after every online match
+  // biome-ignore lint/correctness/useExhaustiveDependencies: matchEnded triggers the refetch
   useEffect(() => {
     if (!profileId || status !== "ready") return;
     fetchProfile(profileId)

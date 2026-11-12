@@ -599,7 +599,8 @@ export class Store {
         `SELECT id FROM players p WHERE username IS NULL AND coalesce(last_seen, created_at) < ?
            AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.p0 = p.id OR m.p1 = p.id)
            AND NOT EXISTS (SELECT 1 FROM reports r WHERE r.reporter = p.id OR r.reported = p.id)
-           ${this.tableExists("tournament_entries") ? "AND NOT EXISTS (SELECT 1 FROM tournament_entries e WHERE e.player_id = p.id) AND NOT EXISTS (SELECT 1 FROM tournaments t WHERE t.created_by = p.id)" : ""}`,
+           ${this.tableExists("tournament_entries") ? "AND NOT EXISTS (SELECT 1 FROM tournament_entries e WHERE e.player_id = p.id) AND NOT EXISTS (SELECT 1 FROM tournaments t WHERE t.created_by = p.id)" : ""}
+           ${this.tableExists("corr_games") ? "AND NOT EXISTS (SELECT 1 FROM corr_games c WHERE c.p0 = p.id OR c.p1 = p.id)" : ""}`,
       )
       .all(before(RETENTION.guestDays)) as { id: string }[];
     this.db.exec("BEGIN");

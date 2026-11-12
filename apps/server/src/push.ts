@@ -94,6 +94,17 @@ export const tournamentReadyMessage = (lang: PushLang, ref: TournamentRef, oppon
   };
 };
 
+/** "Your move" in a correspondence game. */
+export const corrMoveMessage = (lang: PushLang, id: string, opponent: string, days: number): PushMessage => ({
+  title: `♟ ${opponent}`,
+  body:
+    lang === "de"
+      ? `Du bist am Zug in deiner Fernpartie gegen ${opponent} (${days} ${days === 1 ? "Tag" : "Tage"} Zeit).`
+      : `Your move in the correspondence game against ${opponent} (${days} ${days === 1 ? "day" : "days"}).`,
+  tag: `corr-${id}`,
+  url: `./?corr=${encodeURIComponent(id)}`,
+});
+
 /** "A friend challenges you" for a player who is not connected. */
 export const challengeMessage = (
   lang: PushLang,

@@ -139,6 +139,42 @@ export interface FriendView {
 
 export const FriendRequestSchema = z.object({ playerId: z.string().min(1).max(64) });
 
+// ---- correspondence games -------------------------------------------------------------------
+
+/** Days a player has for each decision. */
+export const CORR_DAYS = [1, 3, 7] as const;
+
+export type CorrStatus = "invited" | "active" | "finished" | "declined";
+
+export interface CorrView {
+  readonly id: string;
+  readonly variant: MatchVariantId;
+  readonly length: number;
+  readonly days: number;
+  readonly players: readonly [PublicPlayer, PublicPlayer];
+  readonly createdBy: string;
+  readonly status: CorrStatus;
+  /** null while invited or declined. */
+  readonly match: MatchState | null;
+  /** The viewer's seat. */
+  readonly seat: Player | null;
+  /** Who has to decide now (null when over). */
+  readonly toAct: Player | null;
+  /** Epoch ms by which the player to act must decide. */
+  readonly deadline: number | null;
+  readonly winner: Player | null;
+  readonly reason: string | null;
+  readonly updatedAt: string;
+}
+
+export const CorrCreateSchema = z.object({
+  playerId: z.string().min(1).max(64),
+  ...matchSetup,
+  days: z.union([z.literal(1), z.literal(3), z.literal(7)]),
+});
+export const CorrAnswerSchema = z.object({ accept: z.boolean() });
+export const CorrActionSchema = z.object({ action: ClientActionSchema });
+
 /** A running match that can be watched. */
 export interface LiveMatch {
   readonly matchId: string;
@@ -253,6 +289,8 @@ export type ServerMessage =
     }
   /** Friend requests or friendships changed: reload the list. */
   | { readonly t: "friends-changed" }
+  /** A correspondence game changed (move, invitation, end): reload it. */
+  | { readonly t: "corr-changed"; readonly id: string }
   /** A quick message from a seat (also echoed to the sender). */
   | { readonly t: "emote"; readonly seat: Player; readonly id: EmoteId }
   | { readonly t: "error"; readonly message: string }

@@ -8,6 +8,9 @@ import {
   BanSchema,
   ClaimSchema,
   ClientMessageSchema,
+  CorrActionSchema,
+  CorrAnswerSchema,
+  CorrCreateSchema,
   DeleteAccountSchema,
   FriendRequestSchema,
   LoginSchema,
@@ -23,9 +26,10 @@ import {
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
 import { type AnalysisMode, Analyzer } from "./analysis";
+import { CorrError, Correspondence } from "./correspondence";
 import { AccountError, Store } from "./db";
 import { type FairPlayOptions, Lobby, type MatchmakingOptions, type SpectatorDelay } from "./lobby";
-import { Push, type PushOptions } from "./push";
+import { corrMoveMessage, Push, type PushOptions } from "./push";
 import type { Conn, RoomTimings } from "./room";
 import type { TournamentOptions } from "./tournaments";
 
@@ -151,6 +155,8 @@ const HELLO_TIMEOUT_MS = 10_000;
 
 export interface RunningServer {
   readonly port: number;
+  /** Correspondence games (tests run the deadline check directly). */
+  readonly corr: Correspondence;
   readonly store: Store;
   readonly lobby: Lobby;
   close(): Promise<void>;
@@ -177,6 +183,26 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     push: push ?? undefined,
     spectatorDelay: opts.spectatorDelay,
   });
+  const corr = new Correspondence(
+    store,
+    {
+      notify: (id, msg) => lobby.notify(id, msg),
+      isConnected: (id) => lobby.isConnected(id),
+      yourMove: (id, game) => {
+        const opponent = game.players[game.toAct === 0 ? 1 : 0].name;
+        void push?.send(id, (lang) => corrMoveMessage(lang, game.id, opponent, game.days));
+      },
+    },
+    log,
+  );
+  const corrTimer = setInterval(() => {
+    try {
+      corr.tick();
+    } catch (e) {
+      log(`correspondence tick failed: ${String(e)}`);
+    }
+  }, 60_000);
+  corrTimer.unref();
   const allowRegister = rateLimiter(10, 60_000);
   /** Per player: renames, password changes, exports. */
   const allowRename = rateLimiter(5, 60 * 60_000);
@@ -375,6 +401,42 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     }
     if (req.method === "GET" && path === "/api/tournaments") return lobby.tournaments.list();
     if (req.method === "GET" && path === "/api/live") return lobby.liveMatches();
+    if (path.startsWith("/api/corr")) {
+      const player = authPlayer(req);
+      const run = <T>(fn: () => T): T => {
+        try {
+          return fn();
+        } catch (e) {
+          if (e instanceof CorrError) throw new HttpError(e.status, e.message);
+          throw e;
+        }
+      };
+      if (path === "/api/corr" && req.method === "GET") return corr.list(player.id);
+      if (path === "/api/corr" && req.method === "POST") {
+        const body = CorrCreateSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        const { playerId, variant, length, days } = body.data;
+        res.statusCode = 201;
+        return run(() => corr.invite(player.id, playerId, variant, length, days));
+      }
+      const c = /^\/api\/corr\/([\w-]{1,64})(?:\/(answer|action|abandon))?$/.exec(path);
+      if (c) {
+        const id = c[1]!;
+        if (!c[2] && req.method === "GET") return run(() => corr.get(player.id, id));
+        if (c[2] === "answer" && req.method === "POST") {
+          const body = CorrAnswerSchema.safeParse(await readJson(req));
+          if (!body.success) throw new HttpError(400, "invalid request");
+          return run(() => corr.answer(player.id, id, body.data.accept));
+        }
+        if (c[2] === "action" && req.method === "POST") {
+          const body = CorrActionSchema.safeParse(await readJson(req));
+          if (!body.success) throw new HttpError(400, "invalid action");
+          return run(() => corr.act(player.id, id, body.data.action));
+        }
+        if (c[2] === "abandon" && req.method === "POST") return run(() => corr.abandon(player.id, id));
+      }
+      throw new HttpError(404, "not found");
+    }
     if (path === "/api/friends" && req.method === "GET") {
       const player = authPlayer(req);
       return store.friendsOf(player.id).map((f) => ({
@@ -577,10 +639,12 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
 
   return {
     port,
+    corr,
     store,
     lobby,
     close: async () => {
       clearInterval(heartbeat);
+      clearInterval(corrTimer);
       if (maintenance) clearInterval(maintenance);
       if (firstMaintenance) clearTimeout(firstMaintenance);
       lobby.announceShutdown();
