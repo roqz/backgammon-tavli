@@ -10,6 +10,7 @@ import {
   getVariant,
   IllegalActionError,
   isClosedOut,
+  maxResultLevel,
   playerToAct,
 } from "../src";
 import { mv, play, position } from "./helpers";
@@ -141,5 +142,32 @@ describe("results", () => {
 
   it("Jacoby rule: no gammon with centred cube", () => {
     expect(finishWith({ 13: 15 }, {}, true)?.level).toBe(1);
+  });
+});
+
+describe("resignation levels", () => {
+  const max = (spec: Parameters<typeof position>[1], variant: Parameters<typeof position>[0] = BG) =>
+    maxResultLevel(position(variant, spec, 0, [2, 1]), 0);
+
+  it("no backgammon once the race is on and the loser is out of the winner's home", () => {
+    expect(max({ white: { 2: 5, 3: 10 }, black: { 13: 15 } })).toBe(2);
+  });
+
+  it("backgammon still possible with contact, a checker in the winner's home or on the bar", () => {
+    expect(max({ white: { 13: 1, 3: 14 }, black: { 13: 15 } })).toBe(3);
+    expect(max({ white: { 3: 15 }, black: { 13: 14, 24: 1 } })).toBe(3);
+    expect(max({ white: { 3: 15 }, black: { 13: 14 }, bar: [0, 1] })).toBe(3);
+  });
+
+  it("single only after the loser bore off; at most a gammon in tavli variants", () => {
+    expect(max({ white: { 3: 15 }, black: { 13: 14 }, off: [0, 1] })).toBe(1);
+    expect(max({ white: { 13: 1, 3: 14 }, black: { 13: 15 } }, "portes")).toBe(2);
+  });
+
+  it("a resignation never concedes more than the game can still end with", () => {
+    const race = position(BG, { white: { 2: 5, 3: 10 }, black: { 13: 15 } }, 1, [2, 1]);
+    expect(applyAction(race, { type: "resign", player: 1, level: 3 }).result?.level).toBe(2);
+    const offer = applyAction(race, { type: "offer-resign", player: 1, level: 3 });
+    expect(offer.resignOffer?.level).toBe(2);
   });
 });

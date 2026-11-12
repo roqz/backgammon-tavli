@@ -91,13 +91,30 @@ export const isClosedOut = (s: GameState): boolean => {
 export const canOfferResign = (s: GameState, p: Player): boolean =>
   !s.resignOffer && (s.phase === "rolling" || s.phase === "moving") && s.turn === p;
 
-/** Highest result the game can still end with for `winner` (1 once the loser has borne off). */
+/**
+ * Highest result the game can still end with for `winner`: 1 once the loser has borne off (or
+ * under the Jacoby rule with a centred cube), a backgammon only while the loser still has a
+ * checker on the bar or in the winner's home board, or could still be hit (contact).
+ */
 export const maxResultLevel = (s: GameState, winner: Player): ResultLevel => {
   const rules = getVariant(s.variant);
   const loser = opponent(winner);
-  if (s.board.off[loser] > 0) return 1;
+  const b = s.board;
+  if (b.off[loser] > 0) return 1;
   if (s.jacoby && s.cube.enabled && s.cube.value === 1) return 1;
-  return rules.backgammons ? 3 : 2;
+  if (!rules.backgammons) return 2;
+  if (b.bar[loser] > 0) return 3;
+  const path = rules.paths[winner];
+  // In the winner's path coordinates the winner moves up, the loser down.
+  let winnerBack = b.bar[winner] > 0 ? -1 : POINTS;
+  let loserFront = -1;
+  for (let k = 0; k < POINTS; k++) {
+    const point = path[k]!;
+    if (b.points[winner][point]! > 0) winnerBack = Math.min(winnerBack, k);
+    if (b.points[loser][point]! > 0) loserFront = Math.max(loserFront, k);
+  }
+  if (loserFront >= HOME_START) return 3;
+  return loserFront > winnerBack ? 3 : 2;
 };
 
 export const canDouble = (s: GameState): boolean =>
@@ -286,14 +303,18 @@ export const applyAction = (s: GameState, action: GameAction): GameState => {
     }
 
     case "resign": {
-      return finish({ ...s, resignOffer: null }, opponent(action.player), action.level, "resign", [
-        { kind: "resign", player: action.player, level: action.level },
+      if (s.phase === "finished") illegal("game is over");
+      // Never more than the game can still end with (variant, Jacoby, position).
+      const level = Math.min(action.level, maxResultLevel(s, opponent(action.player))) as ResultLevel;
+      return finish({ ...s, resignOffer: null }, opponent(action.player), level, "resign", [
+        { kind: "resign", player: action.player, level },
       ]);
     }
 
     case "offer-resign": {
       if (!canOfferResign(s, action.player)) illegal("only the player on turn may offer to resign");
-      return { ...s, resignOffer: { player: action.player, level: action.level } };
+      const level = Math.min(action.level, maxResultLevel(s, opponent(action.player))) as ResultLevel;
+      return { ...s, resignOffer: { player: action.player, level } };
     }
 
     case "accept-resign": {
