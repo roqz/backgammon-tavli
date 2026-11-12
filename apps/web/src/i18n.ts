@@ -418,6 +418,26 @@ const de = {
     "push not available on this server": "Dieser Server verschickt keine Benachrichtigungen.",
     "not registered": "Lege zuerst ein Profil an.",
   },
+  /** Board keyboard help, read by screen readers when the board gets focus. */
+  boardKeysHint:
+    "Pfeiltasten wählen einen Punkt, Eingabe oder Leertaste nimmt einen Stein und setzt ihn auf das Ziel, Escape bricht ab, S liest die Stellung vor.",
+  a11yPoint: "Punkt",
+  a11yBar: "Bar",
+  a11yOff: "Abgetragen",
+  a11yEmpty: "leer",
+  a11yWhiteOne: "weißer Stein",
+  a11yWhiteMany: "weiße Steine",
+  a11yBlackOne: "schwarzer Stein",
+  a11yBlackMany: "schwarze Steine",
+  a11yPinned: "gefangen",
+  a11yMovable: "ziehbar",
+  a11ySelected: "ausgewählt",
+  a11yTarget: "Ziel möglich",
+  a11yTargets: "Ziele",
+  a11yCancelled: "Auswahl aufgehoben",
+  a11yDice: "Würfel",
+  a11yRemaining: "übrig",
+  a11yLastMove: "Letzter Zug",
 };
 
 export type Dict = typeof de;
@@ -836,6 +856,25 @@ const en: Dict = {
     "push not available on this server": "This server does not send notifications.",
     "not registered": "Create a profile first.",
   },
+  boardKeysHint:
+    "Arrow keys choose a point, Enter or Space picks up a checker and puts it on a target, Escape cancels, S reads out the position.",
+  a11yPoint: "Point",
+  a11yBar: "Bar",
+  a11yOff: "Borne off",
+  a11yEmpty: "empty",
+  a11yWhiteOne: "white checker",
+  a11yWhiteMany: "white checkers",
+  a11yBlackOne: "black checker",
+  a11yBlackMany: "black checkers",
+  a11yPinned: "pinned",
+  a11yMovable: "can move",
+  a11ySelected: "selected",
+  a11yTarget: "legal target",
+  a11yTargets: "Targets",
+  a11yCancelled: "Selection cancelled",
+  a11yDice: "Dice",
+  a11yRemaining: "left",
+  a11yLastMove: "Last move",
 };
 
 export const DICTS = { de, en };
