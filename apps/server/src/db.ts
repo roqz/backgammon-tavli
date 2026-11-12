@@ -15,6 +15,7 @@ import type {
   PublicPlayer,
   PublicPlayerRef,
   RatingEntry,
+  RatingPoint,
   TimingSummary,
 } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
@@ -771,7 +772,37 @@ export class Store {
       name: p.name,
       ratings,
       recent: recent.map((r) => this.matchSummary(r.id)).filter((x): x is MatchSummary => x !== null),
+      history: this.ratingHistory(playerId),
     };
+  }
+
+  /**
+   * Rating after each of the last rated matches per variant, rebuilt backwards from the current
+   * rating with the stored rating changes.
+   */
+  ratingHistory(playerId: string, limit = 100): Partial<Record<MatchVariantId, RatingPoint[]>> {
+    const out: Partial<Record<MatchVariantId, RatingPoint[]>> = {};
+    const current = this.db
+      .prepare("SELECT variant, rating FROM ratings WHERE player_id = ?")
+      .all(playerId) as { variant: MatchVariantId; rating: number }[];
+    for (const { variant, rating } of current) {
+      const rows = this.db
+        .prepare(
+          `SELECT ended_at, CASE WHEN p0 = ?1 THEN rating_delta0 ELSE rating_delta1 END AS delta FROM matches
+           WHERE (p0 = ?1 OR p1 = ?1) AND variant = ?2 AND (rating_delta0 != 0 OR rating_delta1 != 0)
+           ORDER BY ended_at DESC LIMIT ?3`,
+        )
+        .all(playerId, variant, limit) as { ended_at: string; delta: number }[];
+      let r = rating;
+      const points: RatingPoint[] = [];
+      for (const row of rows) {
+        points.push({ at: row.ended_at, rating: Math.round(r) });
+        r -= row.delta;
+      }
+      points.push({ at: rows[rows.length - 1]?.ended_at ?? new Date().toISOString(), rating: Math.round(r) });
+      out[variant] = points.reverse();
+    }
+    return out;
   }
 
   matchSummary(id: string): MatchSummary | null {

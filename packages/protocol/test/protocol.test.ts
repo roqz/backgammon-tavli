@@ -54,21 +54,26 @@ describe("names and accounts", () => {
     expect(ClaimSchema.safeParse({ username: "anna_1", password: "12345678" }).success).toBe(true);
     expect(ClaimSchema.safeParse({ username: "a", password: "12345678" }).success).toBe(false);
     expect(ClaimSchema.safeParse({ username: "anna_1", password: "short" }).success).toBe(false);
-    expect(ClaimSchema.safeParse({ username: "anna_1", password: "12345678", email: "nope" }).success).toBe(false);
+    expect(ClaimSchema.safeParse({ username: "anna_1", password: "12345678", email: "nope" }).success).toBe(
+      false,
+    );
     expect(ClaimSchema.safeParse({ username: "anna_1", password: "12345678", email: "" }).success).toBe(true);
     expect(DeleteAccountSchema.safeParse({}).success).toBe(true);
   });
 
   it("accepts browser push subscriptions only in the expected shape", () => {
     const keys = { p256dh: "B".repeat(87), auth: "a".repeat(22) };
-    expect(PushSubscribeSchema.safeParse({ endpoint: "https://fcm.googleapis.com/x", keys, lang: "de" }).success).toBe(
-      true,
-    );
+    expect(
+      PushSubscribeSchema.safeParse({ endpoint: "https://fcm.googleapis.com/x", keys, lang: "de" }).success,
+    ).toBe(true);
     expect(PushSubscribeSchema.safeParse({ endpoint: "not a url", keys, lang: "de" }).success).toBe(false);
     expect(
-      PushSubscribeSchema.safeParse({ endpoint: "https://x.y/z", keys: { ...keys, auth: "!!" }, lang: "de" }).success,
+      PushSubscribeSchema.safeParse({ endpoint: "https://x.y/z", keys: { ...keys, auth: "!!" }, lang: "de" })
+        .success,
     ).toBe(false);
-    expect(PushSubscribeSchema.safeParse({ endpoint: "https://x.y/z", keys, lang: "fr" }).success).toBe(false);
+    expect(PushSubscribeSchema.safeParse({ endpoint: "https://x.y/z", keys, lang: "fr" }).success).toBe(
+      false,
+    );
   });
 });
 

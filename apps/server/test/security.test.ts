@@ -231,3 +231,30 @@ describe("server hardening", () => {
     expect(await api<{ ok: boolean }>(server, "/api/health")).toMatchObject({ ok: true });
   });
 });
+
+describe("rating history", () => {
+  it("rebuilds the rating after each rated match, oldest first", () => {
+    const store = new Store(":memory:");
+    const a = store.createPlayer("Ann").id;
+    const b = store.createPlayer("Ben").id;
+    for (let i = 0; i < 3; i++)
+      store.saveMatch({
+        id: `m${i}`,
+        variant: "backgammon",
+        length: 3,
+        players: [a, b],
+        winner: 0,
+        score: [3, 0],
+        reason: "won",
+        games: [],
+        startedAt: new Date().toISOString(),
+        rated: true,
+      });
+    const h = store.profile(a)!.history!.backgammon!;
+    expect(h).toHaveLength(4);
+    expect(h[0]!.rating).toBe(1500);
+    expect(h[3]!.rating).toBe(store.profile(a)!.ratings[0]!.rating);
+    expect(h[1]!.rating).toBeGreaterThan(h[0]!.rating);
+    store.close();
+  });
+});

@@ -1,6 +1,5 @@
 import {
   type Board,
-  type PlayedMove,
   bearOffLevel,
   boardKey,
   canDouble,
@@ -10,6 +9,7 @@ import {
   maxResultLevel,
   moveGenerator,
   opponent,
+  type PlayedMove,
   type Player,
   type Rng,
   type TurnOption,

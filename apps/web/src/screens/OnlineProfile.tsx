@@ -8,6 +8,7 @@ import {
   USERNAME_PATTERN,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { Sparkline } from "../components/Sparkline";
 import { Button, Card, Modal } from "../components/ui";
 import { errorOf } from "../errors";
 import { useT } from "../i18n";
@@ -459,6 +460,9 @@ export function MatchList({
               <div className="text-xs text-stone-400">
                 {variantName(r.variant, t.tavliMatch)} · {r.wins}/{r.matches}
               </div>
+              {profile.history?.[r.variant] && (
+                <Sparkline points={profile.history[r.variant]!} label={t.ratingHistory} locale={t.locale} />
+              )}
             </div>
           ))}
         </div>

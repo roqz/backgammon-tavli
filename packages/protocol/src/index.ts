@@ -201,6 +201,13 @@ export interface ProfileResponse {
   readonly name: string;
   readonly ratings: readonly RatingEntry[];
   readonly recent: readonly MatchSummary[];
+  /** Rating after each of the last rated matches per variant, oldest first. */
+  readonly history?: Readonly<Partial<Record<MatchVariantId, readonly RatingPoint[]>>>;
+}
+
+export interface RatingPoint {
+  readonly at: string;
+  readonly rating: number;
 }
 
 export const REPORT_REASONS = ["cheating", "abuse", "stalling", "other"] as const;

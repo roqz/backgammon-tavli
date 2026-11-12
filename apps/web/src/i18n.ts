@@ -325,6 +325,7 @@ const de = {
   pushDenied: "Benachrichtigungen sind im Browser blockiert. Erlaube sie in den Website-Einstellungen.",
   pushUnsupported:
     "Dieser Browser unterstützt keine Push-Benachrichtigungen (auf dem iPhone: App zum Home-Bildschirm hinzufügen).",
+  ratingHistory: "Rating-Verlauf",
   exportMatHint: "Als .mat-Datei für GNU Backgammon oder eXtreme Gammon herunterladen",
   reviewGame: "Partie analysieren",
   reviewRunning: "Analysiere die Züge …",
@@ -763,6 +764,7 @@ const en: Dict = {
   pushDenied: "Notifications are blocked in the browser. Allow them in the site settings.",
   pushUnsupported:
     "This browser does not support push notifications (on iPhone: add the app to the home screen).",
+  ratingHistory: "Rating history",
   exportMatHint: "Download as a .mat file for GNU Backgammon or eXtreme Gammon",
   reviewGame: "Analyse game",
   reviewRunning: "Analysing the moves …",
