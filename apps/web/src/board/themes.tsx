@@ -1,4 +1,32 @@
 import type { ReactNode } from "react";
+import { feltTexture, woodTexture } from "./textures";
+
+// generated once per page load (see textures.ts)
+const CLASSIC_WOOD = woodTexture({ dark: "#3b2211", mid: "#663f21", light: "#8f5f36" });
+const CLASSIC_FELT = feltTexture("#1f4d36");
+const OLIVE_WOOD = woodTexture({ dark: "#463a20", mid: "#6e6038", light: "#988a5e" }, 640, 220, 19);
+const OLIVE_FELT = feltTexture("#4d5a2c", 384, 624, 5);
+const TOURNAMENT_FELT = feltTexture("#1f6b3a", 384, 624, 9);
+
+/** A wood tile repeated over the frame. */
+const woodPattern = (id: string, href: string) => (
+  <pattern id={id} width="640" height="220" patternUnits="userSpaceOnUse">
+    <image href={href} width="640" height="220" />
+  </pattern>
+);
+
+/** Felt stretched over each half of the playing area (the vignette follows each half). */
+const feltPattern = (id: string, href: string) => (
+  <pattern
+    id={id}
+    width="1"
+    height="1"
+    patternUnits="objectBoundingBox"
+    patternContentUnits="objectBoundingBox"
+  >
+    <image href={href} width="1" height="1" preserveAspectRatio="none" />
+  </pattern>
+);
 
 export type BoardStyle = "classic" | "modern" | "marble" | "night" | "tournament" | "olive" | "contrast";
 
@@ -44,20 +72,8 @@ export interface BoardTheme {
 
 const classicDefs = (
   <>
-    <linearGradient id="cl-wood" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stopColor="#7a4f2b" />
-      <stop offset="0.5" stopColor="#5e3a1f" />
-      <stop offset="1" stopColor="#4a2d17" />
-    </linearGradient>
-    <pattern id="cl-grain" width="220" height="14" patternUnits="userSpaceOnUse">
-      <rect width="220" height="14" fill="url(#cl-wood)" />
-      <path d="M0 4 Q55 1 110 5 T220 4" stroke="#3a2210" strokeOpacity="0.25" fill="none" />
-      <path d="M0 10 Q70 13 140 9 T220 11" stroke="#9a6a3c" strokeOpacity="0.18" fill="none" />
-    </pattern>
-    <radialGradient id="cl-felt" cx="0.5" cy="0.5" r="0.75">
-      <stop offset="0" stopColor="#24563d" />
-      <stop offset="1" stopColor="#163a28" />
-    </radialGradient>
+    {woodPattern("cl-grain", CLASSIC_WOOD)}
+    {feltPattern("cl-felt", CLASSIC_FELT)}
     <linearGradient id="cl-pointA" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stopColor="#efe3c8" />
       <stop offset="1" stopColor="#d9c7a0" />
@@ -201,9 +217,14 @@ export const THEMES: Record<BoardStyle, BoardTheme> = {
   /** Like a club tournament board: green felt, cream and red points, white and red checkers. */
   tournament: {
     id: "tournament",
-    defs: shadow(0.4),
+    defs: (
+      <>
+        {shadow(0.4)}
+        {feltPattern("tn-felt", TOURNAMENT_FELT)}
+      </>
+    ),
     frame: "#3b2a1a",
-    felt: "#1f6b3a",
+    felt: "url(#tn-felt)",
     bar: "#3b2a1a",
     tray: "#2a1d12",
     pointA: "#f1e6c8",
@@ -223,21 +244,13 @@ export const THEMES: Record<BoardStyle, BoardTheme> = {
     id: "olive",
     defs: (
       <>
-        <linearGradient id="ol-wood" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8a7a4f" />
-          <stop offset="0.5" stopColor="#6e6038" />
-          <stop offset="1" stopColor="#57492a" />
-        </linearGradient>
-        <pattern id="ol-grain" width="180" height="16" patternUnits="userSpaceOnUse">
-          <rect width="180" height="16" fill="url(#ol-wood)" />
-          <path d="M0 5 Q45 2 90 6 T180 5" stroke="#3f3519" strokeOpacity="0.3" fill="none" />
-          <path d="M0 12 Q60 15 120 11 T180 12" stroke="#b5a46f" strokeOpacity="0.2" fill="none" />
-        </pattern>
+        {woodPattern("ol-grain", OLIVE_WOOD)}
+        {feltPattern("ol-felt", OLIVE_FELT)}
         {shadow(0.4)}
       </>
     ),
     frame: "url(#ol-grain)",
-    felt: "#4d5a2c",
+    felt: "url(#ol-felt)",
     bar: "url(#ol-grain)",
     tray: "#3a3220",
     pointA: "#ece3c4",
