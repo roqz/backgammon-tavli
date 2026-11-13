@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS corr_games (
   winner INTEGER,
   reason TEXT,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  league_id TEXT
 );
 CREATE INDEX IF NOT EXISTS corr_p0 ON corr_games(p0, status);
 CREATE INDEX IF NOT EXISTS corr_p1 ON corr_games(p1, status);
@@ -58,6 +59,14 @@ export interface CorrHost {
   isConnected(playerId: string): boolean;
   /** Push notification "your move" for a player who is not connected. */
   yourMove?(playerId: string, game: CorrView): void;
+  /** Result of a league game (forwarded to the league table). */
+  leagueResult?(
+    leagueId: string,
+    players: readonly [string, string],
+    winner: string,
+    score: readonly [number, number],
+  ): void;
+  leagueName?(leagueId: string): string | null;
 }
 
 interface Row {
@@ -76,6 +85,7 @@ interface Row {
   reason: string | null;
   created_at: string;
   updated_at: string;
+  league_id: string | null;
 }
 
 /**
@@ -90,6 +100,9 @@ export class Correspondence {
     private readonly log: (msg: string) => void = () => {},
   ) {
     store.db.exec(SCHEMA);
+    const cols = store.db.prepare("PRAGMA table_info(corr_games)").all() as { name: string }[];
+    if (!cols.some((c) => c.name === "league_id"))
+      store.db.exec("ALTER TABLE corr_games ADD COLUMN league_id TEXT");
   }
 
   private get db() {
@@ -118,6 +131,7 @@ export class Correspondence {
       winner: r.winner === null ? null : (r.winner as Player),
       reason: r.reason,
       updatedAt: r.updated_at,
+      league: r.league_id ? { id: r.league_id, name: this.host.leagueName?.(r.league_id) ?? "?" } : null,
     };
   }
 
@@ -161,6 +175,53 @@ export class Correspondence {
       .run(id, variant, length, days, me, friend, me, now, now);
     this.changed(id);
     return this.get(me, id);
+  }
+
+  /**
+   * A game of a correspondence league: starts right away (no invitation, no friendship needed,
+   * not counted against the limit of open games).
+   */
+  startLeagueGame(
+    leagueId: string,
+    p0: string,
+    p1: string,
+    variant: MatchVariantId,
+    length: number,
+    days: number,
+  ): string {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const m = this.autoSteps(createMatch({ variant, length, crawford: true, jacoby: length === 0 }));
+    this.db
+      .prepare(
+        `INSERT INTO corr_games (id, variant, length, days, p0, p1, created_by, status, state, deadline, created_at, updated_at, league_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        variant,
+        length,
+        days,
+        p0,
+        p1,
+        p0,
+        JSON.stringify(m),
+        Date.now() + days * DAY,
+        now,
+        now,
+        leagueId,
+      );
+    this.changed(id, true);
+    return id;
+  }
+
+  /** Ends a running game without a result (its league season is over). */
+  endWithoutResult(id: string): void {
+    const r = this.row(id);
+    if (r?.status !== "active") return;
+    this.update(id, { status: "finished", reason: "ended", deadline: null });
+    this.log(`correspondence ${id} ended without a result`);
+    this.changed(id);
   }
 
   /** The invited player accepts (the game starts) or declines. */
@@ -264,6 +325,13 @@ export class Correspondence {
       });
     } catch (e) {
       this.log(`archiving correspondence ${r.id} failed: ${String(e)}`);
+    }
+    if (r.league_id) {
+      try {
+        this.host.leagueResult?.(r.league_id, [r.p0, r.p1], winner === 0 ? r.p0 : r.p1, m?.score ?? [0, 0]);
+      } catch (e) {
+        this.log(`league update after correspondence ${r.id} failed: ${String(e)}`);
+      }
     }
   }
 

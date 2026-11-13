@@ -290,7 +290,9 @@ function CorrRow({
           {variantLabel(g.variant, t.tavliMatch)} · {lengthText(t, g.length)} ·{" "}
           {t.corrDays.replace("{d}", String(g.days))}
           {g.status === "active" && ` · ⏳ ${timeLeft(t, g.deadline)}`}
-          {g.status === "finished" && ` · ${g.winner === g.seat ? `🏆 ${t.corrWon}` : t.corrLost}`}
+          {g.status === "finished" &&
+            ` · ${g.winner === null ? t.corrEnded : g.winner === g.seat ? `🏆 ${t.corrWon}` : t.corrLost}`}
+          {g.league && ` · 🏟️ ${g.league.name}`}
         </span>
       </button>
       {children}
@@ -410,7 +412,9 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
       </div>
       <p className="text-center text-sm text-stone-300" aria-live="polite">
         {view.status === "finished"
-          ? `🏁 ${name(view.winner ?? 0)} ${t.winsMatch}`
+          ? view.winner === null
+            ? `🏁 ${t.corrEnded}`
+            : `🏁 ${name(view.winner)} ${t.winsMatch}`
           : mine
             ? `${t.yourTurn} · ⏳ ${timeLeft(t, view.deadline)}`
             : `${t.corrWaitingFor.replace("{name}", name(view.toAct ?? 0))} · ⏳ ${timeLeft(t, view.deadline)}`}

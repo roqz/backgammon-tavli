@@ -5,11 +5,15 @@ import type {
   ClientMessage,
   ClubSummary,
   ClubView,
+  CORR_DAYS,
   CorrView,
   EmoteId,
   Frame,
   FriendView,
+  LEAGUE_DIVISIONS,
+  LEAGUE_WEEKS,
   LeaderboardEntry,
+  LeagueMode,
   LeagueView,
   LiveMatch,
   MatchDetailResponse,
@@ -342,7 +346,8 @@ export const createTournament = (
   length: Exclude<MatchLength, 0>,
   size: 4 | 8 | 16,
   format: TournamentFormat = "knockout",
-) => send({ t: "tournament-create", name, variant, length, size, format });
+  clubId?: string,
+) => send({ t: "tournament-create", name, variant, length, size, format, ...(clubId ? { clubId } : {}) });
 export const joinTournament = (id: string) => send({ t: "tournament-join", id });
 
 // ---- friends and spectating -------------------------------------------------------------------
@@ -377,14 +382,17 @@ export const createLeague = (
   name: string,
   variant: MatchVariantId,
   length: Exclude<MatchLength, 0>,
-  weeks: 1 | 2 | 4 | 8,
+  weeks: (typeof LEAGUE_WEEKS)[number],
+  mode: LeagueMode = "live",
+  days: (typeof CORR_DAYS)[number] = 3,
+  divisions: (typeof LEAGUE_DIVISIONS)[number] = 1,
 ) =>
   rest<LeagueView>(`/api/clubs/${clubId}/leagues`, {
     method: "POST",
-    body: JSON.stringify({ name, variant, length, weeks }),
+    body: JSON.stringify({ name, variant, length, weeks, mode, days, divisions }),
   });
 export const fetchLeague = (id: string) => rest<LeagueView>(`/api/leagues/${id}`);
-export const leagueAction = (id: string, action: "join" | "leave" | "start") =>
+export const leagueAction = (id: string, action: "join" | "leave" | "start" | "next") =>
   rest<LeagueView>(`/api/leagues/${id}/${action}`, { method: "POST" });
 
 // ---- correspondence games ---------------------------------------------------------------------

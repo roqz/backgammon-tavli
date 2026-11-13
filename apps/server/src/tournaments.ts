@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
   started_at TEXT,
   finished_at TEXT,
   winner TEXT,
-  format TEXT NOT NULL DEFAULT 'knockout'
+  format TEXT NOT NULL DEFAULT 'knockout',
+  club_id TEXT
 );
 CREATE INDEX IF NOT EXISTS tournaments_status ON tournaments(status, created_at);
 CREATE TABLE IF NOT EXISTS tournament_entries (
@@ -91,6 +92,9 @@ export interface TournamentHost {
   push(playerId: string, view: TournamentView): void;
   /** A match of this player became ready (used for notifications). */
   matchReady?(playerId: string, view: TournamentView, ref: TournamentRef): void;
+  /** Club tournaments: the player's standing in the club, and the club's name. */
+  clubRole?(clubId: string, playerId: string): "admin" | "member" | null;
+  clubName?(clubId: string): string | null;
 }
 
 export class TournamentError extends Error {}
@@ -106,6 +110,7 @@ interface TournamentRow {
   created_by: string;
   created_at: string;
   winner: string | null;
+  club_id: string | null;
 }
 
 interface EntryRow {
@@ -230,6 +235,8 @@ export class Tournaments {
     const cols = store.db.prepare("PRAGMA table_info(tournaments)").all() as { name: string }[];
     if (!cols.some((c) => c.name === "format"))
       store.db.exec("ALTER TABLE tournaments ADD COLUMN format TEXT NOT NULL DEFAULT 'knockout'");
+    if (!cols.some((c) => c.name === "club_id"))
+      store.db.exec("ALTER TABLE tournaments ADD COLUMN club_id TEXT");
     // Rooms do not survive a restart: replay those matches.
     store.db
       .prepare(
@@ -312,18 +319,36 @@ export class Tournaments {
       roundCount: roundCount(t),
       standings: t.format === "swiss" && t.status !== "open" ? this.standings(id, all) : null,
       winner: t.winner,
+      club: t.club_id ? { id: t.club_id, name: this.host.clubName?.(t.club_id) ?? "?" } : null,
     };
   }
 
-  /** Open and running tournaments plus the most recently finished ones. */
-  list(): TournamentView[] {
+  /**
+   * Open and running tournaments plus the most recently finished ones: public tournaments and
+   * those of the given clubs (the viewer's clubs).
+   */
+  list(clubIds: readonly string[] = []): TournamentView[] {
+    const clubs = clubIds.slice(0, 50);
+    const visible = `(club_id IS NULL${clubs.length ? ` OR club_id IN (${clubs.map(() => "?").join(", ")})` : ""})`;
     const ids = this.db
       .prepare(
-        `SELECT id FROM (SELECT id FROM tournaments WHERE status IN ('open', 'running') ORDER BY created_at DESC LIMIT 100)
+        `SELECT id FROM (SELECT id FROM tournaments WHERE status IN ('open', 'running') AND ${visible} ORDER BY created_at DESC LIMIT 100)
          UNION ALL
-         SELECT id FROM (SELECT id FROM tournaments WHERE status = 'finished' ORDER BY finished_at DESC LIMIT 20)`,
+         SELECT id FROM (SELECT id FROM tournaments WHERE status = 'finished' AND ${visible} ORDER BY finished_at DESC LIMIT 20)`,
       )
-      .all() as { id: string }[];
+      .all(...clubs, ...clubs) as { id: string }[];
+    return ids.map((r) => this.view(r.id)!).filter(Boolean);
+  }
+
+  /** A club's open and running tournaments and its five latest finished ones. */
+  forClub(clubId: string): TournamentView[] {
+    const ids = this.db
+      .prepare(
+        `SELECT id FROM (SELECT id FROM tournaments WHERE club_id = ?1 AND status IN ('open', 'running') ORDER BY created_at DESC)
+         UNION ALL
+         SELECT id FROM (SELECT id FROM tournaments WHERE club_id = ?1 AND status = 'finished' ORDER BY finished_at DESC LIMIT 5)`,
+      )
+      .all(clubId) as { id: string }[];
     return ids.map((r) => this.view(r.id)!).filter(Boolean);
   }
 
@@ -366,11 +391,18 @@ export class Tournaments {
     length: number,
     size: number,
     format: TournamentFormat = "knockout",
+    clubId: string | null = null,
   ): TournamentView {
     if (this.activeTournamentOf(playerId)) throw new TournamentError("already in a tournament");
-    const account = this.store.account(playerId);
-    if (!account?.username && this.store.matchCount(playerId) < this.opts.guestMinMatches)
-      throw new TournamentError("play a few matches or create an account first");
+    if (clubId) {
+      // club admins organise club tournaments (membership is the gate, not the guest rule)
+      if (this.host.clubRole?.(clubId, playerId) !== "admin")
+        throw new TournamentError("only club admins can do that");
+    } else {
+      const account = this.store.account(playerId);
+      if (!account?.username && this.store.matchCount(playerId) < this.opts.guestMinMatches)
+        throw new TournamentError("play a few matches or create an account first");
+    }
     const open = this.db.prepare("SELECT COUNT(*) AS n FROM tournaments WHERE status = 'open'").get() as {
       n: number;
     };
@@ -378,10 +410,10 @@ export class Tournaments {
     const id = randomUUID();
     this.db
       .prepare(
-        `INSERT INTO tournaments (id, name, variant, length, size, status, created_by, created_at, format)
-         VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?)`,
+        `INSERT INTO tournaments (id, name, variant, length, size, status, created_by, created_at, format, club_id)
+         VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)`,
       )
-      .run(id, name, variant, length, size, playerId, new Date().toISOString(), format);
+      .run(id, name, variant, length, size, playerId, new Date().toISOString(), format, clubId);
     this.addEntry(id, playerId);
     this.log(`tournament ${id} created (${format}, ${variant}/${length}, ${size} players)`);
     return this.changed(id)!;
@@ -391,6 +423,7 @@ export class Tournaments {
     const t = this.row(id);
     if (t?.status !== "open") throw new TournamentError("tournament not open");
     if (this.entries(id).some((e) => e.player_id === playerId)) return this.changed(id)!;
+    if (t.club_id && !this.host.clubRole?.(t.club_id, playerId)) throw new TournamentError("members only");
     if (this.activeTournamentOf(playerId)) throw new TournamentError("already in a tournament");
     this.addEntry(id, playerId);
     if (this.entries(id).length >= t.size) this.start(id);

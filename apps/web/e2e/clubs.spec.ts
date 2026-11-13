@@ -39,7 +39,7 @@ test("a club with a league: found, join, start a season and play a league match"
 
   await toClub(ann);
   await ann.getByRole("button", { name: /Liga anlegen/ }).click();
-  await ann.getByRole("dialog").getByRole("button", { name: "1", exact: true }).click();
+  await ann.getByRole("dialog").getByRole("button", { name: "1", exact: true }).first().click();
   await ann
     .getByRole("dialog")
     .getByRole("button", { name: /Liga anlegen/ })
@@ -65,4 +65,78 @@ test("a club with a league: found, join, start a season and play a league match"
   await expect(ben.getByText(/Ann fordert dich heraus/)).toBeVisible({ timeout: 15_000 });
   await ben.getByRole("button", { name: "Annehmen" }).click();
   await expect(ann.getByText(/Backgammon · Spiel 1/)).toBeVisible({ timeout: 15_000 });
+});
+
+test("a correspondence league and a club tournament", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const dora = await onlineGuest(browser, "Dora");
+  const eli = await onlineGuest(browser, "Eli");
+  const fay = await onlineGuest(browser, "Fay");
+  const toTaverna = async (p: Page) => {
+    await p.reload();
+    await p.getByRole("button", { name: /Online spielen/ }).click();
+    await openClubs(p);
+    await p.getByRole("button", { name: /Taverna/ }).click();
+  };
+
+  await openClubs(dora);
+  await dora
+    .getByRole("button", { name: /Club gründen/ })
+    .first()
+    .click();
+  await dora.getByRole("dialog").getByLabel("Name").fill("Taverna");
+  await dora
+    .getByRole("dialog")
+    .getByRole("button", { name: /Club gründen/ })
+    .click();
+  await expect(dora.getByRole("heading", { name: /Taverna/ })).toBeVisible();
+  for (const p of [eli, fay]) {
+    await openClubs(p);
+    await p.getByLabel("Clubs suchen …").fill("tave");
+    await p.getByRole("button", { name: /Taverna/ }).click();
+    await p.getByRole("button", { name: "Beitreten" }).click();
+    await expect(p.getByText(/Mitglied/).first()).toBeVisible();
+  }
+
+  // a league played as correspondence games: all games start with the season
+  await toTaverna(dora);
+  await dora.getByRole("button", { name: /Liga anlegen/ }).click();
+  const dialog = dora.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Fernpartien", exact: true }).click();
+  await dialog.getByRole("button", { name: "1", exact: true }).first().click();
+  await dialog.getByRole("button", { name: /Liga anlegen/ }).click();
+  await dora.getByRole("button", { name: "Beitreten" }).click();
+  for (const p of [eli, fay]) {
+    await toTaverna(p);
+    await p.getByRole("button", { name: /Saison 1/ }).click();
+    await p.getByRole("button", { name: "Beitreten" }).click();
+  }
+  await toTaverna(dora);
+  await dora.getByRole("button", { name: /Saison 1/ }).click();
+  await dora.getByRole("button", { name: /Saison starten/ }).click();
+  await expect(dora.getByTestId("league-table")).toBeVisible();
+  await dora
+    .getByRole("listitem")
+    .filter({ hasText: "Eli" })
+    .getByRole("button", { name: /Zur Partie/ })
+    .click();
+  await expect(dora.locator("svg").first()).toBeVisible();
+  await expect(dora.getByText(/T\.\/Zug/)).toBeVisible();
+
+  // a club tournament: created on the club page, members join it there
+  await toTaverna(dora);
+  await dora.getByRole("button", { name: /Club-Turnier anlegen/ }).click();
+  await dora
+    .getByRole("dialog")
+    .getByRole("button", { name: /Turnier erstellen/ })
+    .click();
+  await expect(dora.getByText(/1\/8 Spieler|1 \/ 8/)).toBeVisible({ timeout: 10_000 });
+  await toTaverna(eli);
+  await eli
+    .getByRole("listitem")
+    .filter({ hasText: /Turnier von Dora/ })
+    .getByRole("button", { name: "Beitreten" })
+    .click();
+  await eli.getByRole("tab", { name: "Turniere" }).click();
+  await expect(eli.getByText("🏛 Taverna")).toBeVisible();
 });

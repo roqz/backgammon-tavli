@@ -149,7 +149,16 @@ const isActive = (x: TournamentView, me: string | undefined): boolean => {
   return !x.rounds.flat().some((m) => m.status === "done" && m.players.includes(me) && m.winner !== me);
 };
 
-function CreateForm({ onDone, disabled }: { onDone: () => void; disabled: boolean }) {
+export function CreateForm({
+  onDone,
+  disabled,
+  clubId,
+}: {
+  onDone: () => void;
+  disabled: boolean;
+  /** A club tournament (only members can join). */
+  clubId?: string;
+}) {
   const t = useT();
   const profile = useOnline((s) => s.profile);
   const [name, setName] = useState(t.tDefaultName.replace("{name}", profile?.name ?? ""));
@@ -204,7 +213,7 @@ function CreateForm({ onDone, disabled }: { onDone: () => void; disabled: boolea
           className="flex-[2]"
           disabled={disabled || !name.trim()}
           onClick={() => {
-            createTournament(name.trim(), variant, length, size, format);
+            createTournament(name.trim(), variant, length, size, format, clubId);
             onDone();
           }}
         >
@@ -249,6 +258,7 @@ function TournamentCard({
         <h3 className="text-lg font-semibold text-stone-100">🏆 {x.name}</h3>
         <span className={`rounded-full px-2 py-0.5 text-xs ${badge}`}>{t.tStatus[x.status]}</span>
       </div>
+      {x.club && <p className="-mt-2 text-xs text-stone-500">🏛 {x.club.name}</p>}
       <p className="text-sm text-stone-400">
         {t.tFormats[x.format]} · {variantLabel(x.variant, t.tavliMatch)} · {x.length}{" "}
         {x.length === 1 ? t.point : t.points} ·{" "}

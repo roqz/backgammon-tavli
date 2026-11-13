@@ -93,6 +93,8 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
     ...tournamentSetup,
     size: z.union([z.literal(4), z.literal(8), z.literal(16)]),
     format: z.enum(TOURNAMENT_FORMATS).optional(),
+    /** A club tournament: only members can join (created by club admins). */
+    clubId: z.string().min(1).max(64).optional(),
   }),
   z.object({ t: z.literal("tournament-join"), id: z.string().min(1).max(64) }),
   /** Leave an open tournament, or withdraw from a running one (remaining matches are walkovers). */
@@ -183,6 +185,16 @@ export const FriendRequestSchema = z.object({ playerId: z.string().min(1).max(64
 /** pending = asked to join a closed club */
 export type ClubRole = "owner" | "admin" | "member" | "pending";
 export type LeagueStatus = "open" | "running" | "finished";
+/** live: challenge each other when both are online · corr: one move a day (correspondence games). */
+export const LEAGUE_MODES = ["live", "corr"] as const;
+export type LeagueMode = (typeof LEAGUE_MODES)[number];
+export const LEAGUE_WEEKS = [1, 2, 4, 8, 12] as const;
+/** Divisions of a league season (promotion and relegation between seasons). */
+export const LEAGUE_DIVISIONS = [1, 2, 3, 4] as const;
+export const LEAGUE_DIVISION_MAX = 16;
+export const LEAGUE_DIVISION_MIN = 3;
+/** Players who go up and down between two divisions of the given sizes. */
+export const leagueMovers = (upper: number, lower: number): number => (Math.min(upper, lower) >= 6 ? 2 : 1);
 
 export interface ClubSummary {
   readonly id: string;
@@ -202,6 +214,8 @@ export interface ClubView extends ClubSummary {
     readonly presence: "offline" | "online" | "playing" | null;
   }[];
   readonly leagues: readonly LeagueSummary[];
+  /** Club tournaments (members only): open and running ones and the latest finished. */
+  readonly tournaments: readonly TournamentView[];
 }
 
 export interface LeagueSummary {
@@ -212,10 +226,20 @@ export interface LeagueSummary {
   readonly length: number;
   readonly weeks: number;
   readonly status: LeagueStatus;
+  readonly mode: LeagueMode;
+  /** Days per decision in a correspondence league (0 = live). */
+  readonly days: number;
+  readonly divisions: number;
   readonly players: number;
   readonly entered: boolean;
+  /** The viewer's division (1 = top) once the season runs. */
+  readonly myDivision: number | null;
   readonly endsAt: number | null;
+  /** Champion of the top division. */
   readonly winner: PublicPlayer | null;
+  /** The season before and after this one. */
+  readonly previousId: string | null;
+  readonly nextId: string | null;
 }
 
 export interface LeagueStanding {
@@ -226,6 +250,10 @@ export interface LeagueStanding {
   readonly points: number;
   /** Match points won minus lost. */
   readonly diff: number;
+  /** 1 = top division. */
+  readonly division: number;
+  /** Promotion or relegation zone (with several divisions). */
+  readonly move: "up" | "down" | null;
 }
 
 export interface LeagueView extends LeagueSummary {
@@ -237,7 +265,9 @@ export interface LeagueView extends LeagueSummary {
     readonly status: "pending" | "playing" | "done";
     readonly winner: string | null;
     readonly score: readonly [number, number] | null;
+    /** Live match (to watch) or correspondence game (to open), depending on the mode. */
     readonly matchId: string | null;
+    readonly division: number;
   }[];
 }
 
@@ -258,7 +288,11 @@ export const LeagueCreateSchema = z.object({
   name: z.string().trim().min(1).max(CLUB_NAME_MAX),
   variant: z.enum(MATCH_VARIANTS),
   length: z.union([z.literal(1), z.literal(3), z.literal(5), z.literal(7)]),
-  weeks: z.union([z.literal(1), z.literal(2), z.literal(4), z.literal(8)]),
+  weeks: z.union([z.literal(1), z.literal(2), z.literal(4), z.literal(8), z.literal(12)]),
+  mode: z.enum(LEAGUE_MODES).default("live"),
+  /** Days per decision (correspondence leagues). */
+  days: z.union([z.literal(1), z.literal(3), z.literal(7)]).default(3),
+  divisions: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).default(1),
 });
 
 // ---- correspondence games -------------------------------------------------------------------
@@ -287,6 +321,8 @@ export interface CorrView {
   readonly winner: Player | null;
   readonly reason: string | null;
   readonly updatedAt: string;
+  /** Set for a game of a correspondence league. */
+  readonly league: { readonly id: string; readonly name: string } | null;
 }
 
 export const CorrCreateSchema = z.object({
@@ -639,6 +675,8 @@ export interface TournamentView {
   /** Swiss only: the table, best first (null for knockout). */
   readonly standings: readonly TournamentStanding[] | null;
   readonly winner: string | null;
+  /** Club tournaments are only open to the members. */
+  readonly club: { readonly id: string; readonly name: string } | null;
 }
 
 export interface TournamentStanding {

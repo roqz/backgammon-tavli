@@ -325,7 +325,7 @@ export function OnlineScreen({
           {tab === "friends" && <FriendsPanel onWatch={onWatch} />}
           {tab === "live" && <LivePanel onWatch={onWatch} />}
           {tab === "corr" && <CorrPanel onOpen={onCorr} />}
-          {tab === "clubs" && <ClubsPanel />}
+          {tab === "clubs" && <ClubsPanel onCorr={onCorr} />}
           {tab === "tournaments" && <TournamentPanel focus={tournament} onReplay={onReplay} />}
           {tab === "ranking" && <LeaderboardPanel onReplay={onReplay} />}
           {tab === "profile" && <ProfileTab onReplay={onReplay} />}

@@ -1,13 +1,18 @@
 import { randomUUID } from "node:crypto";
-import type {
-  ClubRole,
-  ClubSummary,
-  ClubView,
-  LeagueStanding,
-  LeagueStatus,
-  LeagueSummary,
-  LeagueView,
-  MatchVariantId,
+import {
+  type ClubRole,
+  type ClubSummary,
+  type ClubView,
+  LEAGUE_DIVISION_MAX,
+  LEAGUE_DIVISION_MIN,
+  type LeagueMode,
+  type LeagueStanding,
+  type LeagueStatus,
+  type LeagueSummary,
+  type LeagueView,
+  leagueMovers,
+  type MatchVariantId,
+  type TournamentView,
 } from "@tavli/protocol";
 import type { Store } from "./db";
 
@@ -40,12 +45,17 @@ CREATE TABLE IF NOT EXISTS leagues (
   created_at TEXT NOT NULL,
   started_at TEXT,
   ends_at INTEGER,
-  winner TEXT
+  winner TEXT,
+  mode TEXT NOT NULL DEFAULT 'live',
+  days INTEGER NOT NULL DEFAULT 0,
+  divisions INTEGER NOT NULL DEFAULT 1,
+  previous_id TEXT
 );
 CREATE INDEX IF NOT EXISTS leagues_club ON leagues(club_id);
 CREATE TABLE IF NOT EXISTS league_entries (
   league_id TEXT NOT NULL REFERENCES leagues(id),
   player_id TEXT NOT NULL REFERENCES players(id),
+  division INTEGER,
   PRIMARY KEY (league_id, player_id)
 );
 CREATE TABLE IF NOT EXISTS league_matches (
@@ -62,10 +72,18 @@ CREATE TABLE IF NOT EXISTS league_matches (
 );
 `;
 
+/** Columns added after the first release of the tables. */
+const MIGRATIONS: readonly [table: string, column: string, definition: string][] = [
+  ["leagues", "mode", "TEXT NOT NULL DEFAULT 'live'"],
+  ["leagues", "days", "INTEGER NOT NULL DEFAULT 0"],
+  ["leagues", "divisions", "INTEGER NOT NULL DEFAULT 1"],
+  ["leagues", "previous_id", "TEXT"],
+  ["league_entries", "division", "INTEGER"],
+];
+
 export const MAX_CLUB_MEMBERS = 100;
 /** Clubs a player can belong to. */
 export const MAX_CLUBS_PER_PLAYER = 10;
-export const MAX_LEAGUE_PLAYERS = 16;
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
 export class ClubError extends Error {
@@ -98,6 +116,15 @@ interface LeagueRow {
   started_at: string | null;
   ends_at: number | null;
   winner: string | null;
+  mode: LeagueMode;
+  days: number;
+  divisions: number;
+  previous_id: string | null;
+}
+
+interface EntryRow {
+  player_id: string;
+  division: number | null;
 }
 
 interface PairingRow {
@@ -110,11 +137,10 @@ interface PairingRow {
   score1: number | null;
 }
 
+type Standing = Omit<LeagueStanding, "division" | "move">;
+
 /** League table: 2 points a win, then match point difference, then the direct comparison. */
-export const leagueTable = (
-  players: readonly string[],
-  pairings: readonly PairingRow[],
-): LeagueStanding[] => {
+export const leagueTable = (players: readonly string[], pairings: readonly PairingRow[]): Standing[] => {
   const s = new Map(players.map((p) => [p, { id: p, played: 0, wins: 0, losses: 0, points: 0, diff: 0 }]));
   for (const m of pairings) {
     if (m.status !== "done" || !m.winner) continue;
@@ -140,14 +166,58 @@ export const leagueTable = (
   return [...s.values()].sort((a, b) => b.points - a.points || b.diff - a.diff || direct(a.id, b.id));
 };
 
-/** What the clubs need from the lobby. */
+/**
+ * Seeding for a new season from the final tables of the previous one (top division first):
+ * the bottom of each division swaps with the top of the one below. The result is one list,
+ * best first, that is then cut into the new divisions.
+ */
+export const promotionOrder = (tables: readonly (readonly string[])[]): string[] => {
+  const k = tables.map((t, d) => (d + 1 < tables.length ? leagueMovers(t.length, tables[d + 1]!.length) : 0));
+  const up = (d: number) => (d > 0 && d < tables.length ? tables[d]!.slice(0, k[d - 1]) : []);
+  const down = (d: number) => (d + 1 < tables.length ? tables[d]!.slice(tables[d]!.length - k[d]!) : []);
+  return tables.flatMap((t, d) => {
+    const moving = new Set([...up(d), ...down(d)]);
+    return [...(d > 0 ? down(d - 1) : []), ...t.filter((p) => !moving.has(p)), ...up(d + 1)];
+  });
+};
+
+/** Cuts a ranked list into `n` divisions (the upper ones take the remainder). */
+export const cutDivisions = <T>(ranked: readonly T[], n: number): T[][] => {
+  const base = Math.floor(ranked.length / n);
+  const extra = ranked.length % n;
+  const out: T[][] = [];
+  let i = 0;
+  for (let d = 0; d < n; d++) {
+    const size = base + (d < extra ? 1 : 0);
+    out.push(ranked.slice(i, i + size));
+    i += size;
+  }
+  return out;
+};
+
+/** What the clubs need from the rest of the server. */
 export interface ClubHost {
   presence(playerId: string, viewer: string): { presence: "offline" | "online" | "playing" };
+  /** Club tournaments (members see them in the club). */
+  clubTournaments?(clubId: string): TournamentView[];
+  /** Starts a correspondence game of a league (p0 plays White) and returns its id. */
+  startCorrGame?(
+    leagueId: string,
+    p0: string,
+    p1: string,
+    variant: MatchVariantId,
+    length: number,
+    days: number,
+  ): string;
+  /** Ends an unfinished correspondence game without a result (the season is over). */
+  endCorrGame?(id: string): void;
 }
 
 /**
  * Clubs (open or by request; owner, admins, members) and their leagues: a season where every
- * entrant plays every other once, live via a challenge from the table, within a number of weeks.
+ * entrant plays every other of the same division once — live via a challenge from the table, or
+ * as correspondence games — within a number of weeks. With several divisions the next season
+ * promotes the best of each division and relegates the worst.
  */
 export class Clubs {
   constructor(
@@ -156,9 +226,17 @@ export class Clubs {
     private readonly log: (msg: string) => void = () => {},
   ) {
     store.db.exec(SCHEMA);
-    // rooms do not survive a restart: those league matches can be played again
+    for (const [table, column, definition] of MIGRATIONS) {
+      const cols = store.db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+      if (!cols.some((c) => c.name === column))
+        store.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
+    // live rooms do not survive a restart: those league matches can be played again
     store.db
-      .prepare("UPDATE league_matches SET status = 'pending', match_id = NULL WHERE status = 'playing'")
+      .prepare(
+        `UPDATE league_matches SET status = 'pending', match_id = NULL WHERE status = 'playing'
+         AND league_id IN (SELECT id FROM leagues WHERE mode = 'live')`,
+      )
       .run();
   }
 
@@ -172,6 +250,11 @@ export class Clubs {
     return row;
   }
 
+  clubName(id: string): string | null {
+    const r = this.db.prepare("SELECT name FROM clubs WHERE id = ?").get(id) as { name: string } | undefined;
+    return r?.name ?? null;
+  }
+
   roleOf(clubId: string, playerId: string): ClubRole | null {
     const r = this.db
       .prepare("SELECT role FROM club_members WHERE club_id = ? AND player_id = ?")
@@ -179,9 +262,27 @@ export class Clubs {
     return r?.role ?? null;
   }
 
-  private requireAdmin(clubId: string, playerId: string): void {
+  isMember(clubId: string, playerId: string): boolean {
     const role = this.roleOf(clubId, playerId);
-    if (role !== "owner" && role !== "admin") throw new ClubError(403, "only club admins can do that");
+    return role !== null && role !== "pending";
+  }
+
+  isAdmin(clubId: string, playerId: string): boolean {
+    const role = this.roleOf(clubId, playerId);
+    return role === "owner" || role === "admin";
+  }
+
+  /** Clubs the player is a member of (not just asked to join). */
+  memberClubIds(playerId: string): string[] {
+    return (
+      this.db
+        .prepare("SELECT club_id FROM club_members WHERE player_id = ? AND role != 'pending'")
+        .all(playerId) as { club_id: string }[]
+    ).map((r) => r.club_id);
+  }
+
+  private requireAdmin(clubId: string, playerId: string): void {
+    if (!this.isAdmin(clubId, playerId)) throw new ClubError(403, "only club admins can do that");
   }
 
   private memberCount(clubId: string): number {
@@ -220,6 +321,7 @@ export class Clubs {
   view(me: string, id: string): ClubView {
     const c = this.club(id);
     const role = this.roleOf(id, me);
+    const member = role !== null && role !== "pending";
     const members = (
       this.db
         .prepare("SELECT player_id, role FROM club_members WHERE club_id = ? ORDER BY joined_at")
@@ -230,14 +332,20 @@ export class Clubs {
       .map((m) => ({
         player: this.store.publicPlayer(m.player_id, "backgammon"),
         role: m.role,
-        presence: role && role !== "pending" ? this.host.presence(m.player_id, me).presence : null,
+        presence: member ? this.host.presence(m.player_id, me).presence : null,
       }));
     const leagues = (
       this.db
         .prepare("SELECT * FROM leagues WHERE club_id = ? ORDER BY created_at DESC LIMIT 20")
         .all(id) as unknown as LeagueRow[]
     ).map((l) => this.leagueSummary(l, me));
-    return { ...this.summary(c, me), createdBy: c.created_by, memberList: members, leagues };
+    return {
+      ...this.summary(c, me),
+      createdBy: c.created_by,
+      memberList: members,
+      leagues,
+      tournaments: member ? (this.host.clubTournaments?.(id) ?? []) : [],
+    };
   }
 
   create(me: string, name: string, description: string, open: boolean, guestAllowed: boolean): ClubView {
@@ -330,6 +438,14 @@ export class Clubs {
   }
 
   private deleteClub(id: string): void {
+    // correspondence games of running leagues end without a result
+    const running = this.db
+      .prepare(
+        `SELECT m.match_id FROM league_matches m JOIN leagues l ON l.id = m.league_id
+         WHERE l.club_id = ? AND l.mode = 'corr' AND m.status = 'playing' AND m.match_id IS NOT NULL`,
+      )
+      .all(id) as { match_id: string }[];
+    for (const r of running) this.host.endCorrGame?.(r.match_id);
     for (const t of ["league_matches", "league_entries"])
       this.db
         .prepare(`DELETE FROM ${t} WHERE league_id IN (SELECT id FROM leagues WHERE club_id = ?)`)
@@ -348,12 +464,21 @@ export class Clubs {
     return row;
   }
 
+  leagueName(id: string): string | null {
+    const r = this.db.prepare("SELECT name FROM leagues WHERE id = ?").get(id) as
+      | { name: string }
+      | undefined;
+    return r?.name ?? null;
+  }
+
+  private entryRows(id: string): EntryRow[] {
+    return this.db
+      .prepare("SELECT player_id, division FROM league_entries WHERE league_id = ? ORDER BY rowid")
+      .all(id) as unknown as EntryRow[];
+  }
+
   private entries(id: string): string[] {
-    return (
-      this.db.prepare("SELECT player_id FROM league_entries WHERE league_id = ?").all(id) as {
-        player_id: string;
-      }[]
-    ).map((r) => r.player_id);
+    return this.entryRows(id).map((r) => r.player_id);
   }
 
   private pairings(id: string): PairingRow[] {
@@ -362,8 +487,28 @@ export class Clubs {
       .all(id) as unknown as PairingRow[];
   }
 
+  /** Final (or current) tables per division, top division first. */
+  private divisionTables(l: LeagueRow): Standing[][] {
+    const rows = this.entryRows(l.id);
+    const pairings = this.pairings(l.id);
+    return Array.from({ length: l.divisions }, (_, d) =>
+      leagueTable(
+        rows.filter((r) => (r.division ?? 1) === d + 1).map((r) => r.player_id),
+        pairings,
+      ),
+    );
+  }
+
+  private nextOf(id: string): string | null {
+    const r = this.db.prepare("SELECT id FROM leagues WHERE previous_id = ?").get(id) as
+      | { id: string }
+      | undefined;
+    return r?.id ?? null;
+  }
+
   private leagueSummary(l: LeagueRow, me: string): LeagueSummary {
-    const entries = this.entries(l.id);
+    const rows = this.entryRows(l.id);
+    const mine = rows.find((r) => r.player_id === me);
     return {
       id: l.id,
       clubId: l.club_id,
@@ -372,29 +517,48 @@ export class Clubs {
       length: l.length,
       weeks: l.weeks,
       status: l.status,
-      players: entries.length,
-      entered: entries.includes(me),
+      mode: l.mode,
+      days: l.days,
+      divisions: l.divisions,
+      players: rows.length,
+      entered: !!mine,
+      myDivision: l.status === "open" ? null : (mine?.division ?? null),
       endsAt: l.ends_at,
       winner: l.winner ? this.store.publicPlayer(l.winner, l.variant) : null,
+      previousId: l.previous_id,
+      nextId: this.nextOf(l.id),
     };
   }
 
   leagueView(me: string, id: string): LeagueView {
     const l = this.league(id);
-    const entries = this.entries(id);
+    const rows = this.entryRows(id);
     const pairings = this.pairings(id);
     const player = (p: string) => this.store.publicPlayer(p, l.variant);
+    const divisionOf = new Map(rows.map((r) => [r.player_id, r.division ?? 1]));
+    const tables = l.status === "open" ? [] : this.divisionTables(l);
+    const standings = tables.flatMap((table, d) => {
+      const up = d > 0 ? leagueMovers(tables[d - 1]!.length, table.length) : 0;
+      const down = d + 1 < tables.length ? leagueMovers(table.length, tables[d + 1]!.length) : 0;
+      return table.map((s, i) => ({
+        ...s,
+        player: player(s.id),
+        division: d + 1,
+        move: i < up ? ("up" as const) : i >= table.length - down ? ("down" as const) : null,
+      }));
+    });
     return {
       ...this.leagueSummary(l, me),
       myRole: this.roleOf(l.club_id, me),
-      entries: entries.map(player),
-      standings: leagueTable(entries, pairings).map((s) => ({ ...s, player: player(s.id) })),
+      entries: rows.map((r) => player(r.player_id)),
+      standings,
       matches: pairings.map((m) => ({
         players: [player(m.p0), player(m.p1)],
         status: m.status,
         winner: m.winner,
         score: m.score0 === null || m.score1 === null ? null : [m.score0, m.score1],
         matchId: m.match_id,
+        division: divisionOf.get(m.p0) ?? 1,
       })),
     };
   }
@@ -406,24 +570,69 @@ export class Clubs {
     variant: MatchVariantId,
     length: number,
     weeks: number,
+    mode: LeagueMode = "live",
+    days = 3,
+    divisions = 1,
+    previousId: string | null = null,
   ): LeagueView {
     this.requireAdmin(clubId, me);
     const id = randomUUID();
     this.db
       .prepare(
-        `INSERT INTO leagues (id, club_id, name, variant, length, weeks, status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'open', ?)`,
+        `INSERT INTO leagues (id, club_id, name, variant, length, weeks, status, created_at, mode, days, divisions, previous_id)
+         VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)`,
       )
-      .run(id, clubId, name, variant, length, weeks, new Date().toISOString());
+      .run(
+        id,
+        clubId,
+        name,
+        variant,
+        length,
+        weeks,
+        new Date().toISOString(),
+        mode,
+        mode === "corr" ? days : 0,
+        divisions,
+        previousId,
+      );
     return this.leagueView(me, id);
+  }
+
+  /**
+   * The next season of a finished league: same settings, the previous entrants who are still
+   * members are entered (they can leave before the start); divisions follow the final tables.
+   */
+  nextSeason(me: string, id: string): LeagueView {
+    const l = this.league(id);
+    this.requireAdmin(l.club_id, me);
+    if (l.status !== "finished") throw new ClubError(409, "the season is not over yet");
+    const existing = this.nextOf(id);
+    if (existing) return this.leagueView(me, existing);
+    const view = this.createLeague(
+      me,
+      l.club_id,
+      nextSeasonName(l.name),
+      l.variant,
+      l.length,
+      l.weeks,
+      l.mode,
+      l.days || 3,
+      l.divisions,
+      id,
+    );
+    const insert = this.db.prepare(
+      "INSERT OR IGNORE INTO league_entries (league_id, player_id) VALUES (?, ?)",
+    );
+    for (const p of this.entries(id)) if (this.isMember(l.club_id, p)) insert.run(view.id, p);
+    return this.leagueView(me, view.id);
   }
 
   joinLeague(me: string, id: string): LeagueView {
     const l = this.league(id);
-    const role = this.roleOf(l.club_id, me);
-    if (!role || role === "pending") throw new ClubError(403, "members only");
+    if (!this.isMember(l.club_id, me)) throw new ClubError(403, "members only");
     if (l.status !== "open") throw new ClubError(409, "league already started");
-    if (this.entries(id).length >= MAX_LEAGUE_PLAYERS) throw new ClubError(409, "league is full");
+    if (this.entries(id).length >= LEAGUE_DIVISION_MAX * l.divisions)
+      throw new ClubError(409, "league is full");
     this.db.prepare("INSERT OR IGNORE INTO league_entries (league_id, player_id) VALUES (?, ?)").run(id, me);
     return this.leagueView(me, id);
   }
@@ -435,30 +644,68 @@ export class Clubs {
     return this.leagueView(me, id);
   }
 
-  /** Every pairing of the entrants once; the season runs for the chosen weeks. */
+  /**
+   * Seeds the entrants into the divisions (by the previous season's tables with promotion and
+   * relegation, newcomers by rating) and pairs everyone with everyone of the same division.
+   * Correspondence leagues start all their games at once.
+   */
   startLeague(me: string, id: string): LeagueView {
     const l = this.league(id);
     this.requireAdmin(l.club_id, me);
     if (l.status !== "open") throw new ClubError(409, "league already started");
     const entries = this.entries(id);
-    if (entries.length < 3) throw new ClubError(409, "a league needs at least 3 players");
-    const insert = this.db.prepare(
-      "INSERT INTO league_matches (league_id, p0, p1, status) VALUES (?, ?, ?, 'pending')",
+    if (entries.length < LEAGUE_DIVISION_MIN * l.divisions)
+      throw new ClubError(409, "a league needs at least 3 players per division");
+    const groups = cutDivisions(this.seeding(l, entries), l.divisions);
+    const setDivision = this.db.prepare(
+      "UPDATE league_entries SET division = ? WHERE league_id = ? AND player_id = ?",
     );
-    for (let i = 0; i < entries.length; i++)
-      for (let j = i + 1; j < entries.length; j++) insert.run(id, entries[i]!, entries[j]!);
+    const insert = this.db.prepare(
+      "INSERT INTO league_matches (league_id, p0, p1, status, match_id) VALUES (?, ?, ?, ?, ?)",
+    );
+    for (const [d, group] of groups.entries()) {
+      for (const p of group) setDivision.run(d + 1, id, p);
+      for (let i = 0; i < group.length; i++)
+        for (let j = i + 1; j < group.length; j++) {
+          // alternate who plays White
+          const [a, b] = (i + j) % 2 === 0 ? [group[i]!, group[j]!] : [group[j]!, group[i]!];
+          const corrId =
+            l.mode === "corr"
+              ? (this.host.startCorrGame?.(id, a, b, l.variant, l.length, l.days) ?? null)
+              : null;
+          insert.run(id, a, b, corrId ? "playing" : "pending", corrId);
+        }
+    }
     this.db
       .prepare("UPDATE leagues SET status = 'running', started_at = ?, ends_at = ? WHERE id = ?")
       .run(new Date().toISOString(), Date.now() + l.weeks * WEEK, id);
-    this.log(`league ${id} started with ${entries.length} players`);
+    this.log(`league ${id} started with ${entries.length} players in ${l.divisions} division(s)`);
     return this.leagueView(me, id);
   }
 
-  /** The open pairing of two players in a running league (for a league challenge). */
+  /** Entrants best first: previous season's order (promotion/relegation applied), then by rating. */
+  private seeding(l: LeagueRow, entries: readonly string[]): string[] {
+    const rating = (p: string) => this.store.rating(p, l.variant).rating;
+    const byRating = (ps: readonly string[]) => [...ps].sort((a, b) => rating(b) - rating(a));
+    const prev = l.previous_id
+      ? (this.db.prepare("SELECT * FROM leagues WHERE id = ? AND status = 'finished'").get(l.previous_id) as
+          | LeagueRow
+          | undefined)
+      : undefined;
+    if (!prev) return byRating(entries);
+    const wanted = new Set(entries);
+    const ordered = promotionOrder(this.divisionTables(prev).map((t) => t.map((s) => s.id))).filter((p) =>
+      wanted.has(p),
+    );
+    const known = new Set(ordered);
+    return [...ordered, ...byRating(entries.filter((p) => !known.has(p)))];
+  }
+
+  /** The open live pairing of two players in a running league (for a league challenge). */
   pendingPairing(id: string, a: string, b: string): { variant: MatchVariantId; length: number } | null {
-    const l = this.db.prepare("SELECT * FROM leagues WHERE id = ? AND status = 'running'").get(id) as
-      | LeagueRow
-      | undefined;
+    const l = this.db
+      .prepare("SELECT * FROM leagues WHERE id = ? AND status = 'running' AND mode = 'live'")
+      .get(id) as LeagueRow | undefined;
     if (!l) return null;
     const m = this.db
       .prepare(
@@ -488,7 +735,8 @@ export class Clubs {
   ): void {
     const row = this.db
       .prepare(
-        "SELECT p0, p1 FROM league_matches WHERE league_id = ? AND ((p0 = ?2 AND p1 = ?3) OR (p0 = ?3 AND p1 = ?2))",
+        `SELECT p0, p1 FROM league_matches WHERE league_id = ?1 AND status != 'done'
+         AND ((p0 = ?2 AND p1 = ?3) OR (p0 = ?3 AND p1 = ?2))`,
       )
       .get(id, players[0], players[1]) as { p0: string; p1: string } | undefined;
     if (!row) return;
@@ -516,8 +764,9 @@ export class Clubs {
   }
 
   private finishLeague(id: string): void {
-    const table = leagueTable(this.entries(id), this.pairings(id));
-    const winner = table[0] && table[0].points > 0 ? table[0].id : null;
+    const l = this.league(id);
+    const top = this.divisionTables(l)[0] ?? [];
+    const winner = top[0] && top[0].points > 0 ? top[0].id : null;
     this.db.prepare("UPDATE leagues SET status = 'finished', winner = ? WHERE id = ?").run(winner, id);
     this.log(`league ${id} finished, winner ${winner}`);
   }
@@ -525,13 +774,19 @@ export class Clubs {
   /** Periodic: seasons past their end are finished (unplayed pairings stay without points). */
   tick(now = Date.now()): void {
     const due = this.db
-      .prepare("SELECT id FROM leagues WHERE status = 'running' AND ends_at < ?")
-      .all(now) as { id: string }[];
-    for (const { id } of due) {
+      .prepare("SELECT * FROM leagues WHERE status = 'running' AND ends_at < ?")
+      .all(now) as unknown as LeagueRow[];
+    for (const l of due) {
+      if (l.mode === "corr") {
+        const open = this.db
+          .prepare("SELECT match_id FROM league_matches WHERE league_id = ? AND status = 'playing'")
+          .all(l.id) as { match_id: string | null }[];
+        for (const r of open) if (r.match_id) this.host.endCorrGame?.(r.match_id);
+      }
       this.db
         .prepare("UPDATE league_matches SET status = 'pending' WHERE league_id = ? AND status = 'playing'")
-        .run(id);
-      this.finishLeague(id);
+        .run(l.id);
+      this.finishLeague(l.id);
     }
   }
 
@@ -550,3 +805,9 @@ export class Clubs {
       .run(playerId, clubId);
   }
 }
+
+/** "Season 3" → "Season 4"; names without a number get " 2". */
+export const nextSeasonName = (name: string): string => {
+  const m = /^(.*?)(\d+)(\D*)$/.exec(name);
+  return m ? `${m[1]}${Number(m[2]) + 1}${m[3]}` : `${name} 2`.slice(0, 40);
+};

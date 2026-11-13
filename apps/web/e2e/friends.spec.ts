@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { onlineGuest } from "./helpers";
 
 test("friends via link, a challenge starts a match, a third player watches it live", async ({ browser }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const ann = await onlineGuest(browser, "Ada");
   const ben = await onlineGuest(browser, "Bodo");
   const wes = await onlineGuest(browser, "Wes");

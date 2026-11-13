@@ -198,9 +198,13 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         const opponent = game.players[game.toAct === 0 ? 1 : 0].name;
         void push?.send(id, (lang) => corrMoveMessage(lang, game.id, opponent, game.days));
       },
+      leagueResult: (league, players, winner, score) =>
+        lobby.clubs.matchEnded(league, players, winner, score),
+      leagueName: (league) => lobby.clubs.leagueName(league),
     },
     log,
   );
+  lobby.corr = corr;
   const corrTimer = setInterval(() => {
     try {
       corr.tick();
@@ -419,7 +423,12 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         throw new HttpError(400, "unknown variant");
       return store.leaderboard(variant as MatchVariantId);
     }
-    if (req.method === "GET" && path === "/api/tournaments") return lobby.tournaments.list();
+    if (req.method === "GET" && path === "/api/tournaments") {
+      // signed-in players also see the tournaments of their clubs
+      const { id, token } = credentials(req);
+      const viewer = id && token ? store.authenticate(id, token) : null;
+      return lobby.tournaments.list(viewer && !viewer.banned ? lobby.clubs.memberClubIds(viewer.id) : []);
+    }
     if (req.method === "GET" && path === "/api/live") return lobby.liveMatches();
     if (path.startsWith("/api/clubs") || path.startsWith("/api/leagues")) {
       const player = authPlayer(req);
@@ -463,17 +472,23 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (k[2] === "leagues" && req.method === "POST") {
           const body = LeagueCreateSchema.safeParse(await readJson(req));
           if (!body.success) throw new HttpError(400, "invalid league");
-          const { name, variant, length, weeks } = body.data;
-          return run(() => clubs.createLeague(player.id, id, name, variant, length, weeks));
+          const { name, variant, length, weeks, mode, days, divisions } = body.data;
+          return run(() =>
+            clubs.createLeague(player.id, id, name, variant, length, weeks, mode, days, divisions),
+          );
         }
       }
-      k = /^\/api\/leagues\/([\w-]{1,64})(?:\/(join|leave|start))?$/.exec(path);
+      k = /^\/api\/leagues\/([\w-]{1,64})(?:\/(join|leave|start|next))?$/.exec(path);
       if (k) {
         const id = k[1]!;
         if (!k[2] && req.method === "GET") return run(() => clubs.leagueView(player.id, id));
         if (k[2] === "join" && req.method === "POST") return run(() => clubs.joinLeague(player.id, id));
         if (k[2] === "leave" && req.method === "POST") return run(() => clubs.leaveLeague(player.id, id));
         if (k[2] === "start" && req.method === "POST") return run(() => clubs.startLeague(player.id, id));
+        if (k[2] === "next" && req.method === "POST") {
+          res.statusCode = 201;
+          return run(() => clubs.nextSeason(player.id, id));
+        }
       }
       throw new HttpError(404, "not found");
     }

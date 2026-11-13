@@ -3,6 +3,7 @@ import type { MatchConfig } from "@tavli/engine";
 import type { ClientMessage, LiveMatch, MatchVariantId, TournamentRef, UnratedReason } from "@tavli/protocol";
 import type { Analyzer } from "./analysis";
 import { Clubs } from "./clubs";
+import type { Correspondence } from "./correspondence";
 import type { Store } from "./db";
 import { challengeMessage, type Push, tournamentReadyMessage } from "./push";
 import { type Conn, MatchRoom, type RoomTimings } from "./room";
@@ -155,6 +156,8 @@ export class Lobby {
   private readonly sweepTimer: ReturnType<typeof setInterval>;
   readonly tournaments: Tournaments;
   readonly clubs: Clubs;
+  /** Set by the server: correspondence games (for correspondence leagues). */
+  corr: Correspondence | null = null;
 
   constructor(private readonly opts: LobbyOptions) {
     this.mm = { ...DEFAULT_MATCHMAKING, ...opts.matchmaking };
@@ -173,11 +176,26 @@ export class Lobby {
           const opponent = view.players.find((p) => p.id !== id && m?.players.includes(p.id))?.name ?? "?";
           void opts.push.send(id, (lang) => tournamentReadyMessage(lang, ref, opponent));
         },
+        clubRole: (clubId, id) =>
+          this.clubs.isAdmin(clubId, id) ? "admin" : this.clubs.isMember(clubId, id) ? "member" : null,
+        clubName: (clubId) => this.clubs.clubName(clubId),
       },
       opts.tournaments,
       opts.log,
     );
-    this.clubs = new Clubs(opts.store, { presence: (id, viewer) => this.presence(id, viewer) }, opts.log);
+    this.clubs = new Clubs(
+      opts.store,
+      {
+        presence: (id, viewer) => this.presence(id, viewer),
+        clubTournaments: (clubId) => this.tournaments.forClub(clubId),
+        startCorrGame: (league, p0, p1, variant, length, days) => {
+          if (!this.corr) throw new Error("correspondence games are not available");
+          return this.corr.startLeagueGame(league, p0, p1, variant, length, days);
+        },
+        endCorrGame: (id) => this.corr?.endWithoutResult(id),
+      },
+      opts.log,
+    );
     this.sweepTimer = setInterval(() => this.sweep(), this.mm.sweepMs);
   }
 
@@ -266,7 +284,7 @@ export class Lobby {
         try {
           if (msg.t === "tournament-create") {
             if (this.busy(conn, id)) return;
-            this.tournaments.create(id, msg.name, msg.variant, msg.length, msg.size, msg.format);
+            this.tournaments.create(id, msg.name, msg.variant, msg.length, msg.size, msg.format, msg.clubId);
           } else if (msg.t === "tournament-join") this.tournaments.join(id, msg.id);
           else this.tournaments.leave(id, msg.id);
         } catch (e) {

@@ -152,14 +152,14 @@ Ein Regelfehler muss sofort behoben werden: die Aufgabe im reinen Rennen (2.1).
 
 ## 5. Wettbewerb
 
-| Anbieter                                                 | Stärken                                                                                                                                                                     | Schwächen / unsere Chance                                                                                           |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Anbieter                                                 | Stärken                                                                                                                                                        | Schwächen / unsere Chance                                                                                           |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | **Backgammon Galaxy** (Web/App)                          | großer Spielerpool, Analyse jedes Matches mit starker Engine, Lektionen von Großmeistern, Turniere, Live-Mitschrift für Turniere vor Ort, Premium mit Rollouts | nur Backgammon, kommerziell, Premium-Modell                                                                         |
-| **GNU Backgammon** (Desktop, OSS)                        | neuronales Netz, Rollouts, Match-Import/Export (.mat, .sgf), sehr starke Analyse                                                                                            | kein Online-Spiel, altbackene Oberfläche                                                                            |
-| **eXtreme Gammon / BGBlitz** (Desktop)                   | Referenz für Analyse, Positionsdatenbanken, Trainer                                                                                                                         | kostenpflichtig, kein Gelegenheitsspiel                                                                             |
-| **Backgammon Studio Heroes**                             | Online-Spiel mit Rating, Turniere, Lernfunktionen                                                                                                                           | Nischencommunity                                                                                                    |
-| **bgammon.org / Boxcars** (OSS, AGPL)                    | Open Source, Browser/Desktop/Android, Zuschauen, Match-Wiederholung, mehrere Varianten (Acey-Deucey, Tabula)                                                                | kein Tavli, schlichte Grafik, keine Analyse                                                                         |
-| **iTavli, Tavli Master, 10 Tawla, Backgammon 18** (Apps) | Plakoto und Fevga, ELO, Freunde, teils Bluetooth, viele Varianten (Tavla, Narde, Mahbuse)                                                                                   | Werbung, kostenpflichtige Varianten, wiederkehrende Vorwürfe manipulierter Würfel in den Bewertungen, keine Analyse |
+| **GNU Backgammon** (Desktop, OSS)                        | neuronales Netz, Rollouts, Match-Import/Export (.mat, .sgf), sehr starke Analyse                                                                               | kein Online-Spiel, altbackene Oberfläche                                                                            |
+| **eXtreme Gammon / BGBlitz** (Desktop)                   | Referenz für Analyse, Positionsdatenbanken, Trainer                                                                                                            | kostenpflichtig, kein Gelegenheitsspiel                                                                             |
+| **Backgammon Studio Heroes**                             | Online-Spiel mit Rating, Turniere, Lernfunktionen                                                                                                              | Nischencommunity                                                                                                    |
+| **bgammon.org / Boxcars** (OSS, AGPL)                    | Open Source, Browser/Desktop/Android, Zuschauen, Match-Wiederholung, mehrere Varianten (Acey-Deucey, Tabula)                                                   | kein Tavli, schlichte Grafik, keine Analyse                                                                         |
+| **iTavli, Tavli Master, 10 Tawla, Backgammon 18** (Apps) | Plakoto und Fevga, ELO, Freunde, teils Bluetooth, viele Varianten (Tavla, Narde, Mahbuse)                                                                      | Werbung, kostenpflichtige Varianten, wiederkehrende Vorwürfe manipulierter Würfel in den Bewertungen, keine Analyse |
 
 **Alleinstellung von Tavli:**
 
@@ -267,7 +267,7 @@ S = bis 1 Tag, M = einige Tage, L = mehrere Wochen
 
 ---
 
-## 8. Stand der Umsetzung (12.11.2026)
+## 8. Stand der Umsetzung (13.11.2026)
 
 **Erledigt:**
 
@@ -277,10 +277,11 @@ S = bis 1 Tag, M = einige Tage, L = mehrere Wochen
   - Hinweise, Lade- und Fehlerzustände, Update-Hinweis.
   - Tests: protocol, rng, Turniere; CI mit Audit, Docker, CodeQL, Dependabot.
 - **Phase C:** Matchanalyse für Spieler, `.mat`-Export, Rating-Verlauf, Variantenbeschreibungen, Freunde mit Herausforderung, Zuschauen (mit Verzögerung, private Spiele für Freunde), Tutorial, Regeln mit Diagrammen, Tagesrätsel.
+- **Phase D (teilweise):** Geldspiel online, GNUbg-ID und `.mat`-Import, Fernpartien, Erfolge mit Freischaltungen, Clubs mit Ligen (live oder als Fernpartien, Divisionen mit Auf- und Abstieg) und Club-Turnieren. Club-Chat bewusst nicht.
 
 **Offen ohne Eingaben von dir:**
 
-- Neuronales Netz, Clubs/Ligen, weitere Varianten, Play Store per TWA
+- Neuronales Netz, weitere Varianten, Play Store per TWA, Beaver/Raccoon im Geldspiel
 
 **Offen mit Eingaben von dir:**
 
