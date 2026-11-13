@@ -90,6 +90,31 @@ const MIGRATIONS: readonly [table: string, column: string, definition: string][]
 ];
 
 export const MAX_CLUB_MEMBERS = 100;
+
+/**
+ * The public league: a club row that everyone belongs to (owned by a system player) holds one
+ * season per month, run by the server: Backgammon, 1 point, correspondence with 24 hours per
+ * move over four weeks. Entries until the 1st of the month; divisions of about 7 players are
+ * cut at the start. Last season's players are entered again, except those who lost
+ * NO_SHOW_LIMIT games on time.
+ */
+export const PUBLIC_CLUB = "public";
+const SYSTEM_PLAYER = "system";
+export const NO_SHOW_LIMIT = 2;
+const PUBLIC_DIVISION_SIZE = 7;
+
+/** Midnight UTC on the 1st of the month after `now`. */
+export const nextMonthStart = (now: number): number => {
+  const d = new Date(now);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+};
+
+/** Divisions for the public league: about 7 players each, at least 3. */
+export const publicDivisions = (players: number): number =>
+  Math.max(
+    1,
+    Math.min(Math.round(players / PUBLIC_DIVISION_SIZE), Math.floor(players / LEAGUE_DIVISION_MIN)),
+  );
 /** Clubs a player can belong to. */
 export const MAX_CLUBS_PER_PLAYER = 10;
 const WEEK = 7 * 24 * 60 * 60 * 1000;
@@ -241,6 +266,17 @@ export class Clubs {
       if (!cols.some((c) => c.name === column))
         store.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
     }
+    const now = new Date().toISOString();
+    store.db
+      .prepare(
+        "INSERT OR IGNORE INTO players (id, token_hash, name, created_at) VALUES (?, '-', 'System', ?)",
+      )
+      .run(SYSTEM_PLAYER, now);
+    store.db
+      .prepare(
+        "INSERT OR IGNORE INTO clubs (id, name, description, open, created_by, created_at) VALUES (?, 'Public league', '', 1, ?, ?)",
+      )
+      .run(PUBLIC_CLUB, SYSTEM_PLAYER, now);
     // live rooms do not survive a restart: those league matches can be played again
     store.db
       .prepare(
@@ -273,6 +309,7 @@ export class Clubs {
   }
 
   isMember(clubId: string, playerId: string): boolean {
+    if (clubId === PUBLIC_CLUB) return true;
     const role = this.roleOf(clubId, playerId);
     return role !== null && role !== "pending";
   }
@@ -318,7 +355,7 @@ export class Clubs {
   list(me: string, query: string): ClubSummary[] {
     const rows = query.trim()
       ? (this.db
-          .prepare("SELECT * FROM clubs WHERE lower(name) LIKE ? ORDER BY name LIMIT 50")
+          .prepare("SELECT * FROM clubs WHERE lower(name) LIKE ? AND id != 'public' ORDER BY name LIMIT 50")
           .all(`%${query.trim().toLowerCase().replace(/[%_]/g, "")}%`) as unknown as ClubRow[])
       : (this.db
           .prepare(
@@ -653,7 +690,7 @@ export class Clubs {
     const l = this.league(id);
     if (!this.isMember(l.club_id, me)) throw new ClubError(403, "members only");
     if (l.status !== "open") throw new ClubError(409, "league already started");
-    if (this.entries(id).length >= LEAGUE_DIVISION_MAX * l.divisions)
+    if (l.club_id !== PUBLIC_CLUB && this.entries(id).length >= LEAGUE_DIVISION_MAX * l.divisions)
       throw new ClubError(409, "league is full");
     this.db.prepare("INSERT OR IGNORE INTO league_entries (league_id, player_id) VALUES (?, ?)").run(id, me);
     return this.leagueView(me, id);
@@ -805,15 +842,105 @@ export class Clubs {
 
   /** Periodic: seasons past their end are finished (unplayed pairings stay without points). */
   tick(now = Date.now()): void {
+    // seasons end before new ones start (the next season seeds from the final tables)
+    this.endDue(now);
     // scheduled starts: with too few players the league stays open (an admin can start it later)
     const starting = this.db
       .prepare("SELECT * FROM leagues WHERE status = 'open' AND starts_at IS NOT NULL AND starts_at <= ?")
       .all(now) as unknown as LeagueRow[];
     for (const l of starting) {
+      if (l.club_id === PUBLIC_CLUB) {
+        this.startPublic(l, now);
+        continue;
+      }
       this.db.prepare("UPDATE leagues SET starts_at = NULL WHERE id = ?").run(l.id);
       if (this.entries(l.id).length >= LEAGUE_DIVISION_MIN * l.divisions) this.begin(l);
       else this.log(`league ${l.id}: too few players at the scheduled start`);
     }
+    this.ensurePublicSeason(now);
+  }
+
+  // ---- the public league -----------------------------------------------------------------------
+
+  /** Players who lost at least NO_SHOW_LIMIT games of a season on time. */
+  private noShows(leagueId: string): Set<string> {
+    if (!this.store.tableExists("corr_games")) return new Set();
+    const rows = this.db
+      .prepare(
+        `SELECT CASE WHEN winner = 0 THEN p1 ELSE p0 END AS loser, COUNT(*) AS n FROM corr_games
+         WHERE league_id = ? AND reason = 'abandoned' GROUP BY loser HAVING n >= ?`,
+      )
+      .all(leagueId, NO_SHOW_LIMIT) as { loser: string }[];
+    return new Set(rows.map((r) => r.loser));
+  }
+
+  /** There is always an open public season for next month (the previous players entered again). */
+  private ensurePublicSeason(now: number): void {
+    const open = this.db
+      .prepare("SELECT 1 FROM leagues WHERE club_id = ? AND status = 'open'")
+      .get(PUBLIC_CLUB);
+    if (open) return;
+    const last = this.db
+      .prepare("SELECT * FROM leagues WHERE club_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1")
+      .get(PUBLIC_CLUB) as LeagueRow | undefined;
+    const start = nextMonthStart(now);
+    const d = new Date(start);
+    const name = `Backgammon ${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
+    const id = randomUUID();
+    this.db
+      .prepare(
+        `INSERT INTO leagues (id, club_id, name, variant, length, weeks, status, created_at, mode, days, divisions, previous_id, clock, starts_at)
+         VALUES (?, ?, ?, 'backgammon', 1, 4, 'open', ?, 'corr', 1, 1, ?, 'relaxed', ?)`,
+      )
+      .run(id, PUBLIC_CLUB, name, new Date(now).toISOString(), last?.id ?? null, start);
+    if (last) {
+      const out = this.noShows(last.id);
+      const insert = this.db.prepare(
+        "INSERT OR IGNORE INTO league_entries (league_id, player_id) VALUES (?, ?)",
+      );
+      for (const p of this.entries(last.id)) if (!out.has(p)) insert.run(id, p);
+    }
+    this.log(`public league ${name} opened`);
+  }
+
+  /**
+   * The public season starts: no-shows of the previous season sit out, divisions are cut by
+   * the number of players. Too few players: it moves to the next month.
+   */
+  private startPublic(l: LeagueRow, now: number): void {
+    if (l.previous_id) {
+      const out = this.noShows(l.previous_id);
+      const remove = this.db.prepare("DELETE FROM league_entries WHERE league_id = ? AND player_id = ?");
+      for (const p of this.entries(l.id)) if (out.has(p)) remove.run(l.id, p);
+    }
+    const n = this.entries(l.id).length;
+    if (n < LEAGUE_DIVISION_MIN) {
+      this.db.prepare("UPDATE leagues SET starts_at = ? WHERE id = ?").run(nextMonthStart(now), l.id);
+      this.log(`public league ${l.id}: ${n} players, moved to next month`);
+      return;
+    }
+    const divisions = publicDivisions(n);
+    this.db.prepare("UPDATE leagues SET starts_at = NULL, divisions = ? WHERE id = ?").run(divisions, l.id);
+    this.begin({ ...l, divisions, starts_at: null });
+  }
+
+  /** The running public season and the open next one, from the view of `me`. */
+  publicLeague(me: string, now = Date.now()): { current: LeagueSummary | null; next: LeagueSummary | null } {
+    this.ensurePublicSeason(now);
+    const row = (status: string) =>
+      this.db
+        .prepare("SELECT * FROM leagues WHERE club_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1")
+        .get(PUBLIC_CLUB, status) as LeagueRow | undefined;
+    const current = row("running");
+    const next = row("open");
+    return {
+      current: current ? this.leagueSummary(current, me) : null,
+      next: next ? this.leagueSummary(next, me) : null,
+    };
+  }
+
+  /** Seasons whose time is up end (open correspondence games without a result). */
+  private endDue(now: number): void {
     const due = this.db
       .prepare("SELECT * FROM leagues WHERE status = 'running' AND ends_at < ?")
       .all(now) as unknown as LeagueRow[];

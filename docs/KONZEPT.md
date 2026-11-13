@@ -331,6 +331,13 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Ligen optional mit Starttermin: Start von selbst, wenn genug Spieler (3 je Division) dabei sind, sonst bleibt die Liga offen und ein Admin startet sie später
 - Club-Seite: Karte „Termine“ mit den kommenden Ligen und Turnieren
 
+### Öffentliche Liga, Online-Name lokal ✅
+
+- Öffentliche Monatsliga (nur Backgammon zum Start), vom Server selbst organisiert: interner Club `public` (Besitzer: Systemspieler, in der Club-Suche ausgeblendet, jeder gilt als Mitglied). Jede Saison: 1 Punkt, Fernpartie mit 24 h pro Zug, 4 Wochen, Start am 1. des Monats (UTC); Anmeldung bis dahin, beim Start Divisionen zu ~7 Spielern (mind. 3) nach Vorsaison-Tabelle bzw. Rating, Auf- und Abstieg. Mit Saisonstart öffnet die nächste Saison, die Spieler der laufenden sind automatisch angemeldet; wer in einer Saison 2 Partien auf Zeit verliert, setzt die nächste aus. Unter 3 Spielern verschiebt sich die Saison um einen Monat
+- Reiter heißt jetzt „Ligen & Clubs“, Karte „Öffentliche Liga“ oben; das Hauptmenü nennt unter „Online spielen“ Turniere, Ligen, Clubs, Fernpartien, Rangliste
+- Der Name des Online-Profils ist auch der Spielername für lokale Partien
+- Brett-Grafiken: Holzmaserung und Filz prozedural per SVG-Rauschen (`board/textures.ts`), als Bild einmal gerastert; Klassisch (Nussbaum, grüner Filz), Olive, Turnier
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)

@@ -169,3 +169,15 @@ test("scheduled league: a fixed start time shows in the club's schedule", async 
   await expect(schedule).toContainText("Abendliga");
   await expect(schedule).toContainText("19:00");
 });
+
+test("public league: enter next month's season from the leagues tab", async ({ browser }) => {
+  const gus = await onlineGuest(browser, "Gus");
+  await openClubs(gus);
+  const card = gus.getByTestId("public-league");
+  await expect(card).toContainText("Öffentliche Liga");
+  await expect(card).toContainText(/Nächste Saison: Backgammon \d\d\/\d{4}/);
+  await card.getByRole("button", { name: "Anmelden" }).click();
+  await expect(card).toContainText("angemeldet");
+  await card.getByRole("button", { name: "Abmelden" }).click();
+  await expect(card.getByRole("button", { name: "Anmelden" })).toBeVisible();
+});

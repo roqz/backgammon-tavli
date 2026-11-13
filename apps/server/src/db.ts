@@ -598,7 +598,7 @@ export class Store {
     return true;
   }
 
-  private tableExists(name: string): boolean {
+  tableExists(name: string): boolean {
     return !!this.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name);
   }
 
@@ -615,7 +615,8 @@ export class Store {
            AND NOT EXISTS (SELECT 1 FROM reports r WHERE r.reporter = p.id OR r.reported = p.id)
            ${this.tableExists("tournament_entries") ? "AND NOT EXISTS (SELECT 1 FROM tournament_entries e WHERE e.player_id = p.id) AND NOT EXISTS (SELECT 1 FROM tournaments t WHERE t.created_by = p.id)" : ""}
            ${this.tableExists("corr_games") ? "AND NOT EXISTS (SELECT 1 FROM corr_games c WHERE c.p0 = p.id OR c.p1 = p.id)" : ""}
-           ${this.tableExists("corr_seeks") ? "AND NOT EXISTS (SELECT 1 FROM corr_seeks k WHERE k.player_id = p.id)" : ""}`,
+           ${this.tableExists("corr_seeks") ? "AND NOT EXISTS (SELECT 1 FROM corr_seeks k WHERE k.player_id = p.id)" : ""}
+           ${this.tableExists("clubs") ? "AND NOT EXISTS (SELECT 1 FROM clubs c2 WHERE c2.created_by = p.id) AND NOT EXISTS (SELECT 1 FROM club_members cm WHERE cm.player_id = p.id) AND NOT EXISTS (SELECT 1 FROM league_entries le WHERE le.player_id = p.id)" : ""}`,
       )
       .all(before(RETENTION.guestDays)) as { id: string }[];
     this.db.exec("BEGIN");

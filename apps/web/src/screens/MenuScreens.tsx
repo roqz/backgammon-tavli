@@ -90,6 +90,7 @@ export function Menu({
             </Button>
             <Button className="py-4 text-lg" onClick={onOnline}>
               🌐 {t.online}
+              <span className="block text-xs font-normal text-stone-400">{t.onlineSub}</span>
             </Button>
           </>
         )}
@@ -171,7 +172,9 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   const startMatch = useGame((s) => s.startMatch);
   const [variant, setVariant] = useState<MatchVariant>("backgammon");
   const [length, setLength] = useState(DEFAULT_LENGTH.backgammon);
-  const [names, setNames] = useState<[string, string]>([t.you, t.playerBlack]);
+  // the online profile name is also used for local games
+  const myName = useOnline((s) => s.profile?.name) ?? t.you;
+  const [names, setNames] = useState<[string, string]>([myName, t.playerBlack]);
   const [opponent, setOpponent] = useState<"bot" | "human">("bot");
   const [level, setLevel] = useState<BotLevel>("medium");
   const [seat, setSeat] = useState<0 | 1>(0);
@@ -225,8 +228,8 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
       opponent === "human"
         ? [human(0), human(1)]
         : seat === 0
-          ? [{ ...human(0), name: names[0].trim() || t.you }, botPlayer()]
-          : [botPlayer(), { ...human(1), name: names[0].trim() || t.you }];
+          ? [{ ...human(0), name: names[0].trim() || myName }, botPlayer()]
+          : [botPlayer(), { ...human(1), name: names[0].trim() || myName }];
     try {
       startMatch(config, players, from);
     } catch (e) {
@@ -285,7 +288,11 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
           value={opponent}
           onChange={(o) => {
             setOpponent(o);
-            setNames(o === "bot" ? [t.you, t.playerBlack] : [t.playerWhite, t.playerBlack]);
+            setNames(
+              o === "bot"
+                ? [myName, t.playerBlack]
+                : [myName === t.you ? t.playerWhite : myName, t.playerBlack],
+            );
           }}
           options={[
             { value: "bot", label: t.computer },

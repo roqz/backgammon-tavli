@@ -115,6 +115,7 @@ const de = {
   dice3d: "3D-Würfel",
   histDouble: "Verdoppelt auf",
   online: "Online spielen",
+  onlineSub: "Turniere · Ligen · Clubs · Fernpartien · Rangliste",
   unrated: "Ungewertet",
   diceVerified: "Würfel nachgeprüft",
   diceVerifiedHint:
@@ -556,7 +557,17 @@ const de = {
   matImport: ".mat öffnen",
   matInvalid: "Datei nicht lesbar",
   matEmpty: "keine vollständige Partie gefunden",
-  clubsTab: "Clubs",
+  clubsTab: "Ligen & Clubs",
+  publicLeague: "Öffentliche Liga · Backgammon",
+  publicLeagueHint:
+    "Jeden Monat eine neue Saison für alle: Fernpartien auf 1 Punkt, 24 Stunden pro Zug, vier Wochen. Divisionen mit etwa 7 Spielern nach Stärke, Auf- und Abstieg. Wer mitgespielt hat, ist für die nächste Saison automatisch angemeldet – außer bei {n} Niederlagen auf Zeit.",
+  publicLeagueCurrent: "Laufende Saison:",
+  publicLeagueNext: "Nächste Saison:",
+  publicLeagueDivision: "deine Division {d}",
+  publicLeagueTable: "Tabelle",
+  publicLeagueJoin: "Anmelden",
+  publicLeagueLeave: "Abmelden",
+  publicLeagueEntered: "angemeldet",
   clubsHint:
     "Clubs bringen Spieler zusammen: Mitglieder sehen sich online, Admins starten Ligen. Offene Clubs kann jeder betreten, geschlossene auf Anfrage.",
   clubSearch: "Clubs suchen …",
@@ -803,6 +814,7 @@ const en: Dict = {
   dice3d: "3D dice",
   histDouble: "Doubles to",
   online: "Play online",
+  onlineSub: "Tournaments · leagues · clubs · correspondence · ranking",
   unrated: "Unrated",
   diceVerified: "Dice verified",
   diceVerifiedHint:
@@ -1239,7 +1251,17 @@ const en: Dict = {
   matImport: "Open .mat",
   matInvalid: "Cannot read the file",
   matEmpty: "no complete game found",
-  clubsTab: "Clubs",
+  clubsTab: "Leagues & clubs",
+  publicLeague: "Public league · Backgammon",
+  publicLeagueHint:
+    "A new season for everyone every month: correspondence games to 1 point, 24 hours per move, four weeks. Divisions of about 7 players by strength, promotion and relegation. Players are entered for the next season automatically – unless they lost {n} games on time.",
+  publicLeagueCurrent: "Running season:",
+  publicLeagueNext: "Next season:",
+  publicLeagueDivision: "your division {d}",
+  publicLeagueTable: "Table",
+  publicLeagueJoin: "Enter",
+  publicLeagueLeave: "Withdraw",
+  publicLeagueEntered: "entered",
   clubsHint:
     "Clubs bring players together: members see each other online, admins start leagues. Open clubs anyone can join, closed ones on request.",
   clubSearch: "Search clubs …",

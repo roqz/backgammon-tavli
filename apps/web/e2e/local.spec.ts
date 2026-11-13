@@ -168,8 +168,15 @@ test("money play with beavers: beaver a double, then raccoon", async ({ page }) 
   await page.getByRole("switch", { name: /Beaver und Raccoon/ }).click();
   await page.getByRole("button", { name: "Starten" }).click();
   await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
-  await tapMove(page);
-  await page.getByRole("button", { name: /Verdoppeln/ }).click();
+  // finish the first turn (one or two moves, depending on the dice)
+  const double = page.getByRole("button", { name: /Verdoppeln/ });
+  for (let i = 0; i < 8 && !(await double.isVisible()); i++) {
+    const end = page.getByRole("button", { name: "Zug beenden" });
+    if ((await end.count()) > 0 && (await end.isEnabled())) await end.click();
+    else await tapMove(page);
+    await page.waitForTimeout(400);
+  }
+  await double.click();
   await page.getByRole("button", { name: /Beaver \(4\)/ }).click();
   await page.getByRole("button", { name: /Raccoon \(8\)/ }).click();
   await expect(page.getByRole("button", { name: /Raccoon/ })).toHaveCount(0);

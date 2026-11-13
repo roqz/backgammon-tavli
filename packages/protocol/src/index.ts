@@ -313,6 +313,14 @@ export interface LeagueSummary {
   readonly nextId: string | null;
 }
 
+/** The public monthly league (run by the server): the running season and the next one. */
+export interface PublicLeagueResponse {
+  readonly current: LeagueSummary | null;
+  readonly next: LeagueSummary | null;
+  /** Losses on time in a season after which a player sits out the next one. */
+  readonly noShowLimit: number;
+}
+
 export interface LeagueStanding {
   readonly id: string;
   readonly played: number;

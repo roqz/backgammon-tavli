@@ -22,6 +22,7 @@ import type {
   MatchVariantId,
   ProfileResponse,
   Progress,
+  PublicLeagueResponse,
   RatingPool,
   RegisterResponse,
   ReportReason,
@@ -440,6 +441,7 @@ export const createLeague = (
     }),
   });
 export const fetchLeague = (id: string) => rest<LeagueView>(`/api/leagues/${id}`);
+export const fetchPublicLeague = () => rest<PublicLeagueResponse>("/api/leagues/public");
 export const leagueAction = (id: string, action: "join" | "leave" | "start" | "next") =>
   rest<LeagueView>(`/api/leagues/${id}/${action}`, { method: "POST" });
 

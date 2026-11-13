@@ -12,6 +12,7 @@ import {
   type LeagueView,
   MATCH_VARIANTS,
   type MatchVariantId,
+  type PublicLeagueResponse,
   type TimeControl,
   type TournamentView,
 } from "@tavli/protocol";
@@ -29,6 +30,7 @@ import {
   fetchClub,
   fetchClubs,
   fetchLeague,
+  fetchPublicLeague,
   joinClub,
   joinTournament,
   leagueAction,
@@ -60,10 +62,78 @@ export function ClubsPanel({ onCorr }: { onCorr: (id: string) => void }) {
       />
     );
   if (club) return <ClubPage id={club} onBack={() => setClub(null)} onLeague={setLeague} />;
-  return <ClubList onOpen={setClub} />;
+  return <ClubList onOpen={setClub} onLeague={setLeague} />;
 }
 
-function ClubList({ onOpen }: { onOpen: (id: string) => void }) {
+/** The public monthly league (run by the server): enter the next season, open the running one. */
+function PublicLeagueCard({ onLeague }: { onLeague: (id: string) => void }) {
+  const t = useT();
+  const [data, setData] = useState<PublicLeagueResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = () =>
+    fetchPublicLeague()
+      .then(setData)
+      .catch((e: unknown) => setError(errorOf(t, e)));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once
+  useEffect(() => {
+    void load();
+  }, []);
+  const toggle = (id: string, entered: boolean) => {
+    setBusy(true);
+    leagueAction(id, entered ? "leave" : "join")
+      .then(load)
+      .catch((e: unknown) => setError(errorOf(t, e)))
+      .finally(() => setBusy(false));
+  };
+  const { current, next } = data ?? { current: null, next: null };
+  return (
+    <Card className="flex flex-col gap-3" data-testid="public-league">
+      <h2 className="font-semibold text-amber-100">🏅 {t.publicLeague}</h2>
+      <p className="text-xs text-stone-400">
+        {t.publicLeagueHint.replace("{n}", String(data?.noShowLimit ?? 2))}
+      </p>
+      {error && <p className="text-sm text-red-400">{error}</p>}
+      {current && (
+        <div className="flex items-center gap-3">
+          <span className="min-w-0 flex-1 text-sm text-stone-200">
+            {t.publicLeagueCurrent} <b>{current.name}</b>
+            {current.myDivision !== null &&
+              ` · ${t.publicLeagueDivision.replace("{d}", String(current.myDivision))}`}
+            <span className="block text-xs text-stone-500">
+              👥 {current.players}
+              {current.divisions > 1 && ` · ${current.divisions} ${t.leagueDivisions}`}
+            </span>
+          </span>
+          <Button className="px-3 py-1.5 text-sm" onClick={() => onLeague(current.id)}>
+            {t.publicLeagueTable}
+          </Button>
+        </div>
+      )}
+      {next && (
+        <div className="flex items-center gap-3">
+          <span className="min-w-0 flex-1 text-sm text-stone-200">
+            {t.publicLeagueNext} <b>{next.name}</b>
+            <span className="block text-xs text-stone-500">
+              {next.startsAt && `🗓 ${t.startsAt} ${formatStart(next.startsAt, t.locale)} · `}👥 {next.players}
+              {next.entered && ` · ✓ ${t.publicLeagueEntered}`}
+            </span>
+          </span>
+          <Button
+            variant={next.entered ? "secondary" : "primary"}
+            className="px-3 py-1.5 text-sm"
+            disabled={busy}
+            onClick={() => toggle(next.id, next.entered)}
+          >
+            {next.entered ? t.publicLeagueLeave : t.publicLeagueJoin}
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function ClubList({ onOpen, onLeague }: { onOpen: (id: string) => void; onLeague: (id: string) => void }) {
   const t = useT();
   const [query, setQuery] = useState("");
   const [list, setList] = useState<ClubSummary[] | null>(null);
@@ -86,6 +156,7 @@ function ClubList({ onOpen }: { onOpen: (id: string) => void }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <PublicLeagueCard onLeague={onLeague} />
       <Card className="flex flex-col gap-3">
         <p className="text-xs text-stone-500">{t.clubsHint}</p>
         <div className="flex gap-2">

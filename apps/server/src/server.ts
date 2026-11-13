@@ -32,7 +32,7 @@ import {
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
 import { type AnalysisMode, Analyzer } from "./analysis";
-import { ClubError } from "./clubs";
+import { ClubError, NO_SHOW_LIMIT } from "./clubs";
 import { CorrError, Correspondence } from "./correspondence";
 import { AccountError, Store } from "./db";
 import { type FairPlayOptions, Lobby, type MatchmakingOptions, type SpectatorDelay } from "./lobby";
@@ -494,6 +494,8 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
           );
         }
       }
+      if (req.method === "GET" && path === "/api/leagues/public")
+        return { ...clubs.publicLeague(player.id), noShowLimit: NO_SHOW_LIMIT };
       k = /^\/api\/leagues\/([\w-]{1,64})(?:\/(join|leave|start|next))?$/.exec(path);
       if (k) {
         const id = k[1]!;
