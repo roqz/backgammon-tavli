@@ -62,6 +62,8 @@ export interface Cube {
   readonly enabled: boolean;
   /** Highest value the cube may reach (absent = no limit). */
   readonly limit?: number;
+  /** Just beavered: the original doubler may raccoon before rolling. */
+  readonly beavered?: boolean;
 }
 
 /** Result multiplier before cube: 1 = single, 2 = gammon / mars, 3 = backgammon. */
@@ -86,6 +88,10 @@ export type TurnRecord =
     }
   | { readonly kind: "double"; readonly player: Player; readonly to: number }
   | { readonly kind: "take"; readonly player: Player }
+  /** Money play: took and at once redoubled, keeping the cube. */
+  | { readonly kind: "beaver"; readonly player: Player; readonly to: number }
+  /** Money play: the doubler answers a beaver with another redouble, keeping the cube. */
+  | { readonly kind: "raccoon"; readonly player: Player; readonly to: number }
   /** On the bar against a closed home board: the turn is skipped without rolling. */
   | { readonly kind: "closed-out"; readonly player: Player }
   | { readonly kind: "drop"; readonly player: Player }
@@ -108,6 +114,8 @@ export interface GameState {
   readonly cube: Cube;
   /** Money game Jacoby rule: gammons count only after the cube was turned. */
   readonly jacoby: boolean;
+  /** Money play with beavers and raccoons. Optional for stored states from older versions. */
+  readonly beavers?: boolean;
   readonly history: readonly TurnRecord[];
   readonly result: GameResult | null;
   /**
@@ -136,6 +144,10 @@ export type GameAction =
   | { readonly type: "double" }
   | { readonly type: "take" }
   | { readonly type: "drop" }
+  /** Take a double and redouble at once, keeping the cube (money play with beavers). */
+  | { readonly type: "beaver" }
+  /** After a beaver: the doubler redoubles again and keeps the cube. */
+  | { readonly type: "raccoon" }
   /** Immediate resignation (no answer needed). */
   | { readonly type: "resign"; readonly player: Player; readonly level: ResultLevel }
   /** The player on turn offers to resign at `level`; the opponent accepts or rejects. */

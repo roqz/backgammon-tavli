@@ -320,6 +320,11 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Netze für Hypergammon, Portes/Tavla, Plakoto, Fevga/Narde: noch nicht trainiert (`tuning/train-rest.sh`)
 - Stärketest: `scripts/nn-duel.ts <variante> [partien] [gegner] [snapshot] [nocube]`
 
+### Beaver und Raccoon, Doppler-Obergrenze ✅
+
+- Geldspiel offline auf Wunsch mit Beaver (annehmen und sofort zurückverdoppeln, Würfel bleibt beim Annehmenden) und Raccoon (der Verdoppler verdoppelt vor dem Würfeln noch einmal und behält den Würfel); beides kann nicht abgelehnt werden. Der Computer beavert/raccoont als klarer Favorit (> 0,05 Punkte pro Partie). Online vorerst nicht (kein Server-Protokoll)
+- Gegen den Computer geht der Doppler höchstens bis 64 (`MatchConfig.cubeLimit`)
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)

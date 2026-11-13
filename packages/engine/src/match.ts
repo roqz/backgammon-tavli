@@ -16,6 +16,8 @@ export interface MatchConfig {
   readonly crawford?: boolean;
   /** Jacoby rule, only applied in unlimited sessions (default false). */
   readonly jacoby?: boolean;
+  /** Beavers and raccoons, only in unlimited sessions (default false). */
+  readonly beavers?: boolean;
   /** Highest cube value in every game (default no limit). */
   readonly cubeLimit?: number;
 }
@@ -49,6 +51,7 @@ const newGameFor = (
     variant,
     cube: rules.cube && !isCrawford && config.length !== 1,
     jacoby: config.length === 0 && (config.jacoby ?? false),
+    beavers: config.length === 0 && (config.beavers ?? false),
     ...(config.cubeLimit ? { cubeLimit: config.cubeLimit } : {}),
     // Tavli tradition: the winner of the previous game starts the next one.
     starter: rules.openingRollPlayed ? undefined : previousWinner,

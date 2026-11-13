@@ -69,7 +69,9 @@ export const buildFrames = (variant: VariantId, history: readonly TurnRecord[]):
         break;
       }
       case "take":
-        cube = { ...cube, value: cube.value * 2, owner: rec.player };
+      case "beaver":
+      case "raccoon":
+        cube = { ...cube, value: rec.kind === "take" ? cube.value * 2 : rec.to, owner: rec.player };
         frames.push({
           state: { ...base, board, cube, phase: "rolling", turn: rec.player },
           recordIndex: i,

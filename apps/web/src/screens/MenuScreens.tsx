@@ -1,6 +1,7 @@
 import { BOT_LEVELS, type BotLevel, hasNet } from "@tavli/ai";
 import {
   gameFromXgid,
+  getVariant,
   isGnubgId,
   type MatchConfig,
   type MatchStart,
@@ -11,7 +12,7 @@ import {
   XGID_VARIANTS,
 } from "@tavli/engine";
 import { useEffect, useState } from "react";
-import { Button, Card, Segmented } from "../components/ui";
+import { Button, Card, Segmented, Toggle } from "../components/ui";
 import { useT } from "../i18n";
 import { SOURCE_URL } from "../legal";
 import { unqueue } from "../online/client";
@@ -174,10 +175,12 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   const [opponent, setOpponent] = useState<"bot" | "human">("bot");
   const [level, setLevel] = useState<BotLevel>("medium");
   const [seat, setSeat] = useState<0 | 1>(0);
+  const [beavers, setBeavers] = useState(false);
   const [xgidOpen, setXgidOpen] = useState(false);
   const [xgid, setXgid] = useState("");
   const [xgidError, setXgidError] = useState<string | null>(null);
   const xgidPossible = XGID_VARIANTS.includes(variant as VariantId);
+  const beaverPossible = variant !== "tavli" && getVariant(variant as VariantId).cube;
   const levelName: Record<BotLevel, string> = {
     easy: t.easy,
     medium: t.medium,
@@ -190,7 +193,13 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   const botLevel: BotLevel = level === "expert" && !expertHere ? "hard" : level;
 
   const start = () => {
-    let config: MatchConfig = { variant, length, crawford: true, jacoby: length === 0 };
+    let config: MatchConfig = {
+      variant,
+      length,
+      crawford: true,
+      jacoby: length === 0,
+      ...(length === 0 && beaverPossible ? { beavers } : {}),
+    };
     let from: MatchStart | undefined;
     if (xgidPossible && xgidOpen && xgid.trim()) {
       try {
@@ -283,6 +292,9 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
             { value: "human", label: t.humanLocal },
           ]}
         />
+        {length === 0 && beaverPossible && (
+          <Toggle checked={beavers} onChange={setBeavers} label={t.beavers} description={t.beaversHint} />
+        )}
         {opponent === "bot" && (
           <>
             <Segmented

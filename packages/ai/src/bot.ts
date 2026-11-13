@@ -2,7 +2,9 @@ import {
   type Board,
   bearOffLevel,
   boardKey,
+  canBeaver,
   canDouble,
+  canRaccoon,
   diceToPlay,
   type GameState,
   type Move,
@@ -396,3 +398,24 @@ export const shouldAcceptResign = (s: GameState, m: MatchContext = MONEY): boole
   const tolerance = 0.025 * (u(c) - u(-c));
   return u(offer.level * c) >= expected - tolerance;
 };
+
+/**
+ * Money play with beavers: should the player facing a double beaver (take and redouble at
+ * once, keeping the cube)? Yes when they are the favourite even with the doubler on roll.
+ */
+export const shouldBeaver = (s: GameState, level: BotLevel): boolean => {
+  if (!canBeaver(s) || level === "easy") return false;
+  const taker = opponent(s.turn);
+  const out = positionOutcomes(s, s.board, taker, s.turn, levelNet(s, level));
+  return expectedUtility(out, 1, POINTS, true) > BEAVER_MARGIN;
+};
+
+/** After a beaver: should the original doubler raccoon (redouble again, keeping the cube)? */
+export const shouldRaccoon = (s: GameState, level: BotLevel): boolean => {
+  if (!canRaccoon(s) || level === "easy") return false;
+  const out = positionOutcomes(s, s.board, s.turn, s.turn, levelNet(s, level));
+  return expectedUtility(out, 1, POINTS, true) > BEAVER_MARGIN;
+};
+
+/** Points per game a beaver or raccoon needs (estimates are rough: only clear favourites). */
+const BEAVER_MARGIN = 0.05;

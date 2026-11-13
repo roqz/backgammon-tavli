@@ -1,5 +1,5 @@
 import type { MatchContext } from "@tavli/ai";
-import { canConfirm, canDouble, isClosedOut, playerToAct } from "@tavli/engine";
+import { canBeaver, canConfirm, canDouble, canRaccoon, isClosedOut, playerToAct } from "@tavli/engine";
 import { useEffect, useState } from "react";
 import { useGame } from "../store/game";
 import { useSettings } from "../store/settings";
@@ -54,6 +54,10 @@ export function useBotDriver(): boolean {
               if (stillCurrent()) dispatch({ type: "pass" });
               break;
             }
+            if (canRaccoon(game) && (await askBot({ kind: "raccoon", state: game, level }))) {
+              if (stillCurrent()) dispatch({ type: "raccoon" });
+              break;
+            }
             const double =
               canDouble(game) && (await askBot({ kind: "double", state: game, level, match: ctx }));
             if (!stillCurrent()) return;
@@ -63,7 +67,8 @@ export function useBotDriver(): boolean {
           }
           case "cube-offered": {
             const take = await askBot({ kind: "take", state: game, level, match: ctx });
-            if (stillCurrent()) dispatch({ type: take ? "take" : "drop" });
+            const beaver = take && canBeaver(game) && (await askBot({ kind: "beaver", state: game, level }));
+            if (stillCurrent()) dispatch({ type: beaver ? "beaver" : take ? "take" : "drop" });
             break;
           }
           case "moving": {

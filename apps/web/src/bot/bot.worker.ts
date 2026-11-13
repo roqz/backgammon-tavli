@@ -1,5 +1,13 @@
 /// <reference lib="webworker" />
-import { chooseMoves, loadNet, shouldAcceptResign, shouldDouble, shouldTake } from "@tavli/ai";
+import {
+  chooseMoves,
+  loadNet,
+  shouldAcceptResign,
+  shouldBeaver,
+  shouldDouble,
+  shouldRaccoon,
+  shouldTake,
+} from "@tavli/ai";
 import { cryptoRng } from "@tavli/engine";
 import { generatePuzzle } from "../puzzle";
 import { reviewGame } from "../review";
@@ -26,6 +34,12 @@ self.onmessage = async (e: MessageEvent<BotEnvelope>) => {
         break;
       case "take":
         reply = { id, result: shouldTake(request.state, request.level, request.match) };
+        break;
+      case "beaver":
+        reply = { id, result: shouldBeaver(request.state, request.level) };
+        break;
+      case "raccoon":
+        reply = { id, result: shouldRaccoon(request.state, request.level) };
         break;
       case "accept-resign":
         reply = { id, result: shouldAcceptResign(request.state, request.match) };

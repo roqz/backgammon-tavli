@@ -133,6 +133,7 @@ const de: Record<RulesTopic, RulesChapter> = {
           "Backgammon: Zusätzlich steht beim Verlierer noch ein Stein auf der Bar oder im Heimfeld des Gewinners – 3 × Würfelwert.",
           "Jacoby-Regel (nur bei unbegrenzten Sitzungen): Gammons und Backgammons zählen nur, wenn verdoppelt wurde.",
           "Gegen den Computer geht der Doppler höchstens bis 64.",
+          "Beaver und Raccoon (auf Wunsch im Geldspiel offline): Wer eine Verdopplung annimmt, darf sofort zurückverdoppeln und behält den Würfel (Beaver). Der Verdoppler darf darauf vor dem Würfeln noch einmal verdoppeln und behält ihn dann selbst (Raccoon). Beides kann nicht abgelehnt werden.",
         ],
       },
       {
@@ -496,6 +497,7 @@ const en: Record<RulesTopic, RulesChapter> = {
           "Backgammon: additionally the loser still has a checker on the bar or in the winner's home board – 3 × cube.",
           "Jacoby rule (unlimited sessions only): gammons and backgammons count only after a double.",
           "Against the computer the cube goes up to 64 at most.",
+          "Beavers and raccoons (optional in offline money play): whoever takes a double may redouble at once and keep the cube (beaver). The doubler may then redouble again before rolling and keep it (raccoon). Neither can be refused.",
         ],
       },
       {

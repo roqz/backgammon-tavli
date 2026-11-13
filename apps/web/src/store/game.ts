@@ -52,6 +52,9 @@ const toClientAction = (a: MatchAction): ClientAction | null => {
       return { type: "offer-resign", level: a.level };
     case "next-game":
       return null; // the server starts the next game itself
+    case "beaver":
+    case "raccoon":
+      return null; // offline money play only
     default:
       return a;
   }

@@ -33,6 +33,8 @@ export interface NewGameOptions {
   readonly cube?: boolean;
   /** Money-game Jacoby rule (default false). */
   readonly jacoby?: boolean;
+  /** Money play: beavers and raccoons allowed (default false). */
+  readonly beavers?: boolean;
   /** Skip the opening roll: this player rolls first (e.g. winner of the previous Tavli game). */
   readonly starter?: Player;
   /** Start from a custom position instead of the variant's initial setup. */
@@ -61,6 +63,7 @@ export const createGame = (opts: NewGameOptions): GameState => {
       ...(opts.cubeLimit ? { limit: opts.cubeLimit } : {}),
     },
     jacoby: opts.jacoby ?? false,
+    ...(opts.beavers ? { beavers: true } : {}),
     history: [],
     result: null,
   };
@@ -156,6 +159,18 @@ export const canDouble = (s: GameState): boolean =>
   (s.cube.limit === undefined || s.cube.value * 2 <= s.cube.limit) &&
   (s.cube.owner === null || s.cube.owner === s.turn);
 
+/** The cube may reach this value (the cube limit). */
+const cubeAllows = (s: GameState, value: number): boolean =>
+  s.cube.limit === undefined || value <= s.cube.limit;
+
+/** The player facing a double may beaver: take and redouble at once, keeping the cube. */
+export const canBeaver = (s: GameState): boolean =>
+  s.phase === "cube-offered" && !!s.beavers && cubeAllows(s, s.cube.value * 4);
+
+/** After a beaver the doubler, before rolling, may raccoon: redouble again and keep the cube. */
+export const canRaccoon = (s: GameState): boolean =>
+  s.phase === "rolling" && !s.resignOffer && !!s.cube.beavered && cubeAllows(s, s.cube.value * 2);
+
 /** The player who has to act next (for `cube-offered` that is the opponent of the doubler). */
 export const playerToAct = (s: GameState): Player | null => {
   if (s.resignOffer && s.phase !== "finished") return opponent(s.resignOffer.player);
@@ -248,6 +263,8 @@ export const applyAction = (s: GameState, action: GameAction): GameState => {
           : { ...s, phase: "rolling", turn: starter };
       }
       if (s.phase !== "rolling") illegal(`phase is ${s.phase}`);
+      if (s.cube.beavered)
+        return startMoving({ ...s, cube: { ...s.cube, beavered: false } }, s.turn, action.dice);
       return startMoving(s, s.turn, action.dice);
     }
 
@@ -327,6 +344,28 @@ export const applyAction = (s: GameState, action: GameAction): GameState => {
         phase: "rolling",
         cube: { ...s.cube, value: s.cube.value * 2, owner: taker },
         history: [...s.history, { kind: "take", player: taker }],
+      };
+    }
+
+    case "beaver": {
+      if (!canBeaver(s)) illegal("beaver not possible");
+      const taker = opponent(s.turn);
+      const to = s.cube.value * 4;
+      return {
+        ...s,
+        phase: "rolling",
+        cube: { ...s.cube, value: to, owner: taker, beavered: true },
+        history: [...s.history, { kind: "beaver", player: taker, to }],
+      };
+    }
+
+    case "raccoon": {
+      if (!canRaccoon(s)) illegal("raccoon not possible");
+      const to = s.cube.value * 2;
+      return {
+        ...s,
+        cube: { ...s.cube, value: to, owner: s.turn, beavered: false },
+        history: [...s.history, { kind: "raccoon", player: s.turn, to }],
       };
     }
 

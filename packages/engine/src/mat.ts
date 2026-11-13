@@ -62,6 +62,12 @@ export const toMat = (match: MatMatch): string => {
         case "take":
           place(rec.player, " Takes");
           break;
+        case "beaver":
+          place(rec.player, ` Beavers => ${rec.to}`);
+          break;
+        case "raccoon":
+          place(rec.player, ` Raccoons => ${rec.to}`);
+          break;
         case "drop":
           place(rec.player, " Drops");
           break;

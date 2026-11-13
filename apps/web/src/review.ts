@@ -83,6 +83,7 @@ export function reviewGame(
   let done = 0;
   history.forEach((rec, i) => {
     if (rec.kind === "take") cube = { ...cube, value: cube.value * 2, owner: rec.player };
+    if (rec.kind === "beaver" || rec.kind === "raccoon") cube = { ...cube, value: rec.to, owner: rec.player };
     if (rec.kind !== "move") return;
     const dice = rec.dice;
     const before = board;

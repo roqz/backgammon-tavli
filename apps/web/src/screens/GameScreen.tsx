@@ -1,7 +1,9 @@
 import {
   applyMoveUnchecked,
+  canBeaver,
   canConfirm,
   canDouble,
+  canRaccoon,
   canUndo,
   formatTurn,
   type GameResult,
@@ -121,7 +123,9 @@ function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
       act = roll;
     } else if (g.phase === "rolling" && autoRoll) {
       act = roll;
-      if (!canDouble(g)) delay = 450;
+      if (canRaccoon(g))
+        delay = -1; // a decision: no automatic roll
+      else if (!canDouble(g)) delay = 450;
       else if (autoRollCountdown) {
         delay = COUNTDOWN_MS;
         countdown = "roll";
@@ -320,6 +324,11 @@ export function GameScreen({
           {canDouble(g) && (
             <Button onClick={() => dispatch({ type: "double" })}>
               {t.double} ({g.cube.value * 2})
+            </Button>
+          )}
+          {canRaccoon(g) && (
+            <Button onClick={() => dispatch({ type: "raccoon" })} title={t.raccoonHint}>
+              🦝 {t.raccoon} ({g.cube.value * 2})
             </Button>
           )}
           <Button variant="primary" onClick={roll}>
@@ -627,6 +636,11 @@ export function GameScreen({
               {t.take}
             </Button>
           </div>
+          {canBeaver(g) && (
+            <Button className="mt-2 w-full" onClick={() => dispatch({ type: "beaver" })} title={t.beaverHint}>
+              🦫 {t.beaver} ({g.cube.value * 4})
+            </Button>
+          )}
         </Modal>
       )}
 

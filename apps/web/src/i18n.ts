@@ -237,6 +237,15 @@ const de = {
   evClosedOutSub: "Heimfeld des Gegners ist geschlossen",
   histClosedOut: "Ausgesperrt",
   histTake: "Angenommen",
+  histBeaver: "Beaver auf",
+  histRaccoon: "Raccoon auf",
+  beaver: "Beaver",
+  beaverHint: "Annehmen und sofort zurückverdoppeln – du behältst den Würfel.",
+  raccoon: "Raccoon",
+  raccoonHint: "Auf den Beaver noch einmal verdoppeln – du behältst den Würfel.",
+  beavers: "Beaver und Raccoon",
+  beaversHint:
+    "Wer eine Verdopplung annimmt, darf sofort zurückverdoppeln und behält den Würfel (Beaver); der Verdoppler darf darauf noch einmal verdoppeln (Raccoon).",
   histDrop: "Abgelehnt",
   histResign: "Gibt auf",
   offerResign: "Aufgabe anbieten",
@@ -907,6 +916,15 @@ const en: Dict = {
   evClosedOutSub: "the opponent's home board is closed",
   histClosedOut: "Closed out",
   histTake: "Takes",
+  histBeaver: "Beavers to",
+  histRaccoon: "Raccoons to",
+  beaver: "Beaver",
+  beaverHint: "Take and redouble at once – you keep the cube.",
+  raccoon: "Raccoon",
+  raccoonHint: "Redouble the beaver once more – you keep the cube.",
+  beavers: "Beavers and raccoons",
+  beaversHint:
+    "Whoever takes a double may redouble at once and keep the cube (beaver); the doubler may then redouble again (raccoon).",
   histDrop: "Passes",
   histResign: "Resigns",
   offerResign: "Offer to resign",
@@ -1349,6 +1367,10 @@ export const turnText = (t: Dict, variant: VariantId, rec: TurnRecord): string =
       return `${t.histDouble} ${rec.to}`;
     case "take":
       return t.histTake;
+    case "beaver":
+      return `${t.histBeaver} ${rec.to}`;
+    case "raccoon":
+      return `${t.histRaccoon} ${rec.to}`;
     case "closed-out":
       return t.histClosedOut;
     case "drop":

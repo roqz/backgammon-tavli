@@ -160,3 +160,18 @@ test("Tavla and Narde can be played against the computer", async ({ page }) => {
     expect(await checkerCount(page)).toBe(30);
   }
 });
+
+test("money play with beavers: beaver a double, then raccoon", async ({ page }) => {
+  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await page.getByRole("button", { name: "Mensch (gleiches Gerät)" }).click();
+  await page.getByRole("button", { name: "Unbegrenzt" }).click();
+  await page.getByRole("switch", { name: /Beaver und Raccoon/ }).click();
+  await page.getByRole("button", { name: "Starten" }).click();
+  await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
+  await tapMove(page);
+  await page.getByRole("button", { name: /Verdoppeln/ }).click();
+  await page.getByRole("button", { name: /Beaver \(4\)/ }).click();
+  await page.getByRole("button", { name: /Raccoon \(8\)/ }).click();
+  await expect(page.getByRole("button", { name: /Raccoon/ })).toHaveCount(0);
+  await expect(page.getByText(/Raccoon auf 8/).first()).toBeAttached();
+});
