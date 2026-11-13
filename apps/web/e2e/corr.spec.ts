@@ -19,7 +19,7 @@ test("correspondence: invite a friend, accept, and the player to move makes a mo
   await befriend(ann, ben);
 
   await ann.getByRole("tab", { name: "Fernpartien" }).click();
-  await ann.getByRole("button", { name: /Neue Fernpartie/ }).click();
+  await ann.getByRole("button", { name: /Freund einladen/ }).click();
   await ann.getByRole("dialog").getByRole("button", { name: "1", exact: true }).click();
   await ann
     .getByRole("dialog")
@@ -51,4 +51,27 @@ test("correspondence: invite a friend, accept, and the player to move makes a mo
     await tapMove(mover);
   await mover.getByRole("button", { name: "Zug beenden" }).click();
   await expect(mover.getByText(/ist am Zug/)).toBeVisible();
+});
+
+test("correspondence: two strangers find each other with the same search", async ({ browser }) => {
+  test.setTimeout(90_000);
+  const kim = await onlineGuest(browser, "Kim");
+  const lou = await onlineGuest(browser, "Lou");
+  for (const p of [kim, lou]) {
+    await p.getByRole("tab", { name: "Fernpartien" }).click();
+    await p.getByRole("button", { name: /Gegner suchen/ }).click();
+    const dialog = p.getByRole("dialog");
+    await dialog.getByRole("button", { name: "Hypergammon", exact: true }).click();
+    await dialog.getByRole("button", { name: "1", exact: true }).click();
+    await dialog.getByRole("button", { name: "1 Std./Zug" }).click();
+    await dialog.getByRole("button", { name: /Gegner suchen/ }).click();
+  }
+  // Kim waits, Lou's search matches and opens the game
+  await expect(lou.getByText(/Hypergammon/).first()).toBeVisible({ timeout: 10_000 });
+  await expect(lou.getByText(/1 Std\.\/Zug/)).toBeVisible();
+  await kim.reload();
+  await kim.getByRole("button", { name: /Online spielen/ }).click();
+  await kim.getByRole("tab", { name: "Fernpartien" }).click();
+  await expect(kim.getByText("Deine Suchen")).toHaveCount(0);
+  await expect(kim.getByRole("button", { name: /Lou/ })).toBeVisible();
 });

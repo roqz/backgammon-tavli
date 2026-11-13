@@ -9,7 +9,9 @@ import {
   pipCount,
 } from "@tavli/engine";
 import {
-  CORR_DAYS,
+  CORR_HOURS,
+  type CorrHours,
+  type CorrSeek,
   type CorrView,
   type FriendView,
   MATCH_VARIANTS,
@@ -24,12 +26,15 @@ import { lengthText, useT } from "../i18n";
 import {
   abandonCorr,
   answerCorr,
+  cancelCorrSeek,
   corrAction,
   fetchCorrGame,
   fetchCorrGames,
+  fetchCorrSeeks,
   fetchFriends,
   inviteCorr,
   type MatchLength,
+  seekCorr,
 } from "../online/client";
 import { useOnline } from "../online/store";
 import { useBoardTheme } from "../rewards";
@@ -39,15 +44,64 @@ import { Checker, usePortraitPhone } from "./GameScreen";
 type T = ReturnType<typeof useT>;
 const variantLabel = (v: MatchVariantId, tavli: string) => (v === "tavli" ? tavli : getVariant(v).name);
 
-/** "2 Tage 4 Std." until the deadline. */
+/** "2 Tage 4 Std." until the deadline (minutes in the last hour). */
 const timeLeft = (t: T, deadline: number | null): string => {
   if (deadline === null) return "";
   const ms = Math.max(0, deadline - Date.now());
   const h = Math.floor(ms / 3_600_000);
+  if (h === 0) return t.corrMinutesLeft.replace("{m}", String(Math.ceil(ms / 60_000)));
   return h >= 24
     ? t.corrDaysLeft.replace("{d}", String(Math.floor(h / 24))).replace("{h}", String(h % 24))
     : t.corrHoursLeft.replace("{h}", String(h));
 };
+
+/** "8 Std./Zug", "3 T./Zug". */
+export const corrPace = (t: T, hours: number): string =>
+  hours < 24 ? t.corrHours.replace("{h}", String(hours)) : t.corrDays.replace("{d}", String(hours / 24));
+
+/** Variant, length and time per move, shared by the invitation and the search. */
+function CorrSettings({
+  variant,
+  setVariant,
+  length,
+  setLength,
+  hours,
+  setHours,
+}: {
+  variant: MatchVariantId;
+  setVariant: (v: MatchVariantId) => void;
+  length: MatchLength;
+  setLength: (l: MatchLength) => void;
+  hours: CorrHours;
+  setHours: (h: CorrHours) => void;
+}) {
+  const t = useT();
+  return (
+    <>
+      <Segmented
+        label={t.variant}
+        value={variant}
+        onChange={setVariant}
+        options={MATCH_VARIANTS.map((v) => ({ value: v, label: variantLabel(v, t.tavliMatch) }))}
+      />
+      <Segmented
+        label={t.matchLength}
+        value={length}
+        onChange={setLength}
+        options={([0, 1, 3, 5, 7] as const).map((l) => ({
+          value: l,
+          label: l === 0 ? `💰 ${t.money}` : String(l),
+        }))}
+      />
+      <Segmented
+        label={t.corrTimePerMove}
+        value={hours}
+        onChange={setHours}
+        options={CORR_HOURS.map((h) => ({ value: h, label: corrPace(t, h) }))}
+      />
+    </>
+  );
+}
 
 /** Correspondence games: invitations, own turn first, then waiting and finished ones. */
 export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
@@ -57,6 +111,8 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
   const [list, setList] = useState<CorrView[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [seeking, setSeeking] = useState(false);
+  const [seeks, setSeeks] = useState<CorrSeek[]>([]);
   const [reload, setReload] = useState(0);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: version and reload re-run the fetch
@@ -67,6 +123,9 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
         setError(null);
       })
       .catch((e: unknown) => setError(errorOf(t, e)));
+    fetchCorrSeeks()
+      .then(setSeeks)
+      .catch(() => {});
   }, [version, reload]);
 
   const act = async (fn: () => Promise<unknown>) => {
@@ -93,10 +152,38 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
       )}
       <Card className="flex flex-col gap-2">
         <p className="text-xs text-stone-500">{t.corrHint}</p>
-        <Button variant="primary" onClick={() => setCreating(true)}>
-          ♟ {t.corrNew}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" className="flex-1" onClick={() => setSeeking(true)}>
+            🔍 {t.corrSeek}
+          </Button>
+          <Button className="flex-1" onClick={() => setCreating(true)}>
+            ♟ {t.corrInviteFriend}
+          </Button>
+        </div>
       </Card>
+      {seeks.length > 0 && (
+        <Card>
+          <h2 className="mb-1 font-semibold text-stone-300">{t.corrSeeks}</h2>
+          <p className="mb-1 text-xs text-stone-500">{t.corrSeekWaiting}</p>
+          <ul className="divide-y divide-stone-800">
+            {seeks.map((s) => (
+              <li key={s.id} className="flex items-center gap-2 py-2 text-sm">
+                <span className="min-w-0 flex-1 text-stone-200">
+                  🔍 {variantLabel(s.variant, t.tavliMatch)} · {lengthText(t, s.length)} ·{" "}
+                  {corrPace(t, s.hours)}
+                </span>
+                <Button
+                  variant="ghost"
+                  className="px-2 py-1 text-sm"
+                  onClick={() => void act(() => cancelCorrSeek(s.id))}
+                >
+                  {t.cancel}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       {incoming.length > 0 && (
         <Card>
           <h2 className="mb-1 font-semibold text-amber-200">{t.corrInvitations}</h2>
@@ -164,6 +251,16 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
       {list !== null && games.length === 0 && (
         <p className="text-center text-sm text-stone-500">{t.corrNone}</p>
       )}
+      {seeking && (
+        <CorrSeekDialog
+          onClose={() => setSeeking(false)}
+          onDone={(gameId) => {
+            setSeeking(false);
+            setReload((n) => n + 1);
+            if (gameId) onOpen(gameId);
+          }}
+        />
+      )}
       {creating && (
         <CorrInvite
           onClose={() => setCreating(false)}
@@ -177,13 +274,60 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
+function CorrSeekDialog({
+  onClose,
+  onDone,
+}: {
+  onClose: () => void;
+  onDone: (gameId: string | null) => void;
+}) {
+  const t = useT();
+  const [variant, setVariant] = useState<MatchVariantId>("backgammon");
+  const [length, setLength] = useState<MatchLength>(3);
+  const [hours, setHours] = useState<CorrHours>(8);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Modal onClose={onClose}>
+      <h2 className="mb-3 text-lg font-semibold text-stone-100">🔍 {t.corrSeek}</h2>
+      <div className="flex flex-col gap-4">
+        <p className="text-xs text-stone-500">{t.corrSeekHint}</p>
+        <CorrSettings
+          variant={variant}
+          setVariant={setVariant}
+          length={length}
+          setLength={setLength}
+          hours={hours}
+          setHours={setHours}
+        />
+        {error && <p className="text-sm text-red-400">{error}</p>}
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Button className="flex-1" onClick={onClose}>
+          {t.cancel}
+        </Button>
+        <Button
+          variant="primary"
+          className="flex-[2]"
+          onClick={() =>
+            void seekCorr(variant, length, hours)
+              .then((r) => onDone(r.game?.id ?? null))
+              .catch((e: unknown) => setError(errorOf(t, e)))
+          }
+        >
+          🔍 {t.corrSeek}
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
 function CorrInvite({ onClose, onSent }: { onClose: () => void; onSent: () => void }) {
   const t = useT();
   const [friends, setFriends] = useState<FriendView[] | null>(null);
   const [friend, setFriend] = useState<string | null>(null);
   const [variant, setVariant] = useState<MatchVariantId>("backgammon");
   const [length, setLength] = useState<MatchLength>(3);
-  const [days, setDays] = useState<1 | 3 | 7>(3);
+  const [hours, setHours] = useState<CorrHours>(72);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     fetchFriends()
@@ -215,26 +359,13 @@ function CorrInvite({ onClose, onSent }: { onClose: () => void; onSent: () => vo
               ))}
             </select>
           </label>
-          <Segmented
-            label={t.variant}
-            value={variant}
-            onChange={setVariant}
-            options={MATCH_VARIANTS.map((v) => ({ value: v, label: variantLabel(v, t.tavliMatch) }))}
-          />
-          <Segmented
-            label={t.matchLength}
-            value={length}
-            onChange={setLength}
-            options={([0, 1, 3, 5, 7] as const).map((l) => ({
-              value: l,
-              label: l === 0 ? `💰 ${t.money}` : String(l),
-            }))}
-          />
-          <Segmented
-            label={t.corrTimePerMove}
-            value={days}
-            onChange={setDays}
-            options={CORR_DAYS.map((d) => ({ value: d, label: t.corrDays.replace("{d}", String(d)) }))}
+          <CorrSettings
+            variant={variant}
+            setVariant={setVariant}
+            length={length}
+            setLength={setLength}
+            hours={hours}
+            setHours={setHours}
           />
           {error && <p className="text-sm text-red-400">{error}</p>}
         </div>
@@ -248,7 +379,7 @@ function CorrInvite({ onClose, onSent }: { onClose: () => void; onSent: () => vo
           className="flex-[2]"
           disabled={!friend}
           onClick={() =>
-            void inviteCorr(friend!, variant, length, days)
+            void inviteCorr(friend!, variant, length, hours)
               .then(onSent)
               .catch((e: unknown) => setError(errorOf(t, e)))
           }
@@ -287,8 +418,7 @@ function CorrRow({
           )}
         </span>
         <span className="block text-xs text-stone-500">
-          {variantLabel(g.variant, t.tavliMatch)} · {lengthText(t, g.length)} ·{" "}
-          {t.corrDays.replace("{d}", String(g.days))}
+          {variantLabel(g.variant, t.tavliMatch)} · {lengthText(t, g.length)} · {corrPace(t, g.hours)}
           {g.status === "active" && ` · ⏳ ${timeLeft(t, g.deadline)}`}
           {g.status === "finished" &&
             ` · ${g.winner === null ? t.corrEnded : g.winner === g.seat ? `🏆 ${t.corrWon}` : t.corrLost}`}
@@ -363,7 +493,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
         </Button>
         <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
           ♟ <span className="font-semibold text-stone-200">{rules.name}</span> · {lengthText(t, view.length)}{" "}
-          · {t.corrDays.replace("{d}", String(view.days))}
+          · {corrPace(t, view.hours)}
         </div>
         {view.status === "active" ? (
           <Button

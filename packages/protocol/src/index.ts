@@ -306,8 +306,26 @@ export const LeagueCreateSchema = z.object({
 
 // ---- correspondence games -------------------------------------------------------------------
 
-/** Days a player has for each decision. */
+/** Days a player has for each decision in a correspondence league. */
 export const CORR_DAYS = [1, 3, 7] as const;
+/**
+ * Hours a player has for each decision in a correspondence game: 1 and 8 hours are the "light"
+ * pace (played over an evening or a day, with a notification for every move), then 1, 3, 7 days.
+ */
+export const CORR_HOURS = [1, 8, 24, 72, 168] as const;
+export type CorrHours = (typeof CORR_HOURS)[number];
+const corrHours = z.union([z.literal(1), z.literal(8), z.literal(24), z.literal(72), z.literal(168)]);
+/** Open searches for a correspondence opponent per player. */
+export const MAX_CORR_SEEKS = 5;
+
+/** A search for a correspondence opponent (unrated). */
+export interface CorrSeek {
+  readonly id: string;
+  readonly variant: MatchVariantId;
+  readonly length: number;
+  readonly hours: number;
+  readonly createdAt: string;
+}
 
 export type CorrStatus = "invited" | "active" | "finished" | "declined";
 
@@ -315,7 +333,8 @@ export interface CorrView {
   readonly id: string;
   readonly variant: MatchVariantId;
   readonly length: number;
-  readonly days: number;
+  /** Time per decision. */
+  readonly hours: number;
   readonly players: readonly [PublicPlayer, PublicPlayer];
   readonly createdBy: string;
   readonly status: CorrStatus;
@@ -337,8 +356,9 @@ export interface CorrView {
 export const CorrCreateSchema = z.object({
   playerId: z.string().min(1).max(64),
   ...matchSetup,
-  days: z.union([z.literal(1), z.literal(3), z.literal(7)]),
+  hours: corrHours,
 });
+export const CorrSeekSchema = z.object({ ...matchSetup, hours: corrHours });
 export const CorrAnswerSchema = z.object({ accept: z.boolean() });
 export const CorrActionSchema = z.object({ action: ClientActionSchema });
 

@@ -94,13 +94,27 @@ export const tournamentReadyMessage = (lang: PushLang, ref: TournamentRef, oppon
   };
 };
 
+/** "8 Stunden", "3 Tage" / "8 hours", "3 days". */
+const corrTime = (lang: PushLang, hours: number): string => {
+  const [n, unit] =
+    hours < 24
+      ? [hours, lang === "de" ? ["Stunde", "Stunden"] : ["hour", "hours"]]
+      : [hours / 24, lang === "de" ? ["Tag", "Tage"] : ["day", "days"]];
+  return `${n} ${n === 1 ? unit[0] : unit[1]}`;
+};
+
 /** "Your move" in a correspondence game. */
-export const corrMoveMessage = (lang: PushLang, id: string, opponent: string, days: number): PushMessage => ({
+export const corrMoveMessage = (
+  lang: PushLang,
+  id: string,
+  opponent: string,
+  hours: number,
+): PushMessage => ({
   title: `♟ ${opponent}`,
   body:
     lang === "de"
-      ? `Du bist am Zug in deiner Fernpartie gegen ${opponent} (${days} ${days === 1 ? "Tag" : "Tage"} Zeit).`
-      : `Your move in the correspondence game against ${opponent} (${days} ${days === 1 ? "day" : "days"}).`,
+      ? `Du bist am Zug in deiner Fernpartie gegen ${opponent} (${corrTime("de", hours)} Zeit).`
+      : `Your move in the correspondence game against ${opponent} (${corrTime("en", hours)}).`,
   tag: `corr-${id}`,
   url: `./?corr=${encodeURIComponent(id)}`,
 });

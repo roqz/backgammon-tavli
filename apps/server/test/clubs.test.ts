@@ -206,7 +206,7 @@ describe("clubs and leagues", () => {
     expect(started.matches.map((m) => m.status)).toEqual(["playing", "playing", "playing"]);
     // no friendship needed; the game carries the league
     const ab = await corrGame(a, b.id, league.id);
-    expect(ab).toMatchObject({ variant: "plakoto", days: 7, league: { name: "Fernliga" } });
+    expect(ab).toMatchObject({ variant: "plakoto", hours: 168, league: { name: "Fernliga" } });
     // live challenges are not used in a correspondence league
     const tc = await TestClient.connect(server, a);
     clients.push(tc);

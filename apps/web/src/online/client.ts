@@ -6,6 +6,8 @@ import type {
   ClubSummary,
   ClubView,
   CORR_DAYS,
+  CorrHours,
+  CorrSeek,
   CorrView,
   EmoteId,
   Frame,
@@ -399,8 +401,21 @@ export const leagueAction = (id: string, action: "join" | "leave" | "start" | "n
 
 export const fetchCorrGames = () => rest<CorrView[]>("/api/corr");
 export const fetchCorrGame = (id: string) => rest<CorrView>(`/api/corr/${id}`);
-export const inviteCorr = (playerId: string, variant: MatchVariantId, length: MatchLength, days: 1 | 3 | 7) =>
-  rest<CorrView>("/api/corr", { method: "POST", body: JSON.stringify({ playerId, variant, length, days }) });
+export const inviteCorr = (
+  playerId: string,
+  variant: MatchVariantId,
+  length: MatchLength,
+  hours: CorrHours,
+) =>
+  rest<CorrView>("/api/corr", { method: "POST", body: JSON.stringify({ playerId, variant, length, hours }) });
+export const fetchCorrSeeks = () => rest<CorrSeek[]>("/api/corr/seeks");
+/** Looks for an opponent: either a game starts right away or the search waits. */
+export const seekCorr = (variant: MatchVariantId, length: MatchLength, hours: CorrHours) =>
+  rest<{ game?: CorrView; seek?: CorrSeek }>("/api/corr/seeks", {
+    method: "POST",
+    body: JSON.stringify({ variant, length, hours }),
+  });
+export const cancelCorrSeek = (id: string) => rest(`/api/corr/seeks/${id}/cancel`, { method: "POST" });
 export const answerCorr = (id: string, accept: boolean) =>
   rest<CorrView>(`/api/corr/${id}/answer`, { method: "POST", body: JSON.stringify({ accept }) });
 export const corrAction = (id: string, action: ClientAction) =>

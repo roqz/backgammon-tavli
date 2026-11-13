@@ -13,6 +13,7 @@ import {
   CorrActionSchema,
   CorrAnswerSchema,
   CorrCreateSchema,
+  CorrSeekSchema,
   DeleteAccountSchema,
   FrameSchema,
   FriendRequestSchema,
@@ -196,7 +197,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       isConnected: (id) => lobby.isConnected(id),
       yourMove: (id, game) => {
         const opponent = game.players[game.toAct === 0 ? 1 : 0].name;
-        void push?.send(id, (lang) => corrMoveMessage(lang, game.id, opponent, game.days));
+        void push?.send(id, (lang) => corrMoveMessage(lang, game.id, opponent, game.hours));
       },
       leagueResult: (league, players, winner, score) =>
         lobby.clubs.matchEnded(league, players, winner, score),
@@ -319,6 +320,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
           await account(() => store.checkPassword(player.id, body.data.password ?? ""));
         }
         lobby.kick(player.id, "deleted");
+        corr.cancelSeeks(player.id);
         store.deletePlayer(player.id);
         log(`player ${player.id} deleted their profile`);
         return { ok: true };
@@ -506,9 +508,22 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       if (path === "/api/corr" && req.method === "POST") {
         const body = CorrCreateSchema.safeParse(await readJson(req));
         if (!body.success) throw new HttpError(400, "invalid request");
-        const { playerId, variant, length, days } = body.data;
+        const { playerId, variant, length, hours } = body.data;
         res.statusCode = 201;
-        return run(() => corr.invite(player.id, playerId, variant, length, days));
+        return run(() => corr.invite(player.id, playerId, variant, length, hours));
+      }
+      // searching for an opponent (unrated, like every correspondence game)
+      if (path === "/api/corr/seeks" && req.method === "GET") return corr.seeks(player.id);
+      if (path === "/api/corr/seeks" && req.method === "POST") {
+        const body = CorrSeekSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        const { variant, length, hours } = body.data;
+        return run(() => corr.seek(player.id, variant, length, hours));
+      }
+      const sk = /^\/api\/corr\/seeks\/([\w-]{1,64})\/cancel$/.exec(path);
+      if (sk && req.method === "POST") {
+        corr.cancelSeek(player.id, sk[1]!);
+        return { ok: true };
       }
       const c = /^\/api\/corr\/([\w-]{1,64})(?:\/(answer|action|abandon))?$/.exec(path);
       if (c) {

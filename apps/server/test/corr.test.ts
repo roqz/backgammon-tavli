@@ -1,5 +1,5 @@
 import { legalMoves, type MatchState } from "@tavli/engine";
-import type { CorrView, RegisterResponse } from "@tavli/protocol";
+import type { CorrSeek, CorrView, RegisterResponse } from "@tavli/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import type { RunningServer } from "../src/server";
 import { api, register, start } from "./helpers";
@@ -35,7 +35,7 @@ describe("correspondence games", () => {
       playerId: b.id,
       variant: "portes",
       length: 1,
-      days: 3,
+      hours: 72,
     });
     expect(inv.status).toBe("invited");
     expect((await api<CorrView[]>(server, "/api/corr", { headers: bearer(b) }))[0]!.id).toBe(inv.id);
@@ -78,14 +78,14 @@ describe("correspondence games", () => {
     const b = await register(server, "Ben");
     const c = await register(server, "Cid");
     await expect(
-      post(a, "/api/corr", { playerId: c.id, variant: "backgammon", length: 1, days: 1 }),
+      post(a, "/api/corr", { playerId: c.id, variant: "backgammon", length: 1, hours: 24 }),
     ).rejects.toThrow(/403/);
     await friends(a, b);
     const inv = await post<CorrView>(a, "/api/corr", {
       playerId: b.id,
       variant: "backgammon",
       length: 1,
-      days: 1,
+      hours: 24,
     });
     const g = await post<CorrView>(b, `/api/corr/${inv.id}/answer`, { accept: true });
     server.corr.tick(Date.now() + 2 * 86_400_000);
@@ -93,5 +93,36 @@ describe("correspondence games", () => {
     expect(after.status).toBe("finished");
     expect(after.reason).toBe("abandoned");
     expect(after.winner).toBe(g.toAct === 0 ? 1 : 0);
+  });
+
+  it("searching for an opponent: the second matching search starts an unrated game", async () => {
+    server = await start();
+    const [a, b, c] = [
+      await register(server, "Ann"),
+      await register(server, "Ben"),
+      await register(server, "Cid"),
+    ];
+    type SeekResult = { game?: CorrView; seek?: CorrSeek };
+    const first = await post<SeekResult>(a, "/api/corr/seeks", { variant: "narde", length: 3, hours: 1 });
+    expect(first.seek).toMatchObject({ variant: "narde", length: 3, hours: 1 });
+    // the same search again does not add a second one
+    await post(a, "/api/corr/seeks", { variant: "narde", length: 3, hours: 1 });
+    expect(await api<CorrSeek[]>(server, "/api/corr/seeks", { headers: bearer(a) })).toHaveLength(1);
+    // other settings do not match
+    expect(
+      (await post<SeekResult>(b, "/api/corr/seeks", { variant: "narde", length: 3, hours: 8 })).seek,
+    ).toBeTruthy();
+    const matched = await post<SeekResult>(c, "/api/corr/seeks", { variant: "narde", length: 3, hours: 1 });
+    expect(matched.game).toMatchObject({ status: "active", hours: 1, variant: "narde", league: null });
+    expect(matched.game!.players.map((p) => p.id).sort()).toEqual([a.id, c.id].sort());
+    expect(matched.game!.deadline! - Date.now()).toBeLessThanOrEqual(3_600_000);
+    expect(await api<CorrSeek[]>(server, "/api/corr/seeks", { headers: bearer(a) })).toHaveLength(0);
+    // Ann sees the game; Ben cancels his search
+    expect((await api<CorrView[]>(server, "/api/corr", { headers: bearer(a) }))[0]!.id).toBe(
+      matched.game!.id,
+    );
+    const [bs] = await api<CorrSeek[]>(server, "/api/corr/seeks", { headers: bearer(b) });
+    await post(b, `/api/corr/seeks/${bs!.id}/cancel`);
+    expect(await api<CorrSeek[]>(server, "/api/corr/seeks", { headers: bearer(b) })).toHaveLength(0);
   });
 });

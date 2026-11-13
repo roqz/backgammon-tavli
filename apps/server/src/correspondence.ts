@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import {
   applyMatchAction,
   createMatch,
@@ -12,7 +12,15 @@ import {
   playerToAct,
   rollDice,
 } from "@tavli/engine";
-import type { ClientAction, CorrStatus, CorrView, MatchVariantId, ServerMessage } from "@tavli/protocol";
+import {
+  type ClientAction,
+  type CorrSeek,
+  type CorrStatus,
+  type CorrView,
+  MAX_CORR_SEEKS,
+  type MatchVariantId,
+  type ServerMessage,
+} from "@tavli/protocol";
 import type { Store, StoredGame } from "./db";
 
 const SCHEMA = `
@@ -32,14 +40,29 @@ CREATE TABLE IF NOT EXISTS corr_games (
   reason TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  league_id TEXT
+  league_id TEXT,
+  hours INTEGER
 );
+CREATE TABLE IF NOT EXISTS corr_seeks (
+  id TEXT PRIMARY KEY,
+  player_id TEXT NOT NULL REFERENCES players(id),
+  variant TEXT NOT NULL,
+  length INTEGER NOT NULL,
+  hours INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS corr_seeks_match ON corr_seeks(variant, length, hours, created_at);
 CREATE INDEX IF NOT EXISTS corr_p0 ON corr_games(p0, status);
 CREATE INDEX IF NOT EXISTS corr_p1 ON corr_games(p1, status);
 CREATE INDEX IF NOT EXISTS corr_deadline ON corr_games(status, deadline);
 `;
 
-const DAY = 24 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+/** Searches nobody answered are dropped after a week. */
+const SEEK_TTL = 7 * DAY;
+/** Time per decision (older rows only have days). */
+const hoursOf = (r: { hours: number | null; days: number }) => r.hours ?? r.days * 24;
 /** Running and invited correspondence games per player. */
 export const MAX_CORR_GAMES = 20;
 
@@ -86,6 +109,7 @@ interface Row {
   created_at: string;
   updated_at: string;
   league_id: string | null;
+  hours: number | null;
 }
 
 /**
@@ -103,6 +127,8 @@ export class Correspondence {
     const cols = store.db.prepare("PRAGMA table_info(corr_games)").all() as { name: string }[];
     if (!cols.some((c) => c.name === "league_id"))
       store.db.exec("ALTER TABLE corr_games ADD COLUMN league_id TEXT");
+    if (!cols.some((c) => c.name === "hours"))
+      store.db.exec("ALTER TABLE corr_games ADD COLUMN hours INTEGER");
   }
 
   private get db() {
@@ -120,7 +146,7 @@ export class Correspondence {
       id: r.id,
       variant: r.variant,
       length: r.length,
-      days: r.days,
+      hours: hoursOf(r),
       players: [this.store.publicPlayer(r.p0, r.variant), this.store.publicPlayer(r.p1, r.variant)],
       createdBy: r.created_by,
       status: r.status,
@@ -153,26 +179,30 @@ export class Correspondence {
   }
 
   /** A friend is invited; the inviter plays White. */
-  invite(me: string, friend: string, variant: MatchVariantId, length: number, days: number): CorrView {
+  private openGames(id: string): number {
+    return (
+      this.db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM corr_games WHERE (p0 = ?1 OR p1 = ?1) AND status IN ('invited', 'active')
+           AND league_id IS NULL`,
+        )
+        .get(id) as { n: number }
+    ).n;
+  }
+
+  invite(me: string, friend: string, variant: MatchVariantId, length: number, hours: number): CorrView {
     if (!this.store.areFriends(me, friend)) throw new CorrError(403, "not friends");
-    const open = (id: string) =>
-      (
-        this.db
-          .prepare(
-            "SELECT COUNT(*) AS n FROM corr_games WHERE (p0 = ?1 OR p1 = ?1) AND status IN ('invited', 'active')",
-          )
-          .get(id) as { n: number }
-      ).n;
-    if (open(me) >= MAX_CORR_GAMES || open(friend) >= MAX_CORR_GAMES)
+    if (this.openGames(me) >= MAX_CORR_GAMES || this.openGames(friend) >= MAX_CORR_GAMES)
       throw new CorrError(409, "too many games");
+    const days = Math.max(1, Math.round(hours / 24));
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db
       .prepare(
-        `INSERT INTO corr_games (id, variant, length, days, p0, p1, created_by, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'invited', ?, ?)`,
+        `INSERT INTO corr_games (id, variant, length, days, hours, p0, p1, created_by, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'invited', ?, ?)`,
       )
-      .run(id, variant, length, days, me, friend, me, now, now);
+      .run(id, variant, length, days, hours, me, friend, me, now, now);
     this.changed(id);
     return this.get(me, id);
   }
@@ -189,24 +219,109 @@ export class Correspondence {
     length: number,
     days: number,
   ): string {
+    return this.startGame(p0, p1, p0, variant, length, days * 24, leagueId);
+  }
+
+  // ---- searching for an opponent ---------------------------------------------------------------
+
+  private seekRows(me: string): CorrSeek[] {
+    return (
+      this.db.prepare("SELECT * FROM corr_seeks WHERE player_id = ? ORDER BY created_at").all(me) as {
+        id: string;
+        variant: MatchVariantId;
+        length: number;
+        hours: number;
+        created_at: string;
+      }[]
+    ).map((r) => ({
+      id: r.id,
+      variant: r.variant,
+      length: r.length,
+      hours: r.hours,
+      createdAt: r.created_at,
+    }));
+  }
+
+  seeks(me: string): CorrSeek[] {
+    return this.seekRows(me);
+  }
+
+  /**
+   * Looks for a correspondence opponent with the same settings: if someone is already waiting,
+   * the game starts right away (unrated, seats drawn by lot); otherwise the search is kept
+   * until someone matches it or it expires.
+   */
+  seek(
+    me: string,
+    variant: MatchVariantId,
+    length: number,
+    hours: number,
+  ): { game: CorrView; seek?: undefined } | { seek: CorrSeek; game?: undefined } {
+    if (this.openGames(me) >= MAX_CORR_GAMES) throw new CorrError(409, "too many games");
+    const other = this.db
+      .prepare(
+        `SELECT id, player_id FROM corr_seeks WHERE variant = ? AND length = ? AND hours = ? AND player_id != ?
+         ORDER BY created_at LIMIT 1`,
+      )
+      .get(variant, length, hours, me) as { id: string; player_id: string } | undefined;
+    if (other && this.openGames(other.player_id) < MAX_CORR_GAMES) {
+      this.db.prepare("DELETE FROM corr_seeks WHERE id = ?").run(other.id);
+      const [p0, p1] = randomInt(2) === 0 ? [other.player_id, me] : [me, other.player_id];
+      const id = this.startGame(p0, p1, other.player_id, variant, length, hours, null);
+      this.log(`correspondence ${id} started from a search`);
+      return { game: this.get(me, id) };
+    }
+    const mine = this.seekRows(me);
+    const same = mine.find((s) => s.variant === variant && s.length === length && s.hours === hours);
+    if (same) return { seek: same };
+    if (mine.length >= MAX_CORR_SEEKS) throw new CorrError(409, "too many searches");
+    const id = randomUUID();
+    this.db
+      .prepare(
+        "INSERT INTO corr_seeks (id, player_id, variant, length, hours, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(id, me, variant, length, hours, new Date().toISOString());
+    return { seek: this.seekRows(me).find((s) => s.id === id)! };
+  }
+
+  cancelSeek(me: string, id: string): void {
+    this.db.prepare("DELETE FROM corr_seeks WHERE id = ? AND player_id = ?").run(id, me);
+  }
+
+  /** Drops all searches of a player (profile deleted). */
+  cancelSeeks(me: string): void {
+    this.db.prepare("DELETE FROM corr_seeks WHERE player_id = ?").run(me);
+  }
+
+  /** A running game between two players (no invitation). */
+  private startGame(
+    p0: string,
+    p1: string,
+    createdBy: string,
+    variant: MatchVariantId,
+    length: number,
+    hours: number,
+    leagueId: string | null,
+  ): string {
     const id = randomUUID();
     const now = new Date().toISOString();
     const m = this.autoSteps(createMatch({ variant, length, crawford: true, jacoby: length === 0 }));
     this.db
       .prepare(
-        `INSERT INTO corr_games (id, variant, length, days, p0, p1, created_by, status, state, deadline, created_at, updated_at, league_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)`,
+        `INSERT INTO corr_games (id, variant, length, days, hours, p0, p1, created_by, status, state, deadline, created_at, updated_at, league_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
         variant,
         length,
-        days,
+        Math.max(1, Math.round(hours / 24)),
+        hours,
         p0,
         p1,
-        p0,
+        createdBy,
         JSON.stringify(m),
-        Date.now() + days * DAY,
+        Date.now() + hours * HOUR,
         now,
         now,
         leagueId,
@@ -235,7 +350,7 @@ export class Correspondence {
     }
     let m = createMatch({ variant: r.variant, length: r.length, crawford: true, jacoby: r.length === 0 });
     m = this.autoSteps(m);
-    this.update(id, { status: "active", state: JSON.stringify(m), deadline: Date.now() + r.days * DAY });
+    this.update(id, { status: "active", state: JSON.stringify(m), deadline: Date.now() + hoursOf(r) * HOUR });
     this.log(`correspondence ${id} started`);
     this.changed(id, true);
     return this.get(me, id);
@@ -288,7 +403,7 @@ export class Correspondence {
     this.update(id, {
       state: JSON.stringify(m),
       games: JSON.stringify(games),
-      ...(newDecision ? { deadline: Date.now() + r.days * DAY } : {}),
+      ...(newDecision ? { deadline: Date.now() + hoursOf(r) * HOUR } : {}),
     });
     if (m.winner !== null) this.finish({ ...this.row(id)! }, m.winner, "won");
     this.changed(id, newDecision);
@@ -335,8 +450,11 @@ export class Correspondence {
     }
   }
 
-  /** Periodic: players who missed their deadline lose. */
+  /** Periodic: players who missed their deadline lose; old searches expire. */
   tick(now = Date.now()): void {
+    this.db
+      .prepare("DELETE FROM corr_seeks WHERE created_at < ?")
+      .run(new Date(now - SEEK_TTL).toISOString());
     const late = this.db
       .prepare("SELECT * FROM corr_games WHERE status = 'active' AND deadline IS NOT NULL AND deadline < ?")
       .all(now) as unknown as Row[];
