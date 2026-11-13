@@ -16,6 +16,8 @@ export interface MatchConfig {
   readonly crawford?: boolean;
   /** Jacoby rule, only applied in unlimited sessions (default false). */
   readonly jacoby?: boolean;
+  /** Highest cube value in every game (default no limit). */
+  readonly cubeLimit?: number;
 }
 
 export type CrawfordState = "pending" | "crawford-game" | "done";
@@ -47,6 +49,7 @@ const newGameFor = (
     variant,
     cube: rules.cube && !isCrawford && config.length !== 1,
     jacoby: config.length === 0 && (config.jacoby ?? false),
+    ...(config.cubeLimit ? { cubeLimit: config.cubeLimit } : {}),
     // Tavli tradition: the winner of the previous game starts the next one.
     starter: rules.openingRollPlayed ? undefined : previousWinner,
   });

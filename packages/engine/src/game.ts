@@ -39,6 +39,8 @@ export interface NewGameOptions {
   readonly board?: Board;
   /** Cube of a custom position (value and owner); default centred at 1. */
   readonly cubeAt?: { readonly value: number; readonly owner: Player | null };
+  /** Highest cube value (e.g. 64 against the computer); default no limit. */
+  readonly cubeLimit?: number;
 }
 
 export const createGame = (opts: NewGameOptions): GameState => {
@@ -56,6 +58,7 @@ export const createGame = (opts: NewGameOptions): GameState => {
       value: opts.cubeAt?.value ?? 1,
       owner: opts.cubeAt?.owner ?? null,
       enabled: (opts.cube ?? true) && rules.cube,
+      ...(opts.cubeLimit ? { limit: opts.cubeLimit } : {}),
     },
     jacoby: opts.jacoby ?? false,
     history: [],
@@ -150,6 +153,7 @@ export const canDouble = (s: GameState): boolean =>
   s.phase === "rolling" &&
   !s.resignOffer &&
   s.cube.enabled &&
+  (s.cube.limit === undefined || s.cube.value * 2 <= s.cube.limit) &&
   (s.cube.owner === null || s.cube.owner === s.turn);
 
 /** The player who has to act next (for `cube-offered` that is the opponent of the doubler). */

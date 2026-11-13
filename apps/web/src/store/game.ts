@@ -143,6 +143,9 @@ const archiveIfFinished = (
   });
 };
 
+/** Highest cube value in games against the computer. */
+export const BOT_CUBE_LIMIT = 64;
+
 export const useGame = create<GameStore>()(
   persist(
     (set, get) => ({
@@ -158,8 +161,17 @@ export const useGame = create<GameStore>()(
       rollFx: null,
       busy: false,
 
-      startMatch: (config, players, start) => {
-        const match = createMatch(config, start);
+      startMatch: (requested, players, start) => {
+        // against the computer the cube stops at 64 (no endless cube wars)
+        const vsBot = players.some((p) => p.kind === "bot");
+        const config = vsBot ? { ...requested, cubeLimit: BOT_CUBE_LIMIT } : requested;
+        const game = start?.game;
+        const match = createMatch(
+          config,
+          vsBot && game
+            ? { ...start, game: { ...game, cube: { ...game.cube, limit: BOT_CUBE_LIMIT } } }
+            : start,
+        );
         set({
           mode: "local",
           match,

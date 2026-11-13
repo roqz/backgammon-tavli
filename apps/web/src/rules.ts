@@ -132,6 +132,7 @@ const de: Record<RulesTopic, RulesChapter> = {
           "Gammon: Der Verlierer hat keinen Stein abgetragen – 2 × Würfelwert.",
           "Backgammon: Zusätzlich steht beim Verlierer noch ein Stein auf der Bar oder im Heimfeld des Gewinners – 3 × Würfelwert.",
           "Jacoby-Regel (nur bei unbegrenzten Sitzungen): Gammons und Backgammons zählen nur, wenn verdoppelt wurde.",
+          "Gegen den Computer geht der Doppler höchstens bis 64.",
         ],
       },
       {
@@ -494,6 +495,7 @@ const en: Record<RulesTopic, RulesChapter> = {
           "Gammon: the loser has not borne off – 2 × cube.",
           "Backgammon: additionally the loser still has a checker on the bar or in the winner's home board – 3 × cube.",
           "Jacoby rule (unlimited sessions only): gammons and backgammons count only after a double.",
+          "Against the computer the cube goes up to 64 at most.",
         ],
       },
       {

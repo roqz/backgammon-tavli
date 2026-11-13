@@ -60,6 +60,8 @@ export interface Cube {
   readonly owner: Player | null;
   /** False for variants without cube or during a Crawford game. */
   readonly enabled: boolean;
+  /** Highest value the cube may reach (absent = no limit). */
+  readonly limit?: number;
 }
 
 /** Result multiplier before cube: 1 = single, 2 = gammon / mars, 3 = backgammon. */
