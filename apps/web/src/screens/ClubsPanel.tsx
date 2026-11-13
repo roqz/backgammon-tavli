@@ -17,6 +17,7 @@ import {
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { PlayerName } from "../components/PlayerName";
+import { formatStart, StartTimePicker, validStart } from "../components/StartTimePicker";
 import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Modal, Segmented, Toggle } from "../components/ui";
 import { errorOf } from "../errors";
@@ -266,6 +267,8 @@ function ClubPage({
         </div>
       </Card>
 
+      {member && <ClubSchedule club={club} onLeague={onLeague} />}
+
       {member && (
         <Card className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
@@ -292,6 +295,7 @@ function ClubPage({
                       {t.leagueModes[l.mode]} · 👥 {l.players}
                       {l.divisions > 1 && ` · ${l.divisions} ${t.leagueDivisions}`}
                       {l.winner && ` · 🥇 ${l.winner.name}`}
+                      {l.startsAt && ` · 🗓 ${formatStart(l.startsAt, t.locale)}`}
                     </span>
                   </span>
                   <span className="text-xs text-stone-400">{t.leagueStatus[l.status]}</span>
@@ -364,6 +368,43 @@ function ClubPage({
 }
 
 /** A club's tournaments: join here, the bracket is in the Tournaments tab. */
+/** Upcoming scheduled leagues and tournaments of the club, soonest first. */
+function ClubSchedule({ club, onLeague }: { club: ClubView; onLeague: (id: string) => void }) {
+  const t = useT();
+  const dates = [
+    ...club.leagues
+      .filter((l) => l.startsAt && l.status === "open")
+      .map((l) => ({ id: l.id, at: l.startsAt!, label: `🏟️ ${l.name}`, league: true })),
+    ...club.tournaments
+      .filter((x) => x.startsAt && x.status === "open")
+      .map((x) => ({ id: x.id, at: x.startsAt!, label: `🏆 ${x.name}`, league: false })),
+  ].sort((a, b) => a.at - b.at);
+  if (dates.length === 0) return null;
+  return (
+    <Card className="flex flex-col gap-2" data-testid="club-schedule">
+      <h3 className="font-semibold text-stone-200">🗓 {t.schedule}</h3>
+      <ul className="divide-y divide-stone-800 text-sm">
+        {dates.map((d) => (
+          <li key={d.id} className="flex items-center gap-3 py-2">
+            <span className="w-36 shrink-0 text-amber-200 tabular-nums">{formatStart(d.at, t.locale)}</span>
+            {d.league ? (
+              <button
+                type="button"
+                className="min-w-0 truncate text-left hover:text-amber-200"
+                onClick={() => onLeague(d.id)}
+              >
+                {d.label}
+              </button>
+            ) : (
+              <span className="min-w-0 truncate text-stone-200">{d.label}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function ClubTournaments({
   tournaments,
   admin,
@@ -480,6 +521,7 @@ function CreateLeague({
   const [days, setDays] = useState<(typeof CORR_DAYS)[number]>(3);
   const [divisions, setDivisions] = useState<(typeof LEAGUE_DIVISIONS)[number]>(1);
   const [clock, setClock] = useState<TimeControl>("relaxed");
+  const [startsAt, setStartsAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   return (
     <Modal onClose={onClose}>
@@ -539,6 +581,7 @@ function CreateLeague({
         />
         {divisions > 1 && <p className="-mt-2 text-xs text-stone-500">{t.leagueDivisionsHint}</p>}
         {mode === "live" && <TimeControlPicker value={clock} onChange={setClock} />}
+        <StartTimePicker value={startsAt} onChange={setStartsAt} hint={t.leagueStartHint} />
         {error && <p className="text-sm text-red-400">{error}</p>}
         <div className="flex gap-2">
           <Button className="flex-1" onClick={onClose}>
@@ -547,9 +590,20 @@ function CreateLeague({
           <Button
             variant="primary"
             className="flex-[2]"
-            disabled={!name.trim()}
+            disabled={!name.trim() || !validStart(startsAt)}
             onClick={() =>
-              void createLeague(clubId, name.trim(), variant, length, weeks, mode, days, divisions, clock)
+              void createLeague(
+                clubId,
+                name.trim(),
+                variant,
+                length,
+                weeks,
+                mode,
+                days,
+                divisions,
+                clock,
+                startsAt,
+              )
                 .then(onCreated)
                 .catch((e: unknown) => setError(errorOf(t, e)))
             }
@@ -627,6 +681,7 @@ function LeaguePage({
           {league.endsAt &&
             league.status === "running" &&
             ` · ${t.leagueEnds} ${new Date(league.endsAt).toLocaleDateString(t.locale)}`}
+          {league.startsAt && ` · 🗓 ${t.startsAt} ${formatStart(league.startsAt, t.locale)}`}
         </p>
         {league.winner && (
           <p className="text-amber-200">

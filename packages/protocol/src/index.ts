@@ -23,6 +23,15 @@ export const MATCH_LENGTHS = [0, 1, 3, 5, 7] as const;
 export const TOURNAMENT_SIZES = [4, 8, 16] as const;
 /** knockout: losers are out · swiss: everyone plays every round against players with the same score. */
 export const TOURNAMENT_FORMATS = ["knockout", "swiss"] as const;
+
+/**
+ * Scheduled start (tournaments, leagues): at least this far ahead and at most this far.
+ * A scheduled tournament takes entries until then and starts with whoever entered (at least
+ * TOURNAMENT_MIN_PLAYERS; knockout brackets get byes for the best seeds).
+ */
+export const SCHEDULE_MIN_AHEAD_MS = 5 * 60_000;
+export const SCHEDULE_MAX_AHEAD_MS = 60 * 24 * 60 * 60_000;
+export const TOURNAMENT_MIN_PLAYERS = 4;
 export type TournamentFormat = (typeof TOURNAMENT_FORMATS)[number];
 /** Rounds of a Swiss tournament by size (4 players: a full round robin). */
 export const swissRounds = (size: number): number => (size <= 8 ? 3 : 4);
@@ -149,6 +158,8 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
     size: z.union([z.literal(4), z.literal(8), z.literal(16)]),
     format: z.enum(TOURNAMENT_FORMATS).optional(),
     clock: z.enum(TIME_CONTROLS).optional(),
+    /** Scheduled start (epoch ms); without it the tournament starts as soon as it is full. */
+    startsAt: z.number().int().positive().optional(),
     /** A club tournament: only members can join (created by club admins). */
     clubId: z.string().min(1).max(64).optional(),
   }),
@@ -287,6 +298,8 @@ export interface LeagueSummary {
   readonly days: number;
   /** Time control of live league matches. */
   readonly clock: TimeControl;
+  /** Scheduled start (epoch ms) of an open league; null = started by an admin. */
+  readonly startsAt: number | null;
   readonly divisions: number;
   readonly players: number;
   readonly entered: boolean;
@@ -353,6 +366,8 @@ export const LeagueCreateSchema = z.object({
   divisions: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).default(1),
   /** Time control of live league matches. */
   clock: z.enum(TIME_CONTROLS).default("relaxed"),
+  /** Scheduled start (epoch ms); the league then starts by itself. */
+  startsAt: z.number().int().positive().optional(),
 });
 
 // ---- correspondence games -------------------------------------------------------------------
@@ -773,6 +788,8 @@ export interface TournamentView {
   readonly winner: string | null;
   /** Club tournaments are only open to the members. */
   readonly club: { readonly id: string; readonly name: string } | null;
+  /** Scheduled start (epoch ms); null = starts as soon as it is full. */
+  readonly startsAt: number | null;
 }
 
 export interface TournamentStanding {

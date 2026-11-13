@@ -371,8 +371,19 @@ export const createTournament = (
   format: TournamentFormat = "knockout",
   clubId?: string,
   clock: TimeControl = "relaxed",
+  startsAt: number | null = null,
 ) =>
-  send({ t: "tournament-create", name, variant, length, size, format, clock, ...(clubId ? { clubId } : {}) });
+  send({
+    t: "tournament-create",
+    name,
+    variant,
+    length,
+    size,
+    format,
+    clock,
+    ...(clubId ? { clubId } : {}),
+    ...(startsAt ? { startsAt } : {}),
+  });
 export const joinTournament = (id: string) => send({ t: "tournament-join", id });
 
 // ---- friends and spectating -------------------------------------------------------------------
@@ -412,10 +423,21 @@ export const createLeague = (
   days: (typeof CORR_DAYS)[number] = 3,
   divisions: (typeof LEAGUE_DIVISIONS)[number] = 1,
   clock: TimeControl = "relaxed",
+  startsAt: number | null = null,
 ) =>
   rest<LeagueView>(`/api/clubs/${clubId}/leagues`, {
     method: "POST",
-    body: JSON.stringify({ name, variant, length, weeks, mode, days, divisions, clock }),
+    body: JSON.stringify({
+      name,
+      variant,
+      length,
+      weeks,
+      mode,
+      days,
+      divisions,
+      clock,
+      ...(startsAt ? { startsAt } : {}),
+    }),
   });
 export const fetchLeague = (id: string) => rest<LeagueView>(`/api/leagues/${id}`);
 export const leagueAction = (id: string, action: "join" | "leave" | "start" | "next") =>

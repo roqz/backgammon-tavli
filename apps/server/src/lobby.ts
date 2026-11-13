@@ -305,6 +305,7 @@ export class Lobby {
               msg.format,
               msg.clubId ?? null,
               msg.clock ?? "relaxed",
+              msg.startsAt ?? null,
             );
           } else if (msg.t === "tournament-join") this.tournaments.join(id, msg.id);
           else this.tournaments.leave(id, msg.id);

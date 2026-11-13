@@ -2,8 +2,11 @@ import { randomUUID } from "node:crypto";
 import {
   type MatchVariantId,
   poolOf,
+  SCHEDULE_MAX_AHEAD_MS,
+  SCHEDULE_MIN_AHEAD_MS,
   swissRounds,
   type TimeControl,
+  TOURNAMENT_MIN_PLAYERS,
   type TournamentFormat,
   type TournamentMatchView,
   type TournamentPlayer,
@@ -29,7 +32,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
   winner TEXT,
   format TEXT NOT NULL DEFAULT 'knockout',
   club_id TEXT,
-  clock TEXT NOT NULL DEFAULT 'relaxed'
+  clock TEXT NOT NULL DEFAULT 'relaxed',
+  starts_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS tournaments_status ON tournaments(status, created_at);
 CREATE TABLE IF NOT EXISTS tournament_entries (
@@ -116,6 +120,7 @@ interface TournamentRow {
   winner: string | null;
   club_id: string | null;
   clock: TimeControl;
+  starts_at: number | null;
 }
 
 interface EntryRow {
@@ -244,6 +249,8 @@ export class Tournaments {
       store.db.exec("ALTER TABLE tournaments ADD COLUMN club_id TEXT");
     if (!cols.some((c) => c.name === "clock"))
       store.db.exec("ALTER TABLE tournaments ADD COLUMN clock TEXT NOT NULL DEFAULT 'relaxed'");
+    if (!cols.some((c) => c.name === "starts_at"))
+      store.db.exec("ALTER TABLE tournaments ADD COLUMN starts_at INTEGER");
     // Rooms do not survive a restart: replay those matches.
     store.db
       .prepare(
@@ -328,6 +335,7 @@ export class Tournaments {
       standings: t.format === "swiss" && t.status !== "open" ? this.standings(id, all) : null,
       winner: t.winner,
       club: t.club_id ? { id: t.club_id, name: this.host.clubName?.(t.club_id) ?? "?" } : null,
+      startsAt: t.starts_at,
     };
   }
 
@@ -368,7 +376,7 @@ export class Tournaments {
     const rows = this.db
       .prepare(
         `SELECT t.id, t.status, t.format, e.withdrawn FROM tournament_entries e JOIN tournaments t ON t.id = e.tournament_id
-         WHERE e.player_id = ? AND t.status IN ('open', 'running')`,
+         WHERE e.player_id = ? AND (t.status = 'running' OR (t.status = 'open' AND t.starts_at IS NULL))`,
       )
       .all(playerId) as {
       id: string;
@@ -401,8 +409,16 @@ export class Tournaments {
     format: TournamentFormat = "knockout",
     clubId: string | null = null,
     clock: TimeControl = "relaxed",
+    startsAt: number | null = null,
   ): TournamentView {
-    if (this.activeTournamentOf(playerId)) throw new TournamentError("already in a tournament");
+    // entering a scheduled tournament does not block others until it starts
+    if (startsAt === null && this.activeTournamentOf(playerId))
+      throw new TournamentError("already in a tournament");
+    if (startsAt !== null) {
+      const ahead = startsAt - Date.now();
+      if (ahead < SCHEDULE_MIN_AHEAD_MS || ahead > SCHEDULE_MAX_AHEAD_MS)
+        throw new TournamentError("start time out of range");
+    }
     if (clubId) {
       // club admins organise club tournaments (membership is the gate, not the guest rule)
       if (this.host.clubRole?.(clubId, playerId) !== "admin")
@@ -419,10 +435,22 @@ export class Tournaments {
     const id = randomUUID();
     this.db
       .prepare(
-        `INSERT INTO tournaments (id, name, variant, length, size, status, created_by, created_at, format, club_id, clock)
-         VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)`,
+        `INSERT INTO tournaments (id, name, variant, length, size, status, created_by, created_at, format, club_id, clock, starts_at)
+         VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?)`,
       )
-      .run(id, name, variant, length, size, playerId, new Date().toISOString(), format, clubId, clock);
+      .run(
+        id,
+        name,
+        variant,
+        length,
+        size,
+        playerId,
+        new Date().toISOString(),
+        format,
+        clubId,
+        clock,
+        startsAt,
+      );
     this.addEntry(id, playerId);
     this.log(`tournament ${id} created (${format}, ${variant}/${length}, ${size} players)`);
     return this.changed(id)!;
@@ -433,6 +461,12 @@ export class Tournaments {
     if (t?.status !== "open") throw new TournamentError("tournament not open");
     if (this.entries(id).some((e) => e.player_id === playerId)) return this.changed(id)!;
     if (t.club_id && !this.host.clubRole?.(t.club_id, playerId)) throw new TournamentError("members only");
+    if (t.starts_at !== null) {
+      // scheduled: entries until the start time, it starts then
+      if (this.entries(id).length >= t.size) throw new TournamentError("tournament is full");
+      this.addEntry(id, playerId);
+      return this.changed(id)!;
+    }
     if (this.activeTournamentOf(playerId)) throw new TournamentError("already in a tournament");
     this.addEntry(id, playerId);
     if (this.entries(id).length >= t.size) this.start(id);
@@ -477,6 +511,35 @@ export class Tournaments {
       .run(id, playerId, new Date().toISOString());
   }
 
+  /**
+   * A scheduled tournament is due: entrants who meanwhile play another tournament drop out;
+   * with enough players the field is cut to the entrants (knockout: the next bracket size, the
+   * best seeds get byes), otherwise it is cancelled.
+   */
+  private startScheduled(id: string): void {
+    const t = this.row(id)!;
+    const remove = this.db.prepare(
+      "DELETE FROM tournament_entries WHERE tournament_id = ? AND player_id = ?",
+    );
+    for (const e of this.entries(id)) {
+      const other = this.activeTournamentOf(e.player_id);
+      if (other && other !== id) remove.run(id, e.player_id);
+    }
+    const n = this.entries(id).length;
+    if (n < TOURNAMENT_MIN_PLAYERS) {
+      this.db.prepare("UPDATE tournaments SET status = 'cancelled' WHERE id = ?").run(id);
+      this.log(`tournament ${id} cancelled at its start time (${n} players)`);
+      return;
+    }
+    let size = n;
+    if (t.format === "knockout") {
+      size = TOURNAMENT_MIN_PLAYERS;
+      while (size < n) size *= 2;
+    }
+    this.db.prepare("UPDATE tournaments SET size = ? WHERE id = ?").run(size, id);
+    this.start(id);
+  }
+
   /** Seeds by rating (best first) and creates the first round. */
   private start(id: string): void {
     const t = this.row(id)!;
@@ -504,16 +567,20 @@ export class Tournaments {
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     );
     const now = Date.now();
+    /** First-round slots where a seed has no opponent (fewer entrants than the bracket). */
+    const byes: [number, string][] = [];
     for (let r = 0; r < knockoutRounds(t.size); r++) {
       const slots = t.size >> (r + 1);
       for (let slot = 0; slot < slots; slot++) {
         if (r === 0) {
-          const a = seeded[order[slot * 2]! - 1]!.id;
-          const b = seeded[order[slot * 2 + 1]! - 1]!.id;
-          insert.run(id, 0, slot, a, b, "ready", now);
+          const a = seeded[order[slot * 2]! - 1]?.id ?? null;
+          const b = seeded[order[slot * 2 + 1]! - 1]?.id ?? null;
+          insert.run(id, 0, slot, a, b, a && b ? "ready" : "waiting", a && b ? now : null);
+          if (!a || !b) byes.push([slot, (a ?? b)!]);
         } else insert.run(id, r, slot, null, null, "waiting", null);
       }
     }
+    for (const [slot, player] of byes) this.decide(id, 0, slot, player, true);
   }
 
   /** Pairs a Swiss round among the players who have not withdrawn. */
@@ -615,10 +682,19 @@ export class Tournaments {
   tick(): void {
     const now = Date.now();
     const stale = this.db
-      .prepare("SELECT id FROM tournaments WHERE status = 'open' AND created_at < ?")
+      .prepare("SELECT id FROM tournaments WHERE status = 'open' AND starts_at IS NULL AND created_at < ?")
       .all(new Date(now - this.opts.openTtlMs).toISOString()) as { id: string }[];
     for (const { id } of stale) {
       this.db.prepare("UPDATE tournaments SET status = 'cancelled' WHERE id = ?").run(id);
+      this.changed(id);
+    }
+    const due = this.db
+      .prepare(
+        "SELECT id FROM tournaments WHERE status = 'open' AND starts_at IS NOT NULL AND starts_at <= ?",
+      )
+      .all(now) as { id: string }[];
+    for (const { id } of due) {
+      this.startScheduled(id);
       this.changed(id);
     }
     const ready = this.db

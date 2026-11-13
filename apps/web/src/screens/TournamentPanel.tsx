@@ -10,6 +10,7 @@ import {
   type TournamentView,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { formatStart, StartTimePicker, validStart } from "../components/StartTimePicker";
 import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Segmented } from "../components/ui";
 import { errorText } from "../errors";
@@ -169,6 +170,7 @@ export function CreateForm({
   const [size, setSize] = useState<4 | 8 | 16>(8);
   const [format, setFormat] = useState<TournamentFormat>("knockout");
   const [clock, setClock] = useState<TimeControl>("relaxed");
+  const [startsAt, setStartsAt] = useState<number | null>(null);
   return (
     <div className="flex flex-col gap-4">
       <Segmented
@@ -208,6 +210,7 @@ export function CreateForm({
         onChange={setSize}
         options={([4, 8, 16] as const).map((n) => ({ value: n, label: String(n) }))}
       />
+      <StartTimePicker value={startsAt} onChange={setStartsAt} hint={t.tStartHint} />
       <div className="flex gap-2">
         <Button className="flex-1" onClick={onDone}>
           {t.cancel}
@@ -215,9 +218,9 @@ export function CreateForm({
         <Button
           variant="primary"
           className="flex-[2]"
-          disabled={disabled || !name.trim()}
+          disabled={disabled || !name.trim() || !validStart(startsAt)}
           onClick={() => {
-            createTournament(name.trim(), variant, length, size, format, clubId, clock);
+            createTournament(name.trim(), variant, length, size, format, clubId, clock, startsAt);
             onDone();
           }}
         >
@@ -269,6 +272,11 @@ function TournamentCard({
         {x.length === 1 ? t.point : t.points} ·{" "}
         {t.tPlayers.replace("{n}", String(x.players.length)).replace("{size}", String(x.size))}
       </p>
+      {x.startsAt && x.status === "open" && (
+        <p className="-mt-2 text-sm text-amber-200">
+          🗓 {t.startsAt} {formatStart(x.startsAt, t.locale)}
+        </p>
+      )}
       {winner && (
         <p className="text-amber-200">
           🥇 {t.tWinner}: <b>{winner.name}</b>

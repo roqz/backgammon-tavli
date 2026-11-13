@@ -13,6 +13,8 @@ import {
   leagueMovers,
   type MatchVariantId,
   poolOf,
+  SCHEDULE_MAX_AHEAD_MS,
+  SCHEDULE_MIN_AHEAD_MS,
   type TimeControl,
   type TournamentView,
 } from "@tavli/protocol";
@@ -52,7 +54,8 @@ CREATE TABLE IF NOT EXISTS leagues (
   days INTEGER NOT NULL DEFAULT 0,
   divisions INTEGER NOT NULL DEFAULT 1,
   previous_id TEXT,
-  clock TEXT NOT NULL DEFAULT 'relaxed'
+  clock TEXT NOT NULL DEFAULT 'relaxed',
+  starts_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS leagues_club ON leagues(club_id);
 CREATE TABLE IF NOT EXISTS league_entries (
@@ -82,6 +85,7 @@ const MIGRATIONS: readonly [table: string, column: string, definition: string][]
   ["leagues", "divisions", "INTEGER NOT NULL DEFAULT 1"],
   ["leagues", "previous_id", "TEXT"],
   ["leagues", "clock", "TEXT NOT NULL DEFAULT 'relaxed'"],
+  ["leagues", "starts_at", "INTEGER"],
   ["league_entries", "division", "INTEGER"],
 ];
 
@@ -125,6 +129,7 @@ interface LeagueRow {
   divisions: number;
   previous_id: string | null;
   clock: TimeControl;
+  starts_at: number | null;
 }
 
 interface EntryRow {
@@ -525,6 +530,7 @@ export class Clubs {
       mode: l.mode,
       days: l.days,
       clock: l.clock,
+      startsAt: l.status === "open" ? l.starts_at : null,
       divisions: l.divisions,
       players: rows.length,
       entered: !!mine,
@@ -581,13 +587,19 @@ export class Clubs {
     divisions = 1,
     previousId: string | null = null,
     clock: TimeControl = "relaxed",
+    startsAt: number | null = null,
   ): LeagueView {
     this.requireAdmin(clubId, me);
+    if (startsAt !== null) {
+      const ahead = startsAt - Date.now();
+      if (ahead < SCHEDULE_MIN_AHEAD_MS || ahead > SCHEDULE_MAX_AHEAD_MS)
+        throw new ClubError(400, "start time out of range");
+    }
     const id = randomUUID();
     this.db
       .prepare(
-        `INSERT INTO leagues (id, club_id, name, variant, length, weeks, status, created_at, mode, days, divisions, previous_id, clock)
-         VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO leagues (id, club_id, name, variant, length, weeks, status, created_at, mode, days, divisions, previous_id, clock, starts_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -602,6 +614,7 @@ export class Clubs {
         divisions,
         previousId,
         mode === "corr" ? "relaxed" : clock,
+        startsAt,
       );
     return this.leagueView(me, id);
   }
@@ -662,9 +675,16 @@ export class Clubs {
     const l = this.league(id);
     this.requireAdmin(l.club_id, me);
     if (l.status !== "open") throw new ClubError(409, "league already started");
-    const entries = this.entries(id);
-    if (entries.length < LEAGUE_DIVISION_MIN * l.divisions)
+    if (this.entries(id).length < LEAGUE_DIVISION_MIN * l.divisions)
       throw new ClubError(409, "a league needs at least 3 players per division");
+    this.begin(l);
+    return this.leagueView(me, id);
+  }
+
+  /** Seeds the divisions and creates every pairing (started by an admin or at the scheduled time). */
+  private begin(l: LeagueRow): void {
+    const id = l.id;
+    const entries = this.entries(id);
     const groups = cutDivisions(this.seeding(l, entries), l.divisions);
     const setDivision = this.db.prepare(
       "UPDATE league_entries SET division = ? WHERE league_id = ? AND player_id = ?",
@@ -689,7 +709,6 @@ export class Clubs {
       .prepare("UPDATE leagues SET status = 'running', started_at = ?, ends_at = ? WHERE id = ?")
       .run(new Date().toISOString(), Date.now() + l.weeks * WEEK, id);
     this.log(`league ${id} started with ${entries.length} players in ${l.divisions} division(s)`);
-    return this.leagueView(me, id);
   }
 
   /** Entrants best first: previous season's order (promotion/relegation applied), then by rating. */
@@ -786,6 +805,15 @@ export class Clubs {
 
   /** Periodic: seasons past their end are finished (unplayed pairings stay without points). */
   tick(now = Date.now()): void {
+    // scheduled starts: with too few players the league stays open (an admin can start it later)
+    const starting = this.db
+      .prepare("SELECT * FROM leagues WHERE status = 'open' AND starts_at IS NOT NULL AND starts_at <= ?")
+      .all(now) as unknown as LeagueRow[];
+    for (const l of starting) {
+      this.db.prepare("UPDATE leagues SET starts_at = NULL WHERE id = ?").run(l.id);
+      if (this.entries(l.id).length >= LEAGUE_DIVISION_MIN * l.divisions) this.begin(l);
+      else this.log(`league ${l.id}: too few players at the scheduled start`);
+    }
     const due = this.db
       .prepare("SELECT * FROM leagues WHERE status = 'running' AND ends_at < ?")
       .all(now) as unknown as LeagueRow[];

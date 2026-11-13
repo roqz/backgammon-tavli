@@ -325,10 +325,15 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Geldspiel offline auf Wunsch mit Beaver (annehmen und sofort zurückverdoppeln, Würfel bleibt beim Annehmenden) und Raccoon (der Verdoppler verdoppelt vor dem Würfeln noch einmal und behält den Würfel); beides kann nicht abgelehnt werden. Der Computer beavert/raccoont als klarer Favorit (> 0,05 Punkte pro Partie). Online vorerst nicht (kein Server-Protokoll)
 - Gegen den Computer geht der Doppler höchstens bis 64 (`MatchConfig.cubeLimit`)
 
+### Termine für Turniere und Ligen ✅
+
+- Turniere optional mit festem Starttermin (5 Minuten bis 60 Tage voraus): Anmeldung bis dahin (auch neben anderen Turnieren), zum Termin Start mit allen Angemeldeten, die nicht gerade ein anderes Turnier spielen; mindestens 4, sonst abgesagt. K.-o.: Feld auf die nächste Zweierpotenz, die besten Gesetzten bekommen Freilose. Offene Turniere mit Termin verfallen nicht nach 24 h
+- Ligen optional mit Starttermin: Start von selbst, wenn genug Spieler (3 je Division) dabei sind, sonst bleibt die Liga offen und ein Admin startet sie später
+- Club-Seite: Karte „Termine“ mit den kommenden Ligen und Turnieren
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)
-- Turniere: Zeitpläne
 
 ### Gammons und Matchstand im Bot ✅
 

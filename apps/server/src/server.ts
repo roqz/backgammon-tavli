@@ -475,7 +475,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (k[2] === "leagues" && req.method === "POST") {
           const body = LeagueCreateSchema.safeParse(await readJson(req));
           if (!body.success) throw new HttpError(400, "invalid league");
-          const { name, variant, length, weeks, mode, days, divisions, clock } = body.data;
+          const { name, variant, length, weeks, mode, days, divisions, clock, startsAt } = body.data;
           return run(() =>
             clubs.createLeague(
               player.id,
@@ -489,6 +489,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
               divisions,
               null,
               clock,
+              startsAt ?? null,
             ),
           );
         }

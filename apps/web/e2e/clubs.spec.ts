@@ -140,3 +140,32 @@ test("a correspondence league and a club tournament", async ({ browser }) => {
   await eli.getByRole("tab", { name: "Turniere" }).click();
   await expect(eli.getByText("🏛 Taverna")).toBeVisible();
 });
+
+test("scheduled league: a fixed start time shows in the club's schedule", async ({ browser }) => {
+  const eva = await onlineGuest(browser, "Eva");
+  await openClubs(eva);
+  await eva
+    .getByRole("button", { name: /Club gründen/ })
+    .first()
+    .click();
+  await eva.getByRole("dialog").getByLabel("Name").fill("Termin-Taverne");
+  await eva
+    .getByRole("dialog")
+    .getByRole("button", { name: /Club gründen/ })
+    .click();
+  await expect(eva.getByRole("heading", { name: /Termin-Taverne/ })).toBeVisible();
+  await eva.getByRole("button", { name: /Liga anlegen/ }).click();
+  const dialog = eva.getByRole("dialog");
+  await dialog.getByLabel("Name").fill("Abendliga");
+  await dialog.getByRole("switch", { name: /Fester Starttermin/ }).click();
+  await expect(dialog.getByLabel("Fester Starttermin", { exact: true }).last()).toHaveValue(/T19:00$/);
+  await dialog.getByRole("button", { name: /Liga anlegen/ }).click();
+  await expect(eva.getByText(/Abendliga/).first()).toBeVisible();
+  await eva.reload();
+  await eva.getByRole("button", { name: /Online spielen/ }).click();
+  await openClubs(eva);
+  await eva.getByRole("button", { name: /Termin-Taverne/ }).click();
+  const schedule = eva.getByTestId("club-schedule");
+  await expect(schedule).toContainText("Abendliga");
+  await expect(schedule).toContainText("19:00");
+});

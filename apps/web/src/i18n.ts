@@ -202,6 +202,14 @@ const de = {
   timeControls: { relaxed: "Entspannt", standard: "Standard", blitz: "Blitz" },
   ratingPool: "Tempo",
   ratingPools: { normal: "Normal" },
+  startFixed: "Fester Starttermin",
+  startOutOfRange: "Der Termin muss mindestens 5 Minuten und höchstens 60 Tage in der Zukunft liegen.",
+  startsAt: "Start",
+  schedule: "Termine",
+  tStartHint:
+    "Anmeldung bis zum Termin, dann geht es mit allen Angemeldeten los (mindestens 4; im K.-o. bekommen die besten Gesetzten Freilose). Ohne Termin startet das Turnier, sobald es voll ist.",
+  leagueStartHint:
+    "Die Liga startet zum Termin von selbst, wenn genug Spieler dabei sind; sonst kann ein Admin sie später starten.",
   timeControlHint: {
     relaxed:
       "60 Sekunden pro Zug. Läuft die Zeit ab, zieht der Computer für dich; nach drei Überschreitungen ist das Match verloren.",
@@ -881,6 +889,14 @@ const en: Dict = {
   timeControls: { relaxed: "Relaxed", standard: "Standard", blitz: "Blitz" },
   ratingPool: "Tempo",
   ratingPools: { normal: "Normal" },
+  startFixed: "Fixed start time",
+  startOutOfRange: "The start must be at least 5 minutes and at most 60 days ahead.",
+  startsAt: "Starts",
+  schedule: "Schedule",
+  tStartHint:
+    "Entries until the start time, then it begins with everyone who entered (at least 4; in a knockout the best seeds get byes). Without a time the tournament starts as soon as it is full.",
+  leagueStartHint:
+    "The league starts by itself at that time if enough players entered; otherwise an admin can start it later.",
   timeControlHint: {
     relaxed:
       "60 seconds per move. When time runs out the computer moves for you; after three timeouts the match is lost.",

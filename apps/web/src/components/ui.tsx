@@ -161,9 +161,20 @@ export function Section({ title, icon, children }: { title: string; icon: string
   );
 }
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = "",
+  "data-testid": testId,
+}: {
+  children: ReactNode;
+  className?: string;
+  "data-testid"?: string;
+}) {
   return (
-    <div className={`rounded-2xl border border-stone-800 bg-stone-900/80 p-5 shadow-xl ${className}`}>
+    <div
+      data-testid={testId}
+      className={`rounded-2xl border border-stone-800 bg-stone-900/80 p-5 shadow-xl ${className}`}
+    >
       {children}
     </div>
   );
