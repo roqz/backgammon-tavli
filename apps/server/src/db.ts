@@ -18,7 +18,7 @@ import type {
   RatingPoint,
   TimingSummary,
 } from "@tavli/protocol";
-import { FRAMES, type Frame, MAX_FRIENDS, type Progress } from "@tavli/protocol";
+import { FRAMES, type Frame, MAX_FRIENDS, type Progress, type RatingPool, ratingKey } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
 
 const SCHEMA = `
@@ -123,6 +123,7 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["players", "last_seen", "ALTER TABLE players ADD COLUMN last_seen TEXT"],
   ["players", "deleted_at", "ALTER TABLE players ADD COLUMN deleted_at TEXT"],
   ["players", "frame", "ALTER TABLE players ADD COLUMN frame TEXT"],
+  ["matches", "pool", "ALTER TABLE matches ADD COLUMN pool TEXT NOT NULL DEFAULT 'normal'"],
   [
     "players",
     "friends_can_watch",
@@ -297,6 +298,8 @@ export interface FinishedMatch {
   readonly reason: MatchEndReason;
   readonly games: readonly StoredGame[];
   readonly startedAt: string;
+  /** Which rating the match counts for (default normal). */
+  readonly pool?: RatingPool;
   /** Rated matches change ratings; matches abandoned before the first move are not. */
   readonly rated: boolean;
   /** Seeds and rolls to verify the dice later. */
@@ -753,21 +756,37 @@ export class Store {
     return row ?? null;
   }
 
-  rating(playerId: string, variant: MatchVariantId): RatingEntry & { experience: number } {
+  /**
+   * A player's rating. The ratings table keys blitz ratings as "<variant>@blitz" (ratingKey) in
+   * its variant column, so the normal ratings keep their rows.
+   */
+  rating(
+    playerId: string,
+    variant: MatchVariantId,
+    pool: RatingPool = "normal",
+  ): RatingEntry & { experience: number } {
     const row = this.db
       .prepare("SELECT rating, experience, matches, wins FROM ratings WHERE player_id = ? AND variant = ?")
-      .get(playerId, variant) as
+      .get(playerId, ratingKey(variant, pool)) as
       | { rating: number; experience: number; matches: number; wins: number }
       | undefined;
-    return { variant, rating: STARTING_RATING, experience: 0, matches: 0, wins: 0, ...row };
+    return {
+      variant,
+      ...(pool === "normal" ? {} : { pool }),
+      rating: STARTING_RATING,
+      experience: 0,
+      matches: 0,
+      wins: 0,
+      ...row,
+    };
   }
 
-  publicPlayer(playerId: string, variant: MatchVariantId): PublicPlayer {
+  publicPlayer(playerId: string, variant: MatchVariantId, pool: RatingPool = "normal"): PublicPlayer {
     const p = this.getPlayer(playerId);
     return {
       id: playerId,
       name: p?.name ?? "?",
-      rating: Math.round(this.rating(playerId, variant).rating),
+      rating: Math.round(this.rating(playerId, variant, pool).rating),
       frame: this.frameOf(playerId),
     };
   }
@@ -823,19 +842,23 @@ export class Store {
   }
 
   /** Sets a rating directly (administration and tests). */
-  setRating(playerId: string, variant: MatchVariantId, rating: number): void {
+  setRating(playerId: string, variant: MatchVariantId, rating: number, pool: RatingPool = "normal"): void {
     this.db
       .prepare(
         `INSERT INTO ratings (player_id, variant, rating, experience, matches, wins) VALUES (?, ?, ?, 0, 0, 0)
          ON CONFLICT(player_id, variant) DO UPDATE SET rating = excluded.rating`,
       )
-      .run(playerId, variant, rating);
+      .run(playerId, ratingKey(variant, pool), rating);
   }
 
   /** Stores a finished match and updates both ratings atomically. Returns the rating deltas per seat. */
   saveMatch(m: FinishedMatch): [number, number] {
     const loser = m.winner === 0 ? 1 : 0;
-    const r = [this.rating(m.players[0], m.variant), this.rating(m.players[1], m.variant)] as const;
+    const pool = m.pool ?? "normal";
+    const r = [
+      this.rating(m.players[0], m.variant, pool),
+      this.rating(m.players[1], m.variant, pool),
+    ] as const;
     const deltas: [number, number] = [0, 0];
     if (m.rated) {
       const [win, lose] = ratingChange(r[m.winner], r[loser], m.length);
@@ -853,7 +876,7 @@ export class Store {
         for (const seat of [0, 1] as const) {
           upsert.run(
             m.players[seat],
-            m.variant,
+            ratingKey(m.variant, pool),
             r[seat].rating + deltas[seat],
             r[seat].experience + m.length,
             seat === m.winner ? 1 : 0,
@@ -863,8 +886,8 @@ export class Store {
       this.db
         .prepare(
           `INSERT INTO matches (id, variant, length, p0, p1, winner, score0, score1, reason,
-            rating_delta0, rating_delta1, games, started_at, ended_at, fairness)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            rating_delta0, rating_delta1, games, started_at, ended_at, fairness, pool)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           m.id,
@@ -882,6 +905,7 @@ export class Store {
           m.startedAt,
           new Date().toISOString(),
           m.fairness ? JSON.stringify(m.fairness) : null,
+          pool,
         );
       const now = new Date().toISOString();
       for (const seat of [0, 1] as const) {
@@ -913,14 +937,14 @@ export class Store {
     return row.n;
   }
 
-  leaderboard(variant: MatchVariantId, limit = 50): LeaderboardEntry[] {
+  leaderboard(variant: MatchVariantId, limit = 50, pool: RatingPool = "normal"): LeaderboardEntry[] {
     const rows = this.db
       .prepare(
         `SELECT r.player_id, p.name, p.frame, r.rating, r.matches, r.wins FROM ratings r
          JOIN players p ON p.id = r.player_id
          WHERE r.variant = ? AND r.matches > 0 AND p.banned_at IS NULL ORDER BY r.rating DESC LIMIT ?`,
       )
-      .all(variant, limit) as {
+      .all(ratingKey(variant, pool), limit) as {
       player_id: string;
       name: string;
       frame: Frame | null;
@@ -933,6 +957,7 @@ export class Store {
       name: r.name,
       frame: r.frame,
       variant,
+      ...(pool === "normal" ? {} : { pool }),
       rating: Math.round(r.rating),
       matches: r.matches,
       wins: r.wins,
@@ -945,8 +970,11 @@ export class Store {
     const ratings = (
       this.db
         .prepare("SELECT variant, rating, matches, wins FROM ratings WHERE player_id = ? ORDER BY variant")
-        .all(playerId) as { variant: MatchVariantId; rating: number; matches: number; wins: number }[]
-    ).map((r) => ({ ...r, rating: Math.round(r.rating) }));
+        .all(playerId) as { variant: string; rating: number; matches: number; wins: number }[]
+    ).map((r) => {
+      const [variant, pool] = r.variant.split("@") as [MatchVariantId, RatingPool?];
+      return { ...r, variant, ...(pool ? { pool } : {}), rating: Math.round(r.rating) };
+    });
     const recent = this.db
       .prepare(`SELECT id FROM matches WHERE p0 = ? OR p1 = ? ORDER BY ended_at DESC LIMIT 20`)
       .all(playerId, playerId) as { id: string }[];
@@ -970,19 +998,20 @@ export class Store {
    * Rating after each of the last rated matches per variant, rebuilt backwards from the current
    * rating with the stored rating changes.
    */
-  ratingHistory(playerId: string, limit = 100): Partial<Record<MatchVariantId, RatingPoint[]>> {
-    const out: Partial<Record<MatchVariantId, RatingPoint[]>> = {};
+  ratingHistory(playerId: string, limit = 100): Record<string, RatingPoint[]> {
+    const out: Record<string, RatingPoint[]> = {};
     const current = this.db
       .prepare("SELECT variant, rating FROM ratings WHERE player_id = ?")
-      .all(playerId) as { variant: MatchVariantId; rating: number }[];
-    for (const { variant, rating } of current) {
+      .all(playerId) as { variant: string; rating: number }[];
+    for (const { variant: key, rating } of current) {
+      const [variant, pool = "normal"] = key.split("@");
       const rows = this.db
         .prepare(
           `SELECT ended_at, CASE WHEN p0 = ?1 THEN rating_delta0 ELSE rating_delta1 END AS delta FROM matches
-           WHERE (p0 = ?1 OR p1 = ?1) AND variant = ?2 AND (rating_delta0 != 0 OR rating_delta1 != 0)
+           WHERE (p0 = ?1 OR p1 = ?1) AND variant = ?2 AND pool = ?4 AND (rating_delta0 != 0 OR rating_delta1 != 0)
            ORDER BY ended_at DESC LIMIT ?3`,
         )
-        .all(playerId, variant, limit) as { ended_at: string; delta: number }[];
+        .all(playerId, variant!, limit, pool) as { ended_at: string; delta: number }[];
       let r = rating;
       const points: RatingPoint[] = [];
       for (const row of rows) {
@@ -990,7 +1019,7 @@ export class Store {
         r -= row.delta;
       }
       points.push({ at: rows[rows.length - 1]?.ended_at ?? new Date().toISOString(), rating: Math.round(r) });
-      out[variant] = points.reverse();
+      out[key] = points.reverse();
     }
     return out;
   }

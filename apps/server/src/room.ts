@@ -30,6 +30,7 @@ import {
   type MatchEndReason,
   type MatchVariantId,
   type PublicPlayer,
+  poolOf,
   type ServerMessage,
   type TimeControl,
   type TournamentRef,
@@ -532,6 +533,7 @@ export class MatchRoom {
       reason,
       games,
       startedAt: this.startedAt,
+      pool: poolOf(this.deps.timeControl),
       // Leaving before anybody moved is not rated.
       rated: (this.deps.rating?.rated ?? true) && (this.moved || reason === "won"),
       fairness: this.fairnessReveal(),

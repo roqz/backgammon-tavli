@@ -12,10 +12,12 @@ import {
   type LeagueView,
   MATCH_VARIANTS,
   type MatchVariantId,
+  type TimeControl,
   type TournamentView,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { PlayerName } from "../components/PlayerName";
+import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Modal, Segmented, Toggle } from "../components/ui";
 import { errorOf } from "../errors";
 import { lengthText, useT } from "../i18n";
@@ -477,6 +479,7 @@ function CreateLeague({
   const [mode, setMode] = useState<LeagueMode>("live");
   const [days, setDays] = useState<(typeof CORR_DAYS)[number]>(3);
   const [divisions, setDivisions] = useState<(typeof LEAGUE_DIVISIONS)[number]>(1);
+  const [clock, setClock] = useState<TimeControl>("relaxed");
   const [error, setError] = useState<string | null>(null);
   return (
     <Modal onClose={onClose}>
@@ -535,6 +538,7 @@ function CreateLeague({
           options={LEAGUE_DIVISIONS.map((d) => ({ value: d, label: String(d) }))}
         />
         {divisions > 1 && <p className="-mt-2 text-xs text-stone-500">{t.leagueDivisionsHint}</p>}
+        {mode === "live" && <TimeControlPicker value={clock} onChange={setClock} />}
         {error && <p className="text-sm text-red-400">{error}</p>}
         <div className="flex gap-2">
           <Button className="flex-1" onClick={onClose}>
@@ -545,7 +549,7 @@ function CreateLeague({
             className="flex-[2]"
             disabled={!name.trim()}
             onClick={() =>
-              void createLeague(clubId, name.trim(), variant, length, weeks, mode, days, divisions)
+              void createLeague(clubId, name.trim(), variant, length, weeks, mode, days, divisions, clock)
                 .then(onCreated)
                 .catch((e: unknown) => setError(errorOf(t, e)))
             }
@@ -615,7 +619,8 @@ function LeaguePage({
         <p className="text-sm text-stone-400">
           {variantLabel(league.variant, t.tavliMatch)} · {lengthText(t, league.length)} ·{" "}
           {t.leagueModes[league.mode]}
-          {league.mode === "corr" && ` (${t.corrDays.replace("{d}", String(league.days))})`} ·{" "}
+          {league.mode === "corr" && ` (${t.corrDays.replace("{d}", String(league.days))})`}
+          {league.mode === "live" && league.clock !== "relaxed" && ` (${t.timeControls[league.clock]})`} ·{" "}
           {t.leagueWeeks.replace("{n}", String(league.weeks))}
           {league.divisions > 1 && ` · ${league.divisions} ${t.leagueDivisions}`} ·{" "}
           {t.leagueStatus[league.status]}

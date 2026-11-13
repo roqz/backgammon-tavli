@@ -22,6 +22,7 @@ import type {
   MatchVariantId,
   ProfileResponse,
   Progress,
+  RatingPool,
   RegisterResponse,
   ReportReason,
   ServerMessage,
@@ -410,10 +411,11 @@ export const createLeague = (
   mode: LeagueMode = "live",
   days: (typeof CORR_DAYS)[number] = 3,
   divisions: (typeof LEAGUE_DIVISIONS)[number] = 1,
+  clock: TimeControl = "relaxed",
 ) =>
   rest<LeagueView>(`/api/clubs/${clubId}/leagues`, {
     method: "POST",
-    body: JSON.stringify({ name, variant, length, weeks, mode, days, divisions }),
+    body: JSON.stringify({ name, variant, length, weeks, mode, days, divisions, clock }),
   });
 export const fetchLeague = (id: string) => rest<LeagueView>(`/api/leagues/${id}`);
 export const leagueAction = (id: string, action: "join" | "leave" | "start" | "next") =>
@@ -613,5 +615,5 @@ export const syncAccount = async () => {
   if (p) set({ profile: { ...p, name: acc.name, username: acc.username } });
   return acc;
 };
-export const fetchLeaderboard = (variant: MatchVariantId) =>
-  rest<LeaderboardEntry[]>(`/api/leaderboard?variant=${variant}`);
+export const fetchLeaderboard = (variant: MatchVariantId, pool: RatingPool = "normal") =>
+  rest<LeaderboardEntry[]>(`/api/leaderboard?variant=${variant}${pool === "normal" ? "" : `&pool=${pool}`}`);

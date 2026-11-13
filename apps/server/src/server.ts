@@ -423,7 +423,8 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       const variant = url.searchParams.get("variant") ?? "backgammon";
       if (!(MATCH_VARIANTS as readonly string[]).includes(variant))
         throw new HttpError(400, "unknown variant");
-      return store.leaderboard(variant as MatchVariantId);
+      const pool = url.searchParams.get("pool") === "blitz" ? "blitz" : "normal";
+      return store.leaderboard(variant as MatchVariantId, 50, pool);
     }
     if (req.method === "GET" && path === "/api/tournaments") {
       // signed-in players also see the tournaments of their clubs
@@ -474,9 +475,21 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (k[2] === "leagues" && req.method === "POST") {
           const body = LeagueCreateSchema.safeParse(await readJson(req));
           if (!body.success) throw new HttpError(400, "invalid league");
-          const { name, variant, length, weeks, mode, days, divisions } = body.data;
+          const { name, variant, length, weeks, mode, days, divisions, clock } = body.data;
           return run(() =>
-            clubs.createLeague(player.id, id, name, variant, length, weeks, mode, days, divisions),
+            clubs.createLeague(
+              player.id,
+              id,
+              name,
+              variant,
+              length,
+              weeks,
+              mode,
+              days,
+              divisions,
+              null,
+              clock,
+            ),
           );
         }
       }

@@ -47,6 +47,15 @@ export const CLOCK_SPECS: Record<
   standard: { delayMs: 12_000, reservePerPointMs: 120_000 },
   blitz: { delayMs: 8_000, reservePerPointMs: 60_000 },
 };
+/**
+ * Separate ratings by tempo (as in chess): blitz matches have their own rating and ranking,
+ * relaxed and standard matches share the normal one.
+ */
+export const RATING_POOLS = ["normal", "blitz"] as const;
+export type RatingPool = (typeof RATING_POOLS)[number];
+export const poolOf = (clock: TimeControl | undefined): RatingPool =>
+  clock === "blitz" ? "blitz" : "normal";
+
 /** Reserve per player at the start of a match (money sessions count as 5 points). */
 export const clockReserveMs = (control: Exclude<TimeControl, "relaxed">, length: number): number =>
   CLOCK_SPECS[control].reservePerPointMs * (length === 0 ? 5 : length);
@@ -276,6 +285,8 @@ export interface LeagueSummary {
   readonly mode: LeagueMode;
   /** Days per decision in a correspondence league (0 = live). */
   readonly days: number;
+  /** Time control of live league matches. */
+  readonly clock: TimeControl;
   readonly divisions: number;
   readonly players: number;
   readonly entered: boolean;
@@ -340,6 +351,8 @@ export const LeagueCreateSchema = z.object({
   /** Days per decision (correspondence leagues). */
   days: z.union([z.literal(1), z.literal(3), z.literal(7)]).default(3),
   divisions: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).default(1),
+  /** Time control of live league matches. */
+  clock: z.enum(TIME_CONTROLS).default("relaxed"),
 });
 
 // ---- correspondence games -------------------------------------------------------------------
@@ -540,6 +553,8 @@ export interface RegisterResponse {
 
 export interface RatingEntry {
   readonly variant: MatchVariantId;
+  /** Absent = normal. */
+  readonly pool?: RatingPool;
   readonly rating: number;
   readonly matches: number;
   readonly wins: number;
@@ -569,9 +584,13 @@ export interface ProfileResponse {
   readonly recent: readonly MatchSummary[];
   /** Club leagues this player won. */
   readonly leaguesWon?: number;
-  /** Rating after each of the last rated matches per variant, oldest first. */
-  readonly history?: Readonly<Partial<Record<MatchVariantId, readonly RatingPoint[]>>>;
+  /** Rating after each of the last rated matches per rating (key: ratingKey), oldest first. */
+  readonly history?: Readonly<Record<string, readonly RatingPoint[]>>;
 }
+
+/** Key of a rating: the variant, with "@blitz" for the blitz rating. */
+export const ratingKey = (variant: MatchVariantId, pool: RatingPool = "normal"): string =>
+  pool === "normal" ? variant : `${variant}@${pool}`;
 
 export interface RatingPoint {
   readonly at: string;

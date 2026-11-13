@@ -8,6 +8,7 @@ import {
   type MatchVariantId,
   PASSWORD_MIN,
   type ProfileResponse,
+  ratingKey,
   USERNAME_PATTERN,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
@@ -548,13 +549,21 @@ export function MatchList({
       {profile.ratings.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {profile.ratings.map((r) => (
-            <div key={r.variant} className="rounded-xl border border-stone-800 bg-stone-900 p-3 text-center">
+            <div
+              key={ratingKey(r.variant, r.pool)}
+              className="rounded-xl border border-stone-800 bg-stone-900 p-3 text-center"
+            >
               <div className="text-xl font-bold text-amber-100 tabular-nums">{r.rating}</div>
               <div className="text-xs text-stone-400">
-                {variantName(r.variant, t.tavliMatch)} · {r.wins}/{r.matches}
+                {variantName(r.variant, t.tavliMatch)}
+                {r.pool === "blitz" && ` · ⚡ ${t.timeControls.blitz}`} · {r.wins}/{r.matches}
               </div>
-              {profile.history?.[r.variant] && (
-                <Sparkline points={profile.history[r.variant]!} label={t.ratingHistory} locale={t.locale} />
+              {profile.history?.[ratingKey(r.variant, r.pool)] && (
+                <Sparkline
+                  points={profile.history[ratingKey(r.variant, r.pool)]!}
+                  label={t.ratingHistory}
+                  locale={t.locale}
+                />
               )}
             </div>
           ))}

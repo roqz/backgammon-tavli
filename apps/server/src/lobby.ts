@@ -8,6 +8,7 @@ import type {
   TournamentRef,
   UnratedReason,
 } from "@tavli/protocol";
+import { poolOf } from "@tavli/protocol";
 import type { Analyzer } from "./analysis";
 import { Clubs } from "./clubs";
 import type { Correspondence } from "./correspondence";
@@ -444,7 +445,7 @@ export class Lobby {
     const waiting = this.queues.get(key) ?? [];
     const entry: QueueEntry = {
       playerId: id,
-      rating: this.opts.store.rating(id, variant).rating,
+      rating: this.opts.store.rating(id, variant, poolOf(clock)).rating,
       since: Date.now(),
     };
     const partner = this.partnerFor(entry, waiting, entry.since);
@@ -627,7 +628,10 @@ export class Lobby {
     const room = new MatchRoom(
       variant,
       configFor(variant, length),
-      [store.publicPlayer(ids[0], variant), store.publicPlayer(ids[1], variant)],
+      [
+        store.publicPlayer(ids[0], variant, poolOf(clock)),
+        store.publicPlayer(ids[1], variant, poolOf(clock)),
+      ],
       {
         timings,
         log,
@@ -836,7 +840,7 @@ export class Lobby {
     to: string,
     requestedVariant: MatchVariantId,
     requestedLength: number,
-    clock: TimeControl,
+    requestedClock: TimeControl,
     league?: string,
   ): void {
     const { store } = this.opts;
@@ -845,6 +849,7 @@ export class Lobby {
     if (league && !pairing) return conn.send({ t: "error", message: "no open league match" });
     const variant = pairing?.variant ?? requestedVariant;
     const length = pairing?.length ?? requestedLength;
+    const clock = pairing?.clock ?? requestedClock;
     const publicTo = () => store.publicPlayer(to, variant);
     if (!pairing && !store.areFriends(id, to)) return conn.send({ t: "error", message: "not friends" });
     if (this.busy(conn, id)) return;

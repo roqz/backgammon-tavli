@@ -12,6 +12,8 @@ import {
   type LeagueView,
   leagueMovers,
   type MatchVariantId,
+  poolOf,
+  type TimeControl,
   type TournamentView,
 } from "@tavli/protocol";
 import type { Store } from "./db";
@@ -49,7 +51,8 @@ CREATE TABLE IF NOT EXISTS leagues (
   mode TEXT NOT NULL DEFAULT 'live',
   days INTEGER NOT NULL DEFAULT 0,
   divisions INTEGER NOT NULL DEFAULT 1,
-  previous_id TEXT
+  previous_id TEXT,
+  clock TEXT NOT NULL DEFAULT 'relaxed'
 );
 CREATE INDEX IF NOT EXISTS leagues_club ON leagues(club_id);
 CREATE TABLE IF NOT EXISTS league_entries (
@@ -78,6 +81,7 @@ const MIGRATIONS: readonly [table: string, column: string, definition: string][]
   ["leagues", "days", "INTEGER NOT NULL DEFAULT 0"],
   ["leagues", "divisions", "INTEGER NOT NULL DEFAULT 1"],
   ["leagues", "previous_id", "TEXT"],
+  ["leagues", "clock", "TEXT NOT NULL DEFAULT 'relaxed'"],
   ["league_entries", "division", "INTEGER"],
 ];
 
@@ -120,6 +124,7 @@ interface LeagueRow {
   days: number;
   divisions: number;
   previous_id: string | null;
+  clock: TimeControl;
 }
 
 interface EntryRow {
@@ -519,12 +524,13 @@ export class Clubs {
       status: l.status,
       mode: l.mode,
       days: l.days,
+      clock: l.clock,
       divisions: l.divisions,
       players: rows.length,
       entered: !!mine,
       myDivision: l.status === "open" ? null : (mine?.division ?? null),
       endsAt: l.ends_at,
-      winner: l.winner ? this.store.publicPlayer(l.winner, l.variant) : null,
+      winner: l.winner ? this.store.publicPlayer(l.winner, l.variant, poolOf(l.clock)) : null,
       previousId: l.previous_id,
       nextId: this.nextOf(l.id),
     };
@@ -534,7 +540,7 @@ export class Clubs {
     const l = this.league(id);
     const rows = this.entryRows(id);
     const pairings = this.pairings(id);
-    const player = (p: string) => this.store.publicPlayer(p, l.variant);
+    const player = (p: string) => this.store.publicPlayer(p, l.variant, poolOf(l.clock));
     const divisionOf = new Map(rows.map((r) => [r.player_id, r.division ?? 1]));
     const tables = l.status === "open" ? [] : this.divisionTables(l);
     const standings = tables.flatMap((table, d) => {
@@ -574,13 +580,14 @@ export class Clubs {
     days = 3,
     divisions = 1,
     previousId: string | null = null,
+    clock: TimeControl = "relaxed",
   ): LeagueView {
     this.requireAdmin(clubId, me);
     const id = randomUUID();
     this.db
       .prepare(
-        `INSERT INTO leagues (id, club_id, name, variant, length, weeks, status, created_at, mode, days, divisions, previous_id)
-         VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)`,
+        `INSERT INTO leagues (id, club_id, name, variant, length, weeks, status, created_at, mode, days, divisions, previous_id, clock)
+         VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -594,6 +601,7 @@ export class Clubs {
         mode === "corr" ? days : 0,
         divisions,
         previousId,
+        mode === "corr" ? "relaxed" : clock,
       );
     return this.leagueView(me, id);
   }
@@ -619,6 +627,7 @@ export class Clubs {
       l.days || 3,
       l.divisions,
       id,
+      l.clock,
     );
     const insert = this.db.prepare(
       "INSERT OR IGNORE INTO league_entries (league_id, player_id) VALUES (?, ?)",
@@ -685,7 +694,7 @@ export class Clubs {
 
   /** Entrants best first: previous season's order (promotion/relegation applied), then by rating. */
   private seeding(l: LeagueRow, entries: readonly string[]): string[] {
-    const rating = (p: string) => this.store.rating(p, l.variant).rating;
+    const rating = (p: string) => this.store.rating(p, l.variant, poolOf(l.clock)).rating;
     const byRating = (ps: readonly string[]) => [...ps].sort((a, b) => rating(b) - rating(a));
     const prev = l.previous_id
       ? (this.db.prepare("SELECT * FROM leagues WHERE id = ? AND status = 'finished'").get(l.previous_id) as
@@ -702,7 +711,11 @@ export class Clubs {
   }
 
   /** The open live pairing of two players in a running league (for a league challenge). */
-  pendingPairing(id: string, a: string, b: string): { variant: MatchVariantId; length: number } | null {
+  pendingPairing(
+    id: string,
+    a: string,
+    b: string,
+  ): { variant: MatchVariantId; length: number; clock: TimeControl } | null {
     const l = this.db
       .prepare("SELECT * FROM leagues WHERE id = ? AND status = 'running' AND mode = 'live'")
       .get(id) as LeagueRow | undefined;
@@ -713,7 +726,7 @@ export class Clubs {
          AND ((p0 = ? AND p1 = ?) OR (p0 = ? AND p1 = ?))`,
       )
       .get(id, a, b, b, a);
-    return m ? { variant: l.variant, length: l.length } : null;
+    return m ? { variant: l.variant, length: l.length, clock: l.clock } : null;
   }
 
   /** A league match started (it cannot be challenged twice). */

@@ -3,7 +3,9 @@ import {
   type LeaderboardEntry,
   MATCH_VARIANTS,
   type MatchVariantId,
+  RATING_POOLS,
   type RatingEntry,
+  type RatingPool,
   type TimeControl,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
@@ -188,6 +190,7 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
   const t = useT();
   const profile = useOnline((s) => s.profile);
   const [variant, setVariant] = useState<MatchVariantId>("backgammon");
+  const [pool, setPool] = useState<RatingPool>("normal");
   const [rows, setRows] = useState<LeaderboardEntry[] | null>(null);
   const [mine, setMine] = useState<RatingEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -196,10 +199,10 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
   useEffect(() => {
     setRows(null);
     setError(null);
-    fetchLeaderboard(variant)
+    fetchLeaderboard(variant, pool)
       .then(setRows)
       .catch((e: unknown) => setError(errorOf(t, e)));
-  }, [variant, t]);
+  }, [variant, pool, t]);
   useEffect(() => {
     if (profile)
       fetchProfile(profile.id)
@@ -212,10 +215,11 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
       {mine.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {mine.map((r) => (
-            <Card key={r.variant} className="!p-3 text-center">
+            <Card key={`${r.variant}${r.pool ?? ""}`} className="!p-3 text-center">
               <div className="text-2xl font-bold text-amber-100 tabular-nums">{r.rating}</div>
               <div className="text-xs text-stone-400">
-                {variantName(r.variant, t.tavliMatch)} · {r.wins}/{r.matches}
+                {variantName(r.variant, t.tavliMatch)}
+                {r.pool === "blitz" && ` · ⚡ ${t.timeControls.blitz}`} · {r.wins}/{r.matches}
               </div>
             </Card>
           ))}
@@ -228,6 +232,17 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
           onChange={setVariant}
           options={MATCH_VARIANTS.map((v) => ({ value: v, label: variantName(v, t.tavliMatch) }))}
         />
+        <div className="mt-3">
+          <Segmented
+            label={t.ratingPool}
+            value={pool}
+            onChange={setPool}
+            options={RATING_POOLS.map((p) => ({
+              value: p,
+              label: p === "blitz" ? `⚡ ${t.timeControls.blitz}` : t.ratingPools.normal,
+            }))}
+          />
+        </div>
         {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
         {rows && rows.length === 0 && <p className="mt-3 text-sm text-stone-500">{t.noRanking}</p>}
         {rows && rows.length > 0 && (

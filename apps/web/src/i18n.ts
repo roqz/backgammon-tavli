@@ -23,6 +23,9 @@ const de = {
   easy: "Einsteiger",
   medium: "Mittel",
   hard: "Stark",
+  expert: "Experte (KI)",
+  expertInfo:
+    "Spielt mit einem neuronalen Netz, das in Hunderttausenden Partien gegen sich selbst gelernt hat.",
   playAs: "Deine Farbe",
   thinking: "denkt nach …",
   you: "Du",
@@ -197,6 +200,8 @@ const de = {
   reasonTime: "Zeit abgelaufen",
   timeControl: "Bedenkzeit",
   timeControls: { relaxed: "Entspannt", standard: "Standard", blitz: "Blitz" },
+  ratingPool: "Tempo",
+  ratingPools: { normal: "Normal" },
   timeControlHint: {
     relaxed:
       "60 Sekunden pro Zug. Läuft die Zeit ab, zieht der Computer für dich; nach drei Überschreitungen ist das Match verloren.",
@@ -690,6 +695,8 @@ const en: Dict = {
   easy: "Beginner",
   medium: "Intermediate",
   hard: "Strong",
+  expert: "Expert (AI)",
+  expertInfo: "Plays with a neural network that learned from hundreds of thousands of games against itself.",
   playAs: "Your colour",
   thinking: "is thinking …",
   you: "You",
@@ -863,6 +870,8 @@ const en: Dict = {
   reasonTime: "time ran out",
   timeControl: "Time control",
   timeControls: { relaxed: "Relaxed", standard: "Standard", blitz: "Blitz" },
+  ratingPool: "Tempo",
+  ratingPools: { normal: "Normal" },
   timeControlHint: {
     relaxed:
       "60 seconds per move. When time runs out the computer moves for you; after three timeouts the match is lost.",

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   type MatchVariantId,
+  poolOf,
   swissRounds,
   type TimeControl,
   type TournamentFormat,
@@ -480,7 +481,10 @@ export class Tournaments {
   private start(id: string): void {
     const t = this.row(id)!;
     const seeded = this.entries(id)
-      .map((e) => ({ id: e.player_id, rating: this.store.rating(e.player_id, t.variant).rating }))
+      .map((e) => ({
+        id: e.player_id,
+        rating: this.store.rating(e.player_id, t.variant, poolOf(t.clock)).rating,
+      }))
       .sort((a, b) => b.rating - a.rating);
     const setSeed = this.db.prepare(
       "UPDATE tournament_entries SET seed = ? WHERE tournament_id = ? AND player_id = ?",
