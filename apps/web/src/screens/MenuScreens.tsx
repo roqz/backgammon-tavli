@@ -1,4 +1,4 @@
-import { BOT_LEVELS, type BotLevel } from "@tavli/ai";
+import { BOT_LEVELS, type BotLevel, hasNet } from "@tavli/ai";
 import {
   gameFromXgid,
   isGnubgId,
@@ -178,7 +178,16 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   const [xgid, setXgid] = useState("");
   const [xgidError, setXgidError] = useState<string | null>(null);
   const xgidPossible = XGID_VARIANTS.includes(variant as VariantId);
-  const levelName: Record<BotLevel, string> = { easy: t.easy, medium: t.medium, hard: t.hard };
+  const levelName: Record<BotLevel, string> = {
+    easy: t.easy,
+    medium: t.medium,
+    hard: t.hard,
+    expert: t.expert,
+  };
+  // the expert plays where a neural network is trained
+  const expertHere = variant !== "tavli" && hasNet(variant as VariantId);
+  const levels = BOT_LEVELS.filter((l) => l !== "expert" || expertHere);
+  const botLevel: BotLevel = level === "expert" && !expertHere ? "hard" : level;
 
   const start = () => {
     let config: MatchConfig = { variant, length, crawford: true, jacoby: length === 0 };
@@ -219,7 +228,7 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   };
 
   function botPlayer(): PlayerInfo {
-    return { name: `${t.computer} (${levelName[level]})`, kind: "bot", level };
+    return { name: `${t.computer} (${levelName[botLevel]})`, kind: "bot", level: botLevel };
   }
 
   return (
@@ -278,10 +287,11 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
           <>
             <Segmented
               label={t.level}
-              value={level}
+              value={botLevel}
               onChange={setLevel}
-              options={BOT_LEVELS.map((l) => ({ value: l, label: levelName[l] }))}
+              options={levels.map((l) => ({ value: l, label: levelName[l] }))}
             />
+            {botLevel === "expert" && <p className="-mt-2 text-xs text-stone-400">{t.expertInfo}</p>}
             <Segmented
               label={t.playAs}
               value={seat}

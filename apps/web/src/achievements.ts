@@ -66,7 +66,14 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     icon: "🤖",
     title: { de: "Maschine besiegt", en: "Beat the machine" },
     text: { de: "Gewinne gegen den starken Computer.", en: "Beat the strong computer." },
-    progress: (c) => count(vsBotWins(c, "hard").length, 1),
+    progress: (c) => count(vsBotWins(c, "hard").length + vsBotWins(c, "expert").length, 1),
+  },
+  {
+    id: "beat-expert",
+    icon: "🧠",
+    title: { de: "Netz zerrissen", en: "Net breaker" },
+    text: { de: "Gewinne ein Spiel gegen den Experten (KI).", en: "Win a game against the expert (AI)." },
+    progress: (c) => count(vsBotWins(c, "expert").length, 1),
   },
   {
     id: "gammon",

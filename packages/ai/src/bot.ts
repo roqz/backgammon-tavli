@@ -17,13 +17,28 @@ import {
 } from "@tavli/engine";
 import { expectedUtility, gammonsCount, type MatchContext, MONEY, type Utility, utilityFor } from "./equity";
 import { evaluate, isContact, type Outcomes, outcomes } from "./evaluate";
+import { type Net, netFor, netOutcomes } from "./nn";
 import { type Weights, weightsFor } from "./weights";
 
 export type { MatchContext } from "./equity";
 
-export type BotLevel = "easy" | "medium" | "hard";
+/** easy, medium and hard use the heuristic evaluation; expert the neural network (where trained). */
+export type BotLevel = "easy" | "medium" | "hard" | "expert";
 
-export const BOT_LEVELS: readonly BotLevel[] = ["easy", "medium", "hard"];
+export const BOT_LEVELS: readonly BotLevel[] = ["easy", "medium", "hard", "expert"];
+
+/** The network a level plays with (expert only; null = heuristic). */
+const levelNet = (s: GameState, level: BotLevel): Net | null =>
+  level === "expert" ? netFor(s.variant) : null;
+
+/** Result chances for `p` with `onRoll` next, from the network when given, else the heuristic. */
+const positionOutcomes = (
+  s: GameState,
+  board: Board,
+  p: Player,
+  onRoll: Player,
+  net: Net | null,
+): Outcomes => (net ? netOutcomes(net, s.variant, board, p, onRoll) : outcomes(s.variant, board, p, onRoll));
 
 /** The 21 distinct rolls with their probability weights (doubles 1/36, others 2/36). */
 const ROLLS: readonly { dice: number[]; weight: number }[] = (() => {
@@ -56,6 +71,7 @@ class Valuer {
     private readonly p: Player,
     private readonly w: Weights,
     opts: ChooseOptions,
+    private readonly net: Net | null = null,
   ) {
     this.cube = s.cube.value;
     this.gammons = (opts.gammons ?? true) && gammonsCount(s);
@@ -63,7 +79,9 @@ class Valuer {
 
   /** Position after a move, with `onRoll` to move next. */
   position(board: GameState["board"], onRoll: Player): number {
-    const o: Outcomes = outcomes(this.s.variant, board, this.p, onRoll, this.w);
+    const o: Outcomes = this.net
+      ? netOutcomes(this.net, this.s.variant, board, this.p, onRoll)
+      : outcomes(this.s.variant, board, this.p, onRoll, this.w);
     return expectedUtility(o, this.cube, POINTS, this.gammons);
   }
 
@@ -145,11 +163,11 @@ const chooseOption = (
     return best;
   }
 
-  const v = new Valuer(s, p, w, opts);
+  const v = new Valuer(s, p, w, opts, levelNet(s, level));
   const opp = opponent(p);
   const scored = options.map((o) => ({ o, v: o.end ? v.end(o, p) : v.position(o.board, opp) }));
   scored.sort((a, b) => b.v - a.v);
-  if (level !== "hard" || scored[0]!.o.end) return scored[0]!.o;
+  if ((level !== "hard" && level !== "expert") || scored[0]!.o.end) return scored[0]!.o;
 
   let best = scored[0]!;
   let bestValue = Number.NEGATIVE_INFINITY;
@@ -219,7 +237,7 @@ export const rankTurnOptions = (s: GameState): RankedOption[] => {
   if (s.phase !== "moving") return [];
   const options = turnOptions(s);
   const w = weightsFor(s.variant);
-  const v = new Valuer(s, s.turn, w, {});
+  const v = new Valuer(s, s.turn, w, {}, netFor(s.variant));
   const opp = opponent(s.turn);
   return options
     .map((o) => ({
@@ -246,7 +264,7 @@ export const reviewTurn = (s: GameState, played: Board): TurnReview | null => {
   if (options.length < 2) return null;
   const key = boardKey(played);
   const w = weightsFor(s.variant);
-  const v = new Valuer(s, s.turn, w, {});
+  const v = new Valuer(s, s.turn, w, {}, netFor(s.variant));
   const opp = opponent(s.turn);
   let best = Number.NEGATIVE_INFINITY;
   let bestOption = options[0]!;
@@ -276,6 +294,7 @@ export const reviewTurn = (s: GameState, played: Board): TurnReview | null => {
 const DOUBLE_MARGIN: Record<Exclude<BotLevel, "easy">, { race: number; contact: number }> = {
   medium: { race: 0.1, contact: 0.05 },
   hard: { race: 0.11, contact: 0.07 },
+  expert: { race: 0.11, contact: 0.07 },
 };
 
 /** Cube efficiency (Janowski): how much of the ideal recube value a cube owner realises. */
@@ -332,7 +351,7 @@ export const shouldDouble = (s: GameState, level: BotLevel, m: MatchContext = MO
     // Post-Crawford: the trailer doubles at once.
     if (m.crawford === "done" && needOpp === 1 && needMe > 1) return true;
   }
-  const out = outcomes(s.variant, s.board, p, p);
+  const out = positionOutcomes(s, s.board, p, p, levelNet(s, level));
   const u = utilityFor(s, p, m);
   const c = s.cube.value;
   const noDouble = expectedUtility(out, c, u, gammonsCount(s));
@@ -356,7 +375,7 @@ export const shouldTake = (s: GameState, level: BotLevel, m: MatchContext = MONE
     if (needDoubler <= s.cube.value) return true;
   }
   if (level === "easy") return true;
-  const out = outcomes(s.variant, s.board, taker, s.turn);
+  const out = positionOutcomes(s, s.board, taker, s.turn, levelNet(s, level));
   return out.win >= liveTakePoint(s, taker, out, m);
 };
 
@@ -372,7 +391,8 @@ export const shouldAcceptResign = (s: GameState, m: MatchContext = MONEY): boole
   const u = utilityFor(s, me, m);
   const c = s.cube.value;
   // The offering player is on turn.
-  const expected = expectedUtility(outcomes(s.variant, s.board, me, offer.player), c, u, gammonsCount(s));
+  const out = positionOutcomes(s, s.board, me, offer.player, netFor(s.variant));
+  const expected = expectedUtility(out, c, u, gammonsCount(s));
   const tolerance = 0.025 * (u(c) - u(-c));
   return u(offer.level * c) >= expected - tolerance;
 };

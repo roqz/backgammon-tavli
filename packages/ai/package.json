@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "bench": "vitest run -c vitest.bench.config.ts",
-    "tune": "tsx scripts/tune.ts"
+    "tune": "tsx scripts/tune.ts",
+    "train-nn": "tsx scripts/train-nn.ts"
   },
   "dependencies": {
     "@tavli/engine": "workspace:*"

@@ -13,3 +13,4 @@ playwright-report/
 
 # Claude Code agent worktrees
 .claude/worktrees/
+packages/ai/tuning/*.packed

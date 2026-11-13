@@ -120,7 +120,12 @@ export function StatsScreen({
   const clear = useArchive((s) => s.clear);
   const [confirmClear, setConfirmClear] = useState(false);
   const stats = useMemo(() => computeStats(records), [records]);
-  const levelName: Record<string, string> = { easy: t.easy, medium: t.medium, hard: t.hard };
+  const levelName: Record<string, string> = {
+    easy: t.easy,
+    medium: t.medium,
+    hard: t.hard,
+    expert: t.expert,
+  };
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-4 p-4 sm:p-6">
@@ -158,7 +163,7 @@ export function StatsScreen({
           <Table
             t={t}
             title={t.byOpponent}
-            rows={(["easy", "medium", "hard", "online"] as const)
+            rows={(["easy", "medium", "hard", "expert", "online"] as const)
               .filter((l) => stats.byOpponent.has(l))
               .map((l) => [
                 l === "online" ? `🌐 ${t.online}` : `${t.computer} (${levelName[l]})`,

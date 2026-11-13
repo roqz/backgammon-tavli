@@ -294,7 +294,7 @@ export function GameScreen({
     try {
       setHint({
         game: g,
-        moves: await askBot({ kind: "moves", state: g, level: "hard" }),
+        moves: await askBot({ kind: "moves", state: g, level: "expert" }),
       });
     } finally {
       setHintLoading(false);

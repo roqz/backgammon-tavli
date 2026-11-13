@@ -303,7 +303,22 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 - Hypergammon: je 3 Steine auf 24, 23, 22, sonst Backgammon-Regeln mit Doppler; offline, online, Turniere, Ranking
 - Fernpartien mit 1 oder 8 Stunden pro Entscheidung zusätzlich zu 1, 3, 7 Tagen; Gegnersuche für Fernpartien (gleiche Variante, Länge, Bedenkzeit; ungewertet; Suche verfällt nach 7 Tagen, höchstens 5 offene Suchen)
-- Bedenkzeit für Live-Matches: Entspannt (60 s pro Zug, Computer zieht bei Ablauf, 3× = Matchverlust), Standard (12 s Verzögerung + 2 min Reserve pro Punkt) und Blitz (8 s + 1 min pro Punkt); leere Reserve = Matchverlust („Zeit abgelaufen“), Züge ohne Wahl kosten keine Reserve; wählbar in Gegnersuche, Einladung, Herausforderung und Turnieren (Ligen spielen entspannt)
+- Bedenkzeit für Live-Matches: Entspannt (60 s pro Zug, Computer zieht bei Ablauf, 3× = Matchverlust), Standard (12 s Verzögerung + 2 min Reserve pro Punkt) und Blitz (8 s + 1 min pro Punkt); leere Reserve = Matchverlust („Zeit abgelaufen“), Züge ohne Wahl kosten keine Reserve; wählbar in Gegnersuche, Einladung, Herausforderung, Turnieren und Live-Ligen
+
+### Ratings nach Tempo, Liga-Bedenkzeit ✅
+
+- Blitz-Matches haben ein eigenes Rating und eine eigene Rangliste je Variante (wie Blitz/Klassisch im Schach); Entspannt und Standard teilen das normale Rating. Speicherung: Schlüssel `<variant>@blitz` in der Ratings-Tabelle, Spalte `pool` im Matcharchiv; Matchmaking, Turnier- und Liga-Setzliste nutzen das passende Rating
+- Live-Ligen haben eine Bedenkzeit (Entspannt/Standard/Blitz), die für alle Ligaspiele gilt, egal was der Herausforderer wählt; Fernligen bleiben ohne Uhr
+
+### Neuronales Netz (Stufe „Experte“) ✅
+
+- Bewertung wie TD-Gammon: Eingaben je Seite 4 Einheiten pro Feld (1, 2, 3, >3 Steine), Bar, abgetragen, Pips (Plakoto zusätzlich gefangene Steine), eine Sigmoid-Schicht, 5 Ausgaben (Sieg, Gammon-/Backgammon-Sieg, Gammon-/Backgammon-Niederlage, ohne Würfel) aus Sicht des Spielers am Zug
+- Training durch Selbstspiel mit TD(0): `pnpm --filter @tavli/ai train-nn <modell> [partien] [hidden]`, Worker-Threads teilen sich die Gewichte (Hogwild); Ergebnis als int16-Gewichte in `src/nets/<modell>.ts`, im Browser erst bei Bedarf geladen
+- „Experte“ = Netz + 2-Ply-Suche wie „Stark“; Würfel- und Aufgabe-Entscheidungen ebenfalls mit dem Netz. Wo kein Netz trainiert ist, spielt „Experte“ wie „Stark“ und wird im Menü nicht angeboten
+- Partie-Analysen und Tipps nutzen das Netz; die Fair-Play-Analyse bleibt vorerst bei der kalibrierten Heuristik
+- Backgammon-Netz: 500 000 Selbstspiel-Partien, 96 versteckte Einheiten (~2 h mit 12 Threads). Experte gegen Stark ohne Würfel 39/60 Siege (65 %, +0,43 Punkte/Partie), mit Würfel 74/100. Mit Würfel eskaliert der Würfel zwischen Netz und Heuristik teils extrem (beide halten sich für Favorit) – Punkte pro Partie sind dort nicht aussagekräftig
+- Netze für Hypergammon, Portes/Tavla, Plakoto, Fevga/Narde: noch nicht trainiert (`tuning/train-rest.sh`)
+- Stärketest: `scripts/nn-duel.ts <variante> [partien] [gegner] [snapshot] [nocube]`
 
 ### Offen / nächste Schritte Online
 

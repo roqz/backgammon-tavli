@@ -1,15 +1,19 @@
 /// <reference lib="webworker" />
-import { chooseMoves, shouldAcceptResign, shouldDouble, shouldTake } from "@tavli/ai";
+import { chooseMoves, loadNet, shouldAcceptResign, shouldDouble, shouldTake } from "@tavli/ai";
 import { cryptoRng } from "@tavli/engine";
 import { generatePuzzle } from "../puzzle";
 import { reviewGame } from "../review";
 import type { BotEnvelope, BotReply } from "./protocol";
 
 /** Runs bot decisions off the main thread so animations stay smooth while the bot thinks. */
-self.onmessage = (e: MessageEvent<BotEnvelope>) => {
+self.onmessage = async (e: MessageEvent<BotEnvelope>) => {
   const { id, request } = e.data;
   let reply: BotReply;
   try {
+    // the neural network (expert, reviews) is loaded on first use
+    const variant =
+      "state" in request ? request.state.variant : request.kind === "review" ? request.variant : null;
+    if (variant) await loadNet(variant).catch(() => null);
     switch (request.kind) {
       case "moves":
         reply = {
