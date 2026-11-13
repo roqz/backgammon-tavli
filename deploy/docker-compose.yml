@@ -37,12 +37,6 @@ services:
     build:
       context: ..
       dockerfile: deploy/web.Dockerfile
-      # Imprint and privacy notice: name, address ("street|zip city"), e-mail, hosting provider
-      args:
-        VITE_OPERATOR_NAME: ${OPERATOR_NAME:-}
-        VITE_OPERATOR_ADDRESS: ${OPERATOR_ADDRESS:-}
-        VITE_OPERATOR_EMAIL: ${OPERATOR_EMAIL:-}
-        VITE_HOSTING: ${HOSTING:-}
     restart: unless-stopped
     depends_on:
       server:
@@ -50,6 +44,11 @@ services:
     logging: *logging
     environment:
       DOMAIN: ${DOMAIN:-:80}
+      # Imprint and privacy notice (served as /operator.json)
+      OPERATOR_NAME: ${OPERATOR_NAME:-}
+      OPERATOR_ADDRESS: ${OPERATOR_ADDRESS:-}
+      OPERATOR_EMAIL: ${OPERATOR_EMAIL:-}
+      HOSTING: ${HOSTING:-}
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"

@@ -20,7 +20,9 @@ const server = await startServer({
   ...(env.TOURNAMENT_GUEST_MIN_MATCHES
     ? { tournaments: { guestMinMatches: Number(env.TOURNAMENT_GUEST_MIN_MATCHES) } }
     : {}),
-  trustProxy: env.TRUST_PROXY === "1" || env.TRUST_PROXY === "true",
+  // Behind reverse proxies: how many (1 = one proxy in front, 2 = e.g. a shared Caddy in front of
+  // the app's own Caddy); the client address is taken from X-Forwarded-For accordingly.
+  trustProxy: env.TRUST_PROXY === "true" ? 1 : Number(env.TRUST_PROXY ?? 0) || 0,
   // Moderation API (reports, bans); disabled unless set.
   adminToken: env.ADMIN_TOKEN,
   // Fair-play analysis in a worker thread (falls back to inline when the worker file is missing).

@@ -51,3 +51,24 @@ Fernpartien, Ligen, Ratings und Profile bleiben erhalten.
   `docker compose cp server:/data/backups ./backups` und per `rsync`/`scp` sichern.
 - Moderation: `curl -H "X-Admin-Token: $ADMIN_TOKEN" https://tavli.example.com/api/admin/reports`
 - Ohne `DOMAIN` läuft alles per HTTP auf Port 80 (nur zum Ausprobieren; Push braucht HTTPS).
+
+## Fertige Images (ohne Build auf dem Server)
+
+Jeder Push auf `master` oder `rewrite/foundation` baut die Images und legt sie in der GitHub
+Container Registry ab (`.github/workflows/images.yml`):
+
+- `ghcr.io/roqz/tavli-server:latest` – Spielserver (Daten in `/data`, läuft als Nutzer 1000)
+- `ghcr.io/roqz/tavli-web:latest` – App mit eigenem Caddy, leitet `/api` und `/ws` weiter
+
+Hinter einem bestehenden Reverse Proxy (gemeinsames Caddy, das TLS übernimmt):
+
+| Dienst | Variable | Wert |
+| --- | --- | --- |
+| web | `DOMAIN` | `:80` |
+| web | `TRUSTED_PROXIES` | `private_ranges` (Client-Adresse vom vorderen Proxy übernehmen) |
+| web | `SERVER_UPSTREAM` | Name:Port des Servers, z. B. `tavli-server:2567` |
+| web | `OPERATOR_NAME`, `OPERATOR_ADDRESS`, `OPERATOR_EMAIL`, `HOSTING` | Impressum/Datenschutz |
+| server | `TRUST_PROXY` | `2` (zwei Proxys vor dem Server) |
+| server | `VAPID_SUBJECT`, `ADMIN_TOKEN`, `BACKUP_DIR=/data/backups` | wie oben |
+
+Ein Bind-Mount für `/data` muss dem Nutzer 1000 gehören (`chown -R 1000:1000 data`).

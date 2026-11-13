@@ -4,11 +4,7 @@ WORKDIR /repo
 RUN corepack enable
 COPY . .
 ENV VITE_SERVER_URL=same-origin
-# Operator details for imprint and privacy notice (docker compose passes them as build args)
-ARG VITE_OPERATOR_NAME=""
-ARG VITE_OPERATOR_ADDRESS=""
-ARG VITE_OPERATOR_EMAIL=""
-ARG VITE_HOSTING=""
+# Operator details (imprint, privacy notice) come at runtime from the environment: see Caddyfile.
 RUN pnpm install --frozen-lockfile --filter "@tavli/web..." \
  && pnpm --filter @tavli/web build
 

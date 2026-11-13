@@ -52,8 +52,11 @@ export interface ServerOptions {
   readonly fairPlay?: Partial<FairPlayOptions>;
   /** Per-connection message limit (token bucket). */
   readonly messageRate?: { readonly perSecond: number; readonly burst: number };
-  /** Behind a reverse proxy: take the client address from X-Forwarded-For. */
-  readonly trustProxy?: boolean;
+  /**
+   * Behind reverse proxies: take the client address from X-Forwarded-For. A number gives the
+   * proxies in front of the server (true = 1).
+   */
+  readonly trustProxy?: boolean | number;
   /** Enables the moderation API (header `X-Admin-Token`); at least 16 characters. */
   readonly adminToken?: string;
   /** Fair-play analysis of finished matches: worker thread (production), inline or off. */
@@ -256,13 +259,18 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
   };
 
   /**
-   * Behind the reverse proxy the client address is the last X-Forwarded-For entry (the one the
-   * proxy appended); earlier entries come from the client and cannot be trusted.
+   * Behind n reverse proxies each appends the address it saw to X-Forwarded-For, so the client is
+   * the n-th entry from the end; anything before it came from the client and cannot be trusted.
    */
+  const proxies = opts.trustProxy === true ? 1 : opts.trustProxy || 0;
   const clientIpOf = (req: IncomingMessage): string => {
     const forwarded = req.headers["x-forwarded-for"];
-    const last = (Array.isArray(forwarded) ? forwarded.join(",") : forwarded)?.split(",").pop()?.trim();
-    return (opts.trustProxy && last) || req.socket.remoteAddress || "";
+    const entries = (Array.isArray(forwarded) ? forwarded.join(",") : (forwarded ?? ""))
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
+    const client = proxies > 0 ? entries[entries.length - proxies] : undefined;
+    return client || req.socket.remoteAddress || "";
   };
   const limitKey = (req: IncomingMessage) => ipKey(clientIpOf(req));
 

@@ -1,4 +1,12 @@
 # DOMAIN=tavli.example.com gives automatic HTTPS (Let's Encrypt); compose defaults to ":80" (plain HTTP).
+# Behind another reverse proxy (e.g. a shared Caddy terminating TLS): DOMAIN=":80" and
+# TRUSTED_PROXIES=private_ranges, so the client address from that proxy is kept.
+{
+	servers {
+		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+	}
+}
+
 {$DOMAIN} {
 	encode zstd gzip
 
@@ -17,10 +25,16 @@
 	header @https Strict-Transport-Security "max-age=31536000"
 
 	handle /api/* {
-		reverse_proxy server:2567
+		reverse_proxy {$SERVER_UPSTREAM:server:2567}
 	}
 	handle /ws {
-		reverse_proxy server:2567
+		reverse_proxy {$SERVER_UPSTREAM:server:2567}
+	}
+	# Operator details for imprint and privacy notice, from the container environment
+	handle /operator.json {
+		header Content-Type application/json
+		header Cache-Control no-cache
+		respond `{"name":"{$OPERATOR_NAME}","address":"{$OPERATOR_ADDRESS}","email":"{$OPERATOR_EMAIL}","hosting":"{$HOSTING}"}`
 	}
 	handle {
 		root * /srv

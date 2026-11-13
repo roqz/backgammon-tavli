@@ -1,12 +1,17 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Button, Card } from "../components/ui";
 import { useT } from "../i18n";
-import { type LegalPage, OPERATOR, SOURCE_URL } from "../legal";
+import { type LegalPage, loadOperator, OPERATOR, SOURCE_URL } from "../legal";
 import { useSettings } from "../store/settings";
 
 /** Imprint and privacy notice. Operator details come from the build (see legal.ts). */
 export function LegalScreen({ page, onBack }: { page: LegalPage; onBack: () => void }) {
   const t = useT();
+  // operator details from the server; re-render once they are there
+  const [, setLoaded] = useState(false);
+  useEffect(() => {
+    void loadOperator().then(() => setLoaded(true));
+  }, []);
   const lang = useSettings((s) => s.lang);
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 p-4 sm:p-6">
