@@ -56,6 +56,8 @@ const SAME_DIRECTION_PATHS: readonly [readonly number[], readonly number[]] = [
 
 const BACKGAMMON_SETUP: OwnPointSetup = { 24: 2, 13: 5, 8: 3, 6: 5 };
 const ALL_ON_START: OwnPointSetup = { 24: 15 };
+/** Hypergammon: three checkers each, on the opponent's 1, 2 and 3 points. */
+const HYPER_SETUP: OwnPointSetup = { 24: 1, 23: 1, 22: 1 };
 
 export const VARIANTS: Readonly<Record<VariantId, VariantRules>> = {
   backgammon: {
@@ -136,6 +138,22 @@ export const VARIANTS: Readonly<Record<VariantId, VariantRules>> = {
     noHitAndRunHome: true,
     noWasteBearOff: true,
     setup: BACKGAMMON_SETUP,
+    paths: OPPOSITE_PATHS,
+  },
+  hypergammon: {
+    id: "hypergammon",
+    name: "Hypergammon",
+    blots: "hit",
+    cube: true,
+    openingRollPlayed: true,
+    backgammons: true,
+    manaRule: false,
+    fevgaStartRule: false,
+    fevgaPrimeRule: false,
+    headRule: false,
+    noHitAndRunHome: false,
+    noWasteBearOff: false,
+    setup: HYPER_SETUP,
     paths: OPPOSITE_PATHS,
   },
   narde: {

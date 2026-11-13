@@ -3,13 +3,14 @@ import { describe, expect, it } from "vitest";
 import { DIAGRAMS, stateOf } from "./screens/RuleDiagram";
 
 describe("rule diagrams", () => {
-  it("are valid positions with 15 checkers each and legal arrows", () => {
+  it("are valid positions with all checkers (15, Hypergammon 3) and and legal arrows", () => {
     for (const [id, d] of Object.entries(DIAGRAMS)) {
+      const perSide = d.variant === "hypergammon" ? 3 : 15;
       const { state, hint } = stateOf(d);
       const board = state.board;
       for (const p of [0, 1] as const) {
         const onBoard = board.points[p].reduce((s, n) => s + n, 0);
-        expect(onBoard + board.bar[p] + board.off[p], `${id} player ${p}`).toBe(15);
+        expect(onBoard + board.bar[p] + board.off[p], `${id} player ${p}`).toBe(perSide);
       }
       if (d.variant !== "plakoto")
         for (let i = 0; i < 24; i++)

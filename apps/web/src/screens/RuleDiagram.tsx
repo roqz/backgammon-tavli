@@ -138,6 +138,14 @@ export const DIAGRAMS = {
       en: "Narde: only one checker per roll may leave the head. With 5-3, 24/19 is played and the 3 goes to a checker already on its way.",
     },
   },
+  hyperStart: {
+    variant: "hypergammon",
+    spec: "start",
+    caption: {
+      de: "Hypergammon: je drei Steine auf den Feldern 24, 23 und 22.",
+      en: "Hypergammon: three checkers each on points 24, 23 and 22.",
+    },
+  },
 } satisfies Record<string, Diagram>;
 
 export type DiagramId = keyof typeof DIAGRAMS;

@@ -15,10 +15,10 @@ import {
   type VariantId,
 } from "../src";
 
-const VARIANTS: VariantId[] = ["backgammon", "portes", "plakoto", "fevga", "tavla", "narde"];
+const VARIANTS: VariantId[] = ["backgammon", "portes", "plakoto", "fevga", "tavla", "narde", "hypergammon"];
 
-const checkInvariants = (b: Board) => {
-  for (const p of [0, 1] as Player[]) expect(checkerTotal(b, p)).toBe(15);
+const checkInvariants = (b: Board, total: number) => {
+  for (const p of [0, 1] as Player[]) expect(checkerTotal(b, p)).toBe(total);
   for (let i = 0; i < 24; i++) {
     const both = b.points[0][i]! > 0 && b.points[1][i]! > 0;
     // Two colours may only share a point when one is pinned (Plakoto).
@@ -30,6 +30,7 @@ const checkInvariants = (b: Board) => {
 /** Plays a full game choosing random legal moves. Returns the final state. */
 const playRandomGame = (variant: VariantId, rng: Rng): GameState => {
   let s = createGame({ variant });
+  const total = checkerTotal(s.board, 0);
   for (let step = 0; step < 5000 && s.phase !== "finished"; step++) {
     switch (s.phase) {
       case "opening":
@@ -49,7 +50,7 @@ const playRandomGame = (variant: VariantId, rng: Rng): GameState => {
         s = applyAction(s, { type: "take" });
         break;
     }
-    checkInvariants(s.board);
+    checkInvariants(s.board, total);
   }
   return s;
 };
@@ -63,7 +64,7 @@ describe("random self-play (property based)", () => {
           expect(end.phase).toBe("finished");
           expect(end.result!.points).toBeGreaterThan(0);
           const { winner, reason } = end.result!;
-          if (reason === "bear-off") expect(end.board.off[winner]).toBe(15);
+          if (reason === "bear-off") expect(end.board.off[winner]).toBe(checkerTotal(end.board, winner));
           else expect(reason).toBe("mana");
         }),
         { numRuns: 25 },

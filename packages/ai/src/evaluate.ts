@@ -1,5 +1,6 @@
 import {
   type Board,
+  checkerTotal,
   getVariant,
   opponent,
   type Player,
@@ -279,6 +280,7 @@ const CONTACT_SCALE: Record<VariantId, number> = {
   fevga: 30,
   tavla: 28,
   narde: 30,
+  hypergammon: 10,
 };
 const ON_ROLL_BONUS: Record<VariantId, number> = {
   backgammon: 3,
@@ -287,6 +289,7 @@ const ON_ROLL_BONUS: Record<VariantId, number> = {
   fevga: 4,
   tavla: 2,
   narde: 4,
+  hypergammon: 2,
 };
 
 /**
@@ -358,10 +361,12 @@ const gammonInputs = (ctx: Ctx, winner: Player): { z: number; outside: number; i
     if (k < 6) inWinnersHome += n;
   }
   const needLoser = homePips + 4;
-  const needWinner = ctx.pips[winner] + 2 * (15 - b.off[winner]) * 0.3;
+  // checkers per side: 15, or 3 in Hypergammon
+  const total = checkerTotal(b, winner);
+  const needWinner = ctx.pips[winner] + 2 * (total - b.off[winner]) * 0.3;
   const mean = 8.17;
   const sd = Math.max(Math.sqrt(((needLoser + needWinner) / mean) * 18.6) / mean, 0.5);
-  return { z: (needLoser - needWinner) / mean / sd, outside: outside / 15, inHome: inWinnersHome / 15 };
+  return { z: (needLoser - needWinner) / mean / sd, outside: outside / total, inHome: inWinnersHome / total };
 };
 
 /**
@@ -377,6 +382,7 @@ const GAMMON_MODEL: Record<VariantId, { a: number; b: number; c: number }> = {
   // not fitted separately: the closest variant
   tavla: { a: -1.09, b: 0.62, c: 2.75 },
   narde: { a: 0.36, b: 0.79, c: -0.2 },
+  hypergammon: { a: -1.3, b: 0.58, c: 2.89 },
 };
 
 const gammonsFor = (ctx: Ctx, winner: Player): { gammon: number; backgammon: number } => {

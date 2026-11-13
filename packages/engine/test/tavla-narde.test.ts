@@ -81,3 +81,25 @@ describe("narde", () => {
     expect(play(end, mv(N, 0, 1, "off", 1)).result).toMatchObject({ level: 2, points: 2 });
   });
 });
+
+describe("hypergammon", () => {
+  it("three checkers each on 24, 23, 22, with cube; the opening dice are played", () => {
+    const rules = getVariant("hypergammon");
+    const b = initialBoard(rules);
+    for (const own of [24, 23, 22]) expect(b.points[0][absFromOwnPoint(rules, 0, own)]).toBe(1);
+    expect(pipCount(rules, b, 0)).toBe(69);
+    const g = applyAction(createGame({ variant: "hypergammon" }), { type: "roll", dice: [6, 2] });
+    expect(g.cube.enabled).toBe(true);
+    expect(g.phase).toBe("moving");
+  });
+
+  it("a backgammon counts 3", () => {
+    const s = position(
+      "hypergammon",
+      { white: { 1: 1 }, black: { 24: 1, 23: 1, 3: 1 }, off: [2, 0] },
+      0,
+      [1, 2],
+    );
+    expect(play(s, mv("hypergammon", 0, 1, "off", 2)).result).toMatchObject({ level: 3 });
+  });
+});

@@ -13,6 +13,7 @@ export const MATCH_VARIANTS = [
   "tavli",
   "tavla",
   "narde",
+  "hypergammon",
 ] as const;
 export type MatchVariantId = (typeof MATCH_VARIANTS)[number];
 /** Online match lengths; 0 = money session (game by game, cube with Jacoby, never rated). */
@@ -722,7 +723,13 @@ export const NameSchema = z.object({
 export const encode = (m: ServerMessage | ClientMessage): string => JSON.stringify(m);
 
 export const isVariantId = (v: string): v is VariantId =>
-  v === "backgammon" || v === "portes" || v === "plakoto" || v === "fevga" || v === "tavla" || v === "narde";
+  v === "backgammon" ||
+  v === "portes" ||
+  v === "plakoto" ||
+  v === "fevga" ||
+  v === "tavla" ||
+  v === "narde" ||
+  v === "hypergammon";
 
 // ---- accounts ---------------------------------------------------------------------------------
 

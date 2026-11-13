@@ -380,6 +380,7 @@ const de = {
     fevga: "Beide ziehen in dieselbe Richtung, ein einzelner Stein blockiert schon einen Punkt.",
     tavli: "Match aus Portes, Plakoto und Fevga im Wechsel.",
     tavla: "Türkisches Backgammon: ohne Doppler, kein Weiterziehen nach Schlagen im Heimfeld.",
+    hypergammon: "Backgammon mit nur drei Steinen pro Spieler – schnelle Partien mit Doppler.",
     narde:
       "Lange Narde: Blockadespiel, alle Steine starten auf dem Kopf – nur einer pro Wurf darf ihn verlassen.",
   },
@@ -1022,6 +1023,7 @@ const en: Dict = {
     fevga: "Both move the same way round; a single checker already blocks a point.",
     tavli: "A match of Portes, Plakoto and Fevga in turn.",
     tavla: "Turkish backgammon: no cube, no running on after a hit in the home board.",
+    hypergammon: "Backgammon with only three checkers each – quick games with the cube.",
     narde: "Long Nardy: a blocking game, all checkers start on the head – only one per roll may leave it.",
   },
   privacyTitle: "Data & account",

@@ -14,6 +14,7 @@ export type RulesTopic =
   | "tavli"
   | "tavla"
   | "narde"
+  | "hypergammon"
   | "app";
 
 export interface RulesSection {
@@ -39,6 +40,7 @@ export const RULES_TOPICS: readonly RulesTopic[] = [
   "tavli",
   "tavla",
   "narde",
+  "hypergammon",
   "app",
 ];
 
@@ -46,7 +48,7 @@ const de: Record<RulesTopic, RulesChapter> = {
   general: {
     label: "Grundlagen",
     intro:
-      "Alle Varianten werden auf demselben Brett mit 24 Feldern (Punkten) und je 15 Steinen gespielt. Ziel ist es, alle eigenen Steine ins Heimfeld zu bringen und dort abzutragen.",
+      "Alle Varianten werden auf demselben Brett mit 24 Feldern (Punkten) und je 15 Steinen gespielt (Hypergammon: 3). Ziel ist es, alle eigenen Steine ins Heimfeld zu bringen und dort abzutragen.",
     sections: [
       {
         title: "Brett und Zugrichtung",
@@ -332,6 +334,26 @@ const de: Record<RulesTopic, RulesChapter> = {
       },
     ],
   },
+  hypergammon: {
+    label: "Hypergammon",
+    intro: "Backgammon im Kleinformat: nur drei Steine pro Spieler – eine Partie dauert wenige Minuten.",
+    sections: [
+      {
+        title: "Aufstellung",
+        diagram: "hyperStart",
+        bullets: [
+          "Jeder Spieler hat drei Steine, je einen auf den Feldern 24, 23 und 22 (den Feldern 1, 2 und 3 des Gegners).",
+        ],
+      },
+      {
+        title: "Regeln",
+        bullets: [
+          "Alles Weitere wie im Backgammon: Schlagen, Bar, Abtragen, Verdopplungswürfel, Gammon und Backgammon.",
+          "Der Beginnende spielt die beiden Eröffnungswürfel.",
+        ],
+      },
+    ],
+  },
   app: {
     label: "App & Notation",
     intro: "Wie die App die Regeln umsetzt und wie der Spielverlauf zu lesen ist.",
@@ -390,7 +412,7 @@ const en: Record<RulesTopic, RulesChapter> = {
   general: {
     label: "Basics",
     intro:
-      "All variants are played on the same board with 24 points and 15 checkers per player. The goal is to bring all your checkers into your home board and bear them off.",
+      "All variants are played on the same board with 24 points and 15 checkers per player (Hypergammon: 3). The goal is to bring all your checkers into your home board and bear them off.",
     sections: [
       {
         title: "Board and direction",
@@ -662,6 +684,26 @@ const en: Record<RulesTopic, RulesChapter> = {
         bullets: [
           "Win (oyn): 1 point. Mars (no checker borne off): 2 points. No doubling cube.",
           "Not implemented: “koks” and “home mars” (informal house rules) and the tournament draw rule.",
+        ],
+      },
+    ],
+  },
+  hypergammon: {
+    label: "Hypergammon",
+    intro: "Backgammon in miniature: only three checkers each – a game takes a few minutes.",
+    sections: [
+      {
+        title: "Setup",
+        diagram: "hyperStart",
+        bullets: [
+          "Each player has three checkers, one each on points 24, 23 and 22 (the opponent's 1, 2 and 3 points).",
+        ],
+      },
+      {
+        title: "Rules",
+        bullets: [
+          "Everything else as in backgammon: hitting, bar, bearing off, doubling cube, gammon and backgammon.",
+          "The starter plays the two opening dice.",
         ],
       },
     ],

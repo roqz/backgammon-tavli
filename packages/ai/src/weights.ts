@@ -108,6 +108,7 @@ export const MODEL_OF: Record<VariantId, VariantId> = {
   fevga: "fevga",
   tavla: "portes",
   narde: "fevga",
+  hypergammon: "backgammon",
 };
 
 export const RELEVANT_WEIGHTS: Record<VariantId, readonly (keyof Weights)[]> = {
@@ -129,6 +130,7 @@ export const RELEVANT_WEIGHTS: Record<VariantId, readonly (keyof Weights)[]> = {
   ],
   fevga: ["offBonus", "raceWastage", "blockHome", "blockOther", "fevStack", "fevPrime", "startPenalty"],
   tavla: HIT_KEYS,
+  hypergammon: HIT_KEYS,
   narde: ["offBonus", "raceWastage", "blockHome", "blockOther", "fevStack", "fevPrime", "startPenalty"],
 };
 
