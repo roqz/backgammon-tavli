@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ACHIEVEMENTS, useAchievements } from "../achievements";
 import { BOARD_STYLES, type BoardStyle, THEMES } from "../board/themes";
 import { Drawer } from "../components/Drawer";
-import { Section, Toggle } from "../components/ui";
+import { Section, Segmented, Toggle } from "../components/ui";
 import { useT } from "../i18n";
 import { disconnect } from "../online/client";
 import { useOnline } from "../online/store";
@@ -168,57 +168,56 @@ function ServerUrlField() {
   );
 }
 
-/** All settings, grouped. Used as a page from the menu and as a drawer during a game. */
+type SectionId = "play" | "display" | "looks" | "sound" | "language" | "online";
+
+/**
+ * All settings, grouped: the game itself first, then what the board shows, the looks (themes,
+ * dice, rewards), sound, language, online. Sections fold away; the chips on top jump to them.
+ * Used as a page from the menu and as a drawer during a game.
+ */
 export function SettingsPanel() {
   const t = useT();
   const s = useSettings();
   const unlocked = useAchievements((a) => a.unlocked);
+  const sections: [SectionId, string, string][] = [
+    ["play", "🎲", t.gameplay],
+    ["display", "🖥", t.displaySection],
+    ["looks", "🎨", t.appearance],
+    ["sound", "🔊", t.soundSection],
+    ["language", "🌐", t.language],
+    ["online", "📡", t.onlineSection],
+  ];
+  const fold = (id: SectionId) => ({
+    id: `settings-${id}`,
+    open: !s.collapsed.includes(id),
+    onToggle: () =>
+      s.update({
+        collapsed: s.collapsed.includes(id) ? s.collapsed.filter((c) => c !== id) : [...s.collapsed, id],
+      }),
+  });
+  const jump = (id: SectionId) => {
+    if (s.collapsed.includes(id)) s.update({ collapsed: s.collapsed.filter((c) => c !== id) });
+    requestAnimationFrame(() =>
+      document.getElementById(`settings-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  };
+  const countdown = (s.autoRoll && s.autoRollCountdown) || (s.autoConfirm && s.autoConfirmDelay);
   return (
     <div className="flex flex-col gap-4">
-      <Section title={t.appearance} icon="🎨">
-        <StylePicker />
-        <DicePicker />
-        {isUnlocked(REWARDS.diceCup, unlocked) ? (
-          <Toggle
-            label={t.diceCup}
-            description={t.diceCupDesc}
-            checked={s.diceSound === "cup"}
-            onChange={(on) => s.update({ diceSound: on ? "cup" : "classic" })}
-          />
-        ) : (
-          <p className="py-2 text-xs text-stone-500">
-            🔒 {t.diceCup} – {lockText(t, REWARDS.diceCup)}
-          </p>
-        )}
-        {isUnlocked(REWARDS.fireworks, unlocked) && (
-          <Toggle
-            label={t.fireworks}
-            description={t.fireworksDesc}
-            checked={s.fireworks}
-            onChange={(fireworks) => s.update({ fireworks })}
-          />
-        )}
-        <Toggle
-          label={t.dice3d}
-          description={t.dice3dDesc}
-          checked={s.dice3d}
-          onChange={(dice3d) => s.update({ dice3d })}
-        />
-        <Toggle label={t.showPips} checked={s.showPips} onChange={(showPips) => s.update({ showPips })} />
-        <Toggle
-          label={t.showNumbers}
-          checked={s.showNumbers}
-          onChange={(showNumbers) => s.update({ showNumbers })}
-        />
-        <Toggle
-          label={t.homeLeft}
-          description={t.homeLeftHint}
-          checked={s.homeLeft}
-          onChange={(homeLeft) => s.update({ homeLeft })}
-        />
-      </Section>
+      <nav aria-label={t.settingsNav} className="flex flex-wrap gap-2">
+        {sections.map(([id, icon, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => jump(id)}
+            className="rounded-full border border-stone-700 px-3 py-1 text-xs text-stone-300 hover:border-amber-400 hover:text-amber-200"
+          >
+            {icon} {label}
+          </button>
+        ))}
+      </nav>
 
-      <Section title={t.gameplay} icon="🎲">
+      <Section title={t.gameplay} icon="🎲" {...fold("play")}>
         <Toggle
           label={t.autoRoll}
           description={t.autoRollDesc}
@@ -245,9 +244,63 @@ export function SettingsPanel() {
           checked={s.autoConfirmDelay}
           onChange={(autoConfirmDelay) => s.update({ autoConfirmDelay })}
         />
+        <div className={`py-3 ${countdown ? "" : "opacity-40"}`}>
+          <Segmented
+            label={t.countdownSeconds}
+            value={s.countdownSeconds}
+            onChange={(countdownSeconds) => s.update({ countdownSeconds })}
+            options={([3, 2, 1] as const).map((n) => ({ value: n, label: `${n} s` }))}
+          />
+        </div>
       </Section>
 
-      <Section title={t.soundSection} icon="🔊">
+      <Section title={t.displaySection} icon="🖥" {...fold("display")}>
+        <Toggle
+          label={t.dice3d}
+          description={t.dice3dDesc}
+          checked={s.dice3d}
+          onChange={(dice3d) => s.update({ dice3d })}
+        />
+        <Toggle label={t.showPips} checked={s.showPips} onChange={(showPips) => s.update({ showPips })} />
+        <Toggle
+          label={t.showNumbers}
+          checked={s.showNumbers}
+          onChange={(showNumbers) => s.update({ showNumbers })}
+        />
+        <Toggle
+          label={t.homeLeft}
+          description={t.homeLeftHint}
+          checked={s.homeLeft}
+          onChange={(homeLeft) => s.update({ homeLeft })}
+        />
+      </Section>
+
+      <Section title={t.appearance} icon="🎨" {...fold("looks")}>
+        <StylePicker />
+        <DicePicker />
+        {isUnlocked(REWARDS.diceCup, unlocked) ? (
+          <Toggle
+            label={t.diceCup}
+            description={t.diceCupDesc}
+            checked={s.diceSound === "cup"}
+            onChange={(on) => s.update({ diceSound: on ? "cup" : "classic" })}
+          />
+        ) : (
+          <p className="py-2 text-xs text-stone-500">
+            🔒 {t.diceCup} – {lockText(t, REWARDS.diceCup)}
+          </p>
+        )}
+        {isUnlocked(REWARDS.fireworks, unlocked) && (
+          <Toggle
+            label={t.fireworks}
+            description={t.fireworksDesc}
+            checked={s.fireworks}
+            onChange={(fireworks) => s.update({ fireworks })}
+          />
+        )}
+      </Section>
+
+      <Section title={t.soundSection} icon="🔊" {...fold("sound")}>
         <Toggle
           label={t.sound}
           description={t.soundDesc}
@@ -256,7 +309,7 @@ export function SettingsPanel() {
         />
       </Section>
 
-      <Section title={t.language} icon="🌐">
+      <Section title={t.language} icon="🌐" {...fold("language")}>
         <div className="flex gap-2 py-3">
           {(
             [
@@ -281,7 +334,7 @@ export function SettingsPanel() {
         </div>
       </Section>
 
-      <Section title={t.onlineSection} icon="📡">
+      <Section title={t.onlineSection} icon="📡" {...fold("online")}>
         <Toggle
           label={t.showEmotes}
           description={t.showEmotesHint}

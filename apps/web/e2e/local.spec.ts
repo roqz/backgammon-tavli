@@ -182,3 +182,46 @@ test("money play with beavers: beaver a double, then raccoon", async ({ page }) 
   await expect(page.getByRole("button", { name: /Raccoon/ })).toHaveCount(0);
   await expect(page.getByText(/Raccoon auf 8/).first()).toBeAttached();
 });
+
+test("settings sections fold; keyboard plays the main buttons; the local name is kept", async ({ page }) => {
+  // settings: sections with navigation, countdown length, folding
+  await page.getByRole("button", { name: /Einstellungen/ }).click();
+  await page
+    .getByRole("button", { name: /Dauer des Countdowns|1 s/ })
+    .first()
+    .waitFor();
+  await page.getByRole("button", { name: "1 s" }).click();
+  await expect(page.getByRole("button", { name: "1 s" })).toHaveAttribute("aria-pressed", "true");
+  const looks = page.getByRole("button", { name: /Designs & Skins/, expanded: true });
+  await looks.click();
+  await expect(page.getByRole("button", { name: /Designs & Skins/, expanded: false })).toBeVisible();
+  await page.getByRole("switch", { name: /Automatisch würfeln/ }).click();
+  await page.goBack();
+
+  // the own name survives the next "new game"
+  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await page.getByLabel("Name").fill("Thea");
+  await page.getByRole("button", { name: "Mensch (gleiches Gerät)" }).click();
+  await expect(page.getByLabel("Weiß")).toHaveValue("Thea");
+  await page.getByRole("button", { name: "Starten" }).click();
+
+  // Space rolls the opening (ties roll again), then the first player is to move
+  const status = page.getByText(/ist am Zug/).first();
+  for (let i = 0; i < 6 && !(await status.isVisible()); i++) {
+    await page.locator("body").press("Space");
+    await page.waitForTimeout(500);
+  }
+  await expect(status).toBeVisible();
+  // one move, U takes it back
+  await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
+  const before = await page.locator("svg [aria-label^='Punkt']").allInnerTexts();
+  await tapMove(page);
+  await expect(page.getByRole("button", { name: /Rückgängig/ })).toBeEnabled();
+  await page.locator("body").press("u");
+  await expect(page.getByRole("button", { name: /Rückgängig/ })).toBeDisabled();
+  expect(before.length).toBeGreaterThan(0);
+
+  await page.getByRole("button", { name: /Menü/ }).first().click();
+  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await expect(page.getByLabel("Name")).toHaveValue("Thea");
+});

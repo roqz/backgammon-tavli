@@ -78,8 +78,6 @@ export function Checker({ player }: { player: Player }) {
   );
 }
 
-const COUNTDOWN_MS = 3000;
-
 interface Countdown {
   readonly kind: "roll" | "confirm";
   readonly seconds: number;
@@ -92,7 +90,9 @@ interface Countdown {
  */
 function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
   const { match, busy, roll, dispatch, opening, players } = useGame();
-  const { autoRoll, autoRollCountdown, autoConfirm, autoConfirmDelay, dice3d } = useSettings();
+  const { autoRoll, autoRollCountdown, autoConfirm, autoConfirmDelay, dice3d, countdownSeconds } =
+    useSettings();
+  const COUNTDOWN_MS = countdownSeconds * 1000;
   const g = match?.game;
   // A tied opening roll leaves the game state unchanged, so the roll counter re-triggers the effect.
   const openingSeq = opening?.seq;
@@ -154,6 +154,7 @@ function useAutoActions(): { countdown: Countdown | null; cancel: () => void } {
     autoConfirm,
     autoConfirmDelay,
     dice3d,
+    COUNTDOWN_MS,
     roll,
     dispatch,
     match?.winner,
@@ -233,6 +234,36 @@ export function GameScreen({
   const [hint, setHint] = useState<{ game: GameState; moves: Move[] } | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
 
+  // New dice first appear (2D intro or 3D throw); only then are movable checkers marked.
+  const [settledSeq, setSettledSeq] = useState(() => useGame.getState().rollFx?.seq ?? 0);
+  const settling = !settings.dice3d && rollFx !== null && rollFx.seq !== settledSeq;
+  useEffect(() => {
+    if (!settling || !rollFx) return;
+    const id = setTimeout(() => setSettledSeq(rollFx.seq), DICE_INTRO_MS);
+    return () => clearTimeout(id);
+  }, [settling, rollFx]);
+  /** Keyboard shortcuts of the current controls (see the handler below). */
+  const shortcuts = useRef<Partial<Record<Shortcut, () => void>>>({});
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const el = e.target instanceof HTMLElement ? e.target : null;
+      if (el?.closest("input, textarea, select, [contenteditable=true]")) return;
+      const key = SHORTCUT_KEYS[e.key.toLowerCase()];
+      if (!key) return;
+      // dialogs: only their own keys; focused buttons and the board keep Space/Enter
+      const inDialog = !!el?.closest("[role=dialog]");
+      if (inDialog !== DIALOG_SHORTCUTS.has(key)) return;
+      if (key === "primary" && el?.closest("button, [role=application], a")) return;
+      const run = shortcuts.current[key];
+      if (!run) return;
+      e.preventDefault();
+      run();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Safety net: never keep the 2D dice hidden if the 3D animation fails to load or finish.
   useEffect(() => {
     if (!diceAnimating || !rollFx) return;
@@ -254,7 +285,7 @@ export function GameScreen({
   const offer = g.resignOffer ?? null;
   // While an offer to resign is open, only the answer is possible.
   const humanToAct = actor !== null && players[actor].kind === "human" && !offer;
-  const interactive = g.phase === "moving" && humanToAct && !busy;
+  const interactive = g.phase === "moving" && humanToAct && !busy && !diceAnimating && !settling;
   const name = (p: Player) => players[p].name;
   const noPlay = g.phase === "moving" && g.played.length === 0 && legalMoves(g).length === 0;
   const tie = g.phase === "opening" && opening !== null && opening.dice[0] === opening.dice[1];
@@ -312,17 +343,56 @@ export function GameScreen({
         : t.unlimited
       : `${match.config.length} ${match.config.length === 1 ? t.point : t.points}`;
 
+  // Keyboard: Space (or Enter) = the main button, D = double, U/Backspace = undo, H = hint,
+  // Esc = stop a countdown; in the double dialog T = take, P = pass, B = beaver.
+  const cubeDialog = g.phase === "cube-offered" && humanToAct && actor !== null;
+  shortcuts.current = {
+    primary:
+      g.phase === "opening"
+        ? roll
+        : g.phase === "rolling" && humanToAct && !isClosedOut(g)
+          ? roll
+          : g.phase === "moving" && humanToAct && canConfirm(g) && !busy
+            ? () => dispatch({ type: "confirm" })
+            : undefined,
+    double:
+      g.phase === "rolling" && humanToAct && canDouble(g) ? () => dispatch({ type: "double" }) : undefined,
+    undo:
+      g.phase === "moving" && humanToAct && canUndo(g) && !busy
+        ? () => dispatch({ type: "undo" })
+        : undefined,
+    hint:
+      g.phase === "moving" && humanToAct && !online && !busy && !hintLoading && legalMoves(g).length > 0
+        ? () => void askHint()
+        : undefined,
+    cancel: countdown ? cancelCountdown : undefined,
+    take: cubeDialog ? () => dispatch({ type: "take" }) : undefined,
+    pass: cubeDialog ? () => dispatch({ type: "drop" }) : undefined,
+    beaver: cubeDialog && canBeaver(g) ? () => dispatch({ type: "beaver" }) : undefined,
+  };
+  /** The main button: always last and of the same width, so it stays in one place. */
+  const primaryClass = "min-w-[9.5rem]";
+
   const controls = (
     <>
       {g.phase === "opening" && (
-        <Button variant="primary" onClick={roll}>
+        <Button variant="primary" className={primaryClass} onClick={roll} aria-keyshortcuts="Space">
           {t.openingRoll}
         </Button>
       )}
       {g.phase === "rolling" && humanToAct && !isClosedOut(g) && (
         <>
+          {countdown?.kind === "roll" && (
+            <Button variant="ghost" onClick={cancelCountdown} aria-keyshortcuts="Escape">
+              ✕ {t.cancel}
+            </Button>
+          )}
           {canDouble(g) && (
-            <Button onClick={() => dispatch({ type: "double" })}>
+            <Button
+              onClick={() => dispatch({ type: "double" })}
+              aria-keyshortcuts="D"
+              title={`${t.double} (D)`}
+            >
               {t.double} ({g.cube.value * 2})
             </Button>
           )}
@@ -331,15 +401,16 @@ export function GameScreen({
               🦝 {t.raccoon} ({g.cube.value * 2})
             </Button>
           )}
-          <Button variant="primary" onClick={roll}>
+          <Button
+            variant="primary"
+            className={primaryClass}
+            onClick={roll}
+            aria-keyshortcuts="Space"
+            title={`${t.roll} (${t.keySpace})`}
+          >
             {t.roll}
             {countdown?.kind === "roll" && <CountdownBadge seconds={countdown.seconds} />}
           </Button>
-          {countdown?.kind === "roll" && (
-            <Button variant="ghost" onClick={cancelCountdown}>
-              ✕ {t.cancel}
-            </Button>
-          )}
         </>
       )}
       {g.phase === "moving" && humanToAct && (
@@ -349,26 +420,36 @@ export function GameScreen({
               variant="ghost"
               disabled={busy || hintLoading || legalMoves(g).length === 0}
               onClick={() => void askHint()}
+              aria-keyshortcuts="H"
+              title={`${t.hint} (H)`}
             >
               💡 {t.hint}
             </Button>
           )}
-          <Button disabled={!canUndo(g) || busy} onClick={() => dispatch({ type: "undo" })}>
+          <Button
+            disabled={!canUndo(g) || busy}
+            onClick={() => dispatch({ type: "undo" })}
+            aria-keyshortcuts="U"
+            title={`${t.undo} (U)`}
+          >
             ↶ {t.undo}
           </Button>
+          {countdown?.kind === "confirm" && (
+            <Button variant="ghost" onClick={cancelCountdown} aria-keyshortcuts="Escape">
+              ✕ {t.cancel}
+            </Button>
+          )}
           <Button
             variant="primary"
+            className={primaryClass}
             disabled={!canConfirm(g) || busy}
             onClick={() => dispatch({ type: "confirm" })}
+            aria-keyshortcuts="Space"
+            title={`${t.confirm} (${t.keySpace})`}
           >
             {t.confirm}
             {countdown?.kind === "confirm" && <CountdownBadge seconds={countdown.seconds} />}
           </Button>
-          {countdown?.kind === "confirm" && (
-            <Button variant="ghost" onClick={cancelCountdown}>
-              ✕ {t.cancel}
-            </Button>
-          )}
         </>
       )}
     </>
@@ -548,7 +629,7 @@ export function GameScreen({
             {actor !== null && <Checker player={actor} />}
             {status}
           </div>
-          <div className="flex flex-wrap justify-center gap-2">{controls}</div>
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">{controls}</div>
         </div>
         {online && onlineError && (
           <p role="alert" className="text-center text-sm text-red-400">
@@ -573,7 +654,7 @@ export function GameScreen({
               {actor !== null && <Checker player={actor} />}
               {status}
             </div>
-            <div className="flex flex-wrap gap-2">{controls}</div>
+            <div className="flex flex-wrap items-center justify-end gap-2">{controls}</div>
           </div>
         )}
         <div
@@ -620,6 +701,7 @@ export function GameScreen({
             🏳 {t.resign}
           </Button>
         )}
+        <p className="hidden px-1 text-xs leading-relaxed text-stone-500 lg:block">⌨ {t.shortcutsHint}</p>
       </aside>
 
       {g.phase === "cube-offered" && humanToAct && actor !== null && (
@@ -629,10 +711,22 @@ export function GameScreen({
           </p>
           <p className="mb-4 text-sm text-stone-400">{name(actor)}?</p>
           <div className="flex gap-2">
-            <Button variant="danger" className="flex-1" onClick={() => dispatch({ type: "drop" })}>
+            <Button
+              variant="danger"
+              className="flex-1"
+              onClick={() => dispatch({ type: "drop" })}
+              aria-keyshortcuts="P"
+              title={`${t.drop} (P)`}
+            >
               {t.drop}
             </Button>
-            <Button variant="primary" className="flex-1" onClick={() => dispatch({ type: "take" })}>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={() => dispatch({ type: "take" })}
+              aria-keyshortcuts="T"
+              title={`${t.take} (T)`}
+            >
               {t.take}
             </Button>
           </div>
@@ -1075,6 +1169,27 @@ export const clockLeft = (c: ClockView, p: Player, now: number): { delay: number
 };
 
 /** Seconds left until an automatic action, shown inside its button. */
+/** How long the 2D dice take to roll in before checkers are marked as movable. */
+const DICE_INTRO_MS = 600;
+
+type Shortcut = "primary" | "double" | "undo" | "hint" | "cancel" | "take" | "pass" | "beaver";
+const SHORTCUT_KEYS: Record<string, Shortcut> = {
+  " ": "primary",
+  enter: "primary",
+  r: "primary",
+  d: "double",
+  u: "undo",
+  backspace: "undo",
+  h: "hint",
+  escape: "cancel",
+  t: "take",
+  a: "take",
+  p: "pass",
+  b: "beaver",
+};
+/** Keys that work while the double dialog is open (everything else is off then). */
+const DIALOG_SHORTCUTS = new Set<Shortcut>(["take", "pass", "beaver"]);
+
 function CountdownBadge({ seconds }: { seconds: number }) {
   const t = useT();
   return (

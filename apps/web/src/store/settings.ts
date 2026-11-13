@@ -14,6 +14,12 @@ export interface Settings {
   autoRollCountdown: boolean;
   /** Auto-confirm only after a cancellable countdown. */
   autoConfirmDelay: boolean;
+  /** Length of those countdowns in seconds. */
+  countdownSeconds: 1 | 2 | 3;
+  /** Name for local games (when there is no online profile). */
+  playerName: string;
+  /** Settings sections the player folded away. */
+  collapsed: readonly string[];
   sound: boolean;
   /** Animated 3D dice throw (loads three.js on demand). */
   dice3d: boolean;
@@ -47,6 +53,9 @@ export const useSettings = create<SettingsStore>()(
       autoConfirm: true,
       autoRollCountdown: true,
       autoConfirmDelay: true,
+      countdownSeconds: 3,
+      playerName: "",
+      collapsed: [],
       sound: true,
       // The dice throw is a lot of motion: off by default when the system asks for less.
       dice3d: !(

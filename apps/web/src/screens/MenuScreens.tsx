@@ -19,6 +19,7 @@ import { unqueue } from "../online/client";
 import { useOnline } from "../online/store";
 import { today, usePuzzles } from "../puzzle";
 import { type PlayerInfo, useGame } from "../store/game";
+import { useSettings } from "../store/settings";
 import { SettingsPanel } from "./SettingsPanel";
 
 export function Menu({
@@ -173,7 +174,9 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
   const [variant, setVariant] = useState<MatchVariant>("backgammon");
   const [length, setLength] = useState(DEFAULT_LENGTH.backgammon);
   // the online profile name is also used for local games
-  const myName = useOnline((s) => s.profile?.name) ?? t.you;
+  // the online profile name, else the name used last time
+  const savedName = useSettings((s) => s.playerName);
+  const myName = useOnline((s) => s.profile?.name) ?? (savedName || t.you);
   const [names, setNames] = useState<[string, string]>([myName, t.playerBlack]);
   const [opponent, setOpponent] = useState<"bot" | "human">("bot");
   const [level, setLevel] = useState<BotLevel>("medium");
@@ -230,6 +233,8 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
         : seat === 0
           ? [{ ...human(0), name: names[0].trim() || myName }, botPlayer()]
           : [botPlayer(), { ...human(1), name: names[0].trim() || myName }];
+    const own = names[0].trim();
+    if (own && own !== t.you && own !== t.playerWhite) useSettings.getState().update({ playerName: own });
     try {
       startMatch(config, players, from);
     } catch (e) {
@@ -288,11 +293,8 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
           value={opponent}
           onChange={(o) => {
             setOpponent(o);
-            setNames(
-              o === "bot"
-                ? [myName, t.playerBlack]
-                : [myName === t.you ? t.playerWhite : myName, t.playerBlack],
-            );
+            // the player's own name stays; only the second name follows the opponent kind
+            setNames([names[0], t.playerBlack]);
           }}
           options={[
             { value: "bot", label: t.computer },

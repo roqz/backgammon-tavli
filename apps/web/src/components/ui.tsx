@@ -149,14 +149,53 @@ export function Toggle({
 }
 
 /** Titled group of settings. */
-export function Section({ title, icon, children }: { title: string; icon: string; children: ReactNode }) {
+/**
+ * A titled group of settings. With `onToggle` it can be folded away (the heading is a button);
+ * `id` makes it a target for the section navigation.
+ */
+export function Section({
+  title,
+  icon,
+  children,
+  id,
+  open = true,
+  onToggle,
+}: {
+  title: string;
+  icon: string;
+  children: ReactNode;
+  id?: string;
+  open?: boolean;
+  onToggle?: () => void;
+}) {
+  const heading = (
+    <>
+      <span aria-hidden>{icon}</span>
+      <span className="flex-1 text-left">{title}</span>
+      {onToggle && (
+        <span aria-hidden className={`text-stone-500 transition-transform ${open ? "rotate-90" : ""}`}>
+          ▸
+        </span>
+      )}
+    </>
+  );
   return (
-    <section className="rounded-2xl border border-stone-800 bg-stone-900/70 px-5 py-4">
-      <h2 className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-stone-400">
-        <span aria-hidden>{icon}</span>
-        {title}
+    <section id={id} className="scroll-mt-20 rounded-2xl border border-stone-800 bg-stone-900/70 px-5 py-4">
+      <h2 className="text-sm font-semibold text-amber-100">
+        {onToggle ? (
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={onToggle}
+            className="flex w-full items-center gap-2 rounded py-1 hover:text-amber-200"
+          >
+            {heading}
+          </button>
+        ) : (
+          <span className="flex items-center gap-2 py-1">{heading}</span>
+        )}
       </h2>
-      <div className="divide-y divide-stone-800/80">{children}</div>
+      {open && <div className="mt-1 divide-y divide-stone-800/80">{children}</div>}
     </section>
   );
 }

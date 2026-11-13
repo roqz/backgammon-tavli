@@ -338,6 +338,14 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Der Name des Online-Profils ist auch der Spielername für lokale Partien
 - Brett-Grafiken: Holzmaserung und Filz prozedural per SVG-Rauschen (`board/textures.ts`), als Bild einmal gerastert; Klassisch (Nussbaum, grüner Filz), Olive, Turnier
 
+### Bedienung: Einstellungen, Spielfluss, Tastatur ✅
+
+- Einstellungen in Abschnitten (Spielablauf, Anzeige, Designs & Skins, Ton, Sprache, Online), einklappbar (gemerkt) und per Sprungleiste erreichbar; Countdown-Dauer 3, 2 oder 1 Sekunde
+- Ziehbare Steine werden erst markiert, wenn die Würfel liegen (2D-Einblendung bzw. 3D-Wurf)
+- Der Hauptknopf (Auswürfeln, Würfeln, Zug beenden) steht immer rechts außen in gleicher Breite; Abbrechen eines Countdowns links davon
+- Tastatur: Leertaste/Enter/R = Hauptknopf, D = Verdoppeln, U/Rücktaste = Rückgängig, H = Tipp, Esc = Countdown stoppen; im Doppler-Dialog T/A = Annehmen, P = Passen, B = Beaver. Hinweis in der Seitenleiste (große Bildschirme)
+- Der eigene Name für lokale Partien wird gemerkt (ohne Online-Profil)
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)
