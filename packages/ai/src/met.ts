@@ -33,6 +33,8 @@ export const CUBELESS_GAMMON_RATE: Readonly<Record<string, number>> = {
   portes: 0.16,
   plakoto: 0.33,
   fevga: 0.13,
+  tavla: 0.16,
+  narde: 0.13,
 };
 
 /** Kazaross XG2, pre-Crawford, chance of the player needing `i` against `j` (i < j). */

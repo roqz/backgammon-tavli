@@ -17,7 +17,7 @@ export interface MatMatch {
 }
 
 /** Variants GNU Backgammon and eXtreme Gammon can import (Portes plays like backgammon without cube). */
-export const MAT_VARIANTS: readonly VariantId[] = ["backgammon", "portes"];
+export const MAT_VARIANTS: readonly VariantId[] = ["backgammon", "portes", "tavla"];
 
 /** A move in .mat notation: own point numbers, bar = 25, off = 0, hits marked with `*`. */
 const matMove = (variant: VariantId, player: Player, m: PlayedMove): string => {

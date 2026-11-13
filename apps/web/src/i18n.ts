@@ -379,6 +379,9 @@ const de = {
     plakoto: "Schlagen gibt es nicht – ein einzelner Stein wird festgesetzt („eingesperrt“).",
     fevga: "Beide ziehen in dieselbe Richtung, ein einzelner Stein blockiert schon einen Punkt.",
     tavli: "Match aus Portes, Plakoto und Fevga im Wechsel.",
+    tavla: "Türkisches Backgammon: ohne Doppler, kein Weiterziehen nach Schlagen im Heimfeld.",
+    narde:
+      "Lange Narde: Blockadespiel, alle Steine starten auf dem Kopf – nur einer pro Wurf darf ihn verlassen.",
   },
   privacyTitle: "Daten & Konto",
   exportData: "Meine Daten herunterladen",
@@ -1018,6 +1021,8 @@ const en: Dict = {
     plakoto: "No hitting – a single checker gets pinned instead.",
     fevga: "Both move the same way round; a single checker already blocks a point.",
     tavli: "A match of Portes, Plakoto and Fevga in turn.",
+    tavla: "Turkish backgammon: no cube, no running on after a hit in the home board.",
+    narde: "Long Nardy: a blocking game, all checkers start on the head – only one per roll may leave it.",
   },
   privacyTitle: "Data & account",
   exportData: "Download my data",

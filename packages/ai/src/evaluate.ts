@@ -272,8 +272,22 @@ export const isContact = (variant: VariantId, b: Board): boolean =>
  * Logistic calibration of evaluation -> win probability for contact positions, fitted on
  * medium-vs-medium self-play (see test/calibrate.bench-test.ts).
  */
-const CONTACT_SCALE: Record<VariantId, number> = { backgammon: 24, portes: 28, plakoto: 58, fevga: 30 };
-const ON_ROLL_BONUS: Record<VariantId, number> = { backgammon: 3, portes: 2, plakoto: -1, fevga: 4 };
+const CONTACT_SCALE: Record<VariantId, number> = {
+  backgammon: 24,
+  portes: 28,
+  plakoto: 58,
+  fevga: 30,
+  tavla: 28,
+  narde: 30,
+};
+const ON_ROLL_BONUS: Record<VariantId, number> = {
+  backgammon: 3,
+  portes: 2,
+  plakoto: -1,
+  fevga: 4,
+  tavla: 2,
+  narde: 4,
+};
 
 /**
  * Probabilities of a position's results from `p`'s point of view: the win chance and, for
@@ -360,6 +374,9 @@ const GAMMON_MODEL: Record<VariantId, { a: number; b: number; c: number }> = {
   portes: { a: -1.09, b: 0.62, c: 2.75 },
   plakoto: { a: -0.42, b: 0.53, c: 1.15 },
   fevga: { a: 0.36, b: 0.79, c: -0.2 },
+  // not fitted separately: the closest variant
+  tavla: { a: -1.09, b: 0.62, c: 2.75 },
+  narde: { a: 0.36, b: 0.79, c: -0.2 },
 };
 
 const gammonsFor = (ctx: Ctx, winner: Player): { gammon: number; backgammon: number } => {

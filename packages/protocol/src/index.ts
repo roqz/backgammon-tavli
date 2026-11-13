@@ -5,7 +5,15 @@
 import type { Dice, MatchAction, MatchConfig, MatchState, Player, VariantId } from "@tavli/engine";
 import { z } from "zod";
 
-export const MATCH_VARIANTS = ["backgammon", "portes", "plakoto", "fevga", "tavli"] as const;
+export const MATCH_VARIANTS = [
+  "backgammon",
+  "portes",
+  "plakoto",
+  "fevga",
+  "tavli",
+  "tavla",
+  "narde",
+] as const;
 export type MatchVariantId = (typeof MATCH_VARIANTS)[number];
 /** Online match lengths; 0 = money session (game by game, cube with Jacoby, never rated). */
 export const MATCH_LENGTHS = [0, 1, 3, 5, 7] as const;
@@ -714,7 +722,7 @@ export const NameSchema = z.object({
 export const encode = (m: ServerMessage | ClientMessage): string => JSON.stringify(m);
 
 export const isVariantId = (v: string): v is VariantId =>
-  v === "backgammon" || v === "portes" || v === "plakoto" || v === "fevga";
+  v === "backgammon" || v === "portes" || v === "plakoto" || v === "fevga" || v === "tavla" || v === "narde";
 
 // ---- accounts ---------------------------------------------------------------------------------
 

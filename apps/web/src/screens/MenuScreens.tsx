@@ -160,6 +160,8 @@ const DEFAULT_LENGTH: Record<MatchVariant, number> = {
   plakoto: 5,
   fevga: 5,
   tavli: 5,
+  tavla: 5,
+  narde: 3,
 };
 
 export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: () => void }) {
@@ -241,6 +243,8 @@ export function NewGame({ onBack, onStarted }: { onBack: () => void; onStarted: 
             { value: "plakoto", label: "Plakoto" },
             { value: "fevga", label: "Fevga" },
             { value: "tavli", label: t.tavliMatch },
+            { value: "tavla", label: "Tavla" },
+            { value: "narde", label: "Narde" },
           ]}
         />
         <p className="-mt-2 text-xs text-stone-400">{t.variantInfo[variant]}</p>

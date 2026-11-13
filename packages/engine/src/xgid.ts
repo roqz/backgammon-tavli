@@ -11,7 +11,7 @@ import { absFromOwnPoint, getVariant, ownPoint } from "./variants";
  * XGID point n is white's own point n and black's own point 25 - n. Only variants with opposite
  * directions and hitting can be expressed (Backgammon, Portes).
  */
-export const XGID_VARIANTS: readonly VariantId[] = ["backgammon", "portes"];
+export const XGID_VARIANTS: readonly VariantId[] = ["backgammon", "portes", "tavla"];
 
 export interface XgidMatchInfo {
   /** Match score [white, black]. */

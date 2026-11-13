@@ -10,7 +10,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { buildFrames } from "./replay";
 
-const VARIANTS: VariantId[] = ["backgammon", "portes", "plakoto", "fevga"];
+const VARIANTS: VariantId[] = ["backgammon", "portes", "plakoto", "fevga", "tavla", "narde"];
 
 const randomGame = (variant: VariantId, seed: number): GameState => {
   const rng = seededRng(seed);

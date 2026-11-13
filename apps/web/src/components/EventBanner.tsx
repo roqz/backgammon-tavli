@@ -5,6 +5,7 @@ import {
   legalMoves,
   moveGenerator,
   type Player,
+  turnContext,
 } from "@tavli/engine";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
@@ -167,7 +168,11 @@ function useGameEvents(): GameEvent | null {
         );
         return;
       }
-      const playable = moveGenerator(game.variant, p).maxPlayable(game.board, game.remaining);
+      const playable = moveGenerator(game.variant, p).maxPlayable(
+        game.board,
+        game.remaining,
+        turnContext(game),
+      );
       if (playable < game.remaining.length) {
         show(
           {

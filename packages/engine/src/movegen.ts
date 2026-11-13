@@ -94,8 +94,65 @@ const applyFevgaStartRule = (rules: VariantRules, b: Board, p: Player, moves: Mo
   return restricted.length > 0 ? restricted : moves;
 };
 
+/**
+ * What the rest of a turn depends on beyond board and dice (variant rules that look at the
+ * moves already played this turn).
+ */
+export interface TurnContext {
+  /** Narde: checkers that may still leave the head (starting point) this turn. */
+  readonly headLeft: number;
+  /** Tavla: home-board points where a checker hit this turn; it must stay there. */
+  readonly frozen: readonly number[];
+}
+
+const FREE: TurnContext = { headLeft: 99, frozen: [] };
+
+/** Narde: first rolls on which a second checker may leave the head (one alone gets stuck). */
+const TWO_FROM_HEAD = [3, 4, 6];
+
+/**
+ * Context at the start of a turn. A player's first turn is recognised by all checkers still
+ * on the head (Narde has no hitting, so they never come back).
+ */
+export const initialContext = (
+  rules: VariantRules,
+  b: Board,
+  p: Player,
+  dice: readonly number[],
+): TurnContext => {
+  if (!rules.headRule) return FREE;
+  const first = b.points[p][rules.paths[p][0]!] === 15;
+  const double = dice.length === 4 && TWO_FROM_HEAD.includes(dice[0]!);
+  return { headLeft: first && double ? 2 : 1, frozen: [] };
+};
+
+/** Context after a move of this turn. */
+export const contextAfter = (
+  rules: VariantRules,
+  ctx: TurnContext,
+  p: Player,
+  m: Move,
+  hit: boolean,
+): TurnContext => {
+  const fromHead = rules.headRule && m.from === rules.paths[p][0];
+  const freeze = rules.noHitAndRunHome && hit && m.to !== "off" && rules.paths[p].indexOf(m.to) >= HOME_START;
+  if (!fromHead && !freeze) return ctx;
+  return {
+    headLeft: fromHead ? ctx.headLeft - 1 : ctx.headLeft,
+    frozen: freeze ? [...ctx.frozen, m.to as number] : ctx.frozen,
+  };
+};
+
+const contextKey = (ctx: TurnContext) => (ctx === FREE ? "" : `|${ctx.headLeft}|${ctx.frozen.join(",")}`);
+
 /** All legal single moves for one die value, ignoring the "use as many dice as possible" rules. */
-export const singleMoves = (rules: VariantRules, b: Board, p: Player, die: number): Move[] => {
+export const singleMoves = (
+  rules: VariantRules,
+  b: Board,
+  p: Player,
+  die: number,
+  ctx: TurnContext = FREE,
+): Move[] => {
   const path = rules.paths[p];
   let moves: Move[] = [];
   if (b.bar[p] > 0) {
@@ -127,6 +184,12 @@ export const singleMoves = (rules: VariantRules, b: Board, p: Player, die: numbe
       }
     }
   }
+  if (rules.headRule && ctx.headLeft <= 0) moves = moves.filter((m) => m.from !== path[0]);
+  // the hitting checker stays (unless another checker of ours has joined it)
+  if (ctx.frozen.length > 0)
+    moves = moves.filter((m) => m.from === "bar" || !ctx.frozen.includes(m.from) || b.points[p][m.from]! > 1);
+  // no wasting pips: a die that can bear a checker off must do so
+  if (rules.noWasteBearOff && moves.some((m) => m.to === "off")) moves = moves.filter((m) => m.to === "off");
   if (rules.fevgaStartRule) moves = applyFevgaStartRule(rules, b, p, moves);
   if (rules.fevgaPrimeRule) {
     moves = moves.filter((m) => !violatesFevgaPrime(rules, applyMoveUnchecked(rules, b, p, m).board, p));
@@ -163,17 +226,22 @@ export class MoveGenerator {
     readonly player: Player,
   ) {}
 
+  /** Context at the start of a turn with these dice. */
+  start(b: Board, dice: readonly number[]): TurnContext {
+    return initialContext(this.rules, b, this.player, dice);
+  }
+
   /** Maximum number of dice playable from this position with the remaining dice. */
-  maxPlayable(b: Board, dice: readonly number[]): number {
+  maxPlayable(b: Board, dice: readonly number[], ctx: TurnContext = this.start(b, dice)): number {
     if (dice.length === 0) return 0;
-    const key = `${boardKey(b)}#${dice.join("")}`;
+    const key = `${boardKey(b)}#${dice.join("")}${contextKey(ctx)}`;
     const cached = this.depthCache.get(key);
     if (cached !== undefined) return cached;
     let best = 0;
     for (const v of uniqueDice(dice)) {
       const rest = removeOne(dice, v);
-      for (const m of singleMoves(this.rules, b, this.player, v)) {
-        best = Math.max(best, this.depthAfter(b, m, rest));
+      for (const m of singleMoves(this.rules, b, this.player, v, ctx)) {
+        best = Math.max(best, this.depthAfter(b, m, rest, ctx));
         if (best === dice.length) break;
       }
       if (best === dice.length) break;
@@ -184,10 +252,10 @@ export class MoveGenerator {
   }
 
   /** Dice used by playing `m` and then as many of `rest` as possible. A game-ending move uses all dice. */
-  private depthAfter(b: Board, m: Move, rest: readonly number[]): number {
+  private depthAfter(b: Board, m: Move, rest: readonly number[], ctx: TurnContext): number {
     const { board: next, hit } = applyMoveUnchecked(this.rules, b, this.player, m);
     if (gameEndAfterMove(this.rules, next, this.player, m, hit)) return 1 + rest.length;
-    return 1 + this.maxPlayable(next, rest);
+    return 1 + this.maxPlayable(next, rest, contextAfter(this.rules, ctx, this.player, m, hit));
   }
 
   /**
@@ -195,15 +263,15 @@ export class MoveGenerator {
    * - as many dice as possible must be played;
    * - if only one of two different dice can be played, the higher one must be played if possible.
    */
-  legalMoves(b: Board, dice: readonly number[]): Move[] {
-    const total = this.maxPlayable(b, dice);
+  legalMoves(b: Board, dice: readonly number[], ctx: TurnContext = this.start(b, dice)): Move[] {
+    const total = this.maxPlayable(b, dice, ctx);
     if (total === 0) return [];
     const values = uniqueDice(dice);
     let candidates: Move[] = [];
     for (const v of values) {
       const rest = removeOne(dice, v);
-      for (const m of singleMoves(this.rules, b, this.player, v)) {
-        if (this.depthAfter(b, m, rest) === total) candidates.push(m);
+      for (const m of singleMoves(this.rules, b, this.player, v, ctx)) {
+        if (this.depthAfter(b, m, rest, ctx) === total) candidates.push(m);
       }
     }
     if (total === 1 && dice.length === 2 && values.length === 2) {
@@ -215,28 +283,28 @@ export class MoveGenerator {
   }
 
   /** All distinct end-of-turn positions reachable with these dice (for bots and analysis). */
-  turnOptions(b: Board, dice: readonly number[]): TurnOption[] {
+  turnOptions(b: Board, dice: readonly number[], context: TurnContext = this.start(b, dice)): TurnOption[] {
     const results = new Map<string, TurnOption>();
     const visited = new Set<string>();
     const record = (board: Board, seq: PlayedMove[], end: GameEnd) => {
       const bk = boardKey(board);
       if (!results.has(bk)) results.set(bk, { moves: seq, board, end });
     };
-    const walk = (board: Board, rest: readonly number[], seq: PlayedMove[]) => {
-      const key = `${boardKey(board)}#${[...rest].sort().join("")}`;
+    const walk = (board: Board, rest: readonly number[], seq: PlayedMove[], ctx: TurnContext) => {
+      const key = `${boardKey(board)}#${[...rest].sort().join("")}${contextKey(ctx)}`;
       if (visited.has(key)) return;
       visited.add(key);
-      const moves = this.legalMoves(board, rest);
+      const moves = this.legalMoves(board, rest, ctx);
       if (moves.length === 0) return record(board, seq, null);
       for (const m of moves) {
         const { board: next, hit } = applyMoveUnchecked(this.rules, board, this.player, m);
         const nextSeq = [...seq, { ...m, hit }];
         const end = gameEndAfterMove(this.rules, next, this.player, m, hit);
         if (end) record(next, nextSeq, end);
-        else walk(next, removeOne(rest, m.die), nextSeq);
+        else walk(next, removeOne(rest, m.die), nextSeq, contextAfter(this.rules, ctx, this.player, m, hit));
       }
     };
-    walk(b, dice, []);
+    walk(b, dice, [], context);
     return [...results.values()];
   }
 }

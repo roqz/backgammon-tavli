@@ -41,7 +41,7 @@ describe("targetsFrom", () => {
 
 /** Random playouts keep the identity layout consistent with the engine board, including undo. */
 describe("layout tracking", () => {
-  const variants: VariantId[] = ["backgammon", "portes", "plakoto", "fevga"];
+  const variants: VariantId[] = ["backgammon", "portes", "plakoto", "fevga", "tavla", "narde"];
   for (const variant of variants) {
     it(`${variant}: stays in sync during random games`, () => {
       const rng = seededRng(42);

@@ -104,6 +104,40 @@ export const DIAGRAMS = {
       en: "White holds five points in a row (17 to 13). White may take a sixth point next to them only if a black checker is already ahead of the block.",
     },
   },
+  tavlaHit: {
+    variant: "tavla",
+    spec: { white: { 8: 1, 13: 5, 6: 5, 3: 2, 24: 2 }, black: { 21: 1, 13: 5, 8: 3, 6: 6 } },
+    dice: [4, 2],
+    moves: [
+      [8, 4, 4],
+      [13, 11, 2],
+    ],
+    caption: {
+      de: "Tavla: Weiß schlägt mit 8/4 im eigenen Heimfeld. Der schlagende Stein bleibt stehen – die 2 muss ein anderer Stein ziehen (hier 13/11).",
+      en: "Tavla: White hits with 8/4 in its own home board. The hitting checker stays – another checker plays the 2 (here 13/11).",
+    },
+  },
+  nardeStart: {
+    variant: "narde",
+    spec: "start",
+    caption: {
+      de: "Narde: Alle 15 Steine beginnen auf dem Kopf, die Köpfe liegen sich diagonal gegenüber; beide ziehen in dieselbe Richtung.",
+      en: "Narde: all 15 checkers start on the head, the heads are diagonally opposite; both move the same way round.",
+    },
+  },
+  nardeHead: {
+    variant: "narde",
+    spec: { white: { 24: 14, 21: 1 }, black: { 24: 15 } },
+    dice: [5, 3],
+    moves: [
+      [24, 19, 5],
+      [21, 18, 3],
+    ],
+    caption: {
+      de: "Narde: Nur ein Stein pro Wurf darf den Kopf verlassen. Bei 5-3 zieht also 24/19, die 3 spielt ein Stein, der schon unterwegs ist.",
+      en: "Narde: only one checker per roll may leave the head. With 5-3, 24/19 is played and the 3 goes to a checker already on its way.",
+    },
+  },
 } satisfies Record<string, Diagram>;
 
 export type DiagramId = keyof typeof DIAGRAMS;

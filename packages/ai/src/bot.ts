@@ -13,6 +13,7 @@ import {
   type Player,
   type Rng,
   type TurnOption,
+  turnOptions,
 } from "@tavli/engine";
 import { expectedUtility, gammonsCount, type MatchContext, MONEY, type Utility, utilityFor } from "./equity";
 import { evaluate, isContact, type Outcomes, outcomes } from "./evaluate";
@@ -113,7 +114,7 @@ export const chooseMoves = (
   opts: ChooseOptions = {},
 ): Move[] => {
   if (s.phase !== "moving") return [];
-  const options = moveGenerator(s.variant, s.turn).turnOptions(s.board, s.remaining);
+  const options = turnOptions(s);
   const best = chooseOption(s, options, level, rng, w, opts);
   return best ? best.moves.map(({ from, to, die }) => ({ from, to, die })) : [];
 };
@@ -181,7 +182,7 @@ export const analyseTurn = (
   reference: BotLevel = "hard",
 ): TurnAnalysis | null => {
   if (s.phase !== "moving") return null;
-  const options = moveGenerator(s.variant, s.turn).turnOptions(s.board, s.remaining);
+  const options = turnOptions(s);
   if (options.length < 2) return null;
   const key = boardKey(played);
   const w = weightsFor(s.variant);
@@ -216,7 +217,7 @@ export interface RankedOption {
  */
 export const rankTurnOptions = (s: GameState): RankedOption[] => {
   if (s.phase !== "moving") return [];
-  const options = moveGenerator(s.variant, s.turn).turnOptions(s.board, s.remaining);
+  const options = turnOptions(s);
   const w = weightsFor(s.variant);
   const v = new Valuer(s, s.turn, w, {});
   const opp = opponent(s.turn);
@@ -241,7 +242,7 @@ export interface TurnReview extends TurnAnalysis {
  */
 export const reviewTurn = (s: GameState, played: Board): TurnReview | null => {
   if (s.phase !== "moving") return null;
-  const options = moveGenerator(s.variant, s.turn).turnOptions(s.board, s.remaining);
+  const options = turnOptions(s);
   if (options.length < 2) return null;
   const key = boardKey(played);
   const w = weightsFor(s.variant);

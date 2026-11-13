@@ -97,6 +97,19 @@ const HIT_KEYS: readonly (keyof Weights)[] = [
   "barPerPoint",
 ];
 
+/**
+ * Variants that share the evaluation of another one: Tavla plays like Portes (hitting, no cube),
+ * Narde like Fevga (blocking, same direction, all checkers start on one point).
+ */
+export const MODEL_OF: Record<VariantId, VariantId> = {
+  backgammon: "backgammon",
+  portes: "portes",
+  plakoto: "plakoto",
+  fevga: "fevga",
+  tavla: "portes",
+  narde: "fevga",
+};
+
 export const RELEVANT_WEIGHTS: Record<VariantId, readonly (keyof Weights)[]> = {
   backgammon: HIT_KEYS,
   portes: HIT_KEYS,
@@ -115,6 +128,8 @@ export const RELEVANT_WEIGHTS: Record<VariantId, readonly (keyof Weights)[]> = {
     "pinPrime",
   ],
   fevga: ["offBonus", "raceWastage", "blockHome", "blockOther", "fevStack", "fevPrime", "startPenalty"],
+  tavla: HIT_KEYS,
+  narde: ["offBonus", "raceWastage", "blockHome", "blockOther", "fevStack", "fevPrime", "startPenalty"],
 };
 
 /** Self-play tuned overrides per variant. */
@@ -181,7 +196,7 @@ const cache = new Map<VariantId, Weights>();
 export const weightsFor = (variant: VariantId): Weights => {
   let w = cache.get(variant);
   if (!w) {
-    w = { ...DEFAULT_WEIGHTS, ...TUNED[variant] };
+    w = { ...DEFAULT_WEIGHTS, ...(TUNED[variant] ?? TUNED[MODEL_OF[variant]]) };
     cache.set(variant, w);
   }
   return w;

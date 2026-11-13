@@ -5,7 +5,16 @@
 import type { Lang } from "./i18n";
 import type { DiagramId } from "./screens/RuleDiagram";
 
-export type RulesTopic = "general" | "backgammon" | "portes" | "plakoto" | "fevga" | "tavli" | "app";
+export type RulesTopic =
+  | "general"
+  | "backgammon"
+  | "portes"
+  | "plakoto"
+  | "fevga"
+  | "tavli"
+  | "tavla"
+  | "narde"
+  | "app";
 
 export interface RulesSection {
   readonly title: string;
@@ -28,6 +37,8 @@ export const RULES_TOPICS: readonly RulesTopic[] = [
   "plakoto",
   "fevga",
   "tavli",
+  "tavla",
+  "narde",
   "app",
 ];
 
@@ -52,7 +63,7 @@ const de: Record<RulesTopic, RulesChapter> = {
         bullets: [
           "Beide Spieler würfeln je einen Würfel; die höhere Zahl beginnt. Bei Gleichstand wird erneut gewürfelt.",
           "Backgammon: Der Beginnende spielt die beiden Eröffnungswürfel als ersten Zug.",
-          "Portes, Plakoto, Fevga: Der Beginnende würfelt danach neu.",
+          "Portes, Plakoto, Fevga, Tavla, Narde: Der Beginnende würfelt danach neu.",
           "Im Tavli-Match beginnt ab dem zweiten Spiel der Gewinner des vorherigen Spiels.",
         ],
       },
@@ -245,6 +256,82 @@ const de: Record<RulesTopic, RulesChapter> = {
       },
     ],
   },
+  tavla: {
+    label: "Tavla",
+    intro:
+      "Türkisches Backgammon: Aufstellung und Schlagen wie im Backgammon, aber ohne Verdopplungswürfel und mit zwei Besonderheiten im Heimfeld.",
+    sections: [
+      {
+        title: "Wie Portes",
+        bullets: [
+          "Aufstellung, Zugrichtung, Schlagen und Wiedereinsetzen wie im Backgammon.",
+          "Der Gewinner des Anwurfs würfelt neu. Kein Verdopplungswürfel.",
+        ],
+      },
+      {
+        title: "Kein Hit-and-run im Heimfeld",
+        diagram: "tavlaHit",
+        bullets: [
+          "Wer im eigenen Heimfeld schlägt, muss mit dem schlagenden Stein dort stehen bleiben – er darf im selben Wurf nicht weiterziehen.",
+          "Andere Steine dürfen den Rest des Wurfs spielen, auch auf das Feld des schlagenden Steins.",
+        ],
+      },
+      {
+        title: "Keine verschenkten Augen",
+        bullets: [
+          "Beim Abtragen muss ein Würfel, mit dem ein Stein abgetragen werden kann, auch zum Abtragen genutzt werden – statt einen Stein im Heimfeld weiterzuziehen.",
+        ],
+      },
+      {
+        title: "Wertung",
+        bullets: [
+          "Sieg: 1 Punkt. Mars (keinen Stein abgetragen): 2 Punkte. Einen dreifachen Sieg gibt es nicht.",
+          "Die Regeln folgen der Beschreibung auf bkgm.com; in der Türkei sind Hausregeln verbreitet.",
+        ],
+      },
+    ],
+  },
+  narde: {
+    label: "Narde",
+    intro:
+      "Lange Narde (Long Nardy), in Russland, im Kaukasus und in Zentralasien verbreitet: ein Blockadespiel wie Fevga, aber mit eigener Startregel.",
+    sections: [
+      {
+        title: "Aufstellung und Richtung",
+        diagram: "nardeStart",
+        bullets: [
+          "Alle 15 Steine beginnen auf dem „Kopf“, dem eigenen Feld 24; die Köpfe liegen sich diagonal gegenüber.",
+          "Beide Spieler ziehen gegen den Uhrzeigersinn um das ganze Brett.",
+          "Der Gewinner des Anwurfs würfelt neu.",
+        ],
+      },
+      {
+        title: "Blockieren",
+        bullets: ["Schon ein einzelner Stein hält ein Feld. Es gibt kein Schlagen und keine Bar."],
+      },
+      {
+        title: "Kopfregel",
+        diagram: "nardeHead",
+        bullets: [
+          "Pro Wurf darf nur ein Stein den Kopf verlassen.",
+          "Ausnahme im ersten Wurf: Bei 6-6, 4-4 oder 3-3 dürfen zwei Steine vom Kopf, weil ein einzelner Stein nicht alle vier Züge spielen kann.",
+        ],
+      },
+      {
+        title: "Blockade-Verbot",
+        bullets: [
+          "Sechs Felder in Folge dürfen nur gehalten werden, wenn mindestens ein gegnerischer Stein schon vor dieser Sperre steht.",
+        ],
+      },
+      {
+        title: "Wertung",
+        bullets: [
+          "Sieg (Oyn): 1 Punkt. Mars (keinen Stein abgetragen): 2 Punkte. Kein Verdopplungswürfel.",
+          "Nicht umgesetzt: „Koks“ und „Haus-Mars“ (inoffizielle Hausregeln) sowie das Unentschieden aus Turnierregeln.",
+        ],
+      },
+    ],
+  },
   app: {
     label: "App & Notation",
     intro: "Wie die App die Regeln umsetzt und wie der Spielverlauf zu lesen ist.",
@@ -320,7 +407,7 @@ const en: Record<RulesTopic, RulesChapter> = {
         bullets: [
           "Each player rolls one die; the higher number starts. Ties are re-rolled.",
           "Backgammon: the starter plays the two opening dice as the first move.",
-          "Portes, Plakoto, Fevga: the starter rolls again.",
+          "Portes, Plakoto, Fevga, Tavla, Narde: the starter rolls again.",
           "In a tavli match the winner of the previous game starts the next one.",
         ],
       },
@@ -499,6 +586,82 @@ const en: Record<RulesTopic, RulesChapter> = {
           "The match is played to a fixed number of points, usually 5 or 7.",
           "From the second game on, the winner of the previous game starts (no opening roll).",
           "Points are scored by the rules of the respective variant.",
+        ],
+      },
+    ],
+  },
+  tavla: {
+    label: "Tavla",
+    intro:
+      "Turkish backgammon: setup and hitting as in backgammon, but no doubling cube and two special rules in the home board.",
+    sections: [
+      {
+        title: "Like Portes",
+        bullets: [
+          "Setup, direction, hitting and entering as in backgammon.",
+          "The winner of the opening roll rolls again. No doubling cube.",
+        ],
+      },
+      {
+        title: "No hit-and-run in the home board",
+        diagram: "tavlaHit",
+        bullets: [
+          "A checker that hits in your own home board must stay there – it may not move on in the same roll.",
+          "Other checkers may play the rest of the roll, also onto the hitting checker's point.",
+        ],
+      },
+      {
+        title: "No wasted pips",
+        bullets: [
+          "When bearing off, a die that can bear a checker off must be used to bear off instead of moving a checker inside the home board.",
+        ],
+      },
+      {
+        title: "Scoring",
+        bullets: [
+          "Win: 1 point. Mars (no checker borne off): 2 points. There is no triple game.",
+          "The rules follow the description on bkgm.com; house rules are common in Turkey.",
+        ],
+      },
+    ],
+  },
+  narde: {
+    label: "Narde",
+    intro:
+      "Long Nardy, popular in Russia, the Caucasus and Central Asia: a blocking game like Fevga with its own start rule.",
+    sections: [
+      {
+        title: "Setup and direction",
+        diagram: "nardeStart",
+        bullets: [
+          "All 15 checkers start on the “head”, the own 24 point; the heads are diagonally opposite.",
+          "Both players move anticlockwise round the whole board.",
+          "The winner of the opening roll rolls again.",
+        ],
+      },
+      {
+        title: "Blocking",
+        bullets: ["A single checker already holds a point. There is no hitting and no bar."],
+      },
+      {
+        title: "Head rule",
+        diagram: "nardeHead",
+        bullets: [
+          "Only one checker may leave the head per roll.",
+          "Exception on the first roll: with 6-6, 4-4 or 3-3 two checkers may leave the head, because a single checker cannot play all four moves.",
+        ],
+      },
+      {
+        title: "No full blockade",
+        bullets: [
+          "Six points in a row may only be held if at least one opposing checker is already ahead of the block.",
+        ],
+      },
+      {
+        title: "Scoring",
+        bullets: [
+          "Win (oyn): 1 point. Mars (no checker borne off): 2 points. No doubling cube.",
+          "Not implemented: “koks” and “home mars” (informal house rules) and the tournament draw rule.",
         ],
       },
     ],

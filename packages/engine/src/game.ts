@@ -1,5 +1,15 @@
 import { canLandOn, HOME_START, initialBoard, POINTS } from "./board";
-import { applyMoveUnchecked, diceToPlay, gameEndAfterMove, MoveGenerator, sameMove } from "./movegen";
+import {
+  applyMoveUnchecked,
+  contextAfter,
+  diceToPlay,
+  gameEndAfterMove,
+  initialContext,
+  MoveGenerator,
+  sameMove,
+  type TurnContext,
+  type TurnOption,
+} from "./movegen";
 import type {
   Board,
   Dice,
@@ -66,9 +76,28 @@ export const moveGenerator = (variant: VariantId, player: Player): MoveGenerator
   return pair[player];
 };
 
+/** Rule context of the turn so far (Narde head rule, Tavla home-board hits). */
+export const turnContext = (s: GameState): TurnContext => {
+  const rules = getVariant(s.variant);
+  const start = s.undoStack[0] ?? s.board;
+  const dice = s.dice ? diceToPlay(s.dice[0], s.dice[1]) : s.remaining;
+  return s.played.reduce(
+    (ctx, m) => contextAfter(rules, ctx, s.turn, m, m.hit),
+    initialContext(rules, start, s.turn, dice),
+  );
+};
+
 /** Legal single moves for the player on turn (empty unless phase is `moving`). */
 export const legalMoves = (s: GameState): Move[] =>
-  s.phase === "moving" ? moveGenerator(s.variant, s.turn).legalMoves(s.board, s.remaining) : [];
+  s.phase === "moving"
+    ? moveGenerator(s.variant, s.turn).legalMoves(s.board, s.remaining, turnContext(s))
+    : [];
+
+/** Every distinct way to finish the turn from here (for bots, analysis and auto-play). */
+export const turnOptions = (s: GameState): TurnOption[] =>
+  s.phase === "moving"
+    ? moveGenerator(s.variant, s.turn).turnOptions(s.board, s.remaining, turnContext(s))
+    : [];
 
 /** The turn can be confirmed once no further move is possible. */
 export const canConfirm = (s: GameState): boolean => s.phase === "moving" && legalMoves(s).length === 0;

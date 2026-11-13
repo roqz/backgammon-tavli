@@ -137,3 +137,26 @@ test("imprint, privacy notice and source code are linked from the menu", async (
   await page.goBack();
   await expect(page.getByRole("link", { name: /Quellcode/ })).toBeVisible();
 });
+
+test("Tavla and Narde can be played against the computer", async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const variant of ["Narde", "Tavla"]) {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Neues Spiel" }).click();
+    await page.getByRole("button", { name: variant, exact: true }).click();
+    await page.getByRole("button", { name: "Starten" }).click();
+    await expect(page.getByText(new RegExp(`${variant} · Spiel 1`))).toBeVisible();
+    await expect
+      .poll(
+        async () => {
+          const roll = page.getByRole("button", { name: /^Würfeln/ });
+          if (await roll.isVisible()) await roll.click();
+          return page.locator("svg circle[stroke-dasharray]").count();
+        },
+        { timeout: 45_000 },
+      )
+      .toBeGreaterThan(0);
+    expect(await tapMove(page)).toBe(true);
+    expect(await checkerCount(page)).toBe(30);
+  }
+});

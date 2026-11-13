@@ -292,6 +292,13 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Club-Turniere: Admins legen auf der Club-Seite Turniere an (K.-o. oder Schweizer System wie öffentliche Turniere); nur Mitglieder sehen sie und können teilnehmen; die Gastregel entfällt, da die Mitgliedschaft das Kriterium ist; Turnierbaum im Reiter Turniere mit Club-Hinweis
 - Kein Club-Chat (bewusst: bräuchte Moderation)
 
+### Tavla und Narde ✅
+
+- Tavla (türkisch): Backgammon-Aufstellung, Schlagen, kein Doppler, Anwurf-Gewinner würfelt neu, Mars = 2 (kein Dreifachsieg); nach bkgm.com zusätzlich kein Hit-and-run im eigenen Heimfeld (der schlagende Stein bleibt im Wurf stehen) und keine verschenkten Augen beim Abtragen; XGID und .mat wie Portes
+- Narde (Long Nardy): alle Steine auf dem Kopf, Köpfe diagonal gegenüber, gleiche Laufrichtung wie Fevga, Einzelsteine blockieren, pro Wurf nur ein Stein vom Kopf (erster Wurf 6-6, 4-4, 3-3: zwei), kein Sechserblock ohne gegnerischen Stein davor, Mars = 2; nicht umgesetzt: Koks/Haus-Mars (inoffiziell) und das Turnier-Unentschieden
+- Engine: Zugkontext (`TurnContext`) für Regeln, die vom bisherigen Wurf abhängen; Bot nutzt die Bewertung von Portes bzw. Fevga
+- Online, Turniere, Ligen und Ranking automatisch für beide Varianten
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)

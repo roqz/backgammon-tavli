@@ -15,7 +15,7 @@ export const BLACK: Player = 1;
 
 export const opponent = (p: Player): Player => (p === 0 ? 1 : 0);
 
-export type VariantId = "backgammon" | "portes" | "plakoto" | "fevga";
+export type VariantId = "backgammon" | "portes" | "plakoto" | "fevga" | "tavla" | "narde";
 
 export interface Board {
   /** Checker counts per player per absolute point: `points[player][absIndex]`. */

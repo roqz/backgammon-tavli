@@ -15,7 +15,7 @@ import {
   type VariantId,
 } from "../src";
 
-const VARIANTS: VariantId[] = ["backgammon", "portes", "plakoto", "fevga"];
+const VARIANTS: VariantId[] = ["backgammon", "portes", "plakoto", "fevga", "tavla", "narde"];
 
 const checkInvariants = (b: Board) => {
   for (const p of [0, 1] as Player[]) expect(checkerTotal(b, p)).toBe(15);

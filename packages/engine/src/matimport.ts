@@ -1,4 +1,4 @@
-import { applyAction, createGame, moveGenerator } from "./game";
+import { applyAction, createGame, turnOptions } from "./game";
 import type { MatGame } from "./mat";
 import type { Board, GameState, Player, ResultLevel } from "./types";
 import { absFromOwnPoint, getVariant } from "./variants";
@@ -74,7 +74,7 @@ const playTurn = (s: GameState, dice: [number, number], text: string, where: str
   let g = applyAction(s, { type: "roll", dice });
   if (g.phase !== "moving") return g;
   const target = applyNotation(g.board, g.turn, text);
-  const options = moveGenerator(g.variant, g.turn).turnOptions(g.board, g.remaining);
+  const options = turnOptions(g);
   const option = options.find((o) => sameBoard(o.board, target));
   if (!option) {
     if (options.length === 0 && text.trim() === "")

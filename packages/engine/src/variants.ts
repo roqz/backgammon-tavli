@@ -25,8 +25,14 @@ export interface VariantRules {
   readonly manaRule: boolean;
   /** Fevga: first checker must pass the opponent's start before others may leave the start point. */
   readonly fevgaStartRule: boolean;
-  /** Fevga: no prime of six consecutive points unless an opponent checker is already ahead of it. */
+  /** Fevga, Narde: no prime of six consecutive points unless an opponent checker is already ahead of it. */
   readonly fevgaPrimeRule: boolean;
+  /** Narde: one checker leaves the head per turn (two on a first roll of 3-3, 4-4 or 6-6). */
+  readonly headRule: boolean;
+  /** Tavla: a checker that hits in the own home board must stay there for the rest of the turn. */
+  readonly noHitAndRunHome: boolean;
+  /** Tavla: a die that can bear a checker off must be used to bear off (no wasting pips). */
+  readonly noWasteBearOff: boolean;
   readonly setup: OwnPointSetup;
   /** The 24 absolute point indices a player travels, from start (index 0) to home (index 23). */
   readonly paths: readonly [readonly number[], readonly number[]];
@@ -62,6 +68,9 @@ export const VARIANTS: Readonly<Record<VariantId, VariantRules>> = {
     manaRule: false,
     fevgaStartRule: false,
     fevgaPrimeRule: false,
+    headRule: false,
+    noHitAndRunHome: false,
+    noWasteBearOff: false,
     setup: BACKGAMMON_SETUP,
     paths: OPPOSITE_PATHS,
   },
@@ -75,6 +84,9 @@ export const VARIANTS: Readonly<Record<VariantId, VariantRules>> = {
     manaRule: false,
     fevgaStartRule: false,
     fevgaPrimeRule: false,
+    headRule: false,
+    noHitAndRunHome: false,
+    noWasteBearOff: false,
     setup: BACKGAMMON_SETUP,
     paths: OPPOSITE_PATHS,
   },
@@ -88,6 +100,9 @@ export const VARIANTS: Readonly<Record<VariantId, VariantRules>> = {
     manaRule: true,
     fevgaStartRule: false,
     fevgaPrimeRule: false,
+    headRule: false,
+    noHitAndRunHome: false,
+    noWasteBearOff: false,
     setup: ALL_ON_START,
     paths: OPPOSITE_PATHS,
   },
@@ -101,6 +116,41 @@ export const VARIANTS: Readonly<Record<VariantId, VariantRules>> = {
     manaRule: false,
     fevgaStartRule: true,
     fevgaPrimeRule: true,
+    headRule: false,
+    noHitAndRunHome: false,
+    noWasteBearOff: false,
+    setup: ALL_ON_START,
+    paths: SAME_DIRECTION_PATHS,
+  },
+  tavla: {
+    id: "tavla",
+    name: "Tavla",
+    blots: "hit",
+    cube: false,
+    openingRollPlayed: false,
+    backgammons: false,
+    manaRule: false,
+    fevgaStartRule: false,
+    fevgaPrimeRule: false,
+    headRule: false,
+    noHitAndRunHome: true,
+    noWasteBearOff: true,
+    setup: BACKGAMMON_SETUP,
+    paths: OPPOSITE_PATHS,
+  },
+  narde: {
+    id: "narde",
+    name: "Narde",
+    blots: "none",
+    cube: false,
+    openingRollPlayed: false,
+    backgammons: false,
+    manaRule: false,
+    fevgaStartRule: false,
+    fevgaPrimeRule: true,
+    headRule: true,
+    noHitAndRunHome: false,
+    noWasteBearOff: false,
     setup: ALL_ON_START,
     paths: SAME_DIRECTION_PATHS,
   },

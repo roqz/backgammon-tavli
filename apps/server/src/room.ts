@@ -12,11 +12,11 @@ import {
   type MatchConfig,
   type MatchState,
   maxResultLevel,
-  moveGenerator,
   opponent,
   type Player,
   playerToAct,
   type Rng,
+  turnOptions,
 } from "@tavli/engine";
 import {
   type ClientAction,
@@ -340,7 +340,7 @@ export class MatchRoom {
     if (this.turnClock?.key === key) return;
     let choice = false;
     try {
-      choice = moveGenerator(g.variant, g.turn).turnOptions(g.board, g.remaining).length > 1;
+      choice = turnOptions(g).length > 1;
     } catch {
       // timing is only a hint; never disturb the game
     }
