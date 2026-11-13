@@ -157,7 +157,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 ### Offen in Phase 3 / Ausblick Experten-KI
 
 - ~~Gewichte per Selbstspiel~~, ~~Gammons, Match-Equity-Table~~, ~~Hinweis-Funktion~~ (erledigt)
-- Neuronales Netz je Variante (Selbstspiel, TD(λ)); wildbg per WASM als Alternative für Backgammon
+- ~~Neuronales Netz für Backgammon~~ (erledigt, Stufe „Experte“); Netze für die anderen Varianten vertagt; wildbg per WASM als Alternative für Backgammon
 
 ### Phase 4 – Feinschliff ✅
 
