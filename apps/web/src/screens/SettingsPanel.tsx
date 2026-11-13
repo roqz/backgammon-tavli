@@ -227,7 +227,7 @@ export function SettingsPanel() {
         <Toggle
           sub
           disabled={!s.autoRoll}
-          label={t.autoRollCountdown}
+          label={t.autoRollCountdown.replace("{s}", String(s.countdownSeconds))}
           checked={s.autoRollCountdown}
           onChange={(autoRollCountdown) => s.update({ autoRollCountdown })}
         />
@@ -240,7 +240,7 @@ export function SettingsPanel() {
         <Toggle
           sub
           disabled={!s.autoConfirm}
-          label={t.autoConfirmDelay}
+          label={t.autoConfirmDelay.replace("{s}", String(s.countdownSeconds))}
           checked={s.autoConfirmDelay}
           onChange={(autoConfirmDelay) => s.update({ autoConfirmDelay })}
         />
