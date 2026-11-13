@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   type MatchVariantId,
   swissRounds,
+  type TimeControl,
   type TournamentFormat,
   type TournamentMatchView,
   type TournamentPlayer,
@@ -26,7 +27,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
   finished_at TEXT,
   winner TEXT,
   format TEXT NOT NULL DEFAULT 'knockout',
-  club_id TEXT
+  club_id TEXT,
+  clock TEXT NOT NULL DEFAULT 'relaxed'
 );
 CREATE INDEX IF NOT EXISTS tournaments_status ON tournaments(status, created_at);
 CREATE TABLE IF NOT EXISTS tournament_entries (
@@ -87,6 +89,7 @@ export interface TournamentHost {
     p1: string,
     ref: TournamentRef,
     slot: number,
+    clock: TimeControl,
   ): string;
   /** Sends the tournament state to a connected player. */
   push(playerId: string, view: TournamentView): void;
@@ -111,6 +114,7 @@ interface TournamentRow {
   created_at: string;
   winner: string | null;
   club_id: string | null;
+  clock: TimeControl;
 }
 
 interface EntryRow {
@@ -237,6 +241,8 @@ export class Tournaments {
       store.db.exec("ALTER TABLE tournaments ADD COLUMN format TEXT NOT NULL DEFAULT 'knockout'");
     if (!cols.some((c) => c.name === "club_id"))
       store.db.exec("ALTER TABLE tournaments ADD COLUMN club_id TEXT");
+    if (!cols.some((c) => c.name === "clock"))
+      store.db.exec("ALTER TABLE tournaments ADD COLUMN clock TEXT NOT NULL DEFAULT 'relaxed'");
     // Rooms do not survive a restart: replay those matches.
     store.db
       .prepare(
@@ -309,6 +315,7 @@ export class Tournaments {
       name: t.name,
       variant: t.variant,
       length: t.length,
+      clock: t.clock,
       size: t.size,
       status: t.status,
       format: t.format,
@@ -392,6 +399,7 @@ export class Tournaments {
     size: number,
     format: TournamentFormat = "knockout",
     clubId: string | null = null,
+    clock: TimeControl = "relaxed",
   ): TournamentView {
     if (this.activeTournamentOf(playerId)) throw new TournamentError("already in a tournament");
     if (clubId) {
@@ -410,10 +418,10 @@ export class Tournaments {
     const id = randomUUID();
     this.db
       .prepare(
-        `INSERT INTO tournaments (id, name, variant, length, size, status, created_by, created_at, format, club_id)
-         VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)`,
+        `INSERT INTO tournaments (id, name, variant, length, size, status, created_by, created_at, format, club_id, clock)
+         VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)`,
       )
-      .run(id, name, variant, length, size, playerId, new Date().toISOString(), format, clubId);
+      .run(id, name, variant, length, size, playerId, new Date().toISOString(), format, clubId, clock);
     this.addEntry(id, playerId);
     this.log(`tournament ${id} created (${format}, ${variant}/${length}, ${size} players)`);
     return this.changed(id)!;
@@ -611,7 +619,7 @@ export class Tournaments {
     }
     const ready = this.db
       .prepare(
-        `SELECT m.tournament_id AS id, m.round, m.slot, m.p0, m.p1, m.ready_at, t.variant, t.length, t.name, t.size, t.format
+        `SELECT m.tournament_id AS id, m.round, m.slot, m.p0, m.p1, m.ready_at, t.variant, t.length, t.name, t.size, t.format, t.clock
          FROM tournament_matches m JOIN tournaments t ON t.id = m.tournament_id
          WHERE m.status = 'ready' AND t.status = 'running' ORDER BY m.round, m.slot`,
       )
@@ -627,6 +635,7 @@ export class Tournaments {
       name: string;
       size: number;
       format: TournamentFormat;
+      clock: TimeControl;
     }[];
     for (const m of ready) {
       const ref: TournamentRef = {
@@ -661,7 +670,7 @@ export class Tournaments {
       const a0 = this.host.isAvailable(m.p0);
       const a1 = this.host.isAvailable(m.p1);
       if (a0 && a1 && now - m.ready_at >= this.opts.startDelayMs) {
-        const matchId = this.host.startTournamentMatch(m.variant, m.length, m.p0, m.p1, ref, m.slot);
+        const matchId = this.host.startTournamentMatch(m.variant, m.length, m.p0, m.p1, ref, m.slot, m.clock);
         this.db
           .prepare(
             "UPDATE tournament_matches SET status = 'playing', match_id = ? WHERE tournament_id = ? AND round = ? AND slot = ?",

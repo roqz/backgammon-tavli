@@ -16,7 +16,7 @@ import {
   pipCount,
   playerToAct,
 } from "@tavli/engine";
-import type { Frame } from "@tavli/protocol";
+import type { ClockView, Frame } from "@tavli/protocol";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Board } from "../board/Board";
 import { HEIGHT, WIDTH } from "../board/geometry";
@@ -410,8 +410,14 @@ export function GameScreen({
             {online && onlineInfo && (
               <OnlineStatus
                 deadline={
-                  onlineInfo.end || !onlineInfo.deadline ? null : onlineInfo.deadline - onlineInfo.clockOffset
+                  onlineInfo.end || !onlineInfo.deadline || onlineInfo.clock
+                    ? null
+                    : onlineInfo.deadline - onlineInfo.clockOffset
                 }
+                clock={onlineInfo.end ? null : onlineInfo.clock}
+                clockOffset={onlineInfo.clockOffset}
+                seat={onlineInfo.seat}
+                opponentName={onlineInfo.players[onlineInfo.seat === 0 ? 1 : 0].name}
                 opponentConnected={onlineInfo.opponentConnected}
                 graceUntil={onlineInfo.opponentGraceUntil}
               />
@@ -689,7 +695,9 @@ export function GameScreen({
                 ? t.reasonForfeit
                 : onlineInfo.end.reason === "ended"
                   ? t.reasonEnded
-                  : t.reasonAbandoned}
+                  : onlineInfo.end.reason === "time"
+                    ? t.reasonTime
+                    : t.reasonAbandoned}
             </p>
           )}
           <p className="mb-3 text-3xl font-bold tabular-nums text-stone-100">
@@ -971,10 +979,18 @@ function ScoreStrip({
 /** Turn clock and opponent connection state in online matches. */
 function OnlineStatus({
   deadline,
+  clock,
+  clockOffset,
+  seat,
+  opponentName,
   opponentConnected,
   graceUntil,
 }: {
   deadline: number | null;
+  clock: ClockView | null;
+  clockOffset: number;
+  seat: Player;
+  opponentName: string;
   opponentConnected: boolean;
   graceUntil: number | null;
 }) {
@@ -1004,9 +1020,45 @@ function OnlineStatus({
           ⏱ {fmt(deadline - now)}
         </span>
       )}
+      {clock &&
+        ([seat, seat === 0 ? 1 : 0] as const).map((p) => {
+          const left = clockLeft(clock, p, now + clockOffset);
+          const running = clock.running === p;
+          return (
+            <span
+              key={p}
+              data-testid={p === seat ? "clock-me" : "clock-opponent"}
+              title={running && clock.free ? t.clockFree : undefined}
+              className={`flex items-center gap-1 rounded-full px-2 py-0.5 font-mono tabular-nums ${
+                running
+                  ? left.delay === 0 && left.reserve < 20_000
+                    ? "bg-red-500/25 text-red-200"
+                    : "bg-amber-400/20 text-amber-100"
+                  : "bg-stone-800 text-stone-400"
+              }`}
+            >
+              <span className="max-w-16 truncate font-sans text-xs">
+                {p === seat ? t.clockYou : opponentName}
+              </span>
+              {running && left.delay > 0 && (
+                <span className="text-xs text-emerald-300">+{Math.ceil(left.delay / 1000)}</span>
+              )}
+              {fmt(left.reserve)}
+            </span>
+          );
+        })}
     </div>
   );
 }
+
+/** Delay and reserve left for a seat at server time `now` (only the running clock moves). */
+export const clockLeft = (c: ClockView, p: Player, now: number): { delay: number; reserve: number } => {
+  if (c.running !== p || c.since === null) return { delay: 0, reserve: c.reserve[p] };
+  const used = Math.max(0, now - c.since);
+  const delay = Math.max(0, c.delayMs - used);
+  const beyond = Math.max(0, used - c.delayMs);
+  return { delay, reserve: c.free ? c.reserve[p] : Math.max(0, c.reserve[p] - beyond) };
+};
 
 /** Seconds left until an automatic action, shown inside its button. */
 function CountdownBadge({ seconds }: { seconds: number }) {

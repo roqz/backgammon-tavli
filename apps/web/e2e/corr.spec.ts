@@ -59,7 +59,8 @@ test("correspondence: two strangers find each other with the same search", async
   const lou = await onlineGuest(browser, "Lou");
   for (const p of [kim, lou]) {
     await p.getByRole("tab", { name: "Fernpartien" }).click();
-    await p.getByRole("button", { name: /Gegner suchen/ }).click();
+    // the correspondence search (not the live one of the play tab)
+    await p.getByRole("button", { name: "🔍 Gegner suchen" }).click();
     const dialog = p.getByRole("dialog");
     await dialog.getByRole("button", { name: "Hypergammon", exact: true }).click();
     await dialog.getByRole("button", { name: "1", exact: true }).click();

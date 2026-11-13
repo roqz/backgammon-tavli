@@ -394,7 +394,8 @@ const de: Record<RulesTopic, RulesChapter> = {
         bullets: [
           "Der Server würfelt und prüft jeden Zug – Manipulation im Browser ist wirkungslos.",
           "Nachweisbar faire Würfel: Zu Matchbeginn legt sich der Server per Hash auf einen geheimen Zufallswert fest, beide Browser steuern eigene Zufallswerte bei, und jeder Wurf wird daraus per HMAC-SHA256 abgeleitet. Am Ende legt der Server alles offen und die App rechnet jeden Wurf nach („Würfel nachgeprüft“).",
-          "Zugzeit: 60 Sekunden (Antwort auf eine Verdopplung: 30 Sekunden). Läuft sie ab, zieht der Computer für dich; nach drei Zeitüberschreitungen ist das Match verloren.",
+          "Bedenkzeit „Entspannt“: 60 Sekunden pro Zug (Antwort auf eine Verdopplung: 30 Sekunden). Läuft sie ab, zieht der Computer für dich; nach drei Zeitüberschreitungen ist das Match verloren.",
+          "Bedenkzeit „Standard“ und „Blitz“: Schachuhr mit Verzögerung. Jede Entscheidung (Würfeln und Ziehen, Antwort auf Doppler oder Aufgabe) hat 12 bzw. 8 Sekunden frei; was darüber hinaus gebraucht wird, geht von der Reserve ab (2 bzw. 1 Minute pro Matchpunkt, im Geldspiel wie 5 Punkte). Züge ohne Wahl kosten keine Reserve. Ist die Reserve leer, ist das Match verloren.",
           "Nach einem Verbindungsabbruch hast du 90 Sekunden, um zurückzukehren.",
           "Rating nach der FIBS-Formel, getrennt pro Variante; neue Spieler gewinnen und verlieren anfangs schneller Punkte.",
           "Fair Play: Zwei Profile vom selben Gerät oder Netzwerk werden in der Gegnersuche nie gepaart; private Partien zwischen ihnen sind ungewertet. Gegen denselben Gegner zählen höchstens 3 gewertete Matches pro 24 Stunden.",
@@ -748,7 +749,8 @@ const en: Record<RulesTopic, RulesChapter> = {
         bullets: [
           "The server rolls the dice and checks every move – tampering in the browser has no effect.",
           "Provably fair dice: at match start the server commits to a secret seed by its hash, both browsers add their own random seeds, and every roll is derived via HMAC-SHA256. At the end the server reveals everything and the app recomputes each roll (“Dice verified”).",
-          "Time per turn: 60 seconds (answering a double: 30 seconds). When it runs out the computer moves for you; three timeouts lose the match.",
+          "Relaxed time control: 60 seconds per turn (answering a double: 30 seconds). When it runs out the computer moves for you; three timeouts lose the match.",
+          "Standard and blitz: a chess clock with delay. Every decision (rolling and moving, answering a double or a resignation) has 12 or 8 free seconds; time beyond that comes off the reserve (2 or 1 minutes per match point, money sessions count as 5 points). Turns without a choice cost no reserve. An empty reserve loses the match.",
           "After a disconnect you have 90 seconds to come back.",
           "FIBS ratings per variant; new players gain and lose points faster at first.",
           "Fair play: two profiles from the same device or network are never paired by matchmaking; private games between them are unrated. At most 3 rated matches per 24 hours count against the same opponent.",

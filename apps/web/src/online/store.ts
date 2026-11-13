@@ -1,11 +1,13 @@
 import type { Player } from "@tavli/engine";
 import type {
   ChallengeStatus,
+  ClockView,
   EmoteId,
   MatchEndReason,
   MatchVariantId,
   PublicPlayer,
   ServerMessage,
+  TimeControl,
   TournamentRef,
   TournamentView,
   UnratedReason,
@@ -40,6 +42,9 @@ export interface OnlineMatchInfo {
   readonly variant: MatchVariantId;
   readonly length: number;
   deadline: number | null;
+  /** Chess clock (standard, blitz). */
+  clock: ClockView | null;
+  readonly timeControl: TimeControl;
   /** serverTime - local time, measured with every state message. */
   clockOffset: number;
   opponentConnected: boolean;
@@ -75,6 +80,7 @@ export interface IncomingChallenge {
   readonly from: PublicPlayer;
   readonly variant: MatchVariantId;
   readonly length: number;
+  readonly clock: TimeControl;
 }
 
 export interface OutgoingChallenge {

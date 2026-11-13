@@ -2,6 +2,7 @@ import { getVariant } from "@tavli/engine";
 import {
   MATCH_VARIANTS,
   type MatchVariantId,
+  type TimeControl,
   TOURNAMENT_FORMATS,
   TOURNAMENT_NAME_MAX,
   type TournamentFormat,
@@ -9,6 +10,7 @@ import {
   type TournamentView,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Segmented } from "../components/ui";
 import { errorText } from "../errors";
 import { useT } from "../i18n";
@@ -166,6 +168,7 @@ export function CreateForm({
   const [length, setLength] = useState<Exclude<MatchLength, 0>>(3);
   const [size, setSize] = useState<4 | 8 | 16>(8);
   const [format, setFormat] = useState<TournamentFormat>("knockout");
+  const [clock, setClock] = useState<TimeControl>("relaxed");
   return (
     <div className="flex flex-col gap-4">
       <Segmented
@@ -198,6 +201,7 @@ export function CreateForm({
         onChange={setLength}
         options={([1, 3, 5, 7] as const).map((l) => ({ value: l, label: String(l) }))}
       />
+      <TimeControlPicker value={clock} onChange={setClock} />
       <Segmented
         label={t.tSize}
         value={size}
@@ -213,7 +217,7 @@ export function CreateForm({
           className="flex-[2]"
           disabled={disabled || !name.trim()}
           onClick={() => {
-            createTournament(name.trim(), variant, length, size, format, clubId);
+            createTournament(name.trim(), variant, length, size, format, clubId, clock);
             onDone();
           }}
         >
@@ -260,7 +264,8 @@ function TournamentCard({
       </div>
       {x.club && <p className="-mt-2 text-xs text-stone-500">🏛 {x.club.name}</p>}
       <p className="text-sm text-stone-400">
-        {t.tFormats[x.format]} · {variantLabel(x.variant, t.tavliMatch)} · {x.length}{" "}
+        {t.tFormats[x.format]} · {variantLabel(x.variant, t.tavliMatch)}
+        {x.clock !== "relaxed" && ` · ${t.timeControls[x.clock]}`} · {x.length}{" "}
         {x.length === 1 ? t.point : t.points} ·{" "}
         {t.tPlayers.replace("{n}", String(x.players.length)).replace("{size}", String(x.size))}
       </p>

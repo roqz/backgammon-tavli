@@ -1,6 +1,13 @@
 import { randomInt, randomUUID } from "node:crypto";
 import type { MatchConfig } from "@tavli/engine";
-import type { ClientMessage, LiveMatch, MatchVariantId, TournamentRef, UnratedReason } from "@tavli/protocol";
+import type {
+  ClientMessage,
+  LiveMatch,
+  MatchVariantId,
+  TimeControl,
+  TournamentRef,
+  UnratedReason,
+} from "@tavli/protocol";
 import type { Analyzer } from "./analysis";
 import { Clubs } from "./clubs";
 import type { Correspondence } from "./correspondence";
@@ -25,6 +32,7 @@ interface Challenge {
   readonly to: string;
   readonly variant: MatchVariantId;
   readonly length: number;
+  readonly clock: TimeControl;
   readonly createdAt: number;
   /** Longer when the friend was offline and got a push notification. */
   readonly ttlMs: number;
@@ -46,6 +54,7 @@ interface PrivateInvite {
   readonly hostId: string;
   readonly variant: MatchVariantId;
   readonly length: number;
+  readonly clock: TimeControl;
   readonly createdAt: number;
 }
 
@@ -61,6 +70,7 @@ interface FinishedPairing {
   readonly opponentId: string;
   readonly variant: MatchVariantId;
   readonly length: number;
+  readonly clock: TimeControl;
   /** Player ids by seat in the finished match. */
   readonly seats: readonly [string, string];
 }
@@ -106,10 +116,11 @@ const CODE_LENGTH = 6;
 const INVITE_TTL_MS = 30 * 60_000;
 const REMATCH_TTL_MS = 5 * 60_000;
 
-const queueKey = (variant: MatchVariantId, length: number) => `${variant}:${length}`;
+const queueKey = (variant: MatchVariantId, length: number, clock: TimeControl) =>
+  `${variant}:${length}:${clock}`;
 const parseKey = (key: string) => {
-  const [variant, length] = key.split(":");
-  return { variant: variant as MatchVariantId, length: Number(length) };
+  const [variant, length, clock] = key.split(":");
+  return { variant: variant as MatchVariantId, length: Number(length), clock: clock as TimeControl };
 };
 
 const configFor = (variant: MatchVariantId, length: number): MatchConfig => ({
@@ -166,8 +177,8 @@ export class Lobby {
       opts.store,
       {
         isAvailable: (id) => this.connByPlayer.has(id) && !this.inMatch(id),
-        startTournamentMatch: (variant, length, p0, p1, ref, slot) =>
-          this.startMatch(variant, length, p0, p1, true, { ref, slot }, true),
+        startTournamentMatch: (variant, length, p0, p1, ref, slot, clock) =>
+          this.startMatch(variant, length, p0, p1, true, { ref, slot }, true, undefined, clock),
         push: (id, tournament) => this.connByPlayer.get(id)?.send({ t: "tournament", tournament }),
         matchReady: (id, view, ref) => {
           // Connected players see it in the app (and get a local notification when it is hidden).
@@ -245,13 +256,13 @@ export class Lobby {
 
     switch (msg.t) {
       case "queue":
-        return this.queue(conn, id, msg.variant, msg.length);
+        return this.queue(conn, id, msg.variant, msg.length, msg.clock ?? "relaxed");
       case "unqueue":
         this.removeFromQueues(id);
         this.removeInvites(id);
         return conn.send({ t: "unqueued" });
       case "create":
-        return this.createInvite(conn, id, msg.variant, msg.length);
+        return this.createInvite(conn, id, msg.variant, msg.length, msg.clock ?? "relaxed");
       case "join":
         return this.joinInvite(conn, id, msg.code.toUpperCase());
       case "action": {
@@ -284,7 +295,16 @@ export class Lobby {
         try {
           if (msg.t === "tournament-create") {
             if (this.busy(conn, id)) return;
-            this.tournaments.create(id, msg.name, msg.variant, msg.length, msg.size, msg.format, msg.clubId);
+            this.tournaments.create(
+              id,
+              msg.name,
+              msg.variant,
+              msg.length,
+              msg.size,
+              msg.format,
+              msg.clubId ?? null,
+              msg.clock ?? "relaxed",
+            );
           } else if (msg.t === "tournament-join") this.tournaments.join(id, msg.id);
           else this.tournaments.leave(id, msg.id);
         } catch (e) {
@@ -299,7 +319,15 @@ export class Lobby {
         session.watching = null;
         return;
       case "challenge":
-        return this.challenge(conn, id, msg.playerId, msg.variant, msg.length, msg.leagueId);
+        return this.challenge(
+          conn,
+          id,
+          msg.playerId,
+          msg.variant,
+          msg.length,
+          msg.clock ?? "relaxed",
+          msg.leagueId,
+        );
       case "challenge-answer":
         return this.answerChallenge(conn, id, msg.id, msg.accept);
       case "challenge-cancel": {
@@ -407,12 +435,12 @@ export class Lobby {
     return best;
   }
 
-  private queue(conn: Conn, id: string, variant: MatchVariantId, length: number): void {
+  private queue(conn: Conn, id: string, variant: MatchVariantId, length: number, clock: TimeControl): void {
     if (this.busy(conn, id)) return;
     this.removeFromQueues(id);
     this.removeInvites(id);
     this.declineRematch(id);
-    const key = queueKey(variant, length);
+    const key = queueKey(variant, length, clock);
     const waiting = this.queues.get(key) ?? [];
     const entry: QueueEntry = {
       playerId: id,
@@ -425,11 +453,11 @@ export class Lobby {
         key,
         waiting.filter((w) => w !== partner),
       );
-      this.startMatch(variant, length, partner.playerId, id, false, undefined, true);
+      this.startMatch(variant, length, partner.playerId, id, false, undefined, true, undefined, clock);
       return;
     }
     this.queues.set(key, [...waiting, entry]);
-    conn.send({ t: "queued", variant, length });
+    conn.send({ t: "queued", variant, length, clock });
   }
 
   /** Pairs waiting players whose windows have grown enough, longest waiting first. */
@@ -452,7 +480,7 @@ export class Lobby {
     }
     for (const [key, list] of this.queues) {
       let waiting = list.filter((w) => this.connByPlayer.has(w.playerId));
-      const { variant, length } = parseKey(key);
+      const { variant, length, clock } = parseKey(key);
       for (const entry of [...waiting].sort((a, b) => a.since - b.since)) {
         if (!waiting.includes(entry)) continue;
         const partner = this.partnerFor(
@@ -462,7 +490,17 @@ export class Lobby {
         );
         if (!partner) continue;
         waiting = waiting.filter((w) => w !== entry && w !== partner);
-        this.startMatch(variant, length, entry.playerId, partner.playerId, false, undefined, true);
+        this.startMatch(
+          variant,
+          length,
+          entry.playerId,
+          partner.playerId,
+          false,
+          undefined,
+          true,
+          undefined,
+          clock,
+        );
       }
       this.queues.set(key, waiting);
     }
@@ -470,7 +508,13 @@ export class Lobby {
 
   // ---- private invites -----------------------------------------------------------------------
 
-  private createInvite(conn: Conn, id: string, variant: MatchVariantId, length: number): void {
+  private createInvite(
+    conn: Conn,
+    id: string,
+    variant: MatchVariantId,
+    length: number,
+    clock: TimeControl,
+  ): void {
     if (this.busy(conn, id)) return;
     this.removeFromQueues(id);
     this.removeInvites(id);
@@ -482,7 +526,7 @@ export class Lobby {
         "",
       );
     } while (this.invites.has(code));
-    this.invites.set(code, { hostId: id, variant, length, createdAt: Date.now() });
+    this.invites.set(code, { hostId: id, variant, length, clock, createdAt: Date.now() });
     conn.send({ t: "room-created", code, variant, length });
   }
 
@@ -505,7 +549,17 @@ export class Lobby {
     this.invites.delete(code);
     this.removeFromQueues(id);
     this.declineRematch(id);
-    this.startMatch(invite.variant, invite.length, invite.hostId, id);
+    this.startMatch(
+      invite.variant,
+      invite.length,
+      invite.hostId,
+      id,
+      false,
+      undefined,
+      false,
+      undefined,
+      invite.clock,
+    );
   }
 
   // ---- rematch -------------------------------------------------------------------------------
@@ -529,7 +583,17 @@ export class Lobby {
     this.finished.delete(id);
     this.finished.delete(mine.opponentId);
     // Same settings, colours swapped.
-    this.startMatch(mine.variant, mine.length, mine.seats[1], mine.seats[0], true);
+    this.startMatch(
+      mine.variant,
+      mine.length,
+      mine.seats[1],
+      mine.seats[0],
+      true,
+      undefined,
+      false,
+      undefined,
+      mine.clock,
+    );
   }
 
   private declineRematch(id: string): void {
@@ -554,6 +618,7 @@ export class Lobby {
     tournament?: { readonly ref: TournamentRef; readonly slot: number },
     watchable = false,
     league?: string,
+    clock: TimeControl = "relaxed",
   ): string {
     const { store, timings, log } = this.opts;
     const swap = !fixedSeats && this.opts.randomSeats !== false && randomInt(2) === 1;
@@ -569,6 +634,7 @@ export class Lobby {
         rating,
         tournament: tournament?.ref,
         watchable,
+        timeControl: clock,
         spectatorDelayMs: tournament
           ? (this.opts.spectatorDelay?.tournamentMs ?? this.opts.spectatorDelay?.matchMs ?? 0)
           : (this.opts.spectatorDelay?.matchMs ?? 0),
@@ -582,6 +648,7 @@ export class Lobby {
               opponentId: r.seats[seat === 0 ? 1 : 0].player.id,
               variant,
               length,
+              clock,
               seats: [r.seats[0].player.id, r.seats[1].player.id],
               endedAt,
             });
@@ -769,6 +836,7 @@ export class Lobby {
     to: string,
     requestedVariant: MatchVariantId,
     requestedLength: number,
+    clock: TimeControl,
     league?: string,
   ): void {
     const { store } = this.opts;
@@ -794,6 +862,7 @@ export class Lobby {
       to,
       variant,
       length,
+      clock,
       createdAt: Date.now(),
       ttlMs: online ? CHALLENGE_TTL_MS : CHALLENGE_PUSH_TTL_MS,
       ...(league ? { league } : {}),
@@ -801,7 +870,7 @@ export class Lobby {
     this.challenges.set(c.id, c);
     conn.send({ t: "challenge-update", id: c.id, to: publicTo(), status: online ? "sent" : "notified" });
     const from = store.publicPlayer(id, variant);
-    if (online) this.notify(to, { t: "challenge", id: c.id, from, variant, length });
+    if (online) this.notify(to, { t: "challenge", id: c.id, from, variant, length, clock });
     else void this.opts.push?.send(to, (lang) => challengeMessage(lang, c.id, from.name, variant, length));
   }
 
@@ -810,7 +879,14 @@ export class Lobby {
     for (const c of this.challenges.values()) {
       if (c.to !== playerId) continue;
       const from = this.opts.store.publicPlayer(c.from, c.variant);
-      this.notify(playerId, { t: "challenge", id: c.id, from, variant: c.variant, length: c.length });
+      this.notify(playerId, {
+        t: "challenge",
+        id: c.id,
+        from,
+        variant: c.variant,
+        length: c.length,
+        clock: c.clock,
+      });
     }
   }
 
@@ -827,7 +903,17 @@ export class Lobby {
     this.removeInvites(id);
     if (c.league && !this.clubs.pendingPairing(c.league, c.from, id))
       return this.endChallenge(c, "cancelled");
-    const roomId = this.startMatch(c.variant, c.length, c.from, id, false, undefined, !!c.league, c.league);
+    const roomId = this.startMatch(
+      c.variant,
+      c.length,
+      c.from,
+      id,
+      false,
+      undefined,
+      !!c.league,
+      c.league,
+      c.clock,
+    );
     if (c.league) this.clubs.matchStarted(c.league, c.from, id, roomId);
   }
 

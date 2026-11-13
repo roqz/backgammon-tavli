@@ -30,6 +30,41 @@ export const TOURNAMENT_NAME_MAX = 40;
 
 export const NAME_MAX = 24;
 
+/**
+ * Time controls for live matches:
+ * - relaxed: a fixed time per decision; when it runs out the computer plays for the player,
+ *   after three timeouts in a row the match is lost.
+ * - standard / blitz: a chess clock with a delay: each decision first uses the delay, only
+ *   the time beyond it comes off the player's reserve (per match point). An empty reserve
+ *   loses the match. Decisions without a choice cost no reserve.
+ */
+export const TIME_CONTROLS = ["relaxed", "standard", "blitz"] as const;
+export type TimeControl = (typeof TIME_CONTROLS)[number];
+export const CLOCK_SPECS: Record<
+  Exclude<TimeControl, "relaxed">,
+  { delayMs: number; reservePerPointMs: number }
+> = {
+  standard: { delayMs: 12_000, reservePerPointMs: 120_000 },
+  blitz: { delayMs: 8_000, reservePerPointMs: 60_000 },
+};
+/** Reserve per player at the start of a match (money sessions count as 5 points). */
+export const clockReserveMs = (control: Exclude<TimeControl, "relaxed">, length: number): number =>
+  CLOCK_SPECS[control].reservePerPointMs * (length === 0 ? 5 : length);
+
+/** The chess clock of a match (standard and blitz). */
+export interface ClockView {
+  readonly control: Exclude<TimeControl, "relaxed">;
+  readonly delayMs: number;
+  /** Reserve per seat when the current decision began. */
+  readonly reserve: readonly [number, number];
+  /** Whose clock runs (null between games). */
+  readonly running: Player | null;
+  /** Server time (epoch ms) when the running decision began. */
+  readonly since: number | null;
+  /** The running decision has no choice and costs no reserve. */
+  readonly free: boolean;
+}
+
 // ---- client -> server -------------------------------------------------------------------------
 
 const point = z.number().int().min(0).max(23);
@@ -67,6 +102,8 @@ const matchSetup = {
   variant: z.enum(MATCH_VARIANTS),
   length: z.union([z.literal(0), z.literal(1), z.literal(3), z.literal(5), z.literal(7)]),
 };
+/** Live matches also choose a time control (default relaxed). */
+const liveSetup = { ...matchSetup, clock: z.enum(TIME_CONTROLS).optional() };
 
 /** Tournaments are always matches to a number of points. */
 const tournamentSetup = {
@@ -82,9 +119,9 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
     /** Random id stored per browser; used to keep one person from playing against themselves. */
     deviceId: z.string().min(8).max(64).optional(),
   }),
-  z.object({ t: z.literal("queue"), ...matchSetup }),
+  z.object({ t: z.literal("queue"), ...liveSetup }),
   z.object({ t: z.literal("unqueue") }),
-  z.object({ t: z.literal("create"), ...matchSetup }),
+  z.object({ t: z.literal("create"), ...liveSetup }),
   z.object({ t: z.literal("join"), code: z.string().min(4).max(12) }),
   z.object({ t: z.literal("action"), action: ClientActionSchema }),
   /** Leave the current match (forfeit if it is still running). */
@@ -102,6 +139,7 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
     ...tournamentSetup,
     size: z.union([z.literal(4), z.literal(8), z.literal(16)]),
     format: z.enum(TOURNAMENT_FORMATS).optional(),
+    clock: z.enum(TIME_CONTROLS).optional(),
     /** A club tournament: only members can join (created by club admins). */
     clubId: z.string().min(1).max(64).optional(),
   }),
@@ -115,7 +153,7 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
   z.object({
     t: z.literal("challenge"),
     playerId: z.string().min(1).max(64),
-    ...matchSetup,
+    ...liveSetup,
     /** A league pairing: variant and length come from the league. */
     leagueId: z.string().min(1).max(64).optional(),
   }),
@@ -377,11 +415,16 @@ export interface LiveMatch {
 export type UnratedReason = "same-device" | "same-network" | "repeat-opponent" | "money";
 
 /** ended: a player ended a money session (the score decides). */
-export type MatchEndReason = "won" | "forfeit" | "abandoned" | "ended";
+export type MatchEndReason = "won" | "forfeit" | "abandoned" | "ended" | "time";
 
 export type ServerMessage =
   | { readonly t: "welcome"; readonly player: PublicPlayer }
-  | { readonly t: "queued"; readonly variant: MatchVariantId; readonly length: number }
+  | {
+      readonly t: "queued";
+      readonly variant: MatchVariantId;
+      readonly length: number;
+      readonly clock?: TimeControl;
+    }
   | { readonly t: "unqueued" }
   | {
       readonly t: "room-created";
@@ -401,6 +444,7 @@ export type ServerMessage =
       readonly fairness: FairnessCommit;
       /** Set when this is a tournament match. */
       readonly tournament: TournamentRef | null;
+      readonly timeControl: TimeControl;
     }
   | {
       readonly t: "state";
@@ -412,6 +456,8 @@ export type ServerMessage =
       readonly opening: Dice | null;
       /** Epoch ms when the player to act runs out of time (null = no clock). */
       readonly deadline: number | null;
+      /** Chess clock (standard, blitz); null for relaxed matches. */
+      readonly clock: ClockView | null;
       /** Server clock (epoch ms) when the message was sent, to correct client clock skew. */
       readonly serverTime: number;
     }
@@ -466,6 +512,7 @@ export type ServerMessage =
       readonly from: PublicPlayer;
       readonly variant: MatchVariantId;
       readonly length: number;
+      readonly clock?: TimeControl;
     }
   /** Your challenge was sent, or an open challenge ended without a match. */
   | {
@@ -691,6 +738,7 @@ export interface TournamentView {
   readonly name: string;
   readonly variant: MatchVariantId;
   readonly length: number;
+  readonly clock: TimeControl;
   readonly size: number;
   readonly status: TournamentStatus;
   readonly format: TournamentFormat;

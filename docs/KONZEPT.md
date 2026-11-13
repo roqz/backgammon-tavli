@@ -299,6 +299,12 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Engine: Zugkontext (`TurnContext`) für Regeln, die vom bisherigen Wurf abhängen; Bot nutzt die Bewertung von Portes bzw. Fevga
 - Online, Turniere, Ligen und Ranking automatisch für beide Varianten
 
+### Hypergammon, zügige Fernpartien, Schachuhr ✅
+
+- Hypergammon: je 3 Steine auf 24, 23, 22, sonst Backgammon-Regeln mit Doppler; offline, online, Turniere, Ranking
+- Fernpartien mit 1 oder 8 Stunden pro Entscheidung zusätzlich zu 1, 3, 7 Tagen; Gegnersuche für Fernpartien (gleiche Variante, Länge, Bedenkzeit; ungewertet; Suche verfällt nach 7 Tagen, höchstens 5 offene Suchen)
+- Bedenkzeit für Live-Matches: Entspannt (60 s pro Zug, Computer zieht bei Ablauf, 3× = Matchverlust), Standard (12 s Verzögerung + 2 min Reserve pro Punkt) und Blitz (8 s + 1 min pro Punkt); leere Reserve = Matchverlust („Zeit abgelaufen“), Züge ohne Wahl kosten keine Reserve; wählbar in Gegnersuche, Einladung, Herausforderung und Turnieren (Ligen spielen entspannt)
+
 ### Offen / nächste Schritte Online
 
 - E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)

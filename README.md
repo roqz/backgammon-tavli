@@ -1,6 +1,6 @@
 # Backgammon & Tavli
 
-Open-source Backgammon, Greek Tavli (Portes, Plakoto, Fevga), Turkish Tavla and Long Nardy for the web: an offline-first PWA with
+Open-source Backgammon, Greek Tavli (Portes, Plakoto, Fevga), Turkish Tavla, Long Nardy and Hypergammon for the web: an offline-first PWA with
 games against the computer and on one device, plus online play with ratings, matchmaking, private
 invites, friends and challenges, clubs with leagues, correspondence games, live spectating, tournaments (knockout and Swiss) and provably fair
 dice.

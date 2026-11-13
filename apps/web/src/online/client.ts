@@ -25,6 +25,7 @@ import type {
   RegisterResponse,
   ReportReason,
   ServerMessage,
+  TimeControl,
   TournamentFormat,
   TournamentMatchView,
   TournamentView,
@@ -98,6 +99,8 @@ const onMessage = (msg: ServerMessage) => {
           variant: msg.config.variant as MatchVariantId,
           length: msg.config.length,
           deadline: null,
+          clock: null,
+          timeControl: msg.timeControl ?? "relaxed",
           clockOffset: 0,
           opponentConnected: true,
           opponentGraceUntil: null,
@@ -122,7 +125,15 @@ const onMessage = (msg: ServerMessage) => {
     }
     case "state": {
       const info = online.match;
-      if (info) set({ match: { ...info, deadline: msg.deadline, clockOffset: msg.serverTime - Date.now() } });
+      if (info)
+        set({
+          match: {
+            ...info,
+            deadline: msg.deadline,
+            clock: msg.clock,
+            clockOffset: msg.serverTime - Date.now(),
+          },
+        });
       useGame.getState().applyRemote(msg.match, msg.action, msg.by, msg.opening);
       break;
     }
@@ -183,7 +194,15 @@ const onMessage = (msg: ServerMessage) => {
       break;
     }
     case "challenge":
-      set({ incoming: { id: msg.id, from: msg.from, variant: msg.variant, length: msg.length } });
+      set({
+        incoming: {
+          id: msg.id,
+          from: msg.from,
+          variant: msg.variant,
+          length: msg.length,
+          clock: msg.clock ?? "relaxed",
+        },
+      });
       break;
     case "challenge-update": {
       if (online.incoming?.id === msg.id) set({ incoming: null });
@@ -299,10 +318,11 @@ setRemoteSender((action) => {
   if (!send({ t: "action", action })) set({ lastError: "not connected" });
 });
 
-export const queue = (variant: MatchVariantId, length: MatchLength) => send({ t: "queue", variant, length });
+export const queue = (variant: MatchVariantId, length: MatchLength, clock: TimeControl = "relaxed") =>
+  send({ t: "queue", variant, length, clock });
 export const unqueue = () => send({ t: "unqueue" });
-export const createInvite = (variant: MatchVariantId, length: MatchLength) =>
-  send({ t: "create", variant, length });
+export const createInvite = (variant: MatchVariantId, length: MatchLength, clock: TimeControl = "relaxed") =>
+  send({ t: "create", variant, length, clock });
 export const joinInvite = (code: string) => {
   if (!send({ t: "join", code })) {
     set({ pendingJoin: code });
@@ -349,7 +369,9 @@ export const createTournament = (
   size: 4 | 8 | 16,
   format: TournamentFormat = "knockout",
   clubId?: string,
-) => send({ t: "tournament-create", name, variant, length, size, format, ...(clubId ? { clubId } : {}) });
+  clock: TimeControl = "relaxed",
+) =>
+  send({ t: "tournament-create", name, variant, length, size, format, clock, ...(clubId ? { clubId } : {}) });
 export const joinTournament = (id: string) => send({ t: "tournament-join", id });
 
 // ---- friends and spectating -------------------------------------------------------------------
@@ -426,8 +448,16 @@ export const challengeFriend = (
   playerId: string,
   variant: MatchVariantId,
   length: MatchLength,
-  leagueId?: string,
-) => send({ t: "challenge", playerId, variant, length, ...(leagueId ? { leagueId } : {}) });
+  opts: { leagueId?: string; clock?: TimeControl } = {},
+) =>
+  send({
+    t: "challenge",
+    playerId,
+    variant,
+    length,
+    clock: opts.clock ?? "relaxed",
+    ...(opts.leagueId ? { leagueId: opts.leagueId } : {}),
+  });
 export const answerChallenge = (id: string, accept: boolean) => {
   send({ t: "challenge-answer", id, accept });
   set({ incoming: null });

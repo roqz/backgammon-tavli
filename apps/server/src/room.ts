@@ -19,7 +19,10 @@ import {
   turnOptions,
 } from "@tavli/engine";
 import {
+  CLOCK_SPECS,
   type ClientAction,
+  type ClockView,
+  clockReserveMs,
   diceFromDigest,
   type EmoteId,
   type FairnessReveal,
@@ -28,6 +31,7 @@ import {
   type MatchVariantId,
   type PublicPlayer,
   type ServerMessage,
+  type TimeControl,
   type TournamentRef,
   type UnratedReason,
 } from "@tavli/protocol";
@@ -75,6 +79,8 @@ export interface RoomDeps {
   readonly watchable?: boolean;
   /** Spectators see every change this much later (against live advice to a player). */
   readonly spectatorDelayMs?: number;
+  /** Chess clock (standard, blitz); without it the relaxed per-decision time applies. */
+  readonly timeControl?: TimeControl;
 }
 
 /** Spectators per match. */
@@ -117,6 +123,10 @@ export class MatchRoom {
   };
   /** The checker-play decision running now: whose, since when, and whether there was a choice. */
   private turnClock: { seat: Player; since: number; choice: boolean; key: number } | null = null;
+  /** Chess clock: reserve per seat and the decision that runs now. */
+  private readonly reserve: [number, number] = [0, 0];
+  private decision: { seat: Player; start: number; key: string; free: boolean; checked: boolean } | null =
+    null;
   /** Think times of decisions with a real choice (fair-play signal). */
   private readonly timing: [TimingStats, TimingStats] = [
     { n: 0, sumLog: 0, sumLog2: 0 },
@@ -139,6 +149,8 @@ export class MatchRoom {
     });
     this.seats = [seat(players[0]), seat(players[1])];
     this.match = createMatch(config);
+    const tc = deps.timeControl;
+    if (tc && tc !== "relaxed") this.reserve.fill(clockReserveMs(tc, config.length));
   }
 
   seatOf(playerId: string): Player | null {
@@ -356,17 +368,81 @@ export class MatchRoom {
 
   // ---- clock ---------------------------------------------------------------------------------
 
+  private get chessClock(): { delayMs: number } | null {
+    const c = this.deps.timeControl;
+    return c && c !== "relaxed" ? CLOCK_SPECS[c] : null;
+  }
+
   private scheduleClock(): void {
     if (this.clock) clearTimeout(this.clock);
     this.clock = null;
     this.deadline = null;
     const actor = playerToAct(this.match.game);
+    if (this.chessClock) return this.runChessClock(actor);
     if (this.ended || actor === null || this.match.winner !== null) return;
     const g = this.match.game;
     const ms =
       g.phase === "cube-offered" || g.resignOffer ? this.deps.timings.cubeMs : this.deps.timings.turnMs;
     this.deadline = Date.now() + ms;
     this.clock = setTimeout(() => this.timeout(actor), ms);
+  }
+
+  /**
+   * Chess clock with delay: a decision (roll and move, a cube answer, a resign answer) first
+   * uses the delay; only the rest comes off the reserve when the decision ends. A decision
+   * without a choice (at most one way to play) costs no reserve. The flag falls when delay and
+   * reserve are used up: the match is lost.
+   */
+  private runChessClock(actor: Player | null): void {
+    const spec = this.chessClock!;
+    const now = Date.now();
+    const g = this.match.game;
+    const running = !this.ended && actor !== null && this.match.winner === null;
+    const key = running
+      ? `${actor}:${this.match.results.length}:${g.history.length}:${g.phase === "cube-offered" ? 1 : 0}:${g.resignOffer ? 1 : 0}`
+      : "";
+    const d = this.decision;
+    if (d && d.key !== key) {
+      if (!d.free)
+        this.reserve[d.seat] = Math.max(0, this.reserve[d.seat] - Math.max(0, now - d.start - spec.delayMs));
+      this.decision = null;
+    }
+    if (!running || actor === null) return;
+    if (!this.decision) this.decision = { seat: actor, start: now, key, free: false, checked: false };
+    const cur = this.decision;
+    // checker play without a choice is free (decided once the dice are known)
+    if (!cur.checked && g.phase === "moving") {
+      cur.checked = true;
+      try {
+        cur.free = turnOptions(g).length <= 1;
+      } catch {
+        cur.free = false;
+      }
+    }
+    this.deadline = cur.start + spec.delayMs + this.reserve[actor];
+    this.clock = setTimeout(() => this.flag(actor), Math.max(0, this.deadline - now));
+  }
+
+  /** The flag fell: the player lost on time. */
+  private flag(seat: Player): void {
+    if (this.ended) return;
+    this.deps.log?.(`room ${this.id}: seat ${seat} lost on time`);
+    this.reserve[seat] = 0;
+    this.forfeit(seat, "time");
+  }
+
+  private clockView(): ClockView | null {
+    const c = this.deps.timeControl;
+    if (!c || c === "relaxed") return null;
+    const d = this.decision;
+    return {
+      control: c,
+      delayMs: CLOCK_SPECS[c].delayMs,
+      reserve: [this.reserve[0], this.reserve[1]],
+      running: d?.seat ?? null,
+      since: d?.start ?? null,
+      free: d?.free ?? false,
+    };
   }
 
   /** Time is up: a bot acts for the player so the game goes on; repeated timeouts forfeit. */
@@ -599,6 +675,7 @@ export class MatchRoom {
       by,
       opening,
       deadline: this.deadline,
+      clock: this.clockView(),
       serverTime: Date.now(),
     };
   }
@@ -614,6 +691,7 @@ export class MatchRoom {
       unratedReason: this.deps.rating?.reason ?? null,
       fairness: { commit: this.commit },
       tournament: this.deps.tournament ?? null,
+      timeControl: this.deps.timeControl ?? "relaxed",
     });
   }
 

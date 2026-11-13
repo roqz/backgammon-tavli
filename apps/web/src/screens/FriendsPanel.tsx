@@ -1,7 +1,14 @@
 import { getVariant } from "@tavli/engine";
-import { type FriendView, type LiveMatch, MATCH_VARIANTS, type MatchVariantId } from "@tavli/protocol";
+import {
+  type FriendView,
+  type LiveMatch,
+  MATCH_VARIANTS,
+  type MatchVariantId,
+  type TimeControl,
+} from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { PlayerName } from "../components/PlayerName";
+import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Modal, Segmented } from "../components/ui";
 import { errorOf } from "../errors";
 import { lengthText, useT } from "../i18n";
@@ -153,8 +160,8 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
         <ChallengeDialog
           friend={challenging}
           onClose={() => setChallenging(null)}
-          onSend={(variant, length) => {
-            challengeFriend(challenging.id, variant, length);
+          onSend={(variant, length, clock) => {
+            challengeFriend(challenging.id, variant, length, { clock });
             setChallenging(null);
           }}
         />
@@ -206,11 +213,12 @@ function ChallengeDialog({
 }: {
   friend: FriendView;
   onClose: () => void;
-  onSend: (variant: MatchVariantId, length: MatchLength) => void;
+  onSend: (variant: MatchVariantId, length: MatchLength, clock: TimeControl) => void;
 }) {
   const t = useT();
   const [variant, setVariant] = useState<MatchVariantId>("backgammon");
   const [length, setLength] = useState<MatchLength>(3);
+  const [clock, setClock] = useState<TimeControl>("relaxed");
   return (
     <Modal onClose={onClose}>
       <h2 className="mb-3 text-lg font-semibold text-stone-100">
@@ -232,11 +240,12 @@ function ChallengeDialog({
             label: l === 0 ? `💰 ${t.money}` : String(l),
           }))}
         />
+        <TimeControlPicker value={clock} onChange={setClock} />
         <div className="flex gap-2">
           <Button className="flex-1" onClick={onClose}>
             {t.cancel}
           </Button>
-          <Button variant="primary" className="flex-[2]" onClick={() => onSend(variant, length)}>
+          <Button variant="primary" className="flex-[2]" onClick={() => onSend(variant, length, clock)}>
             {t.sendChallenge}
           </Button>
         </div>
@@ -277,7 +286,7 @@ export function ChallengePrompt() {
       </h2>
       <p className="mb-4 text-stone-300">
         {variantLabel(incoming.variant, t.tavliMatch)} · {lengthText(t, incoming.length)} ·{" "}
-        {incoming.from.rating}
+        {t.timeControls[incoming.clock]} · {incoming.from.rating}
       </p>
       <div className="flex gap-2">
         <Button className="flex-1" onClick={() => answerChallenge(incoming.id, false)}>

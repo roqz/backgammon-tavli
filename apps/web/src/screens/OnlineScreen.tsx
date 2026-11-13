@@ -4,9 +4,11 @@ import {
   MATCH_VARIANTS,
   type MatchVariantId,
   type RatingEntry,
+  type TimeControl,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { PlayerName } from "../components/PlayerName";
+import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Segmented, Tabs } from "../components/ui";
 import { errorOf, errorText } from "../errors";
 import { lengthText, useT } from "../i18n";
@@ -61,6 +63,7 @@ function PlayPanel() {
   const { lobby, status, lastError } = useOnline();
   const [variant, setVariant] = useState<MatchVariantId>("backgammon");
   const [length, setLength] = useState<MatchLength>(5);
+  const [clock, setClock] = useState<TimeControl>("relaxed");
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
@@ -137,11 +140,17 @@ function PlayPanel() {
           }))}
         />
         {length === 0 && <p className="-mt-2 text-xs text-stone-400">{t.moneyHint}</p>}
+        <TimeControlPicker value={clock} onChange={setClock} />
         <div className="grid gap-2 sm:grid-cols-2">
-          <Button variant="primary" className="py-3" disabled={!ready} onClick={() => queue(variant, length)}>
+          <Button
+            variant="primary"
+            className="py-3"
+            disabled={!ready}
+            onClick={() => queue(variant, length, clock)}
+          >
             ⚔ {t.findOpponent}
           </Button>
-          <Button className="py-3" disabled={!ready} onClick={() => createInvite(variant, length)}>
+          <Button className="py-3" disabled={!ready} onClick={() => createInvite(variant, length, clock)}>
             ✉ {t.inviteFriend}
           </Button>
         </div>

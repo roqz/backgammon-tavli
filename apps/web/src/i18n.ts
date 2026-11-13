@@ -194,6 +194,19 @@ const de = {
   forfeitConfirm: "Das ganze Match aufgeben? Es zählt als Niederlage.",
   reasonForfeit: "Gegner hat aufgegeben",
   reasonAbandoned: "Gegner nicht zurückgekehrt",
+  reasonTime: "Zeit abgelaufen",
+  timeControl: "Bedenkzeit",
+  timeControls: { relaxed: "Entspannt", standard: "Standard", blitz: "Blitz" },
+  timeControlHint: {
+    relaxed:
+      "60 Sekunden pro Zug. Läuft die Zeit ab, zieht der Computer für dich; nach drei Überschreitungen ist das Match verloren.",
+    standard:
+      "Schachuhr: 12 Sekunden pro Zug frei, darüber hinaus läuft deine Reserve von 2 Minuten pro Matchpunkt. Ist sie leer, ist das Match verloren.",
+    blitz:
+      "Schachuhr: 8 Sekunden pro Zug frei, darüber hinaus läuft deine Reserve von 1 Minute pro Matchpunkt. Ist sie leer, ist das Match verloren.",
+  },
+  clockYou: "Du",
+  clockFree: "Zug ohne Wahl – kostet keine Reserve",
   reasonEnded: "Session beendet – es zählt der Punktestand",
   money: "Geld",
   moneySession: "Geldspiel",
@@ -847,6 +860,19 @@ const en: Dict = {
   forfeitConfirm: "Forfeit the whole match? It counts as a loss.",
   reasonForfeit: "opponent forfeited",
   reasonAbandoned: "opponent did not return",
+  reasonTime: "time ran out",
+  timeControl: "Time control",
+  timeControls: { relaxed: "Relaxed", standard: "Standard", blitz: "Blitz" },
+  timeControlHint: {
+    relaxed:
+      "60 seconds per move. When time runs out the computer moves for you; after three timeouts the match is lost.",
+    standard:
+      "Chess clock: 12 seconds per move are free, beyond that your reserve of 2 minutes per match point runs. When it is empty the match is lost.",
+    blitz:
+      "Chess clock: 8 seconds per move are free, beyond that your reserve of 1 minute per match point runs. When it is empty the match is lost.",
+  },
+  clockYou: "You",
+  clockFree: "No choice this turn – costs no reserve",
   reasonEnded: "session ended – the score decides",
   money: "Money",
   moneySession: "Money game",

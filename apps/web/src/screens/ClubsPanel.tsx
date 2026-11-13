@@ -776,7 +776,9 @@ function LeaguePage({
                       className="px-3 py-1 text-sm"
                       disabled={status !== "ready"}
                       onClick={() =>
-                        challengeFriend(opp.id, league.variant, league.length as MatchLength, league.id)
+                        challengeFriend(opp.id, league.variant, league.length as MatchLength, {
+                          leagueId: league.id,
+                        })
                       }
                     >
                       ⚔ {t.challenge}
