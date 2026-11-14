@@ -67,6 +67,7 @@ export function Tabs<T extends string>({
   onChange,
   label,
   chips = false,
+  side = false,
 }: {
   value: T;
   options: readonly { value: T; label: ReactNode }[];
@@ -74,6 +75,8 @@ export function Tabs<T extends string>({
   label: string;
   /** One row of pills that scrolls sideways (top-level sections) instead of wrapping boxes. */
   chips?: boolean;
+  /** With chips: a vertical list on large screens (a section menu beside the content). */
+  side?: boolean;
 }) {
   const move = (dir: number) => {
     const i = options.findIndex((o) => o.value === value);
@@ -85,9 +88,10 @@ export function Tabs<T extends string>({
     <div
       role="tablist"
       aria-label={label}
+      aria-orientation={side ? "vertical" : undefined}
       className={
         chips
-          ? "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0"
+          ? `-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 ${side ? "lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0" : ""}`
           : "flex flex-wrap gap-2"
       }
     >
@@ -101,15 +105,17 @@ export function Tabs<T extends string>({
           tabIndex={o.value === value ? 0 : -1}
           onClick={() => onChange(o.value)}
           onKeyDown={(e) => {
-            if (e.key === "ArrowRight") move(1);
-            else if (e.key === "ArrowLeft") move(-1);
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") move(1);
+            else if (e.key === "ArrowLeft" || e.key === "ArrowUp") move(-1);
           }}
           className={
             chips
               ? `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-amber-400 ${
+                  side ? "lg:min-h-11 lg:justify-between lg:rounded-xl lg:border-0 " : ""
+                }${
                   o.value === value
-                    ? "bg-amber-100 font-semibold text-stone-950"
-                    : "border border-stone-800 bg-stone-900 text-stone-300 hover:border-stone-600"
+                    ? `bg-amber-100 font-semibold text-stone-950 ${side ? "lg:bg-amber-400/15 lg:text-amber-100" : ""}`
+                    : `border border-stone-800 bg-stone-900 text-stone-300 hover:border-stone-600 ${side ? "lg:bg-transparent lg:hover:bg-stone-800/70" : ""}`
                 }`
               : `rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-amber-400 ${
                   o.value === value

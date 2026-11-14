@@ -1,8 +1,9 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Button, Card } from "../components/ui";
+import { Card } from "../components/ui";
 import { useT } from "../i18n";
 import { type LegalPage, loadOperator, OPERATOR, SOURCE_URL } from "../legal";
 import { useSettings } from "../store/settings";
+import { Page, ScreenTitle } from "./AppShell";
 
 /** Imprint and privacy notice. Operator details come from the build (see legal.ts). */
 export function LegalScreen({ page, onBack }: { page: LegalPage; onBack: () => void }) {
@@ -14,19 +15,12 @@ export function LegalScreen({ page, onBack }: { page: LegalPage; onBack: () => v
   }, []);
   const lang = useSettings((s) => s.lang);
   return (
-    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 p-4 sm:p-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
-          ←
-        </Button>
-        <h1 className="flex-1 text-2xl font-bold text-amber-100">
-          {page === "imprint" ? t.imprint : t.privacy}
-        </h1>
-      </div>
+    <Page narrow>
+      <ScreenTitle title={page === "imprint" ? t.imprint : t.privacy} onBack={onBack} />
       <Card className="flex flex-col gap-4 text-sm leading-relaxed text-stone-300 [&_h2]:mt-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-stone-100">
         {page === "imprint" ? <Imprint lang={lang} /> : lang === "de" ? <PrivacyDe /> : <PrivacyEn />}
       </Card>
-    </div>
+    </Page>
   );
 }
 

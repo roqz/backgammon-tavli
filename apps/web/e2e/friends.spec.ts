@@ -48,7 +48,7 @@ test("friends via link, a challenge starts a match, a third player watches it li
   for (const p of [ann, ben]) {
     await p.getByRole("dialog").getByRole("button", { name: /Menü/ }).click();
     await newGame(p, "Online-Gegner");
-    await p.getByRole("button", { name: /^Backgammon/ }).click();
+    await p.getByRole("button", { name: "Backgammon", exact: true }).click();
     await p.getByRole("button", { name: /Gegner suchen/ }).click();
   }
   await expect(ann.getByText(/Backgammon · Spiel 1/)).toBeVisible({ timeout: 15_000 });

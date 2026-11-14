@@ -716,6 +716,32 @@ export interface AnalysisSummary {
   readonly averageLoss: number;
 }
 
+/** Public: how many players are connected right now. */
+export interface OnlineStats {
+  readonly online: number;
+  /** Of those, in a live match. */
+  readonly playing: number;
+}
+
+/** Players counted over the last day, week and month. */
+export interface PeriodCounts {
+  readonly d1: number;
+  readonly d7: number;
+  readonly d30: number;
+}
+
+/** Moderators: how many players there are and how many were active. */
+export interface PlayerStats extends OnlineStats {
+  readonly total: number;
+  /** With username and password. */
+  readonly registered: number;
+  readonly guests: number;
+  /** Seen (signed in, played, moved) within the period. */
+  readonly active: PeriodCounts;
+  /** Created within the period. */
+  readonly created: PeriodCounts;
+}
+
 /** Fair-play signals for moderators – hints to look closer, never automatic penalties. */
 export interface ModerationSignals {
   /** Checker play almost identical to the strong bot over many decisions. */

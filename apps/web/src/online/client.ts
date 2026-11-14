@@ -20,6 +20,7 @@ import type {
   LiveMatch,
   MatchDetailResponse,
   MatchVariantId,
+  OnlineStats,
   ProfileResponse,
   Progress,
   PublicLeagueResponse,
@@ -641,5 +642,8 @@ export const syncAccount = async () => {
   if (p) set({ profile: { ...p, name: acc.name, username: acc.username } });
   return acc;
 };
+/** Players connected right now (public, no profile needed). */
+export const fetchOnlineStats = () => rest<OnlineStats>("/api/online");
+
 export const fetchLeaderboard = (variant: MatchVariantId, pool: RatingPool = "normal") =>
   rest<LeaderboardEntry[]>(`/api/leaderboard?variant=${variant}${pool === "normal" ? "" : `&pool=${pool}`}`);

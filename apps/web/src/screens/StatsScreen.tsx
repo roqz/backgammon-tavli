@@ -5,6 +5,7 @@ import { Button, Card, Modal } from "../components/ui";
 import { useT } from "../i18n";
 import { type GameRecord, useArchive } from "../store/archive";
 import { AchievementsPanel } from "./AchievementsPanel";
+import { Page, ScreenTitle } from "./AppShell";
 
 interface Tally {
   played: number;
@@ -128,14 +129,10 @@ export function StatsScreen({
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-4 p-4 sm:p-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onBack} className="px-3">
-          ←
-        </Button>
-        <h1 className="flex-1 text-2xl font-bold text-amber-100">{t.stats}</h1>
+    <Page narrow>
+      <ScreenTitle title={t.stats} onBack={onBack}>
         <MatImport onImport={onImport} />
-      </div>
+      </ScreenTitle>
 
       <AchievementsPanel />
       {records.length === 0 ? (
@@ -227,7 +224,7 @@ export function StatsScreen({
           </div>
         </Modal>
       )}
-    </div>
+    </Page>
   );
 }
 

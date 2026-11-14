@@ -4,6 +4,7 @@ import type {
   MatchDetailResponse,
   ModerationInfo,
   ModerationSignals,
+  PlayerStats,
   PublicPlayerRef,
   TimingSummary,
 } from "@tavli/protocol";
@@ -49,9 +50,10 @@ export function AdminScreen({
 }) {
   const t = useT();
   const [token, setToken] = useState(readToken);
-  const [status, setStatus] = useState<"open" | "resolved" | "signals">("open");
+  const [status, setStatus] = useState<"open" | "resolved" | "signals" | "stats">("open");
   const [reports, setReports] = useState<AdminReport[] | null>(null);
   const [signals, setSignals] = useState<ModerationSignals | null>(null);
+  const [stats, setStats] = useState<PlayerStats | null>(null);
   const [players, setPlayers] = useState<Record<string, ModerationInfo>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -64,20 +66,19 @@ export function AdminScreen({
     }
   };
 
-  const load = (which: "open" | "resolved" | "signals" = status) =>
+  const load = (which: "open" | "resolved" | "signals" | "stats" = status) =>
     run(async () => {
       try {
         sessionStorage.setItem(TOKEN_KEY, token);
       } catch {
         // storage blocked: the token simply is not remembered
       }
-      if (which === "signals") {
-        setSignals(await adminApi<ModerationSignals>(token, "/api/admin/signals"));
-        setReports(null);
-      } else {
-        setReports(await adminApi<AdminReport[]>(token, `/api/admin/reports?status=${which}`));
-        setSignals(null);
-      }
+      setReports(null);
+      setSignals(null);
+      setStats(null);
+      if (which === "signals") setSignals(await adminApi<ModerationSignals>(token, "/api/admin/signals"));
+      else if (which === "stats") setStats(await adminApi<PlayerStats>(token, "/api/admin/stats"));
+      else setReports(await adminApi<AdminReport[]>(token, `/api/admin/reports?status=${which}`));
     });
 
   const inspect = (id: string) =>
@@ -131,12 +132,13 @@ export function AdminScreen({
             value={status}
             onChange={(v) => {
               setStatus(v);
-              if (reports || signals) void load(v);
+              if (reports || signals || stats) void load(v);
             }}
             options={[
               { value: "open", label: t.adminOpen },
               { value: "resolved", label: t.adminResolved },
               { value: "signals", label: t.adminSignals },
+              { value: "stats", label: t.adminStats },
             ]}
           />
           <Button variant="primary" disabled={token.length < 16} onClick={() => void load()}>
@@ -146,6 +148,7 @@ export function AdminScreen({
         {error && <p className="text-sm text-red-400">{error}</p>}
       </Card>
 
+      {stats && <StatsView stats={stats} />}
       {signals && (
         <SignalsView
           signals={signals}
@@ -283,6 +286,60 @@ function TimingLine({ a }: { a: TimingSummary }) {
       ⏱ {t.adminTypicalTime}: {a.typicalSeconds.toFixed(1)} s · {t.adminSpread}: {a.spread.toFixed(2)} ·{" "}
       {a.decisions} {t.adminDecisions}
     </p>
+  );
+}
+
+/** Player numbers: online now, totals, active and new players per period. */
+function StatsView({ stats }: { stats: PlayerStats }) {
+  const t = useT();
+  const tile = (label: string, value: number) => (
+    <div key={label} className="rounded-xl bg-stone-800/70 p-3 text-center">
+      <div className="text-2xl font-bold text-amber-100 tabular-nums">{value}</div>
+      <div className="text-xs text-stone-400">{label}</div>
+    </div>
+  );
+  const periods = (counts: PlayerStats["active"]) => [counts.d1, counts.d7, counts.d30];
+  return (
+    <Card className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-2">
+        {tile(t.adminOnlineNow, stats.online)}
+        {tile(t.adminPlaying, stats.playing)}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {tile(t.adminTotal, stats.total)}
+        {tile(t.adminRegistered, stats.registered)}
+        {tile(t.adminGuests, stats.guests)}
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-stone-400">
+            <th className="text-left font-medium" />
+            {t.adminPeriods.map((p) => (
+              <th key={p} className="text-right font-medium">
+                {p}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="tabular-nums text-stone-100">
+          {(
+            [
+              [t.adminActive, stats.active],
+              [t.adminCreated, stats.created],
+            ] as const
+          ).map(([label, counts]) => (
+            <tr key={label} className="border-t border-stone-800">
+              <th className="py-2 text-left font-medium text-stone-300">{label}</th>
+              {periods(counts).map((n, i) => (
+                <td key={t.adminPeriods[i]} className="py-2 text-right">
+                  {n}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
   );
 }
 

@@ -8,11 +8,11 @@ import { connect, joinInvite, watchMatch } from "./online/client";
 import { useOnline } from "./online/store";
 import { todoCount, useTodo } from "./online/todo";
 import { AdminScreen } from "./screens/AdminScreen";
-import { AppShell, type NavTarget, ScreenTitle } from "./screens/AppShell";
+import { AppShell, type NavTarget, Page, ScreenTitle } from "./screens/AppShell";
 import { CorrGameScreen } from "./screens/CorrScreens";
 import { ChallengePrompt, FriendLinkPrompt } from "./screens/FriendsPanel";
 import { GameScreen } from "./screens/GameScreen";
-import { HomeScreen, LearnScreen, PlayScreen, ProfileScreen } from "./screens/HomeScreens";
+import { HomeScreen, OfflineScreen, ProfileScreen, SetupScreen } from "./screens/HomeScreens";
 import { LegalScreen } from "./screens/LegalScreen";
 import { AccountScreen, OnlineScreen, type OnlineTab } from "./screens/OnlineScreen";
 import { PuzzleScreen } from "./screens/PuzzleScreen";
@@ -23,10 +23,11 @@ import { StatsScreen } from "./screens/StatsScreen";
 import { TutorialScreen } from "./screens/TutorialScreen";
 import { WatchScreen } from "./screens/WatchScreen";
 import type { GameRecord } from "./store/archive";
-import { useSettings } from "./store/settings";
+import { type PlayMode, useSettings } from "./store/settings";
 
 type Screen =
   | NavTarget
+  | "setup"
   | "account"
   | "game"
   | "settings"
@@ -41,7 +42,7 @@ type Screen =
   | "puzzle"
   | "corr";
 
-const NAV_SCREENS: readonly NavTarget[] = ["menu", "play", "online", "learn", "profile"];
+const NAV_SCREENS: readonly NavTarget[] = ["menu", "play", "online", "profile"];
 /** Screens shown inside the navigation shell, with the destination they belong to. */
 const SUB_SCREENS: Partial<Record<Screen, NavTarget>> = {
   settings: "profile",
@@ -49,7 +50,7 @@ const SUB_SCREENS: Partial<Record<Screen, NavTarget>> = {
   account: "profile",
   imprint: "profile",
   privacy: "profile",
-  rules: "learn",
+  rules: "play",
 };
 
 /** Invite links look like `…/?join=ABC234`. */
@@ -78,6 +79,8 @@ export function App() {
   const t = useT();
   /** Settings page to open (the profile's "board & dice" opens the looks directly). */
   const [settingsPage, setSettingsPage] = useState<SectionId | null>(null);
+  /** The kind of game the "setup" screen prepares. */
+  const [setupMode, setSetupMode] = useState<PlayMode>("bot");
   // Screen readers and hyphenation follow the app language.
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -208,10 +211,17 @@ export function App() {
     setOnlineFocus(null);
     setScreen("online");
   };
+  const openSetup = (mode: PlayMode) => {
+    setSetupMode(mode);
+    setScreen("setup");
+  };
   const nav = (target: NavTarget) => (target === "online" ? openOnline() : setScreen(target));
+  const setupHome: NavTarget = setupMode === "online" || setupMode === "corr" ? "online" : "play";
   const navActive: NavTarget | null = NAV_SCREENS.includes(screen as NavTarget)
     ? (screen as NavTarget)
-    : (SUB_SCREENS[screen] ?? null);
+    : screen === "setup"
+      ? setupHome
+      : (SUB_SCREENS[screen] ?? null);
   const inShell = navActive !== null;
 
   const content = (
@@ -220,23 +230,28 @@ export function App() {
         <HomeScreen
           todo={todo}
           onResume={() => setScreen("game")}
-          onPlay={(mode) => {
-            useSettings.getState().update({ playMode: mode });
-            setScreen("play");
-          }}
+          onSetup={openSetup}
           onStarted={() => setScreen("game")}
           onOnline={openOnline}
           onCorr={openCorr}
-          onProfile={() => setScreen("profile")}
           onPuzzle={() => setScreen("puzzle")}
         />
       )}
-      {screen === "play" && <PlayScreen onStarted={() => setScreen("game", true)} onCorr={openCorr} />}
-      {screen === "learn" && (
-        <LearnScreen
+      {screen === "play" && (
+        <OfflineScreen
+          onSetup={openSetup}
           onTutorial={() => setScreen("tutorial")}
           onPuzzle={() => setScreen("puzzle")}
           onRules={() => setScreen("rules")}
+        />
+      )}
+      {screen === "setup" && (
+        <SetupScreen
+          key={setupMode}
+          mode={setupMode}
+          onBack={() => setScreen(lastNav.current)}
+          onStarted={() => setScreen("game", true)}
+          onCorr={openCorr}
         />
       )}
       {screen === "profile" && (
@@ -261,15 +276,15 @@ export function App() {
       {(screen === "imprint" || screen === "privacy") && (
         <LegalScreen page={screen} onBack={() => setScreen("profile")} />
       )}
-      {screen === "rules" && <RulesScreen onBack={() => setScreen("learn")} />}
+      {screen === "rules" && <RulesScreen onBack={() => setScreen("play")} />}
       {screen === "admin" && (
         <AdminScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "admin")} />
       )}
       {screen === "settings" && (
-        <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 sm:p-6">
+        <Page narrow>
           <ScreenTitle title={t.settings} onBack={() => setScreen("profile")} />
           <SettingsPanel key={settingsPage ?? "index"} initial={settingsPage} />
-        </div>
+        </Page>
       )}
       {screen === "online" && (
         <OnlineScreen
@@ -278,6 +293,7 @@ export function App() {
           initialTab={onlineTab}
           todo={todo}
           onCorr={openCorr}
+          onSetup={openSetup}
           onWatch={(id) => {
             watchMatch(id);
             setScreen("watch");
@@ -321,7 +337,7 @@ export function App() {
         )}
         {screen === "watch" && <WatchScreen onBack={() => setScreen("online")} />}
         {screen === "tutorial" && (
-          <TutorialScreen onBack={() => setScreen("learn")} onPlay={() => setScreen("play")} />
+          <TutorialScreen onBack={() => setScreen("play")} onPlay={() => openSetup("bot")} />
         )}
         {screen === "puzzle" && <PuzzleScreen onBack={() => setScreen(lastNav.current)} />}
         {screen === "corr" && corrId && (

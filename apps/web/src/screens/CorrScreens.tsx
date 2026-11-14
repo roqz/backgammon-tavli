@@ -19,7 +19,9 @@ import {
 } from "@tavli/protocol";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Board } from "../board/Board";
+import { HEIGHT, WIDTH } from "../board/geometry";
 import { layoutFromBoard } from "../board/layout";
+import { SetupLayout } from "../components/Setup";
 import { Button, Card, Modal, Segmented } from "../components/ui";
 import { Choice, VariantPicker } from "../components/VariantPicker";
 import { errorOf } from "../errors";
@@ -42,9 +44,24 @@ import { useOnline } from "../online/store";
 import { useBoardTheme } from "../rewards";
 import { useSettings } from "../store/settings";
 import { EmoteButton } from "./GameExtras";
-import { Checker, usePortraitPhone } from "./GameScreen";
-import { StartBar } from "./MenuScreens";
-import { useSidewaysBoardStyle } from "./PhoneGame";
+import { Checker } from "./GameScreen";
+import {
+  ActionArea,
+  FitBoard,
+  fullscreenSupported,
+  IconButton,
+  MoreSheet,
+  type PhoneAction,
+  PhoneStage,
+  PlayerBar,
+  type PlayerInfo,
+  type SheetItem,
+  toggleFullscreen,
+  useFullscreen,
+  usePhoneLayout,
+} from "./PhoneGame";
+import { RulesDrawer } from "./RulesPanel";
+import { SettingsDrawer } from "./SettingsPanel";
 
 type T = ReturnType<typeof useT>;
 const variantLabel = (v: MatchVariantId, tavli: string) => (v === "tavli" ? tavli : getVariant(v).name);
@@ -112,8 +129,19 @@ export function CorrSetup({ onOpen }: { onOpen: (id: string) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
+  const seek = () => {
+    setError(null);
+    void seekCorr(variant, length, hours)
+      .then((r) => (r.game ? onOpen(r.game.id) : setNotice(t.corrSeekWaiting)))
+      .catch((e: unknown) => setError(errorOf(t, e)));
+  };
   return (
-    <>
+    <SetupLayout
+      variant={variant}
+      summary={`${variantLabel(variant, t.tavliMatch)} · ${lengthText(t, length)} · ${corrPace(t, hours)}`}
+      action={{ label: `🔍 ${t.corrSeek}`, onClick: seek }}
+      secondary={<Button onClick={() => setInviting(true)}>♟ {t.corrInviteFriend}</Button>}
+    >
       <p className="text-sm text-stone-400">{t.corrSeekHint}</p>
       <CorrSettings
         variant={variant}
@@ -133,18 +161,6 @@ export function CorrSetup({ onOpen }: { onOpen: (id: string) => void }) {
           {notice}
         </p>
       )}
-      <StartBar
-        label={`🔍 ${t.corrSeek}`}
-        summary={`${variantLabel(variant, t.tavliMatch)} · ${lengthText(t, length)} · ${corrPace(t, hours)}`}
-        onClick={() => {
-          setError(null);
-          void seekCorr(variant, length, hours)
-            .then((r) => (r.game ? onOpen(r.game.id) : setNotice(t.corrSeekWaiting)))
-            .catch((e: unknown) => setError(errorOf(t, e)));
-        }}
-      >
-        <Button onClick={() => setInviting(true)}>♟ {t.corrInviteFriend}</Button>
-      </StartBar>
       {inviting && (
         <CorrInvite
           onClose={() => setInviting(false)}
@@ -154,7 +170,7 @@ export function CorrSetup({ onOpen }: { onOpen: (id: string) => void }) {
           }}
         />
       )}
-    </>
+    </SetupLayout>
   );
 }
 
@@ -165,8 +181,6 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
   const me = useOnline((s) => s.profile?.id);
   const [list, setList] = useState<CorrView[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [seeking, setSeeking] = useState(false);
   const [seeks, setSeeks] = useState<CorrSeek[]>([]);
   const [reload, setReload] = useState(0);
 
@@ -205,17 +219,6 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
           {error}
         </p>
       )}
-      <Card className="flex flex-col gap-2">
-        <p className="text-xs text-stone-500">{t.corrHint}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="primary" className="flex-1" onClick={() => setSeeking(true)}>
-            🔍 {t.corrSeek}
-          </Button>
-          <Button className="flex-1" onClick={() => setCreating(true)}>
-            ♟ {t.corrInviteFriend}
-          </Button>
-        </div>
-      </Card>
       {seeks.length > 0 && (
         <Card>
           <h2 className="mb-1 font-semibold text-stone-300">{t.corrSeeks}</h2>
@@ -303,76 +306,13 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
           </ul>
         </Card>
       )}
-      {list !== null && games.length === 0 && (
-        <p className="text-center text-sm text-stone-500">{t.corrNone}</p>
-      )}
-      {seeking && (
-        <CorrSeekDialog
-          onClose={() => setSeeking(false)}
-          onDone={(gameId) => {
-            setSeeking(false);
-            setReload((n) => n + 1);
-            if (gameId) onOpen(gameId);
-          }}
-        />
-      )}
-      {creating && (
-        <CorrInvite
-          onClose={() => setCreating(false)}
-          onSent={() => {
-            setCreating(false);
-            setReload((n) => n + 1);
-          }}
-        />
+      {list !== null && games.length === 0 && seeks.length === 0 && (
+        <Card className="flex flex-col gap-2">
+          <p className="text-stone-300">{t.corrNone}</p>
+          <p className="text-sm text-stone-400">{t.corrHint}</p>
+        </Card>
       )}
     </div>
-  );
-}
-
-function CorrSeekDialog({
-  onClose,
-  onDone,
-}: {
-  onClose: () => void;
-  onDone: (gameId: string | null) => void;
-}) {
-  const t = useT();
-  const [variant, setVariant] = useState<MatchVariantId>("backgammon");
-  const [length, setLength] = useState<MatchLength>(3);
-  const [hours, setHours] = useState<CorrHours>(8);
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <Modal onClose={onClose}>
-      <h2 className="mb-3 text-lg font-semibold text-stone-100">🔍 {t.corrSeek}</h2>
-      <div className="flex flex-col gap-4">
-        <p className="text-xs text-stone-500">{t.corrSeekHint}</p>
-        <CorrSettings
-          variant={variant}
-          setVariant={setVariant}
-          length={length}
-          setLength={setLength}
-          hours={hours}
-          setHours={setHours}
-        />
-        {error && <p className="text-sm text-red-400">{error}</p>}
-      </div>
-      <div className="mt-4 flex gap-2">
-        <Button className="flex-1" onClick={onClose}>
-          {t.cancel}
-        </Button>
-        <Button
-          variant="primary"
-          className="flex-[2]"
-          onClick={() =>
-            void seekCorr(variant, length, hours)
-              .then((r) => onDone(r.game?.id ?? null))
-              .catch((e: unknown) => setError(errorOf(t, e)))
-          }
-        >
-          🔍 {t.corrSeek}
-        </Button>
-      </div>
-    </Modal>
   );
 }
 
@@ -503,18 +443,21 @@ const ago = (t: T, at: number): string => {
   return rtf.format(Math.round(min / 60 / 24), "day");
 };
 
-/** One correspondence game: the board, the player's decisions as requests, the deadline. */
+/** One correspondence game: the same board layouts as a live game; moves are sent as requests. */
 export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void }) {
   const t = useT();
   const theme = useBoardTheme();
   const settings = useSettings();
-  const portrait = usePortraitPhone();
-  const boardStyle = useSidewaysBoardStyle();
+  const phone = usePhoneLayout();
+  const fullscreen = useFullscreen();
   const version = useOnline((s) => s.corrVersion);
   const [view, setView] = useState<CorrView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resigning, setResigning] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: version re-runs the fetch
   useEffect(() => {
@@ -557,161 +500,327 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
   const seat = view.seat ?? 0;
   const mine = view.status === "active" && view.toAct === seat;
   const rules = getVariant(g.variant);
-  const name = (p: Player) => view.players[p].name;
+  const name = (p: Player) => (p === seat ? `${view.players[p].name} (${t.tYou})` : view.players[p].name);
+  const canEmote = view.seat !== null && (view.status === "active" || view.status === "finished");
+  const emote = canEmote && (
+    <EmoteButton
+      onSend={(e) =>
+        void corrEmote(id, e)
+          .then(setView)
+          .catch((err: unknown) => setError(errorOf(t, err)))
+      }
+    />
+  );
+  const title = `${rules.name} · ${lengthText(t, view.length)} · ${corrPace(t, view.hours)}`;
+  const status =
+    view.status === "finished"
+      ? view.winner === null
+        ? `🏁 ${t.corrEnded}`
+        : `🏁 ${view.players[view.winner].name} ${t.winsMatch}`
+      : mine
+        ? `${t.yourTurn} · ⏳ ${timeLeft(t, view.deadline)}`
+        : `${t.corrWaitingFor.replace("{name}", view.players[view.toAct ?? 0].name)} · ⏳ ${timeLeft(t, view.deadline)}`;
+
+  const actions: PhoneAction[] = [];
+  if (mine && g.phase === "rolling") {
+    if (canDouble(g))
+      actions.push({
+        id: "double",
+        label: `${t.double} (${g.cube.value * 2})`,
+        onClick: () => void send([{ type: "double" }]),
+        disabled: busy,
+        variant: "secondary",
+      });
+    actions.push({
+      id: "roll",
+      label: t.roll,
+      onClick: () => void send([{ type: "roll" }]),
+      disabled: busy,
+      variant: "primary",
+    });
+  } else if (mine && g.phase === "moving") {
+    actions.push({
+      id: "undo",
+      label: t.undo,
+      icon: "↶",
+      onClick: () => void send([{ type: "undo" }]),
+      disabled: busy || !canUndo(g),
+      variant: "secondary",
+    });
+    actions.push({
+      id: "confirm",
+      label: t.confirm,
+      onClick: () => void send([{ type: "confirm" }]),
+      disabled: busy || !canConfirm(g),
+      variant: "primary",
+    });
+  } else if (mine && g.phase === "cube-offered") {
+    actions.push({
+      id: "drop",
+      label: t.drop,
+      onClick: () => void send([{ type: "drop" }]),
+      disabled: busy,
+      variant: "danger",
+    });
+    actions.push({
+      id: "take",
+      label: `${t.take} (${g.cube.value * 2})`,
+      onClick: () => void send([{ type: "take" }]),
+      disabled: busy,
+      variant: "primary",
+    });
+  }
+
+  const info = (p: Player): PlayerInfo => ({
+    name: name(p),
+    pips: settings.showPips ? pipCount(rules, g.board, p) : null,
+    score: m.score[p],
+    active: view.status === "active" && view.toAct === p,
+    checker: <Checker player={p} />,
+  });
+  const bubble = view.emote && (view.emote.seat === seat || settings.showEmotes) && (
+    <p
+      role="status"
+      className={`pointer-events-none absolute inset-x-2 top-2 z-10 mx-auto w-fit max-w-[90%] rounded-2xl px-3 py-1.5 text-sm shadow-lg ${
+        view.emote.seat === seat ? "bg-amber-400 text-stone-950" : "bg-stone-100 text-stone-900"
+      }`}
+    >
+      <span className="font-semibold">
+        {view.emote.seat === seat ? t.tYou : view.players[view.emote.seat].name}:
+      </span>{" "}
+      {t.emote[view.emote.id]} <span className="text-xs opacity-60">· {ago(t, view.emote.at)}</span>
+    </p>
+  );
+  const errorLine = error && (
+    <p
+      role="alert"
+      className="pointer-events-none absolute inset-x-2 bottom-2 z-10 mx-auto w-fit rounded-full bg-stone-900/90 px-3 py-1 text-xs text-red-300 shadow-lg"
+    >
+      ⚠ {error}
+    </p>
+  );
+  const board = (rotated: boolean) => (
+    <>
+      <Board
+        state={g}
+        layout={layout}
+        theme={theme}
+        interactive={mine && g.phase === "moving" && !busy}
+        openingDice={null}
+        numbersFor={settings.showNumbers ? seat : null}
+        viewer={seat}
+        onMoves={(chain: Move[]) => void send(chain.map((move) => ({ type: "move", move })))}
+        rotated={rotated}
+        screenTurned={!!phone?.turned}
+        mirrored={settings.homeLeft}
+      />
+      {bubble}
+      {errorLine}
+    </>
+  );
+  const resignDialog = resigning && (
+    <Modal onClose={() => setResigning(false)}>
+      <p className="mb-4 text-stone-100">{t.corrResignConfirm}</p>
+      <div className="flex gap-2">
+        <Button className="flex-1" onClick={() => setResigning(false)}>
+          {t.cancel}
+        </Button>
+        <Button
+          variant="danger"
+          className="flex-1"
+          onClick={() => {
+            setResigning(false);
+            void abandonCorr(id).then(setView);
+          }}
+        >
+          🏳 {t.resign}
+        </Button>
+      </div>
+    </Modal>
+  );
+  const drawers = (
+    <>
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <RulesDrawer open={rulesOpen} onClose={() => setRulesOpen(false)} initial={g.variant} />
+    </>
+  );
+
+  if (phone) {
+    const sideways = phone.kind === "landscape";
+    const bottom: Player = seat;
+    const top: Player = seat === 0 ? 1 : 0;
+    const closeThen = (fn: () => void) => () => {
+      setMoreOpen(false);
+      fn();
+    };
+    const items: SheetItem[] = [
+      { id: "rules", label: t.rules, icon: "📖", onClick: closeThen(() => setRulesOpen(true)) },
+      { id: "settings", label: t.settings, icon: "⚙", onClick: closeThen(() => setSettingsOpen(true)) },
+    ];
+    if (phone.turned || phone.kind === "portrait")
+      items.push({
+        id: "turn",
+        label: phone.turned ? t.turnAuto : t.turnLandscape,
+        icon: "⟳",
+        onClick: closeThen(() => settings.update({ gameOrientation: phone.turned ? "auto" : "landscape" })),
+      });
+    if (fullscreenSupported())
+      items.push({
+        id: "fullscreen",
+        label: fullscreen ? t.exitFullscreen : t.fullscreen,
+        icon: "⛶",
+        onClick: closeThen(() => void toggleFullscreen(sideways)),
+      });
+    if (view.status === "active")
+      items.push({
+        id: "resign",
+        label: t.resign,
+        icon: "🏳",
+        danger: true,
+        onClick: closeThen(() => setResigning(true)),
+      });
+    const back = (
+      <IconButton label={t.back} onClick={onBack}>
+        ←
+      </IconButton>
+    );
+    const more = (
+      <IconButton label={t.more} onClick={() => setMoreOpen(true)}>
+        ⋯
+      </IconButton>
+    );
+    const statusLine = <span className={sideways ? "" : "truncate"}>{status}</span>;
+    return (
+      <PhoneStage turned={phone.turned} sideways={sideways}>
+        {sideways ? (
+          <div className="flex h-full gap-2 py-2">
+            <aside aria-label={title} className="flex w-14 shrink-0 flex-col items-center gap-2">
+              {back}
+              <PlayerBar card p={info(top)} testId="player-top" />
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center">{emote}</div>
+              <PlayerBar card p={info(bottom)} testId="player-bottom" />
+              {more}
+            </aside>
+            <FitBoard ratio={WIDTH / HEIGHT}>{board(false)}</FitBoard>
+            <section aria-label={t.game} className="flex w-32 shrink-0 flex-col gap-2">
+              <ActionArea actions={actions} status={statusLine} vertical />
+            </section>
+          </div>
+        ) : (
+          <div className="flex h-full flex-col gap-2 px-2 pt-2 pb-6">
+            <header className="flex shrink-0 items-center gap-2">
+              {back}
+              <div className="min-w-0 flex-1 text-center leading-tight">
+                <div className="truncate text-sm font-semibold text-stone-100">♟ {rules.name}</div>
+                <div className="truncate text-xs text-stone-400">
+                  {lengthText(t, view.length)} · {corrPace(t, view.hours)}
+                </div>
+              </div>
+              {emote}
+              {more}
+            </header>
+            <PlayerBar p={info(top)} testId="player-top" />
+            <FitBoard ratio={HEIGHT / WIDTH}>{board(true)}</FitBoard>
+            <PlayerBar p={info(bottom)} testId="player-bottom" />
+            <ActionArea actions={actions} status={statusLine} vertical={false} />
+          </div>
+        )}
+        <MoreSheet
+          open={moreOpen}
+          onClose={() => setMoreOpen(false)}
+          side={sideways ? "right" : "bottom"}
+          items={items}
+        >
+          <p className="text-sm text-stone-300">{title}</p>
+        </MoreSheet>
+        {resignDialog}
+        {drawers}
+      </PhoneStage>
+    );
+  }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 p-2 sm:p-4">
-      <div className="flex items-center justify-between gap-2 px-1">
-        <Button variant="ghost" onClick={onBack} className="px-3 py-1.5 text-sm" aria-label={t.back}>
-          ← <span className="hidden sm:inline">{t.back}</span>
-        </Button>
-        <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
-          ♟ <span className="font-semibold text-stone-200">{rules.name}</span> · {lengthText(t, view.length)}{" "}
-          · {corrPace(t, view.hours)}
-        </div>
-        <div className="flex items-center gap-1">
-          {view.seat !== null && (view.status === "active" || view.status === "finished") && (
-            <EmoteButton
-              onSend={(e) =>
-                void corrEmote(id, e)
-                  .then(setView)
-                  .catch((err: unknown) => setError(errorOf(t, err)))
-              }
-            />
-          )}
-          {view.status === "active" ? (
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-2 sm:p-4 lg:flex-row lg:items-start">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="shrink-0 px-3 py-1.5 text-sm"
+            aria-label={t.back}
+          >
+            ← <span className="hidden sm:inline">{t.back}</span>
+          </Button>
+          <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
+            ♟ <span className="font-semibold text-stone-200">{rules.name}</span> ·{" "}
+            {lengthText(t, view.length)} · {corrPace(t, view.hours)}
+          </div>
+          <div className="flex items-center gap-2">
+            {emote}
             <Button
               variant="ghost"
               className="px-3 py-1.5 text-lg"
-              onClick={() => setResigning(true)}
-              aria-label={t.resign}
+              onClick={() => setRulesOpen(true)}
+              aria-label={t.rules}
+              title={t.rules}
             >
-              🏳
-            </Button>
-          ) : (
-            <span className="w-10" />
-          )}
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        {([0, 1] as Player[]).map((p) => (
-          <div
-            key={p}
-            className={`flex items-center gap-2 rounded-lg border px-2 py-1 ${view.toAct === p ? "border-amber-400/60 bg-amber-400/10" : "border-stone-800 bg-stone-900/70"}`}
-          >
-            <Checker player={p} />
-            <span className="min-w-0 flex-1 truncate text-stone-100">
-              {name(p)}
-              {p === seat && ` (${t.tYou})`}
-            </span>
-            {settings.showPips && (
-              <span className="text-xs text-stone-500">{pipCount(rules, g.board, p)}</span>
-            )}
-            <span className="text-base font-bold tabular-nums">{m.score[p]}</span>
-          </div>
-        ))}
-      </div>
-      {view.emote && (view.emote.seat === seat || settings.showEmotes) && (
-        <p
-          role="status"
-          className={`w-fit max-w-full rounded-2xl px-3 py-1.5 text-sm shadow-lg ${
-            view.emote.seat === seat
-              ? "self-end rounded-br-sm bg-amber-400 text-stone-950"
-              : "self-start rounded-tl-sm bg-stone-100 text-stone-900"
-          }`}
-        >
-          <span className="font-semibold">{view.emote.seat === seat ? t.tYou : name(view.emote.seat)}:</span>{" "}
-          {t.emote[view.emote.id]} <span className="text-xs opacity-60">· {ago(t, view.emote.at)}</span>
-        </p>
-      )}
-      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
-        <Board
-          state={g}
-          layout={layout}
-          theme={theme}
-          interactive={mine && g.phase === "moving" && !busy}
-          openingDice={null}
-          numbersFor={settings.showNumbers ? seat : null}
-          viewer={seat}
-          onMoves={(chain: Move[]) => void send(chain.map((move) => ({ type: "move", move })))}
-          rotated={portrait}
-          mirrored={settings.homeLeft}
-        />
-      </div>
-      <p className="text-center text-sm text-stone-300" aria-live="polite">
-        {view.status === "finished"
-          ? view.winner === null
-            ? `🏁 ${t.corrEnded}`
-            : `🏁 ${name(view.winner)} ${t.winsMatch}`
-          : mine
-            ? `${t.yourTurn} · ⏳ ${timeLeft(t, view.deadline)}`
-            : `${t.corrWaitingFor.replace("{name}", name(view.toAct ?? 0))} · ⏳ ${timeLeft(t, view.deadline)}`}
-      </p>
-      {error && (
-        <p role="alert" className="text-center text-sm text-red-400">
-          {error}
-        </p>
-      )}
-      {mine && (
-        <div className="flex flex-wrap justify-center gap-2">
-          {g.phase === "rolling" && (
-            <>
-              {canDouble(g) && (
-                <Button disabled={busy} onClick={() => void send([{ type: "double" }])}>
-                  {t.double} ({g.cube.value * 2})
-                </Button>
-              )}
-              <Button variant="primary" disabled={busy} onClick={() => void send([{ type: "roll" }])}>
-                {t.roll}
-              </Button>
-            </>
-          )}
-          {g.phase === "moving" && (
-            <>
-              <Button disabled={busy || !canUndo(g)} onClick={() => void send([{ type: "undo" }])}>
-                ↶ {t.undo}
-              </Button>
-              <Button
-                variant="primary"
-                disabled={busy || !canConfirm(g)}
-                onClick={() => void send([{ type: "confirm" }])}
-              >
-                {t.confirm}
-              </Button>
-            </>
-          )}
-          {g.phase === "cube-offered" && (
-            <>
-              <Button variant="danger" disabled={busy} onClick={() => void send([{ type: "drop" }])}>
-                {t.drop}
-              </Button>
-              <Button variant="primary" disabled={busy} onClick={() => void send([{ type: "take" }])}>
-                {t.take} ({g.cube.value * 2})
-              </Button>
-            </>
-          )}
-        </div>
-      )}
-      {resigning && (
-        <Modal onClose={() => setResigning(false)}>
-          <p className="mb-4 text-stone-100">{t.corrResignConfirm}</p>
-          <div className="flex gap-2">
-            <Button className="flex-1" onClick={() => setResigning(false)}>
-              {t.cancel}
+              📖
             </Button>
             <Button
-              variant="danger"
-              className="flex-1"
-              onClick={() => {
-                setResigning(false);
-                void abandonCorr(id).then(setView);
-              }}
+              variant="ghost"
+              className="px-3 py-1.5 text-lg"
+              onClick={() => setSettingsOpen(true)}
+              aria-label={t.settings}
+              title={t.settings}
             >
-              🏳 {t.resign}
+              ⚙
             </Button>
           </div>
-        </Modal>
-      )}
+        </div>
+        <div className="grid grid-cols-2 gap-2 lg:hidden">
+          <PlayerBar p={info(0)} />
+          <PlayerBar p={info(1)} />
+        </div>
+        <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+          {board(false)}
+        </div>
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+          <p className="text-lg font-medium text-stone-100" aria-live="polite">
+            {status}
+          </p>
+          <div className="flex flex-wrap justify-end gap-2">
+            {actions.map((a) => (
+              <Button
+                key={a.id}
+                variant={
+                  a.variant === "primary" ? "primary" : a.variant === "danger" ? "danger" : "secondary"
+                }
+                disabled={a.disabled}
+                onClick={a.onClick}
+              >
+                {a.icon && `${a.icon} `}
+                {a.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <aside className="flex w-full flex-col gap-3 lg:w-72">
+        <div className="hidden flex-col gap-2 rounded-2xl border border-stone-800 bg-stone-900/80 p-4 lg:flex">
+          <h2 className="text-sm font-medium text-stone-400">{t.score}</h2>
+          <PlayerBar p={info(otherSeat(seat))} />
+          <PlayerBar p={info(seat)} />
+        </div>
+        {view.status === "active" && (
+          <Button variant="ghost" className="text-sm" onClick={() => setResigning(true)}>
+            🏳 {t.resign}
+          </Button>
+        )}
+      </aside>
+      {resignDialog}
+      {drawers}
     </div>
   );
 }
+
+const otherSeat = (seat: Player): Player => (seat === 0 ? 1 : 0);

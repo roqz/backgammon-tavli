@@ -49,20 +49,26 @@ export const tapMove = async (page: Page): Promise<boolean> => {
   return true;
 };
 
-/** Goes to one of the five main destinations. */
-export const nav = (page: Page, name: "Start" | "Spielen" | "Online" | "Lernen" | "Profil") =>
+/** Goes to one of the four main destinations. */
+export const nav = (page: Page, name: "Start" | "Offline" | "Online" | "Profil") =>
   page
     .getByRole("navigation", { name: "Hauptnavigation" })
     .getByRole("button", { name: new RegExp(`^${name}`) })
     .click();
 
-/** Opens the "Play" screen on a mode (the last mode is remembered, so it is always chosen). */
+/** Opens the setup of a new game: local games under "Offline", the others under "Online". */
 export const newGame = async (
   page: Page,
   mode: "Computer" | "Zu zweit" | "Online-Gegner" | "Fernpartie" = "Computer",
 ) => {
-  await nav(page, "Spielen");
-  await page.getByRole("button", { name: new RegExp(`^${mode}`) }).click();
+  await nav(page, mode === "Computer" || mode === "Zu zweit" ? "Offline" : "Online");
+  const card = {
+    Computer: /^Gegen Computer/,
+    "Zu zweit": /^Zu zweit/,
+    "Online-Gegner": /^Live-Match/,
+    Fernpartie: /^Fernpartie(?!n)/,
+  }[mode];
+  await page.getByRole("button", { name: card }).click();
 };
 
 /** The online account page (profile → account & data). */

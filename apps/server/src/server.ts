@@ -282,6 +282,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       if (!store.healthy()) throw new HttpError(503, "database unavailable");
       return { ok: true, rooms: lobby.activeRooms };
     }
+    if (req.method === "GET" && path === "/api/online") return lobby.onlineStats;
     if (req.method === "POST" && path === "/api/players") {
       if (!allowRegister(limitKey(req))) throw new HttpError(429, "too many requests");
       const body = NameSchema.safeParse(await readJson(req));
@@ -402,6 +403,8 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       if (!allowAdmin(limitKey(req))) throw new HttpError(429, "too many requests");
       requireAdmin(req);
       if (req.method === "GET" && path === "/api/admin/signals") return store.signals();
+      if (req.method === "GET" && path === "/api/admin/stats")
+        return { ...store.playerStats(), ...lobby.onlineStats };
       if (req.method === "GET" && path === "/api/admin/reports")
         return store.reports(url.searchParams.get("status") !== "resolved");
       let a = /^\/api\/admin\/reports\/(\d{1,12})\/resolve$/.exec(path);

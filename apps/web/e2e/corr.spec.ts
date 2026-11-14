@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { nav, onlineGuest, tapMove } from "./helpers";
+import { nav, newGame, onlineGuest, tapMove } from "./helpers";
 
 /** Ann and Ben become friends through Ann's friend link. */
 const befriend = async (ann: Page, ben: Page) => {
@@ -18,13 +18,14 @@ test("correspondence: invite a friend, accept, and the player to move makes a mo
   const ben = await onlineGuest(browser, "Ben");
   await befriend(ann, ben);
 
-  await ann.getByRole("tab", { name: "Fernpartien" }).click();
+  await newGame(ann, "Fernpartie");
   await ann.getByRole("button", { name: /Freund einladen/ }).click();
   await ann.getByRole("dialog").getByRole("button", { name: "1", exact: true }).click();
   await ann
     .getByRole("dialog")
     .getByRole("button", { name: /Anfrage senden/ })
     .click();
+  await nav(ann, "Online");
   await expect(ann.getByText("Gesendete Einladungen")).toBeVisible();
 
   await nav(ben, "Online");
@@ -58,14 +59,11 @@ test("correspondence: two strangers find each other with the same search", async
   const kim = await onlineGuest(browser, "Kim");
   const lou = await onlineGuest(browser, "Lou");
   for (const p of [kim, lou]) {
-    await p.getByRole("tab", { name: "Fernpartien" }).click();
-    // the correspondence search (not the live one of the play tab)
-    await p.getByRole("button", { name: "🔍 Gegner suchen" }).click();
-    const dialog = p.getByRole("dialog");
-    await dialog.getByRole("button", { name: /^Hypergammon/ }).click();
-    await dialog.getByRole("button", { name: "1", exact: true }).click();
-    await dialog.getByRole("button", { name: "1 Std./Zug" }).click();
-    await dialog.getByRole("button", { name: /Gegner suchen/ }).click();
+    await newGame(p, "Fernpartie");
+    await p.getByRole("button", { name: /^Hypergammon/ }).click();
+    await p.getByRole("button", { name: "1", exact: true }).click();
+    await p.getByRole("button", { name: "1 Std./Zug" }).click();
+    await p.getByRole("button", { name: /Gegner suchen/ }).click();
   }
   // Kim waits, Lou's search matches and opens the game
   await expect(lou.getByText(/Hypergammon/).first()).toBeVisible({ timeout: 10_000 });

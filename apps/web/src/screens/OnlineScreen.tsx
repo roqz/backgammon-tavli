@@ -10,6 +10,7 @@ import {
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { PlayerName } from "../components/PlayerName";
+import { SetupLayout } from "../components/Setup";
 import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Segmented, Tabs } from "../components/ui";
 import { Choice, VariantPicker } from "../components/VariantPicker";
@@ -26,14 +27,14 @@ import {
   syncAccount,
   unqueue,
 } from "../online/client";
+import { useOnlinePlayers } from "../online/presence";
 import { useOnline } from "../online/store";
 import type { Todo } from "../online/todo";
 import type { GameRecord } from "../store/archive";
-import { ScreenTitle } from "./AppShell";
+import { ActionCard, CountBadge, GLYPH, Glyph, Page, ScreenTitle, SectionTitle } from "./AppShell";
 import { ClubsPanel } from "./ClubsPanel";
 import { CorrPanel } from "./CorrScreens";
 import { FriendsPanel, LivePanel } from "./FriendsPanel";
-import { StartBar } from "./MenuScreens";
 import { AuthForm, PlayerSheet, ProfileTab } from "./OnlineProfile";
 import { TournamentPanel } from "./TournamentPanel";
 
@@ -44,6 +45,7 @@ export const inviteLink = (code: string) => `${location.origin}${location.pathna
 export function StatusPill() {
   const t = useT();
   const status = useOnline((s) => s.status);
+  const players = useOnlinePlayers();
   const color = {
     ready: "bg-emerald-500",
     connecting: "bg-amber-400 animate-pulse",
@@ -60,6 +62,9 @@ export function StatusPill() {
     <span className="inline-flex items-center gap-2 rounded-full bg-stone-800 px-3 py-1 text-xs text-stone-300">
       <span className={`h-2 w-2 rounded-full ${color}`} />
       {label}
+      {status === "ready" && players !== null && (
+        <span className="text-stone-400">· {t.playersOnline.replace("{n}", String(players))}</span>
+      )}
     </span>
   );
 }
@@ -129,7 +134,20 @@ export function PlayPanel() {
     );
   }
   return (
-    <>
+    <SetupLayout
+      variant={variant}
+      summary={`${variantName(variant, t.tavliMatch)} · ${lengthText(t, length)}`}
+      action={{
+        label: `⚔ ${t.findOpponent}`,
+        disabled: !ready,
+        onClick: () => queue(variant, length, clock),
+      }}
+      secondary={
+        <Button disabled={!ready} onClick={() => createInvite(variant, length, clock)}>
+          ✉ {t.inviteFriend}
+        </Button>
+      }
+    >
       <VariantPicker value={variant} onChange={setVariant} variants={MATCH_VARIANTS} />
       <Choice
         label={t.matchLength}
@@ -167,17 +185,7 @@ export function PlayPanel() {
           {lastError === "banned" ? t.banned : errorText(t, lastError)}
         </p>
       )}
-      <StartBar
-        label={`⚔ ${t.findOpponent}`}
-        summary={`${variantName(variant, t.tavliMatch)} · ${lengthText(t, length)}`}
-        disabled={!ready}
-        onClick={() => queue(variant, length, clock)}
-      >
-        <Button disabled={!ready} onClick={() => createInvite(variant, length, clock)}>
-          ✉ {t.inviteFriend}
-        </Button>
-      </StartBar>
-    </>
+    </SetupLayout>
   );
 }
 
@@ -277,12 +285,13 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
 
 export type OnlineTab = "corr" | "friends" | "tournaments" | "clubs" | "live" | "ranking";
 
-/** Online sections; matches themselves start from the "Play" screen. */
+/** Everything with other people: new live and correspondence games, then the sections. */
 export function OnlineScreen({
   onReplay,
   tournament,
   onWatch,
   onCorr,
+  onSetup,
   initialTab,
   todo,
 }: {
@@ -294,11 +303,14 @@ export function OnlineScreen({
   onWatch: (matchId: string) => void;
   /** Opens a correspondence game. */
   onCorr: (id: string) => void;
+  /** Opens the setup of a new live or correspondence game. */
+  onSetup: (mode: "online" | "corr") => void;
   /** Counters on the tabs. */
   todo?: Todo | null;
 }) {
   const t = useT();
   const { profile, serverUrl } = useOnline();
+  const lobby = useOnline((s) => s.lobby);
   const challenge = useOnline((s) => s.incoming !== null);
   const [tab, setTab] = useState<OnlineTab>(tournament ? "tournaments" : (initialTab ?? "corr"));
 
@@ -311,62 +323,110 @@ export function OnlineScreen({
     }
   }, [profileId, serverUrl]);
 
-  const count = (n: number) =>
-    n > 0 && (
-      <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-bold text-stone-950 tabular-nums">
-        {n}
-      </span>
-    );
+  const count = (n: number) => <CountBadge n={n} />;
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 sm:p-6">
-      <ScreenTitle title={t.navOnline}>{profile && <StatusPill />}</ScreenTitle>
+    <Page>
+      <ScreenTitle title={t.navOnline} subtitle={t.onlineIntro}>
+        {profile && <StatusPill />}
+      </ScreenTitle>
       {!serverUrl ? (
         <Card>
           <p className="text-stone-300">{t.noServer}</p>
         </Card>
       ) : !profile ? (
-        <AuthForm />
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10">
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-stone-300">{t.onlineNeedsProfile}</p>
+            <AuthForm />
+          </div>
+          <ul className="flex flex-col gap-3">
+            {(
+              [
+                [GLYPH.live, t.liveMatch, t.modeOnlineDetail],
+                [GLYPH.mail, t.modeCorr, t.modeCorrDetail],
+                [GLYPH.ranking, `${t.tournamentsTab} · ${t.clubsTab}`, t.onlineFeatureEvents],
+                [GLYPH.people, t.friendsTab, t.onlineFeatureFriends],
+              ] as const
+            ).map(([d, title, detail]) => (
+              <li key={title} className="flex items-center gap-4 rounded-2xl border border-stone-800/70 p-4">
+                <span
+                  aria-hidden
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-amber-300"
+                >
+                  <Glyph d={d} />
+                </span>
+                <span>
+                  <span className="block font-semibold text-stone-100">{title}</span>
+                  <span className="block text-sm text-stone-400">{detail}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : (
-        <>
-          <Tabs
-            chips
-            label={t.navOnline}
-            value={tab}
-            onChange={setTab}
-            options={[
-              {
-                value: "corr",
-                label: (
-                  <>
-                    {t.corrTab}
-                    {count((todo?.corrTurn.length ?? 0) + (todo?.corrInvites.length ?? 0))}
-                  </>
-                ),
-              },
-              {
-                value: "friends",
-                label: (
-                  <>
-                    {t.friendsTab}
-                    {count((todo?.friendRequests ?? 0) + (challenge ? 1 : 0))}
-                  </>
-                ),
-              },
-              { value: "tournaments", label: t.tournamentsTab },
-              { value: "clubs", label: t.clubsTab },
-              { value: "live", label: t.liveTab },
-              { value: "ranking", label: t.leaderboard },
-            ]}
-          />
-          {tab === "friends" && <FriendsPanel onWatch={onWatch} />}
-          {tab === "live" && <LivePanel onWatch={onWatch} />}
-          {tab === "corr" && <CorrPanel onOpen={onCorr} />}
-          {tab === "clubs" && <ClubsPanel onCorr={onCorr} />}
-          {tab === "tournaments" && <TournamentPanel focus={tournament} onReplay={onReplay} />}
-          {tab === "ranking" && <LeaderboardPanel onReplay={onReplay} />}
-        </>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+          <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-24">
+            <section aria-labelledby="online-new" className="flex flex-col gap-3">
+              <SectionTitle id="online-new">{t.newGameTitle}</SectionTitle>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                <ActionCard
+                  icon={<Glyph d={GLYPH.live} />}
+                  title={t.liveMatch}
+                  detail={lobby.kind === "queued" ? t.searching : t.modeOnlineSub}
+                  dot={lobby.kind !== "idle"}
+                  onClick={() => onSetup("online")}
+                />
+                <ActionCard
+                  icon={<Glyph d={GLYPH.mail} />}
+                  title={t.modeCorr}
+                  detail={t.modeCorrSub}
+                  onClick={() => onSetup("corr")}
+                />
+              </div>
+            </section>
+            <Tabs
+              chips
+              side
+              label={t.navOnline}
+              value={tab}
+              onChange={setTab}
+              options={[
+                {
+                  value: "corr",
+                  label: (
+                    <>
+                      {t.corrTab}
+                      {count((todo?.corrTurn.length ?? 0) + (todo?.corrInvites.length ?? 0))}
+                    </>
+                  ),
+                },
+                {
+                  value: "friends",
+                  label: (
+                    <>
+                      {t.friendsTab}
+                      {count((todo?.friendRequests ?? 0) + (challenge ? 1 : 0))}
+                    </>
+                  ),
+                },
+                { value: "tournaments", label: t.tournamentsTab },
+                { value: "clubs", label: t.clubsTab },
+                { value: "live", label: t.liveTab },
+                { value: "ranking", label: t.leaderboard },
+              ]}
+            />
+          </div>
+          <div className="flex min-w-0 flex-col gap-4">
+            {tab === "friends" && <FriendsPanel onWatch={onWatch} />}
+            {tab === "live" && <LivePanel onWatch={onWatch} />}
+            {tab === "corr" && <CorrPanel onOpen={onCorr} />}
+            {tab === "clubs" && <ClubsPanel onCorr={onCorr} />}
+            {tab === "tournaments" && <TournamentPanel focus={tournament} onReplay={onReplay} />}
+            {tab === "ranking" && <LeaderboardPanel onReplay={onReplay} />}
+          </div>
+        </div>
       )}
-    </div>
+    </Page>
   );
 }
 
@@ -381,9 +441,9 @@ export function AccountScreen({
   const t = useT();
   const profile = useOnline((s) => s.profile);
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 sm:p-6">
+    <Page narrow>
       <ScreenTitle title={t.accountAndData} onBack={onBack} />
       {profile ? <ProfileTab onReplay={onReplay} /> : <AuthForm />}
-    </div>
+    </Page>
   );
 }

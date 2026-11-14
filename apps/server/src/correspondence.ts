@@ -14,12 +14,12 @@ import {
 } from "@tavli/engine";
 import {
   type ClientAction,
+  type CorrEmote,
   type CorrSeek,
   type CorrStatus,
   type CorrView,
-  MAX_CORR_SEEKS,
-  type CorrEmote,
   type EmoteId,
+  MAX_CORR_SEEKS,
   type MatchVariantId,
   type ServerMessage,
 } from "@tavli/protocol";

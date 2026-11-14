@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("tutorial: the first lesson is solved by making the 5 point", async ({ page }) => {
-  await nav(page, "Lernen");
+  await nav(page, "Offline");
   await page.getByRole("button", { name: /Tutorial/ }).click();
   await expect(page.getByText("1 · Steine ziehen")).toBeVisible();
   // the hint shows arrows; playing until the dice are used finishes the turn
@@ -33,7 +33,7 @@ test("daily puzzle: a move is checked and the result recorded", async ({ page })
 });
 
 test("the rule book shows board diagrams", async ({ page }) => {
-  await nav(page, "Lernen");
+  await nav(page, "Offline");
   await page.getByRole("button", { name: /Regeln/ }).click();
   await expect(page.getByText(/Weiß zieht gegen den Uhrzeigersinn/)).toBeVisible();
   await page.getByRole("button", { name: "Plakoto" }).click();

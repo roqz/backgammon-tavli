@@ -211,6 +211,11 @@ export class Lobby {
     this.sweepTimer = setInterval(() => this.sweep(), this.mm.sweepMs);
   }
 
+  /** Players connected right now, and how many of them are in a live match. */
+  get onlineStats(): { online: number; playing: number } {
+    return { online: this.connByPlayer.size, playing: this.roomByPlayer.size };
+  }
+
   get activeRooms(): number {
     return new Set(this.roomByPlayer.values()).size;
   }

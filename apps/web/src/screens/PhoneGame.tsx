@@ -73,9 +73,10 @@ export function PhoneStage({
       }
     : {
         inset: 0,
-        paddingTop: inset("top"),
+        // sideways the home indicator sits below the board: the same space above keeps it centred
+        paddingTop: sideways ? `max(${inset("top")}, ${inset("bottom")})` : inset("top"),
         paddingRight: sideways ? ends("left", "right") : inset("right"),
-        paddingBottom: inset("bottom"),
+        paddingBottom: sideways ? `max(${inset("top")}, ${inset("bottom")})` : inset("bottom"),
         paddingLeft: sideways ? ends("left", "right") : inset("left"),
       };
   return (
@@ -270,14 +271,13 @@ export function ActionArea({
       <div className="truncate px-1 text-center text-sm text-stone-300" aria-live="polite">
         {status}
       </div>
-      {actions.length > 0 && (
-        <div className="flex h-14 gap-2">
-          {others.map((a) => (
-            <ActionButton key={a.id} a={a} className="flex-1" />
-          ))}
-          {main && <ActionButton a={main} className={others.length ? "flex-[1.6]" : "flex-1"} />}
-        </div>
-      )}
+      {/* the row keeps its height without actions, so the board does not change size between turns */}
+      <div className="flex h-14 gap-2">
+        {others.map((a) => (
+          <ActionButton key={a.id} a={a} className="flex-1" />
+        ))}
+        {main && <ActionButton a={main} className={others.length ? "flex-[1.6]" : "flex-1"} />}
+      </div>
     </div>
   );
 }

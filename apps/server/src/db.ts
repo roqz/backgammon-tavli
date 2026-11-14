@@ -11,6 +11,8 @@ import type {
   MatchVariantId,
   ModerationInfo,
   ModerationSignals,
+  PeriodCounts,
+  PlayerStats,
   ProfileResponse,
   PublicPlayer,
   PublicPlayerRef,
@@ -1204,6 +1206,25 @@ export class Store {
   }
 
   /** Fair-play signals for the moderation screen. */
+  /** Player numbers for moderators: totals, active and new players per period. */
+  playerStats(): Omit<PlayerStats, "online" | "playing"> {
+    const count = (sql: string, ...args: string[]) => (this.db.prepare(sql).get(...args) as { n: number }).n;
+    const period = (column: string): PeriodCounts => {
+      const n = (days: number) =>
+        count(`SELECT COUNT(*) AS n FROM players WHERE ${column} >= ?`, this.since(days));
+      return { d1: n(1), d7: n(7), d30: n(30) };
+    };
+    const total = count("SELECT COUNT(*) AS n FROM players");
+    const registered = count("SELECT COUNT(*) AS n FROM players WHERE username IS NOT NULL");
+    return {
+      total,
+      registered,
+      guests: total - registered,
+      active: period("COALESCE(last_seen, created_at)"),
+      created: period("created_at"),
+    };
+  }
+
   signals(): ModerationSignals {
     const since = this.since(SIGNALS.days);
     const botLike = (

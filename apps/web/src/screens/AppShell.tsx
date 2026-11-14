@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { useT } from "../i18n";
 
-/** The five destinations of the main navigation. */
-export type NavTarget = "menu" | "play" | "online" | "learn" | "profile";
+/** The four destinations of the main navigation. */
+export type NavTarget = "menu" | "play" | "online" | "profile";
 
 const ICON: Record<NavTarget, ReactNode> = {
   menu: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
@@ -21,7 +21,6 @@ const ICON: Record<NavTarget, ReactNode> = {
       <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
     </>
   ),
-  learn: <path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3zM21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z" />,
   profile: (
     <>
       <circle cx="12" cy="8" r="4" />
@@ -52,9 +51,22 @@ export function Logo({ className = "h-9 w-9" }: { className?: string }) {
   return <img src="./icon.svg" alt="" className={className} />;
 }
 
+export function CountBadge({ n, className = "" }: { n: number; className?: string }) {
+  if (n <= 0) return null;
+  return (
+    <span
+      className={`flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-bold text-stone-950 tabular-nums ${className}`}
+    >
+      <span className="sr-only">: </span>
+      {n}
+    </span>
+  );
+}
+
 /**
- * Screens outside a game: the content plus the main navigation, a bar at the bottom on phones held
- * upright, a rail on the left on wide screens and phones held sideways ("rail:" variant).
+ * Screens outside a game: the content plus the main navigation. Phones held upright have a bar at
+ * the bottom, phones held sideways a rail on the left ("short:"), tablets and desktops a bar at the
+ * top ("wide:").
  */
 export function AppShell({
   active,
@@ -73,17 +85,51 @@ export function AppShell({
     ["menu", t.navHome],
     ["play", t.navPlay],
     ["online", t.navOnline],
-    ["learn", t.navLearn],
     ["profile", t.navProfile],
   ];
+  const badge = (id: NavTarget) => (id === "online" ? onlineBadge : 0);
   return (
-    <div className="min-h-dvh pb-[calc(4.5rem+env(safe-area-inset-bottom))] rail:pr-[env(safe-area-inset-right)] rail:pb-0 rail:pl-[calc(5.5rem+env(safe-area-inset-left))]">
+    <div className="min-h-dvh pb-[calc(4.5rem+env(safe-area-inset-bottom))] short:pr-[env(safe-area-inset-right)] short:pb-0 short:pl-[calc(5.5rem+env(safe-area-inset-left))] wide:pb-0">
+      <header className="sticky top-0 z-20 hidden border-b border-stone-800/80 bg-stone-950/95 backdrop-blur wide:block">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-8">
+          <button
+            type="button"
+            onClick={() => onNav("menu")}
+            className="flex items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-amber-400"
+          >
+            <Logo className="h-9 w-9" />
+            <span className="text-lg font-bold tracking-tight text-amber-100">{t.appTitle}</span>
+          </button>
+          <nav aria-label={t.mainNav} className="ml-auto flex items-center gap-1">
+            {items.map(([id, label]) => {
+              const current = active === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-current={current ? "page" : undefined}
+                  onClick={() => onNav(id)}
+                  className={`relative flex h-10 items-center gap-2 rounded-xl px-4 text-sm focus-visible:outline-2 focus-visible:outline-amber-400 ${
+                    current
+                      ? "bg-amber-400/15 font-semibold text-amber-200"
+                      : "text-stone-300 hover:bg-stone-800/70 hover:text-stone-100"
+                  }`}
+                >
+                  <NavIcon target={id} className="h-5 w-5" />
+                  {label}
+                  <CountBadge n={badge(id)} />
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      </header>
       {children}
       <nav
         aria-label={t.mainNav}
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-stone-800 bg-stone-950 px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] rail:inset-x-auto rail:inset-y-0 rail:left-0 rail:flex rail:w-[calc(5.5rem+env(safe-area-inset-left))] rail:flex-col rail:items-center rail:justify-center rail:gap-1 rail:border-t-0 rail:border-r rail:pt-0 rail:pb-0 rail:pl-[env(safe-area-inset-left)]"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-stone-800 bg-stone-950 px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] short:inset-x-auto short:inset-y-0 short:left-0 short:flex short:w-[calc(5.5rem+env(safe-area-inset-left))] short:flex-col short:items-center short:justify-center short:gap-1 short:border-t-0 short:border-r short:pt-0 short:pb-0 short:pl-[env(safe-area-inset-left)] wide:hidden"
       >
-        <Logo className="mb-3 hidden h-10 w-10 rail:block" />
+        <Logo className="mb-3 hidden h-10 w-10 short:block" />
         {items.map(([id, label]) => {
           const current = active === id;
           return (
@@ -92,20 +138,15 @@ export function AppShell({
               type="button"
               aria-current={current ? "page" : undefined}
               onClick={() => onNav(id)}
-              className={`relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] focus-visible:outline-2 focus-visible:outline-amber-400 rail:h-14 rail:w-16 ${
+              className={`relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] focus-visible:outline-2 focus-visible:outline-amber-400 short:h-14 short:w-16 ${
                 current
-                  ? "font-semibold text-amber-300 rail:bg-amber-400/15"
+                  ? "font-semibold text-amber-300 short:bg-amber-400/15"
                   : "text-stone-400 hover:text-stone-200"
               }`}
             >
               <NavIcon target={id} />
               {label}
-              {id === "online" && onlineBadge > 0 && (
-                <span className="absolute top-0.5 left-1/2 ml-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-bold text-stone-950 tabular-nums">
-                  <span className="sr-only">: </span>
-                  {onlineBadge}
-                </span>
-              )}
+              <CountBadge n={badge(id)} className="absolute top-0.5 left-1/2 ml-1.5" />
             </button>
           );
         })}
@@ -114,25 +155,49 @@ export function AppShell({
   );
 }
 
-/** Title row of a screen in the shell, with an optional back button. */
+/** The frame of every page in the shell: the same width, gutters and spacing everywhere. */
+export function Page({
+  narrow = false,
+  className = "",
+  children,
+}: {
+  /** Forms and lists that read best in one column. */
+  narrow?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`mx-auto flex w-full flex-col gap-6 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-8 short:pt-4 wide:px-8 wide:pt-10 ${
+        narrow ? "max-w-3xl" : "max-w-6xl"
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Title of a page: the same on every screen, with an optional back button, subtitle and actions. */
 export function ScreenTitle({
   title,
+  subtitle,
   onBack,
   children,
 }: {
   title: string;
+  subtitle?: ReactNode;
   onBack?: () => void;
   children?: ReactNode;
 }) {
   const t = useT();
   return (
-    <header className="flex items-center gap-2">
+    <header className="flex min-h-12 items-center gap-3">
       {onBack && (
         <button
           type="button"
           onClick={onBack}
           aria-label={t.back}
-          className="-ml-2 flex h-11 w-11 items-center justify-center rounded-xl text-stone-200 hover:bg-stone-800 focus-visible:outline-2 focus-visible:outline-amber-400"
+          className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-stone-200 hover:bg-stone-800 focus-visible:outline-2 focus-visible:outline-amber-400"
         >
           <svg
             viewBox="0 0 24 24"
@@ -147,11 +212,110 @@ export function ScreenTitle({
           </svg>
         </button>
       )}
-      <h1 className="min-w-0 flex-1 truncate text-2xl font-bold text-amber-100 sm:text-3xl">{title}</h1>
+      <div className="min-w-0 flex-1">
+        <h1 className="truncate text-2xl font-bold tracking-tight text-amber-100 wide:text-3xl">{title}</h1>
+        {subtitle && <p className="line-clamp-2 text-sm text-stone-400">{subtitle}</p>}
+      </div>
       {children}
     </header>
   );
 }
+
+/** A heading above a group of cards or rows. */
+export function SectionTitle({ id, children }: { id?: string; children: ReactNode }) {
+  return (
+    <h2 id={id} className="px-1 text-xs font-semibold uppercase tracking-wide text-stone-400">
+      {children}
+    </h2>
+  );
+}
+
+/** A large choice: icon, title, one line of detail; opens the next step. */
+export function ActionCard({
+  icon,
+  title,
+  detail,
+  onClick,
+  badge = 0,
+  dot = false,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail: ReactNode;
+  onClick: () => void;
+  badge?: number;
+  dot?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex min-h-20 items-center gap-4 rounded-2xl border border-stone-800 bg-stone-900/80 p-4 text-left transition-colors hover:border-amber-400/50 hover:bg-stone-900 focus-visible:outline-2 focus-visible:outline-amber-400 wide:min-h-28 wide:p-5"
+    >
+      <span
+        aria-hidden
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-amber-300 group-hover:bg-amber-400/15"
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2 text-base font-semibold text-stone-50 wide:text-lg">
+          {title}
+          {dot && <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden />}
+          <CountBadge n={badge} />
+        </span>
+        <span className="block text-sm text-stone-400">{detail}</span>
+      </span>
+      <svg
+        viewBox="0 0 24 24"
+        className="h-5 w-5 shrink-0 text-stone-500 group-hover:text-amber-300"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        aria-hidden="true"
+      >
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </button>
+  );
+}
+
+/** Stroke icons of the menus. */
+export function Glyph({ d, className = "h-6 w-6" }: { d: string; className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+export const GLYPH = {
+  computer: "M4 5h16v11H4zM9 20h6M12 16v4",
+  people:
+    "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 3.5a4 4 0 0 1 0 7.5M22 21a7 7 0 0 0-4-6.3",
+  live: "M13 2L4 14h7l-1 8 9-12h-7z",
+  mail: "M3 6h18v12H3zM3 6l9 7 9-7",
+  puzzle:
+    "M10 3h4v3a2 2 0 1 0 4 0h3v5h-3a2 2 0 1 0 0 4h3v6h-6v-3a2 2 0 1 0-4 0v3H4v-6h3a2 2 0 1 0 0-4H4V6h6z",
+  school: "M2 9l10-5 10 5-10 5zM6 11v5c3 2.5 9 2.5 12 0v-5M22 9v6",
+  book: "M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3zM21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z",
+  stats: "M4 20V10M10 20V4M16 20v-7M22 20H2",
+  ranking: "M4 18h4v-5H4zM10 18h4V7h-4zM16 18h4v-8h-4z",
+  board: "M4 5h16v14H4zM12 5v14M4 12h4M16 12h4",
+  settings:
+    "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1",
+  shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+  play: "M7 4v16l13-8z",
+} as const;
 
 /** Rows of a navigation list (profile, settings). */
 export function ListRow({

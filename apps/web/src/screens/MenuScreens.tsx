@@ -11,7 +11,8 @@ import {
   type VariantId,
   XGID_VARIANTS,
 } from "@tavli/engine";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { SetupLayout } from "../components/Setup";
 import { Toggle } from "../components/ui";
 import { Choice, VariantPicker, variantShortName } from "../components/VariantPicker";
 import { type Dict, useT } from "../i18n";
@@ -202,7 +203,7 @@ export function LocalSetup({ opponent, onStarted }: { opponent: "bot" | "human";
   ].join(" · ");
 
   return (
-    <>
+    <SetupLayout variant={variant} summary={summary} action={{ label: t.start, onClick: start }}>
       <VariantPicker
         value={variant}
         variants={LOCAL_VARIANTS}
@@ -291,39 +292,8 @@ export function LocalSetup({ opponent, onStarted }: { opponent: "bot" | "human";
         </div>
       )}
       {xgidError && <p className="text-sm text-red-400">{xgidError}</p>}
-      <StartBar label={t.start} summary={summary} onClick={start} />
-    </>
+    </SetupLayout>
   );
 }
 
 const lengthText = (t: Dict, length: number): string => `${length} ${length === 1 ? t.point : t.points}`;
-
-/** The main action of a setup form, kept in reach above the navigation bar. */
-export function StartBar({
-  label,
-  summary,
-  onClick,
-  disabled,
-  children,
-}: {
-  label: string;
-  summary?: string;
-  onClick: () => void;
-  disabled?: boolean;
-  children?: ReactNode;
-}) {
-  return (
-    <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-col gap-2 border-t border-stone-800 bg-stone-950 px-4 py-3 rail:bottom-0 rail:pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:mx-0 sm:rounded-b-2xl">
-      {children}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onClick}
-        className="flex min-h-14 flex-col items-center justify-center rounded-2xl bg-amber-500 px-4 py-2 text-lg font-bold text-stone-950 hover:bg-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 disabled:bg-stone-700 disabled:text-stone-400"
-      >
-        {label}
-        {summary && <span className="text-xs font-medium text-stone-800">{summary}</span>}
-      </button>
-    </div>
-  );
-}

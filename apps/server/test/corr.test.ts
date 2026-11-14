@@ -132,7 +132,12 @@ describe("correspondence games", () => {
     const b = await register(server, "Ben");
     const c = await register(server, "Cid");
     await friends(a, b);
-    const inv = await post<CorrView>(a, "/api/corr", { playerId: b.id, variant: "portes", length: 1, hours: 72 });
+    const inv = await post<CorrView>(a, "/api/corr", {
+      playerId: b.id,
+      variant: "portes",
+      length: 1,
+      hours: 72,
+    });
     // not before the game runs
     await expect(post(a, `/api/corr/${inv.id}/emote`, { emote: "hi" })).rejects.toThrow(/409/);
     await post<CorrView>(b, `/api/corr/${inv.id}/answer`, { accept: true });

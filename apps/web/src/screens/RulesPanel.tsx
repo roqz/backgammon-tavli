@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Drawer } from "../components/Drawer";
-import { Button } from "../components/ui";
 import { useT } from "../i18n";
 import { RULES, RULES_TOPICS, type RulesTopic } from "../rules";
 import { useSettings } from "../store/settings";
+import { Page, ScreenTitle } from "./AppShell";
 import { RuleDiagram } from "./RuleDiagram";
 
 /** The rule book: one chapter per variant plus basics and app notes. */
@@ -78,14 +78,9 @@ export function RulesDrawer({
 export function RulesScreen({ onBack }: { onBack: () => void }) {
   const t = useT();
   return (
-    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 p-4 sm:p-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
-          ←
-        </Button>
-        <h1 className="text-2xl font-bold text-amber-100">📖 {t.rules}</h1>
-      </div>
+    <Page narrow>
+      <ScreenTitle title={t.rules} onBack={onBack} />
       <RulesPanel />
-    </div>
+    </Page>
   );
 }

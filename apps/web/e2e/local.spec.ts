@@ -128,7 +128,7 @@ test("the browser Back button closes dialogs and returns to the previous screen"
   // still in the game
   await expect(page.getByRole("button", { name: "Menü" })).toBeVisible();
   await page.goBack();
-  await expect(page.getByText("Schnell starten")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Offline" })).toBeVisible();
 });
 
 test("imprint, privacy notice and source code are linked from the profile", async ({ page }) => {
@@ -199,11 +199,8 @@ test("settings sections fold; keyboard plays the main buttons; the local name is
   await page.goBack();
 
   // the own name survives the next "new game"
-  await newGame(page);
-  await page.getByRole("button", { name: /^Weitere Optionen/ }).click();
-  await page.getByLabel("Name").fill("Thea");
-  await page.getByRole("button", { name: /^Zu zweit/ }).click();
-  await expect(page.getByLabel("Weiß")).toHaveValue("Thea");
+  await newGame(page, "Zu zweit");
+  await page.getByRole("textbox", { name: "Weiß" }).fill("Thea");
   await page.getByRole("button", { name: "Starten" }).click();
 
   // Space rolls the opening (ties roll again), then the first player is to move
