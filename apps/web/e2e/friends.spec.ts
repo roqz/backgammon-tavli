@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { onlineGuest } from "./helpers";
+import { nav, newGame, onlineGuest } from "./helpers";
 
 test("friends via link, a challenge starts a match, a third player watches it live", async ({ browser }) => {
   test.setTimeout(120_000);
@@ -47,13 +47,12 @@ test("friends via link, a challenge starts a match, a third player watches it li
   await ben.getByRole("button", { name: /Sofort aufgeben/ }).click();
   for (const p of [ann, ben]) {
     await p.getByRole("dialog").getByRole("button", { name: /Menü/ }).click();
-    await p.getByRole("button", { name: /Online spielen/ }).click();
-    await p.getByRole("tab", { name: "Spielen" }).click();
-    await p.getByRole("button", { name: "Backgammon", exact: true }).click();
+    await newGame(p, "Online-Gegner");
+    await p.getByRole("button", { name: /^Backgammon/ }).click();
     await p.getByRole("button", { name: /Gegner suchen/ }).click();
   }
   await expect(ann.getByText(/Backgammon · Spiel 1/)).toBeVisible({ timeout: 15_000 });
-  await wes.getByRole("tab", { name: "Spielen" }).click();
+  await nav(wes, "Online");
   await wes.getByRole("tab", { name: "Live" }).click();
   await wes.getByRole("button", { name: /Ada .*Bodo|Bodo .*Ada/ }).click();
   await expect(wes.getByText(/Zuschauen/)).toBeVisible();

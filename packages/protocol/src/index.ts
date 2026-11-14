@@ -425,6 +425,15 @@ export interface CorrView {
   readonly updatedAt: string;
   /** Set for a game of a correspondence league. */
   readonly league: { readonly id: string; readonly name: string } | null;
+  /** Latest quick message in the game (only the newest is kept). */
+  readonly emote: CorrEmote | null;
+}
+
+export interface CorrEmote {
+  readonly seat: Player;
+  readonly id: EmoteId;
+  /** Epoch ms. */
+  readonly at: number;
 }
 
 export const CorrCreateSchema = z.object({
@@ -435,6 +444,7 @@ export const CorrCreateSchema = z.object({
 export const CorrSeekSchema = z.object({ ...matchSetup, hours: corrHours });
 export const CorrAnswerSchema = z.object({ accept: z.boolean() });
 export const CorrActionSchema = z.object({ action: ClientActionSchema });
+export const CorrEmoteSchema = z.object({ emote: z.enum(EMOTES) });
 
 /** A running match that can be watched. */
 export interface LiveMatch {

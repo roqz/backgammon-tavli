@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { onlineGuest, prepare, tapMove } from "./helpers";
+import { nav, newGame, onlineGuest, openAccount, prepare, tapMove } from "./helpers";
 
 test("two players: invite link, play, resign, verified dice, leaderboard", async ({ browser }) => {
   const alice = await onlineGuest(browser, "Alice");
   const bob = await onlineGuest(browser, "Bob");
 
+  await newGame(alice, "Online-Gegner");
   await alice.getByRole("button", { name: "1", exact: true }).click();
   await alice.getByRole("button", { name: /Freund einladen/ }).click();
   const code = ((await alice.locator("p.font-mono").textContent()) ?? "").trim();
@@ -39,7 +40,7 @@ test("two players: invite link, play, resign, verified dice, leaderboard", async
   await expect(bob.getByText(/Würfel nachgeprüft/)).toBeVisible();
 
   await alice.locator("[role=dialog]").getByRole("button", { name: /Menü/ }).click();
-  await alice.getByRole("button", { name: /Online spielen/ }).click();
+  await nav(alice, "Online");
   await alice.getByRole("tab", { name: "Rangliste", exact: true }).click();
   await expect(alice.getByText("Alice (du)")).toBeVisible();
 });
@@ -47,7 +48,7 @@ test("two players: invite link, play, resign, verified dice, leaderboard", async
 test("a guest can secure an account and log in on a second device", async ({ browser }) => {
   const first = await onlineGuest(browser, "Carla");
   const username = `carla_${Date.now().toString(36)}`;
-  await first.getByRole("tab", { name: "Profil", exact: true }).click();
+  await openAccount(first);
   await first.getByLabel("Benutzername").fill(username);
   await first.getByLabel("Passwort").fill("e2e-password");
   await first
@@ -60,18 +61,19 @@ test("a guest can secure an account and log in on a second device", async ({ bro
   const second = await ctx.newPage();
   await prepare(second);
   await second.goto("/");
-  await second.getByRole("button", { name: /Online spielen/ }).click();
+  await nav(second, "Online");
   await second.getByRole("button", { name: "Anmelden" }).first().click();
   await second.getByLabel("Benutzername").fill(username.toUpperCase());
   await second.getByLabel("Passwort").fill("e2e-password");
   await second.locator("button", { hasText: "Anmelden" }).last().click();
   await expect(second.getByText("Verbunden")).toBeVisible();
-  await expect(second.getByText("Carla")).toBeVisible();
+  await nav(second, "Profil");
+  await expect(second.getByRole("heading", { name: "Carla" })).toBeVisible();
 });
 
 test("a guest can export their data and delete the profile", async ({ browser }) => {
   const page = await onlineGuest(browser, "Zoe");
-  await page.getByRole("tab", { name: "Profil", exact: true }).click();
+  await openAccount(page);
   await page.getByText(/Daten & Konto/).click();
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: /Meine Daten herunterladen/ }).click();

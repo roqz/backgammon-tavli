@@ -49,13 +49,35 @@ export const tapMove = async (page: Page): Promise<boolean> => {
   return true;
 };
 
+/** Goes to one of the five main destinations. */
+export const nav = (page: Page, name: "Start" | "Spielen" | "Online" | "Lernen" | "Profil") =>
+  page
+    .getByRole("navigation", { name: "Hauptnavigation" })
+    .getByRole("button", { name: new RegExp(`^${name}`) })
+    .click();
+
+/** Opens the "Play" screen on a mode (the last mode is remembered, so it is always chosen). */
+export const newGame = async (
+  page: Page,
+  mode: "Computer" | "Zu zweit" | "Online-Gegner" | "Fernpartie" = "Computer",
+) => {
+  await nav(page, "Spielen");
+  await page.getByRole("button", { name: new RegExp(`^${mode}`) }).click();
+};
+
+/** The online account page (profile → account & data). */
+export const openAccount = async (page: Page) => {
+  await nav(page, "Profil");
+  await page.getByRole("button", { name: /Konto & Daten/ }).click();
+};
+
 /** New browser context with a guest profile on the online screen. */
 export const onlineGuest = async (browser: Browser, name: string): Promise<Page> => {
   const ctx = await browser.newContext({ locale: "de-DE" });
   const page = await ctx.newPage();
   await prepare(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /Online spielen/ }).click();
+  await nav(page, "Online");
   await page.getByLabel("Dein Spielername").fill(name);
   await page.getByRole("button", { name: "Profil anlegen" }).click();
   await page.getByText("Verbunden").waitFor();

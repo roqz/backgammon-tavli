@@ -21,6 +21,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import { Board } from "../board/Board";
 import { layoutFromBoard } from "../board/layout";
 import { Button, Card, Modal, Segmented } from "../components/ui";
+import { Choice, VariantPicker } from "../components/VariantPicker";
 import { errorOf } from "../errors";
 import { lengthText, useT } from "../i18n";
 import {
@@ -28,6 +29,7 @@ import {
   answerCorr,
   cancelCorrSeek,
   corrAction,
+  corrEmote,
   fetchCorrGame,
   fetchCorrGames,
   fetchCorrSeeks,
@@ -39,7 +41,9 @@ import {
 import { useOnline } from "../online/store";
 import { useBoardTheme } from "../rewards";
 import { useSettings } from "../store/settings";
+import { EmoteButton } from "./GameExtras";
 import { Checker, usePortraitPhone } from "./GameScreen";
+import { StartBar } from "./MenuScreens";
 import { useSidewaysBoardStyle } from "./PhoneGame";
 
 type T = ReturnType<typeof useT>;
@@ -79,19 +83,14 @@ function CorrSettings({
   const t = useT();
   return (
     <>
-      <Segmented
-        label={t.variant}
-        value={variant}
-        onChange={setVariant}
-        options={MATCH_VARIANTS.map((v) => ({ value: v, label: variantLabel(v, t.tavliMatch) }))}
-      />
-      <Segmented
+      <VariantPicker value={variant} onChange={setVariant} variants={MATCH_VARIANTS} />
+      <Choice
         label={t.matchLength}
         value={length}
         onChange={setLength}
         options={([0, 1, 3, 5, 7] as const).map((l) => ({
           value: l,
-          label: l === 0 ? `💰 ${t.money}` : String(l),
+          label: l === 0 ? t.money : String(l),
         }))}
       />
       <Segmented
@@ -100,6 +99,61 @@ function CorrSettings({
         onChange={setHours}
         options={CORR_HOURS.map((h) => ({ value: h, label: corrPace(t, h) }))}
       />
+    </>
+  );
+}
+
+/** The "Play" screen's correspondence options: search an opponent or invite a friend. */
+export function CorrSetup({ onOpen }: { onOpen: (id: string) => void }) {
+  const t = useT();
+  const [variant, setVariant] = useState<MatchVariantId>("backgammon");
+  const [length, setLength] = useState<MatchLength>(3);
+  const [hours, setHours] = useState<CorrHours>(24);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
+  return (
+    <>
+      <p className="text-sm text-stone-400">{t.corrSeekHint}</p>
+      <CorrSettings
+        variant={variant}
+        setVariant={setVariant}
+        length={length}
+        setLength={setLength}
+        hours={hours}
+        setHours={setHours}
+      />
+      {error && (
+        <p role="alert" className="text-sm text-red-400">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="text-sm text-emerald-300">
+          {notice}
+        </p>
+      )}
+      <StartBar
+        label={`🔍 ${t.corrSeek}`}
+        summary={`${variantLabel(variant, t.tavliMatch)} · ${lengthText(t, length)} · ${corrPace(t, hours)}`}
+        onClick={() => {
+          setError(null);
+          void seekCorr(variant, length, hours)
+            .then((r) => (r.game ? onOpen(r.game.id) : setNotice(t.corrSeekWaiting)))
+            .catch((e: unknown) => setError(errorOf(t, e)));
+        }}
+      >
+        <Button onClick={() => setInviting(true)}>♟ {t.corrInviteFriend}</Button>
+      </StartBar>
+      {inviting && (
+        <CorrInvite
+          onClose={() => setInviting(false)}
+          onSent={() => {
+            setInviting(false);
+            setNotice(t.corrInviteSentAny);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -440,6 +494,15 @@ function CorrRow({
   );
 }
 
+/** "vor 3 Std." / "3 hr. ago" in the app language. */
+const ago = (t: T, at: number): string => {
+  const rtf = new Intl.RelativeTimeFormat(t.locale, { numeric: "auto", style: "short" });
+  const min = Math.round((at - Date.now()) / 60_000);
+  if (min > -60) return rtf.format(Math.min(min, 0), "minute");
+  if (min > -60 * 24) return rtf.format(Math.round(min / 60), "hour");
+  return rtf.format(Math.round(min / 60 / 24), "day");
+};
+
 /** One correspondence game: the board, the player's decisions as requests, the deadline. */
 export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void }) {
   const t = useT();
@@ -506,18 +569,29 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
           ♟ <span className="font-semibold text-stone-200">{rules.name}</span> · {lengthText(t, view.length)}{" "}
           · {corrPace(t, view.hours)}
         </div>
-        {view.status === "active" ? (
-          <Button
-            variant="ghost"
-            className="px-3 py-1.5 text-lg"
-            onClick={() => setResigning(true)}
-            aria-label={t.resign}
-          >
-            🏳
-          </Button>
-        ) : (
-          <span className="w-10" />
-        )}
+        <div className="flex items-center gap-1">
+          {view.seat !== null && (view.status === "active" || view.status === "finished") && (
+            <EmoteButton
+              onSend={(e) =>
+                void corrEmote(id, e)
+                  .then(setView)
+                  .catch((err: unknown) => setError(errorOf(t, err)))
+              }
+            />
+          )}
+          {view.status === "active" ? (
+            <Button
+              variant="ghost"
+              className="px-3 py-1.5 text-lg"
+              onClick={() => setResigning(true)}
+              aria-label={t.resign}
+            >
+              🏳
+            </Button>
+          ) : (
+            <span className="w-10" />
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-2 text-sm">
         {([0, 1] as Player[]).map((p) => (
@@ -537,6 +611,19 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
           </div>
         ))}
       </div>
+      {view.emote && (view.emote.seat === seat || settings.showEmotes) && (
+        <p
+          role="status"
+          className={`w-fit max-w-full rounded-2xl px-3 py-1.5 text-sm shadow-lg ${
+            view.emote.seat === seat
+              ? "self-end rounded-br-sm bg-amber-400 text-stone-950"
+              : "self-start rounded-tl-sm bg-stone-100 text-stone-900"
+          }`}
+        >
+          <span className="font-semibold">{view.emote.seat === seat ? t.tYou : name(view.emote.seat)}:</span>{" "}
+          {t.emote[view.emote.id]} <span className="text-xs opacity-60">· {ago(t, view.emote.at)}</span>
+        </p>
+      )}
       <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
         <Board
           state={g}

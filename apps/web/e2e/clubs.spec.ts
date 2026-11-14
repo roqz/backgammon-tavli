@@ -1,12 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
-import { onlineGuest } from "./helpers";
+import { nav, onlineGuest } from "./helpers";
 
 const openClubs = async (p: Page) => p.getByRole("tab", { name: "Clubs" }).click();
 
 /** Fresh start on the clubs tab with the club opened. */
 const toClub = async (p: Page) => {
   await p.reload();
-  await p.getByRole("button", { name: /Online spielen/ }).click();
+  await nav(p, "Online");
   await openClubs(p);
   await p.getByRole("button", { name: /Kafeneio/ }).click();
 };
@@ -74,7 +74,7 @@ test("a correspondence league and a club tournament", async ({ browser }) => {
   const fay = await onlineGuest(browser, "Fay");
   const toTaverna = async (p: Page) => {
     await p.reload();
-    await p.getByRole("button", { name: /Online spielen/ }).click();
+    await nav(p, "Online");
     await openClubs(p);
     await p.getByRole("button", { name: /Taverna/ }).click();
   };
@@ -162,7 +162,7 @@ test("scheduled league: a fixed start time shows in the club's schedule", async 
   await dialog.getByRole("button", { name: /Liga anlegen/ }).click();
   await expect(eva.getByText(/Abendliga/).first()).toBeVisible();
   await eva.reload();
-  await eva.getByRole("button", { name: /Online spielen/ }).click();
+  await nav(eva, "Online");
   await openClubs(eva);
   await eva.getByRole("button", { name: /Termin-Taverne/ }).click();
   const schedule = eva.getByTestId("club-schedule");

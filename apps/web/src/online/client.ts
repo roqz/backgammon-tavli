@@ -468,6 +468,8 @@ export const answerCorr = (id: string, accept: boolean) =>
   rest<CorrView>(`/api/corr/${id}/answer`, { method: "POST", body: JSON.stringify({ accept }) });
 export const corrAction = (id: string, action: ClientAction) =>
   rest<CorrView>(`/api/corr/${id}/action`, { method: "POST", body: JSON.stringify({ action }) });
+export const corrEmote = (id: string, emote: EmoteId) =>
+  rest<CorrView>(`/api/corr/${id}/emote`, { method: "POST", body: JSON.stringify({ emote }) });
 export const abandonCorr = (id: string) => rest<CorrView>(`/api/corr/${id}/abandon`, { method: "POST" });
 
 export const challengeFriend = (

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { checkerCount, prepare, tapMove } from "./helpers";
+import { checkerCount, nav, newGame, prepare, tapMove } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await prepare(page);
@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("plays against the computer, survives a reload and resumes", async ({ page }) => {
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await newGame(page);
   await page.getByRole("button", { name: "Starten" }).click();
   await expect(page.locator("svg").first()).toBeVisible();
 
@@ -34,8 +34,8 @@ test("plays against the computer, survives a reload and resumes", async ({ page 
 });
 
 test("opens settings and the rule book during a game", async ({ page }) => {
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
-  await page.getByRole("button", { name: "Fevga", exact: true }).click();
+  await newGame(page);
+  await page.getByRole("button", { name: /^Fevga/ }).click();
   await page.getByRole("button", { name: "Starten" }).click();
 
   await page.getByRole("button", { name: "Regeln" }).click();
@@ -44,14 +44,14 @@ test("opens settings and the rule book during a game", async ({ page }) => {
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("button", { name: /^Designs & Skins/ }).click();
   await page.getByRole("button", { name: /Modern/ }).click();
   await page.keyboard.press("Escape");
   expect(await checkerCount(page)).toBe(30);
 });
 
 test("hotseat game can be resigned and replayed from the statistics", async ({ page }) => {
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
-  await page.getByRole("button", { name: "Mensch (gleiches Gerät)" }).click();
+  await newGame(page, "Zu zweit");
   await page.getByRole("button", { name: "1", exact: true }).click();
   await page.getByRole("button", { name: "Starten" }).click();
   await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
@@ -74,7 +74,7 @@ test("hotseat game can be resigned and replayed from the statistics", async ({ p
 test("imports an XGID position; the computer rejects a single but accepts a gammon", async ({ page }) => {
   // white (you) is still on the mid-point, black bears off its last two checkers next turn
   const xgid = `XGID=${"-".repeat(13)}O${"-".repeat(10)}b-:0:0:1:00:0:0:0:0:10`;
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await newGame(page);
   await page.getByRole("button", { name: /Stellung importieren/ }).click();
   await page.getByLabel(/Stellung importieren/).fill(xgid);
   await page.getByRole("button", { name: "Starten" }).click();
@@ -93,10 +93,10 @@ test("imports an XGID position; the computer rejects a single but accepts a gamm
 });
 
 test("a mirrored board (home board left) can still be played by tapping", async ({ page }) => {
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
-  await page.getByRole("button", { name: "Mensch (gleiches Gerät)" }).click();
+  await newGame(page, "Zu zweit");
   await page.getByRole("button", { name: "Starten" }).click();
   await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("button", { name: /^Anzeige/ }).click();
   await page.getByRole("switch", { name: "Heimfeld links" }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
@@ -106,17 +106,20 @@ test("a mirrored board (home board left) can still be played by tapping", async 
   expect(await checkerCount(page)).toBe(30);
 });
 
-test("settings opened from the menu return to the menu, even with a game running", async ({ page }) => {
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
+test("settings opened from the profile return there; the start screen resumes the game", async ({ page }) => {
+  await newGame(page);
   await page.getByRole("button", { name: "Starten" }).click();
   await page.getByRole("button", { name: "Menü" }).click();
-  await page.getByRole("button", { name: /Einstellungen/ }).click();
+  await nav(page, "Profil");
+  await page.getByRole("button", { name: /^Einstellungen/ }).click();
   await page.getByRole("button", { name: "Zurück" }).click();
+  await expect(page.getByRole("button", { name: /Konto & Daten/ })).toBeVisible();
+  await nav(page, "Start");
   await expect(page.getByRole("button", { name: "Fortsetzen" })).toBeVisible();
 });
 
 test("the browser Back button closes dialogs and returns to the previous screen", async ({ page }) => {
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await newGame(page);
   await page.getByRole("button", { name: "Starten" }).click();
   await page.getByRole("button", { name: "Einstellungen" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -125,10 +128,11 @@ test("the browser Back button closes dialogs and returns to the previous screen"
   // still in the game
   await expect(page.getByRole("button", { name: "Menü" })).toBeVisible();
   await page.goBack();
-  await expect(page.getByRole("button", { name: "Neues Spiel" })).toBeVisible();
+  await expect(page.getByText("Schnell starten")).toBeVisible();
 });
 
-test("imprint, privacy notice and source code are linked from the menu", async ({ page }) => {
+test("imprint, privacy notice and source code are linked from the profile", async ({ page }) => {
+  await nav(page, "Profil");
   await page.getByRole("button", { name: "Datenschutz" }).click();
   await expect(page.getByRole("heading", { name: "Fair-Play-Auswertung" })).toBeVisible();
   await page.getByRole("button", { name: "Zurück" }).click();
@@ -142,7 +146,7 @@ test("Tavla and Narde can be played against the computer", async ({ page }) => {
   test.setTimeout(120_000);
   for (const variant of ["Narde", "Tavla"]) {
     await page.goto("/");
-    await page.getByRole("button", { name: "Neues Spiel" }).click();
+    await newGame(page);
     await page.getByRole("button", { name: variant, exact: true }).click();
     await page.getByRole("button", { name: "Starten" }).click();
     await expect(page.getByText(new RegExp(`${variant} · Spiel 1`))).toBeVisible();
@@ -162,8 +166,7 @@ test("Tavla and Narde can be played against the computer", async ({ page }) => {
 });
 
 test("money play with beavers: beaver a double, then raccoon", async ({ page }) => {
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
-  await page.getByRole("button", { name: "Mensch (gleiches Gerät)" }).click();
+  await newGame(page, "Zu zweit");
   await page.getByRole("button", { name: "Unbegrenzt" }).click();
   await page.getByRole("switch", { name: /Beaver und Raccoon/ }).click();
   await page.getByRole("button", { name: "Starten" }).click();
@@ -184,24 +187,22 @@ test("money play with beavers: beaver a double, then raccoon", async ({ page }) 
 });
 
 test("settings sections fold; keyboard plays the main buttons; the local name is kept", async ({ page }) => {
-  // settings: sections with navigation, countdown length, folding
-  await page.getByRole("button", { name: /Einstellungen/ }).click();
-  await page
-    .getByRole("button", { name: /Dauer des Countdowns|1 s/ })
-    .first()
-    .waitFor();
+  // settings: a list of pages that show their current values
+  await nav(page, "Profil");
+  await page.getByRole("button", { name: /^Einstellungen/ }).click();
+  await page.getByRole("button", { name: /^Spielablauf/ }).click();
   await page.getByRole("button", { name: "1 s" }).click();
   await expect(page.getByRole("button", { name: "1 s" })).toHaveAttribute("aria-pressed", "true");
-  const looks = page.getByRole("button", { name: /Designs & Skins/, expanded: true });
-  await looks.click();
-  await expect(page.getByRole("button", { name: /Designs & Skins/, expanded: false })).toBeVisible();
   await page.getByRole("switch", { name: /Automatisch würfeln/ }).click();
+  await page.getByRole("button", { name: "Einstellungen", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Spielablauf.*Automatisch würfeln: aus/ })).toBeVisible();
   await page.goBack();
 
   // the own name survives the next "new game"
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await newGame(page);
+  await page.getByRole("button", { name: /^Weitere Optionen/ }).click();
   await page.getByLabel("Name").fill("Thea");
-  await page.getByRole("button", { name: "Mensch (gleiches Gerät)" }).click();
+  await page.getByRole("button", { name: /^Zu zweit/ }).click();
   await expect(page.getByLabel("Weiß")).toHaveValue("Thea");
   await page.getByRole("button", { name: "Starten" }).click();
 
@@ -222,6 +223,7 @@ test("settings sections fold; keyboard plays the main buttons; the local name is
   expect(before.length).toBeGreaterThan(0);
 
   await page.getByRole("button", { name: /Menü/ }).first().click();
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await newGame(page);
+  await page.getByRole("button", { name: /^Weitere Optionen/ }).click();
   await expect(page.getByLabel("Name")).toHaveValue("Thea");
 });

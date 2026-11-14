@@ -13,6 +13,7 @@ import {
   CorrActionSchema,
   CorrAnswerSchema,
   CorrCreateSchema,
+  CorrEmoteSchema,
   CorrSeekSchema,
   DeleteAccountSchema,
   FrameSchema,
@@ -549,7 +550,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         corr.cancelSeek(player.id, sk[1]!);
         return { ok: true };
       }
-      const c = /^\/api\/corr\/([\w-]{1,64})(?:\/(answer|action|abandon))?$/.exec(path);
+      const c = /^\/api\/corr\/([\w-]{1,64})(?:\/(answer|action|abandon|emote))?$/.exec(path);
       if (c) {
         const id = c[1]!;
         if (!c[2] && req.method === "GET") return run(() => corr.get(player.id, id));
@@ -564,6 +565,11 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
           return run(() => corr.act(player.id, id, body.data.action));
         }
         if (c[2] === "abandon" && req.method === "POST") return run(() => corr.abandon(player.id, id));
+        if (c[2] === "emote" && req.method === "POST") {
+          const body = CorrEmoteSchema.safeParse(await readJson(req));
+          if (!body.success) throw new HttpError(400, "invalid request");
+          return run(() => corr.emote(player.id, id, body.data.emote));
+        }
       }
       throw new HttpError(404, "not found");
     }

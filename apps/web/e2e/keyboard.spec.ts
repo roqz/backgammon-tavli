@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { checkerCount, prepare } from "./helpers";
+import { checkerCount, newGame, prepare } from "./helpers";
 
 /** Accessible name of the focused element (a board cell while playing by keyboard). */
 const focusedLabel = (page: Page) =>
@@ -30,8 +30,7 @@ const focusFirstTarget = async (page: Page) => {
 test("a move can be played with the keyboard only", async ({ page }) => {
   await prepare(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
-  await page.getByRole("button", { name: "Mensch (gleiches Gerät)" }).click();
+  await newGame(page, "Zu zweit");
   await page.getByRole("button", { name: "Starten" }).click();
   await expect(page.getByRole("application", { name: "Spielbrett" })).toBeVisible();
   await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();

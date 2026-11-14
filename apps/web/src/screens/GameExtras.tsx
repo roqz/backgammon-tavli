@@ -163,7 +163,8 @@ export function useResignRejected(g: GameState | undefined): boolean {
 }
 
 /** Quick messages in online matches: picker button plus speech bubbles over the board. */
-export function EmoteButton() {
+/** Picks a quick message; live matches send it over the connection, others pass `onSend`. */
+export function EmoteButton({ onSend = sendEmote }: { onSend?: (id: EmoteId) => void } = {}) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -201,7 +202,7 @@ export function EmoteButton() {
               type="button"
               className="rounded-lg px-3 py-1.5 text-left text-sm text-stone-200 hover:bg-stone-800"
               onClick={() => {
-                sendEmote(id);
+                onSend(id);
                 setOpen(false);
               }}
             >

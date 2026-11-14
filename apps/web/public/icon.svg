@@ -1,15 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Backgammon &amp; Tavli">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <title>Backgammon &amp; Tavli</title>
-  <rect width="512" height="512" rx="96" fill="#3b2a1a"/>
-  <rect x="40" y="40" width="432" height="432" rx="40" fill="#1f4d36"/>
-  <g fill="#e8dcc0">
-    <path d="M72 72h56l-28 170z"/><path d="M200 72h56l-28 170z"/><path d="M328 72h56l-28 170z"/>
-    <path d="M136 440h56l-28-170z"/><path d="M264 440h56l-28-170z"/><path d="M392 440h56l-28-170z"/>
+  <rect width="512" height="512" rx="112" fill="#1b4332"/>
+  <g transform="translate(256 256) scale(0.84) translate(-256 -256)">
+    <rect x="246" y="56" width="20" height="400" rx="10" fill="#10291e"/>
+    <path fill="#efe6d2" d="M40 56h68l-34 168zM176 56h68l-34 168zM336 56h68l-34 168zM108 456h68l-34-168zM268 456h68l-34-168zM404 456h68l-34-168z"/>
+    <path fill="#d1603d" d="M108 56h68l-34 168zM268 56h68l-34 168zM404 56h68l-34 168zM40 456h68l-34-168zM176 456h68l-34-168zM336 456h68l-34-168z"/>
+    <circle cx="142" cy="256" r="30" fill="#efe6d2"/>
+    <circle cx="370" cy="256" r="27" fill="#2a211c" stroke="#efe6d2" stroke-width="6"/>
   </g>
-  <g fill="#8b2e1f">
-    <path d="M136 72h56l-28 170z"/><path d="M264 72h56l-28 170z"/><path d="M392 72h56l-28 170z"/>
-    <path d="M72 440h56l-28-170z"/><path d="M200 440h56l-28-170z"/><path d="M328 440h56l-28-170z"/>
-  </g>
-  <circle cx="200" cy="256" r="58" fill="#f5efe0" stroke="#b9a77f" stroke-width="10"/>
-  <circle cx="312" cy="256" r="58" fill="#2a1d14" stroke="#5a4433" stroke-width="10"/>
 </svg>

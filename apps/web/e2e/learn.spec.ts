@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { prepare, tapMove } from "./helpers";
+import { nav, prepare, tapMove } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await prepare(page);
@@ -7,6 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("tutorial: the first lesson is solved by making the 5 point", async ({ page }) => {
+  await nav(page, "Lernen");
   await page.getByRole("button", { name: /Tutorial/ }).click();
   await expect(page.getByText("1 · Steine ziehen")).toBeVisible();
   // the hint shows arrows; playing until the dice are used finishes the turn
@@ -32,6 +33,7 @@ test("daily puzzle: a move is checked and the result recorded", async ({ page })
 });
 
 test("the rule book shows board diagrams", async ({ page }) => {
+  await nav(page, "Lernen");
   await page.getByRole("button", { name: /Regeln/ }).click();
   await expect(page.getByText(/Weiß zieht gegen den Uhrzeigersinn/)).toBeVisible();
   await page.getByRole("button", { name: "Plakoto" }).click();
@@ -39,7 +41,8 @@ test("the rule book shows board diagrams", async ({ page }) => {
 });
 
 test("achievements: locked boards show their condition; solving a lesson counts", async ({ page }) => {
-  await page.getByRole("button", { name: /Einstellungen/ }).click();
+  await nav(page, "Profil");
+  await page.getByRole("button", { name: /Brett & Würfel/ }).click();
   await expect(page.getByRole("button", { name: /Marmor/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Hoher Kontrast/ })).toBeEnabled();
   await page.getByRole("button", { name: "Zurück" }).click();

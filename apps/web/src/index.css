@@ -2,6 +2,8 @@
 
 /* Phones held sideways: little height, enough width for two columns. */
 @custom-variant short (@media (orientation: landscape) and (max-height: 500px));
+/* The main navigation is a rail on the left: wide screens and phones held sideways. */
+@custom-variant rail (@media (min-width: 768px), (orientation: landscape) and (max-height: 500px));
 
 :root {
   color-scheme: dark;

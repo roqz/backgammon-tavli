@@ -1,3 +1,5 @@
+import type { BotLevel } from "@tavli/ai";
+import type { MatchVariant } from "@tavli/engine";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { BoardStyle } from "../board/themes";
@@ -38,7 +40,13 @@ export interface Settings {
   fireworks: boolean;
   /** Dice sound: plain or rattling in a cup (a reward). */
   diceSound: "classic" | "cup";
+  /** Last choice on the "Play" screen. */
+  playMode: PlayMode;
+  /** Last game against the computer, for the one-tap start on the home screen. */
+  lastBot: { variant: MatchVariant; length: number; level: BotLevel } | null;
 }
+
+export type PlayMode = "bot" | "human" | "online" | "corr";
 
 interface SettingsStore extends Settings {
   update: (patch: Partial<Settings>) => void;
@@ -72,6 +80,8 @@ export const useSettings = create<SettingsStore>()(
       diceSkin: "theme",
       fireworks: true,
       diceSound: "classic",
+      playMode: "bot",
+      lastBot: null,
       update: (patch) => set(patch),
     }),
     { name: "tavli.settings", version: 1 },

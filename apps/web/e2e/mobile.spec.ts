@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { prepare, tapMove } from "./helpers";
+import { newGame, prepare, tapMove } from "./helpers";
 
 test.use({ isMobile: true, hasTouch: true });
 
@@ -14,8 +14,7 @@ const startHotseat = async (page: Page, settings: Record<string, unknown> = {}) 
     }, settings);
     await page.reload();
   }
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
-  await page.getByRole("button", { name: "Mensch (gleiches Gerät)" }).click();
+  await newGame(page, "Zu zweit");
   await page.getByRole("button", { name: "Starten" }).click();
   await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
 };
@@ -45,6 +44,7 @@ test.describe("portrait", () => {
     await page.getByRole("button", { name: "Mehr" }).click();
     await expect(page.getByRole("dialog").getByText("Verlauf")).toBeVisible();
     await page.getByRole("button", { name: "Einstellungen" }).click();
+    await page.getByRole("button", { name: /^Anzeige/ }).click();
     await expect(page.getByText("Ausrichtung im Spiel (Handy)")).toBeVisible();
   });
 });

@@ -66,11 +66,14 @@ export function Tabs<T extends string>({
   options,
   onChange,
   label,
+  chips = false,
 }: {
   value: T;
   options: readonly { value: T; label: ReactNode }[];
   onChange: (v: T) => void;
   label: string;
+  /** One row of pills that scrolls sideways (top-level sections) instead of wrapping boxes. */
+  chips?: boolean;
 }) {
   const move = (dir: number) => {
     const i = options.findIndex((o) => o.value === value);
@@ -79,7 +82,15 @@ export function Tabs<T extends string>({
     requestAnimationFrame(() => document.getElementById(`tab-${String(next.value)}`)?.focus());
   };
   return (
-    <div role="tablist" aria-label={label} className="flex flex-wrap gap-2">
+    <div
+      role="tablist"
+      aria-label={label}
+      className={
+        chips
+          ? "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0"
+          : "flex flex-wrap gap-2"
+      }
+    >
       {options.map((o) => (
         <button
           key={o.value}
@@ -93,11 +104,19 @@ export function Tabs<T extends string>({
             if (e.key === "ArrowRight") move(1);
             else if (e.key === "ArrowLeft") move(-1);
           }}
-          className={`rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-amber-400 ${
-            o.value === value
-              ? "border-amber-400 bg-amber-400/15 text-amber-200"
-              : "border-stone-700 bg-stone-800/60 text-stone-200 hover:border-stone-500"
-          }`}
+          className={
+            chips
+              ? `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-amber-400 ${
+                  o.value === value
+                    ? "bg-amber-100 font-semibold text-stone-950"
+                    : "border border-stone-800 bg-stone-900 text-stone-300 hover:border-stone-600"
+                }`
+              : `rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-amber-400 ${
+                  o.value === value
+                    ? "border-amber-400 bg-amber-400/15 text-amber-200"
+                    : "border-stone-700 bg-stone-800/60 text-stone-200 hover:border-stone-500"
+                }`
+          }
         >
           {o.label}
         </button>

@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { PlayerName } from "../components/PlayerName";
 import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Segmented, Tabs } from "../components/ui";
+import { Choice, VariantPicker } from "../components/VariantPicker";
 import { errorOf, errorText } from "../errors";
 import { lengthText, useT } from "../i18n";
 import {
@@ -26,10 +27,13 @@ import {
   unqueue,
 } from "../online/client";
 import { useOnline } from "../online/store";
+import type { Todo } from "../online/todo";
 import type { GameRecord } from "../store/archive";
+import { ScreenTitle } from "./AppShell";
 import { ClubsPanel } from "./ClubsPanel";
 import { CorrPanel } from "./CorrScreens";
 import { FriendsPanel, LivePanel } from "./FriendsPanel";
+import { StartBar } from "./MenuScreens";
 import { AuthForm, PlayerSheet, ProfileTab } from "./OnlineProfile";
 import { TournamentPanel } from "./TournamentPanel";
 
@@ -37,7 +41,7 @@ const variantName = (v: MatchVariantId, tavli: string) => (v === "tavli" ? tavli
 
 export const inviteLink = (code: string) => `${location.origin}${location.pathname}?join=${code}`;
 
-function StatusPill() {
+export function StatusPill() {
   const t = useT();
   const status = useOnline((s) => s.status);
   const color = {
@@ -60,7 +64,8 @@ function StatusPill() {
   );
 }
 
-function PlayPanel() {
+/** Live online match: search an opponent, invite a friend by link or join with a code. */
+export function PlayPanel() {
   const t = useT();
   const { lobby, status, lastError } = useOnline();
   const [variant, setVariant] = useState<MatchVariantId>("backgammon");
@@ -124,41 +129,21 @@ function PlayPanel() {
     );
   }
   return (
-    <div className="flex flex-col gap-4">
-      <Card className="flex flex-col gap-5">
-        <Segmented
-          label={t.variant}
-          value={variant}
-          onChange={setVariant}
-          options={MATCH_VARIANTS.map((v) => ({ value: v, label: variantName(v, t.tavliMatch) }))}
-        />
-        <Segmented
-          label={t.matchLength}
-          value={length}
-          onChange={setLength}
-          options={([0, 1, 3, 5, 7] as const).map((l) => ({
-            value: l,
-            label: l === 0 ? `💰 ${t.money}` : String(l),
-          }))}
-        />
-        {length === 0 && <p className="-mt-2 text-xs text-stone-400">{t.moneyHint}</p>}
-        <TimeControlPicker value={clock} onChange={setClock} />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Button
-            variant="primary"
-            className="py-3"
-            disabled={!ready}
-            onClick={() => queue(variant, length, clock)}
-          >
-            ⚔ {t.findOpponent}
-          </Button>
-          <Button className="py-3" disabled={!ready} onClick={() => createInvite(variant, length, clock)}>
-            ✉ {t.inviteFriend}
-          </Button>
-        </div>
-      </Card>
-      <Card className="flex flex-col gap-2">
-        <label htmlFor="join-code" className="text-sm text-stone-400">
+    <>
+      <VariantPicker value={variant} onChange={setVariant} variants={MATCH_VARIANTS} />
+      <Choice
+        label={t.matchLength}
+        value={length}
+        onChange={setLength}
+        options={([0, 1, 3, 5, 7] as const).map((l) => ({
+          value: l,
+          label: l === 0 ? t.money : String(l),
+        }))}
+      />
+      {length === 0 && <p className="-mt-2 text-xs text-stone-400">{t.moneyHint}</p>}
+      <TimeControlPicker value={clock} onChange={setClock} />
+      <div className="flex flex-col gap-2">
+        <label htmlFor="join-code" className="text-xs font-semibold uppercase tracking-wide text-stone-400">
           {t.joinWithCode}
         </label>
         <div className="flex gap-2">
@@ -166,7 +151,7 @@ function PlayPanel() {
             id="join-code"
             aria-label={t.joinCode}
             autoComplete="off"
-            className="min-w-0 flex-1 rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 font-mono uppercase tracking-widest text-stone-100 outline-none focus:border-amber-400"
+            className="min-w-0 flex-1 rounded-xl border border-stone-700 bg-stone-900 px-3 py-2 font-mono uppercase tracking-widest text-stone-100 outline-none focus:border-amber-400"
             value={code}
             maxLength={6}
             placeholder="ABC234"
@@ -176,13 +161,23 @@ function PlayPanel() {
             {t.join}
           </Button>
         </div>
-      </Card>
+      </div>
       {lastError && (
         <p role="alert" className="text-center text-sm text-red-400">
           {lastError === "banned" ? t.banned : errorText(t, lastError)}
         </p>
       )}
-    </div>
+      <StartBar
+        label={`⚔ ${t.findOpponent}`}
+        summary={`${variantName(variant, t.tavliMatch)} · ${lengthText(t, length)}`}
+        disabled={!ready}
+        onClick={() => queue(variant, length, clock)}
+      >
+        <Button disabled={!ready} onClick={() => createInvite(variant, length, clock)}>
+          ✉ {t.inviteFriend}
+        </Button>
+      </StartBar>
+    </>
   );
 }
 
@@ -280,37 +275,32 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
   );
 }
 
-export type OnlineTab =
-  | "play"
-  | "friends"
-  | "corr"
-  | "clubs"
-  | "live"
-  | "tournaments"
-  | "ranking"
-  | "profile";
+export type OnlineTab = "corr" | "friends" | "tournaments" | "clubs" | "live" | "ranking";
 
+/** Online sections; matches themselves start from the "Play" screen. */
 export function OnlineScreen({
-  onBack,
   onReplay,
   tournament,
   onWatch,
   onCorr,
   initialTab,
+  todo,
 }: {
   /** Tab to start on (the tournament focus wins). */
   initialTab?: OnlineTab | null;
-  onBack: () => void;
   onReplay: (records: GameRecord[]) => void;
   /** Open the tournaments tab with this tournament expanded. */
   tournament?: string | null;
   onWatch: (matchId: string) => void;
   /** Opens a correspondence game. */
   onCorr: (id: string) => void;
+  /** Counters on the tabs. */
+  todo?: Todo | null;
 }) {
   const t = useT();
   const { profile, serverUrl } = useOnline();
-  const [tab, setTab] = useState<OnlineTab>(tournament ? "tournaments" : (initialTab ?? "play"));
+  const challenge = useOnline((s) => s.incoming !== null);
+  const [tab, setTab] = useState<OnlineTab>(tournament ? "tournaments" : (initialTab ?? "corr"));
 
   // Connect and refresh account data once per profile (not on every profile field change).
   const profileId = profile?.id;
@@ -321,15 +311,15 @@ export function OnlineScreen({
     }
   }, [profileId, serverUrl]);
 
+  const count = (n: number) =>
+    n > 0 && (
+      <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-bold text-stone-950 tabular-nums">
+        {n}
+      </span>
+    );
   return (
-    <div className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 p-4 sm:p-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
-          ←
-        </Button>
-        <h1 className="flex-1 text-2xl font-bold text-amber-100">{t.online}</h1>
-        {profile && <StatusPill />}
-      </div>
+    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 sm:p-6">
+      <ScreenTitle title={t.navOnline}>{profile && <StatusPill />}</ScreenTitle>
       {!serverUrl ? (
         <Card>
           <p className="text-stone-300">{t.noServer}</p>
@@ -338,46 +328,62 @@ export function OnlineScreen({
         <AuthForm />
       ) : (
         <>
-          <p className="text-sm text-stone-400">
-            👤 <span className="text-stone-200">{profile.name}</span>
-          </p>
           <Tabs
-            label={t.online}
+            chips
+            label={t.navOnline}
             value={tab}
             onChange={setTab}
             options={[
-              { value: "play", label: t.playTab },
-              { value: "friends", label: <FriendsTabLabel /> },
-              { value: "corr", label: t.corrTab },
+              {
+                value: "corr",
+                label: (
+                  <>
+                    {t.corrTab}
+                    {count((todo?.corrTurn.length ?? 0) + (todo?.corrInvites.length ?? 0))}
+                  </>
+                ),
+              },
+              {
+                value: "friends",
+                label: (
+                  <>
+                    {t.friendsTab}
+                    {count((todo?.friendRequests ?? 0) + (challenge ? 1 : 0))}
+                  </>
+                ),
+              },
+              { value: "tournaments", label: t.tournamentsTab },
               { value: "clubs", label: t.clubsTab },
               { value: "live", label: t.liveTab },
-              { value: "tournaments", label: t.tournamentsTab },
               { value: "ranking", label: t.leaderboard },
-              { value: "profile", label: t.profileTab },
             ]}
           />
-          {tab === "play" && <PlayPanel />}
           {tab === "friends" && <FriendsPanel onWatch={onWatch} />}
           {tab === "live" && <LivePanel onWatch={onWatch} />}
           {tab === "corr" && <CorrPanel onOpen={onCorr} />}
           {tab === "clubs" && <ClubsPanel onCorr={onCorr} />}
           {tab === "tournaments" && <TournamentPanel focus={tournament} onReplay={onReplay} />}
           {tab === "ranking" && <LeaderboardPanel onReplay={onReplay} />}
-          {tab === "profile" && <ProfileTab onReplay={onReplay} />}
         </>
       )}
     </div>
   );
 }
 
-/** Tab label with a marker while a challenge or friend request waits. */
-function FriendsTabLabel() {
+/** Account, privacy and own matches (from the profile screen). */
+export function AccountScreen({
+  onBack,
+  onReplay,
+}: {
+  onBack: () => void;
+  onReplay: (records: GameRecord[]) => void;
+}) {
   const t = useT();
-  const waiting = useOnline((s) => s.incoming !== null);
+  const profile = useOnline((s) => s.profile);
   return (
-    <>
-      {t.friendsTab}
-      {waiting && <span className="ml-1 inline-block h-2 w-2 rounded-full bg-amber-400" aria-hidden />}
-    </>
+    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 sm:p-6">
+      <ScreenTitle title={t.accountAndData} onBack={onBack} />
+      {profile ? <ProfileTab onReplay={onReplay} /> : <AuthForm />}
+    </div>
   );
 }

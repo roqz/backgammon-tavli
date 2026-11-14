@@ -125,4 +125,27 @@ describe("correspondence games", () => {
     await post(b, `/api/corr/seeks/${bs!.id}/cancel`);
     expect(await api<CorrSeek[]>(server, "/api/corr/seeks", { headers: bearer(b) })).toHaveLength(0);
   });
+
+  it("quick messages are kept with the game, one at a time per player", async () => {
+    server = await start();
+    const a = await register(server, "Ann");
+    const b = await register(server, "Ben");
+    const c = await register(server, "Cid");
+    await friends(a, b);
+    const inv = await post<CorrView>(a, "/api/corr", { playerId: b.id, variant: "portes", length: 1, hours: 72 });
+    // not before the game runs
+    await expect(post(a, `/api/corr/${inv.id}/emote`, { emote: "hi" })).rejects.toThrow(/409/);
+    await post<CorrView>(b, `/api/corr/${inv.id}/answer`, { accept: true });
+    const g = await post<CorrView>(a, `/api/corr/${inv.id}/emote`, { emote: "gl" });
+    expect(g.emote).toMatchObject({ seat: 0, id: "gl" });
+    const seen = await api<CorrView>(server, `/api/corr/${inv.id}`, { headers: bearer(b) });
+    expect(seen.emote).toMatchObject({ seat: 0, id: "gl" });
+    // too fast, unknown emotes and strangers are refused
+    await expect(post(a, `/api/corr/${inv.id}/emote`, { emote: "gg" })).rejects.toThrow(/429/);
+    await expect(post(b, `/api/corr/${inv.id}/emote`, { emote: "hello there" })).rejects.toThrow(/400/);
+    await expect(post(c, `/api/corr/${inv.id}/emote`, { emote: "hi" })).rejects.toThrow(/404/);
+    // the other player answers; only the newest message is kept
+    const answer = await post<CorrView>(b, `/api/corr/${inv.id}/emote`, { emote: "thanks" });
+    expect(answer.emote).toMatchObject({ seat: 1, id: "thanks" });
+  });
 });

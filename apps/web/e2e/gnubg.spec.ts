@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { onlineGuest, prepare } from "./helpers";
+import { nav, newGame, onlineGuest, openAccount, prepare } from "./helpers";
 
 test("imports a GNU Backgammon ID; both IDs are shown for the position", async ({ page }) => {
   await prepare(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Neues Spiel" }).click();
+  await newGame(page);
   await page.getByRole("button", { name: /Stellung importieren/ }).click();
   await page.getByLabel(/Stellung importieren/).fill("4HPwATDgc/ABMA:cAkAAAAAAAAA");
   await page.getByRole("button", { name: "Starten" }).click();
@@ -15,6 +15,7 @@ test("imports a GNU Backgammon ID; both IDs are shown for the position", async (
 test("opens a .mat file from the statistics in the replay", async ({ page }) => {
   await prepare(page);
   await page.goto("/");
+  await nav(page, "Profil");
   await page.getByRole("button", { name: /Statistik/ }).click();
   const mat = [
     " 3 point match",
@@ -39,6 +40,7 @@ test("money session: games go on until a player ends the session", async ({ brow
   const ann = await onlineGuest(browser, "Ann");
   const ben = await onlineGuest(browser, "Ben");
   for (const p of [ann, ben]) {
+    await newGame(p, "Online-Gegner");
     await p.getByRole("button", { name: /Geld/ }).click();
     await expect(p.getByText(/Spiel um Spiel/)).toBeVisible();
     await p.getByRole("button", { name: /Gegner suchen/ }).click();
@@ -70,8 +72,8 @@ test("achievements sync with the profile; an unlocked frame can be chosen", asyn
     ),
   );
   await page.reload();
-  await page.getByRole("button", { name: /Online spielen/ }).click();
-  await page.getByRole("tab", { name: "Profil", exact: true }).click();
+  await nav(page, "Online");
+  await openAccount(page);
   await page.getByText(/Daten & Konto/).click();
   // the frame is accepted by the server only once the progress was synced
   await expect(async () => {

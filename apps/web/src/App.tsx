@@ -3,18 +3,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AchievementLayer } from "./components/AchievementLayer";
 import { afterHistory, historySettling } from "./components/overlay";
 import { UpdatePrompt } from "./components/UpdatePrompt";
+import { useT } from "./i18n";
 import { connect, joinInvite, watchMatch } from "./online/client";
 import { useOnline } from "./online/store";
+import { todoCount, useTodo } from "./online/todo";
 import { AdminScreen } from "./screens/AdminScreen";
+import { AppShell, type NavTarget, ScreenTitle } from "./screens/AppShell";
 import { CorrGameScreen } from "./screens/CorrScreens";
 import { ChallengePrompt, FriendLinkPrompt } from "./screens/FriendsPanel";
 import { GameScreen } from "./screens/GameScreen";
+import { HomeScreen, LearnScreen, PlayScreen, ProfileScreen } from "./screens/HomeScreens";
 import { LegalScreen } from "./screens/LegalScreen";
-import { Menu, NewGame, SettingsScreen } from "./screens/MenuScreens";
-import { OnlineScreen, type OnlineTab } from "./screens/OnlineScreen";
+import { AccountScreen, OnlineScreen, type OnlineTab } from "./screens/OnlineScreen";
 import { PuzzleScreen } from "./screens/PuzzleScreen";
 import { ReplayScreen } from "./screens/ReplayScreen";
 import { RulesScreen } from "./screens/RulesPanel";
+import { type SectionId, SettingsPanel } from "./screens/SettingsPanel";
 import { StatsScreen } from "./screens/StatsScreen";
 import { TutorialScreen } from "./screens/TutorialScreen";
 import { WatchScreen } from "./screens/WatchScreen";
@@ -22,13 +26,12 @@ import type { GameRecord } from "./store/archive";
 import { useSettings } from "./store/settings";
 
 type Screen =
-  | "menu"
-  | "new"
+  | NavTarget
+  | "account"
   | "game"
   | "settings"
   | "stats"
   | "replay"
-  | "online"
   | "rules"
   | "admin"
   | "imprint"
@@ -37,6 +40,17 @@ type Screen =
   | "tutorial"
   | "puzzle"
   | "corr";
+
+const NAV_SCREENS: readonly NavTarget[] = ["menu", "play", "online", "learn", "profile"];
+/** Screens shown inside the navigation shell, with the destination they belong to. */
+const SUB_SCREENS: Partial<Record<Screen, NavTarget>> = {
+  settings: "profile",
+  stats: "profile",
+  account: "profile",
+  imprint: "profile",
+  privacy: "profile",
+  rules: "learn",
+};
 
 /** Invite links look like `…/?join=ABC234`. */
 const takeJoinCode = (): string | null => {
@@ -61,6 +75,9 @@ const takeTournament = (href: string): string | null => {
 export function App() {
   const onlineMatchId = useOnline((s) => s.match?.matchId ?? null);
   const lang = useSettings((s) => s.lang);
+  const t = useT();
+  /** Settings page to open (the profile's "board & dice" opens the looks directly). */
+  const [settingsPage, setSettingsPage] = useState<SectionId | null>(null);
   // Screen readers and hyphenation follow the app language.
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -177,55 +194,116 @@ export function App() {
     if (onlineMatchId) setScreen("game");
   }, [onlineMatchId, setScreen]);
 
+  const todo = useTodo();
+  const challengeWaiting = useOnline((s) => s.incoming !== null);
+  /** The last main destination, where correspondence games and sub-screens return to. */
+  const lastNav = useRef<NavTarget>("menu");
+  if (NAV_SCREENS.includes(screen as NavTarget)) lastNav.current = screen as NavTarget;
+  const openCorr = (id: string) => {
+    setCorrId(id);
+    setScreen("corr");
+  };
+  const openOnline = (tab?: OnlineTab) => {
+    setOnlineTab(tab ?? null);
+    setOnlineFocus(null);
+    setScreen("online");
+  };
+  const nav = (target: NavTarget) => (target === "online" ? openOnline() : setScreen(target));
+  const navActive: NavTarget | null = NAV_SCREENS.includes(screen as NavTarget)
+    ? (screen as NavTarget)
+    : (SUB_SCREENS[screen] ?? null);
+  const inShell = navActive !== null;
+
+  const content = (
+    <>
+      {screen === "menu" && (
+        <HomeScreen
+          todo={todo}
+          onResume={() => setScreen("game")}
+          onPlay={(mode) => {
+            useSettings.getState().update({ playMode: mode });
+            setScreen("play");
+          }}
+          onStarted={() => setScreen("game")}
+          onOnline={openOnline}
+          onCorr={openCorr}
+          onProfile={() => setScreen("profile")}
+          onPuzzle={() => setScreen("puzzle")}
+        />
+      )}
+      {screen === "play" && <PlayScreen onStarted={() => setScreen("game", true)} onCorr={openCorr} />}
+      {screen === "learn" && (
+        <LearnScreen
+          onTutorial={() => setScreen("tutorial")}
+          onPuzzle={() => setScreen("puzzle")}
+          onRules={() => setScreen("rules")}
+        />
+      )}
+      {screen === "profile" && (
+        <ProfileScreen
+          onStats={() => setScreen("stats")}
+          onSettings={() => {
+            setSettingsPage(null);
+            setScreen("settings");
+          }}
+          onDesigns={() => {
+            setSettingsPage("looks");
+            setScreen("settings");
+          }}
+          onRanking={() => openOnline("ranking")}
+          onAccount={() => setScreen("account")}
+          onLegal={(page) => setScreen(page)}
+        />
+      )}
+      {screen === "account" && (
+        <AccountScreen onBack={() => setScreen("profile")} onReplay={(r) => openReplay(r, "account")} />
+      )}
+      {(screen === "imprint" || screen === "privacy") && (
+        <LegalScreen page={screen} onBack={() => setScreen("profile")} />
+      )}
+      {screen === "rules" && <RulesScreen onBack={() => setScreen("learn")} />}
+      {screen === "admin" && (
+        <AdminScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "admin")} />
+      )}
+      {screen === "settings" && (
+        <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 sm:p-6">
+          <ScreenTitle title={t.settings} onBack={() => setScreen("profile")} />
+          <SettingsPanel key={settingsPage ?? "index"} initial={settingsPage} />
+        </div>
+      )}
+      {screen === "online" && (
+        <OnlineScreen
+          onReplay={(r) => openReplay(r, "online")}
+          tournament={onlineFocus}
+          initialTab={onlineTab}
+          todo={todo}
+          onCorr={openCorr}
+          onWatch={(id) => {
+            watchMatch(id);
+            setScreen("watch");
+          }}
+        />
+      )}
+      {screen === "stats" && (
+        <StatsScreen
+          onBack={() => setScreen("profile")}
+          onReplay={(r) => openReplay(r, "stats")}
+          onPlay={() => setScreen("play")}
+          onImport={(records) => openReplay(records, "stats")}
+        />
+      )}
+    </>
+  );
+
   return (
     <MotionConfig reducedMotion="user">
       <main className="min-h-dvh bg-stone-950 bg-[radial-gradient(ellipse_at_top,#292017_0%,#0c0a09_70%)] text-stone-100">
-        {screen === "menu" && (
-          <Menu
-            onNew={() => setScreen("new")}
-            onResume={() => setScreen("game")}
-            onSettings={() => setScreen("settings")}
-            onStats={() => setScreen("stats")}
-            onOnline={(tab) => {
-              setOnlineTab(tab ?? null);
-              setScreen(onlineMatchId ? "game" : "online");
-            }}
-            onCorr={(id) => {
-              setCorrId(id);
-              setScreen("corr");
-            }}
-            onRules={() => setScreen("rules")}
-            onLegal={(page) => setScreen(page)}
-            onTutorial={() => setScreen("tutorial")}
-            onPuzzle={() => setScreen("puzzle")}
-          />
-        )}
-        {(screen === "imprint" || screen === "privacy") && (
-          <LegalScreen page={screen} onBack={() => setScreen("menu")} />
-        )}
-        {screen === "new" && (
-          <NewGame onBack={() => setScreen("menu")} onStarted={() => setScreen("game", true)} />
-        )}
-        {screen === "rules" && <RulesScreen onBack={() => setScreen("menu")} />}
-        {screen === "admin" && (
-          <AdminScreen onBack={() => setScreen("menu")} onReplay={(r) => openReplay(r, "admin")} />
-        )}
-        {screen === "settings" && <SettingsScreen onBack={() => setScreen("menu")} />}
-        {screen === "online" && (
-          <OnlineScreen
-            onBack={() => setScreen("menu")}
-            onReplay={(r) => openReplay(r, "online")}
-            tournament={onlineFocus}
-            initialTab={onlineTab}
-            onCorr={(id) => {
-              setCorrId(id);
-              setScreen("corr");
-            }}
-            onWatch={(id) => {
-              watchMatch(id);
-              setScreen("watch");
-            }}
-          />
+        {inShell ? (
+          <AppShell active={navActive} onNav={nav} onlineBadge={todoCount(todo) + (challengeWaiting ? 1 : 0)}>
+            {content}
+          </AppShell>
+        ) : (
+          content
         )}
         {screen === "game" && (
           <GameScreen
@@ -233,16 +311,9 @@ export function App() {
             onReplay={(r) => openReplay(r, "game")}
             onTournament={(id) => {
               setOnlineFocus(id);
+              setOnlineTab(null);
               setScreen("online");
             }}
-          />
-        )}
-        {screen === "stats" && (
-          <StatsScreen
-            onBack={() => setScreen("menu")}
-            onReplay={(r) => openReplay(r, "stats")}
-            onPlay={() => setScreen("new")}
-            onImport={(records) => openReplay(records, "stats")}
           />
         )}
         {screen === "replay" && replay && (
@@ -250,11 +321,11 @@ export function App() {
         )}
         {screen === "watch" && <WatchScreen onBack={() => setScreen("online")} />}
         {screen === "tutorial" && (
-          <TutorialScreen onBack={() => setScreen("menu")} onPlay={() => setScreen("new")} />
+          <TutorialScreen onBack={() => setScreen("learn")} onPlay={() => setScreen("play")} />
         )}
-        {screen === "puzzle" && <PuzzleScreen onBack={() => setScreen("menu")} />}
+        {screen === "puzzle" && <PuzzleScreen onBack={() => setScreen(lastNav.current)} />}
         {screen === "corr" && corrId && (
-          <CorrGameScreen key={corrId} id={corrId} onBack={() => setScreen("online")} />
+          <CorrGameScreen key={corrId} id={corrId} onBack={() => setScreen(lastNav.current)} />
         )}
         <ChallengePrompt />
         <FriendLinkPrompt />

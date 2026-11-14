@@ -18,6 +18,8 @@ import {
   type CorrStatus,
   type CorrView,
   MAX_CORR_SEEKS,
+  type CorrEmote,
+  type EmoteId,
   type MatchVariantId,
   type ServerMessage,
 } from "@tavli/protocol";
@@ -41,7 +43,8 @@ CREATE TABLE IF NOT EXISTS corr_games (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   league_id TEXT,
-  hours INTEGER
+  hours INTEGER,
+  emote TEXT
 );
 CREATE TABLE IF NOT EXISTS corr_seeks (
   id TEXT PRIMARY KEY,
@@ -110,7 +113,12 @@ interface Row {
   updated_at: string;
   league_id: string | null;
   hours: number | null;
+  /** Latest quick message, JSON {seat, id, at}. */
+  emote: string | null;
 }
+
+/** Quick messages per player and game: at most one per this interval. */
+const EMOTE_INTERVAL_MS = 10_000;
 
 /**
  * Correspondence games between friends: one decision at a time with days to answer instead of
@@ -129,6 +137,7 @@ export class Correspondence {
       store.db.exec("ALTER TABLE corr_games ADD COLUMN league_id TEXT");
     if (!cols.some((c) => c.name === "hours"))
       store.db.exec("ALTER TABLE corr_games ADD COLUMN hours INTEGER");
+    if (!cols.some((c) => c.name === "emote")) store.db.exec("ALTER TABLE corr_games ADD COLUMN emote TEXT");
   }
 
   private get db() {
@@ -158,6 +167,7 @@ export class Correspondence {
       reason: r.reason,
       updatedAt: r.updated_at,
       league: r.league_id ? { id: r.league_id, name: this.host.leagueName?.(r.league_id) ?? "?" } : null,
+      emote: r.emote ? (JSON.parse(r.emote) as CorrEmote) : null,
     };
   }
 
@@ -407,6 +417,24 @@ export class Correspondence {
     });
     if (m.winner !== null) this.finish({ ...this.row(id)! }, m.winner, "won");
     this.changed(id, newDecision);
+    return this.get(me, id);
+  }
+
+  /**
+   * A quick message (one of the fixed emotes) to the opponent; it is kept with the game, so the
+   * opponent sees it the next time they open it. Only the latest one is kept.
+   */
+  emote(me: string, id: string, emote: EmoteId, now = Date.now()): CorrView {
+    const r = this.row(id);
+    if (!r || (r.p0 !== me && r.p1 !== me)) throw new CorrError(404, "not found");
+    if (r.status !== "active" && r.status !== "finished") throw new CorrError(409, "game is not running");
+    const seat: Player = r.p0 === me ? 0 : 1;
+    const last = r.emote ? (JSON.parse(r.emote) as CorrEmote) : null;
+    if (last && last.seat === seat && now - last.at < EMOTE_INTERVAL_MS)
+      throw new CorrError(429, "too many messages");
+    const value: CorrEmote = { seat, id: emote, at: now };
+    this.db.prepare("UPDATE corr_games SET emote = ? WHERE id = ?").run(JSON.stringify(value), id);
+    for (const p of [r.p0, r.p1]) this.host.notify(p, { t: "corr-changed", id });
     return this.get(me, id);
   }
 

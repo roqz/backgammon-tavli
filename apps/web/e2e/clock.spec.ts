@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { onlineGuest } from "./helpers";
+import { newGame, onlineGuest } from "./helpers";
 
 test("blitz: both players see the chess clock with delay and reserve", async ({ browser }) => {
   test.setTimeout(90_000);
   const mia = await onlineGuest(browser, "Mia");
   const noa = await onlineGuest(browser, "Noa");
   for (const p of [mia, noa]) {
-    await p.getByRole("tab", { name: "Spielen" }).click();
-    await p.getByRole("button", { name: "Hypergammon", exact: true }).click();
+    await newGame(p, "Online-Gegner");
+    await p.getByRole("button", { name: /^Hypergammon/ }).click();
     await p.getByRole("button", { name: "1", exact: true }).click();
     await p.getByRole("button", { name: /Blitz/ }).click();
     await expect(p.getByText(/8 Sekunden pro Zug frei/)).toBeVisible();
