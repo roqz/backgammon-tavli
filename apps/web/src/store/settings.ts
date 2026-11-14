@@ -25,6 +25,11 @@ export interface Settings {
   dice3d: boolean;
   /** Mirror the board horizontally: the own home board is drawn bottom left. */
   homeLeft: boolean;
+  /**
+   * Phones held upright: "landscape" turns the game screen by 90° (for phones whose screen
+   * rotation is locked but are held sideways).
+   */
+  gameOrientation: "auto" | "landscape";
   /** Show the opponent's quick messages in online games. */
   showEmotes: boolean;
   /** Dice look (rewards unlock more). */
@@ -62,6 +67,7 @@ export const useSettings = create<SettingsStore>()(
         typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
       ),
       homeLeft: false,
+      gameOrientation: "auto",
       showEmotes: true,
       diceSkin: "theme",
       fireworks: true,

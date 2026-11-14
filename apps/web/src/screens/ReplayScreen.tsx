@@ -13,6 +13,7 @@ import { useBoardTheme } from "../rewards";
 import type { GameRecord } from "../store/archive";
 import { useSettings } from "../store/settings";
 import { usePortraitPhone } from "./GameScreen";
+import { useSidewaysBoardStyle } from "./PhoneGame";
 
 const STEP_MS = 750;
 
@@ -81,6 +82,7 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
   const t = useT();
   // Same board view as in the game: portrait rotation, mirrored home, point numbers.
   const portrait = usePortraitPhone();
+  const boardStyle = useSidewaysBoardStyle();
   const homeLeft = useSettings((s) => s.homeLeft);
   const showNumbers = useSettings((s) => s.showNumbers);
   const theme = useBoardTheme();
@@ -161,7 +163,7 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
           <div className="w-16" />
         </div>
         {tabs}
-        <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+        <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
           <Board
             state={frame.state}
             layout={layout}

@@ -67,6 +67,11 @@ export interface BoardProps {
   readonly rotated?: boolean;
   /** Mirror left/right: home board and bear-off tray on the left. */
   readonly mirrored?: boolean;
+  /**
+   * The whole screen is turned by 90° clockwise with CSS ("always landscape" on a phone locked
+   * upright); pointer positions are then mapped by hand instead of relying on getScreenCTM.
+   */
+  readonly screenTurned?: boolean;
 }
 
 export interface OpeningRoll {
@@ -102,6 +107,7 @@ export function Board({
   viewer = 0,
   rotated = false,
   mirrored = false,
+  screenTurned = false,
 }: BoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   /** All board content; pointer positions are mapped through its (possibly rotated) transform. */
@@ -132,6 +138,15 @@ export function Board({
 
   const toSvg = (e: PointerEvent): Pos => {
     const svg = svgRef.current!;
+    if (screenTurned) {
+      // turned clockwise: the element's x axis runs down the screen, its y axis to the left
+      const r = svg.getBoundingClientRect();
+      const s = svg.viewBox.baseVal.width / r.height;
+      let p = new DOMPoint((e.clientY - r.top) * s, (r.right - e.clientX) * s);
+      const m = rootRef.current?.transform.baseVal.consolidate()?.matrix;
+      if (m) p = p.matrixTransform(DOMMatrix.fromMatrix(m).inverse());
+      return { x: p.x, y: p.y };
+    }
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;

@@ -8,12 +8,14 @@ import { useT } from "../i18n";
 import { gradePuzzle, type Puzzle, streak, today, usePuzzles } from "../puzzle";
 import { useBoardTheme } from "../rewards";
 import { usePortraitPhone } from "./GameScreen";
+import { useSidewaysBoardStyle } from "./PhoneGame";
 
 /** The puzzle of the day: find the best move; the first answer counts for the streak. */
 export function PuzzleScreen({ onBack }: { onBack: () => void }) {
   const t = useT();
   const theme = useBoardTheme();
   const portrait = usePortraitPhone();
+  const boardStyle = useSidewaysBoardStyle();
   const date = useMemo(() => today(), []);
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [error, setError] = useState(false);
@@ -84,7 +86,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
           </p>
         )}
       </Card>
-      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
         <Board
           state={shownState}
           layout={showBest ? layoutFromBoard(puzzle.state.board) : layout}

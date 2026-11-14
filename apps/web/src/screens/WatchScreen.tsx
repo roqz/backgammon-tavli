@@ -10,6 +10,7 @@ import { useOnline } from "../online/store";
 import { useBoardTheme } from "../rewards";
 import { useSettings } from "../store/settings";
 import { Checker, usePortraitPhone } from "./GameScreen";
+import { useSidewaysBoardStyle } from "./PhoneGame";
 import { roundName } from "./TournamentPanel";
 
 /** Read-only view of a running public match. */
@@ -20,6 +21,7 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
   const settings = useSettings();
   const theme = useBoardTheme();
   const portrait = usePortraitPhone();
+  const boardStyle = useSidewaysBoardStyle();
   const board = watch?.match.game.board;
   const layout = useMemo(() => (board ? layoutFromBoard(board) : null), [board]);
   const leave = () => {
@@ -76,7 +78,7 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
           );
         })}
       </div>
-      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
         <Board
           state={g}
           layout={layout}

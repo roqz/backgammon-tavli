@@ -21,6 +21,7 @@ import { type Lang, useT } from "../i18n";
 import { useBoardTheme } from "../rewards";
 import { useSettings } from "../store/settings";
 import { usePortraitPhone } from "./GameScreen";
+import { useSidewaysBoardStyle } from "./PhoneGame";
 
 type Point = number | "bar" | "off";
 
@@ -185,6 +186,7 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
   const lang = useSettings((s) => s.lang);
   const theme = useBoardTheme();
   const portrait = usePortraitPhone();
+  const boardStyle = useSidewaysBoardStyle();
   const [index, setIndex] = useState(0);
   const lesson = LESSONS[index]!;
   const [state, setState] = useState(() => setup(lesson));
@@ -224,7 +226,7 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
         <h2 className="font-semibold text-amber-200">{lesson.title[lang]}</h2>
         <p className="text-sm leading-relaxed text-stone-300">{lesson.text[lang]}</p>
       </Card>
-      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
         <Board
           state={state}
           layout={layout}

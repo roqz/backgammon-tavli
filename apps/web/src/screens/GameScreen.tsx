@@ -49,6 +49,21 @@ import {
   useResignRejected,
   XgidBox,
 } from "./GameExtras";
+import {
+  ActionArea,
+  FitBoard,
+  fullscreenSupported,
+  IconButton,
+  MoreSheet,
+  type PhoneAction,
+  PhoneStage,
+  PlayerBar,
+  type PlayerInfo,
+  type SheetItem,
+  toggleFullscreen,
+  useFullscreen,
+  usePhoneLayout,
+} from "./PhoneGame";
 import { RulesDrawer } from "./RulesPanel";
 import { SettingsDrawer } from "./SettingsPanel";
 import { roundName } from "./TournamentPanel";
@@ -205,8 +220,11 @@ export function GameScreen({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
-  const portrait = usePortraitPhone();
-  const landscape = useShortLandscape();
+  const phone = usePhoneLayout();
+  /** Upright phones draw the board turned by 90° to use the screen height. */
+  const boardRotated = phone?.kind === "portrait";
+  const [moreOpen, setMoreOpen] = useState(false);
+  const fullscreen = useFullscreen();
   const connection = useOnline((s) => s.status);
   /** The result dialog can be put aside to look at the final position. */
   const [peekBoard, setPeekBoard] = useState(false);
@@ -230,13 +248,15 @@ export function GameScreen({
   }, [onlineError]);
   const rollFx = useGame((s) => s.rollFx);
   const [doneSeq, setDoneSeq] = useState(() => useGame.getState().rollFx?.seq ?? 0);
-  const diceAnimating = settings.dice3d && rollFx !== null && rollFx.seq !== doneSeq;
+  // The 3D throw measures its canvas on screen, which a turned stage would distort: 2D dice there.
+  const dice3d = settings.dice3d && !phone?.turned;
+  const diceAnimating = dice3d && rollFx !== null && rollFx.seq !== doneSeq;
   const [hint, setHint] = useState<{ game: GameState; moves: Move[] } | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
 
   // New dice first appear (2D intro or 3D throw); only then are movable checkers marked.
   const [settledSeq, setSettledSeq] = useState(() => useGame.getState().rollFx?.seq ?? 0);
-  const settling = !settings.dice3d && rollFx !== null && rollFx.seq !== settledSeq;
+  const settling = !dice3d && rollFx !== null && rollFx.seq !== settledSeq;
   useEffect(() => {
     if (!settling || !rollFx) return;
     const id = setTimeout(() => setSettledSeq(rollFx.seq), DICE_INTRO_MS);
@@ -253,7 +273,8 @@ export function GameScreen({
       if (!key) return;
       // dialogs: only their own keys; focused buttons and the board keep Space/Enter
       const inDialog = !!el?.closest("[role=dialog]");
-      if (inDialog !== DIALOG_SHORTCUTS.has(key)) return;
+      // (on phones the double decision is not a dialog but part of the action dock)
+      if (inDialog && !DIALOG_SHORTCUTS.has(key)) return;
       if (key === "primary" && el?.closest("button, [role=application], a")) return;
       const run = shortcuts.current[key];
       if (!run) return;
@@ -455,261 +476,370 @@ export function GameScreen({
     </>
   );
 
-  return (
-    <div
-      className={`mx-auto flex w-full max-w-7xl gap-3 p-2 sm:p-4 ${landscape ? "flex-row items-start" : "flex-col lg:flex-row lg:items-start"}`}
-    >
-      <div className={`flex min-w-0 flex-col gap-3 ${landscape ? "flex-none" : "flex-1"}`}>
-        {/* header */}
-        <div className="flex items-center justify-between gap-2 px-1">
-          <Button
-            variant="ghost"
-            onClick={onMenu}
-            className="shrink-0 px-3 py-1.5 text-sm"
-            aria-label={t.toMenu}
-          >
-            ← <span className="hidden sm:inline">{t.toMenu}</span>
-          </Button>
-          <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
-            <span className="font-semibold text-stone-200">{rules.name}</span> · {t.game}{" "}
-            {match.results.length + (g.phase === "finished" ? 0 : 1)} · {lengthLabel}
-            {online && onlineInfo && !onlineInfo.rated && (
-              <span
-                className="ml-2 rounded bg-stone-700 px-1.5 py-0.5 text-stone-200"
-                title={onlineInfo.unratedReason ? t.unratedReason[onlineInfo.unratedReason] : undefined}
-              >
-                {t.unrated}
-              </span>
-            )}
-            {online && onlineInfo?.tournament && (
-              <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-200">
-                🏆 {onlineInfo.tournament.name} ·{" "}
-                {roundName(
-                  t,
-                  onlineInfo.tournament.round,
-                  onlineInfo.tournament.rounds,
-                  onlineInfo.tournament.format,
-                )}
-              </span>
-            )}
-            {match.crawford === "crawford-game" && (
-              <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-300">{t.crawford}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {online && onlineInfo && (
-              <OnlineStatus
-                deadline={
-                  onlineInfo.end || !onlineInfo.deadline || onlineInfo.clock
-                    ? null
-                    : onlineInfo.deadline - onlineInfo.clockOffset
-                }
-                clock={onlineInfo.end ? null : onlineInfo.clock}
-                clockOffset={onlineInfo.clockOffset}
-                seat={onlineInfo.seat}
-                opponentName={onlineInfo.players[onlineInfo.seat === 0 ? 1 : 0].name}
-                opponentConnected={onlineInfo.opponentConnected}
-                graceUntil={onlineInfo.opponentGraceUntil}
-              />
-            )}
-            {online && onlineInfo && !onlineInfo.end && <EmoteButton />}
-            {g.phase !== "finished" && !offer && (
-              <Button
-                variant="ghost"
-                className="px-3 py-1.5 text-lg lg:hidden"
-                onClick={() => setResigning(true)}
-                aria-label={t.resign}
-                title={t.resign}
-              >
-                🏳
-              </Button>
-            )}
-            {online && onlineInfo && (
-              <Button
-                variant="ghost"
-                className="px-3 py-1.5 text-lg"
-                onClick={() => setReporting(true)}
-                aria-label={t.report}
-                title={t.report}
-              >
-                ⚑
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              className="px-3 py-1.5 text-lg"
-              onClick={() => setRulesOpen(true)}
-              aria-label={t.rules}
-              title={t.rules}
-            >
-              📖
-            </Button>
-            <Button
-              variant="ghost"
-              className="px-3 py-1.5 text-lg"
-              onClick={() => setSettingsOpen(true)}
-              aria-label={t.settings}
-              title={t.settings}
-            >
-              ⚙
-            </Button>
-          </div>
-        </div>
+  /** The actions of the phone dock / rail (the main action last). */
+  const phoneActions = (): PhoneAction[] => {
+    const acts: PhoneAction[] = [];
+    const cancel: PhoneAction = {
+      id: "cancel",
+      label: t.cancel,
+      icon: "✕",
+      onClick: cancelCountdown,
+      variant: "ghost",
+      keys: "Escape",
+    };
+    if (g.phase === "opening") {
+      acts.push({ id: "opening", label: t.openingRoll, onClick: roll, variant: "primary", keys: "Space" });
+    } else if (g.phase === "rolling" && humanToAct && !isClosedOut(g)) {
+      if (countdown?.kind === "roll") acts.push(cancel);
+      if (canDouble(g))
+        acts.push({
+          id: "double",
+          label: `${t.double} (${g.cube.value * 2})`,
+          onClick: () => dispatch({ type: "double" }),
+          variant: "secondary",
+          keys: "D",
+          title: `${t.double} (D)`,
+        });
+      if (canRaccoon(g))
+        acts.push({
+          id: "raccoon",
+          label: `${t.raccoon} (${g.cube.value * 2})`,
+          icon: "🦝",
+          onClick: () => dispatch({ type: "raccoon" }),
+          variant: "secondary",
+          title: t.raccoonHint,
+        });
+      acts.push({
+        id: "roll",
+        label: t.roll,
+        onClick: roll,
+        variant: "primary",
+        keys: "Space",
+        title: `${t.roll} (${t.keySpace})`,
+        badge: countdown?.kind === "roll" ? countdown.seconds : undefined,
+      });
+    } else if (g.phase === "moving" && humanToAct) {
+      if (!online)
+        acts.push({
+          id: "hint",
+          label: t.hint,
+          icon: "💡",
+          onClick: () => void askHint(),
+          disabled: busy || hintLoading || legalMoves(g).length === 0,
+          variant: "secondary",
+          keys: "H",
+          title: `${t.hint} (H)`,
+        });
+      acts.push({
+        id: "undo",
+        label: t.undo,
+        icon: "↶",
+        onClick: () => dispatch({ type: "undo" }),
+        disabled: !canUndo(g) || busy,
+        variant: "secondary",
+        keys: "U",
+        title: `${t.undo} (U)`,
+      });
+      if (countdown?.kind === "confirm") acts.push(cancel);
+      acts.push({
+        id: "confirm",
+        label: t.confirm,
+        onClick: () => dispatch({ type: "confirm" }),
+        disabled: !canConfirm(g) || busy,
+        variant: "primary",
+        keys: "Space",
+        title: `${t.confirm} (${t.keySpace})`,
+        badge: countdown?.kind === "confirm" ? countdown.seconds : undefined,
+      });
+    } else if (cubeDialog) {
+      // the decision stays next to the board instead of covering it
+      acts.push({
+        id: "drop",
+        label: t.drop,
+        onClick: () => dispatch({ type: "drop" }),
+        variant: "danger",
+        keys: "P",
+        title: `${t.drop} (P)`,
+      });
+      if (canBeaver(g))
+        acts.push({
+          id: "beaver",
+          label: `${t.beaver} (${g.cube.value * 4})`,
+          icon: "🦫",
+          onClick: () => dispatch({ type: "beaver" }),
+          variant: "secondary",
+          keys: "B",
+          title: t.beaverHint,
+        });
+      acts.push({
+        id: "take",
+        label: t.take,
+        onClick: () => dispatch({ type: "take" }),
+        variant: "primary",
+        keys: "T",
+        title: `${t.take} (T)`,
+      });
+    }
+    return acts;
+  };
 
-        {online && connection !== "ready" && (
-          <p
-            role="alert"
-            className="flex items-center justify-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-sm text-red-200"
-          >
-            <span className="h-2 w-2 rounded-full bg-red-400 motion-safe:animate-pulse" />
-            {t.connectionLost}
+  function renderPhone() {
+    if (!phone || !match) return null;
+    const sideways = phone.kind === "landscape";
+    // own seat at the bottom (the board is drawn from its side), the opponent on top
+    const bottom: Player = seat ?? 0;
+    const top = opponent(bottom);
+    const info = (p: Player): PlayerInfo => ({
+      name: name(p),
+      frame: frameOf(p),
+      pips: settings.showPips ? pipCount(rules, g.board, p) : null,
+      score: match.score[p],
+      active: actor === p,
+      checker: <Checker player={p} />,
+    });
+    const statusLine = (
+      <span className="inline-flex max-w-full items-center gap-2">
+        {actor !== null && <Checker player={actor} />}
+        <span className={sideways ? "" : "truncate"}>{status}</span>
+      </span>
+    );
+    const gameNo = match.results.length + (g.phase === "finished" ? 0 : 1);
+    const badges = (
+      <>
+        {online && onlineInfo && !onlineInfo.rated && (
+          <span className="rounded bg-stone-700 px-1 text-stone-200">{t.unrated}</span>
+        )}
+        {online && onlineInfo?.tournament && (
+          <span className="rounded bg-amber-500/20 px-1 text-amber-200">
+            🏆{" "}
+            {roundName(
+              t,
+              onlineInfo.tournament.round,
+              onlineInfo.tournament.rounds,
+              onlineInfo.tournament.format,
+            )}
+          </span>
+        )}
+        {match.crawford === "crawford-game" && (
+          <span className="rounded bg-amber-500/20 px-1 text-amber-300">{t.crawford}</span>
+        )}
+      </>
+    );
+    const onlineStatus = online && onlineInfo && (
+      <OnlineStatus
+        deadline={
+          onlineInfo.end || !onlineInfo.deadline || onlineInfo.clock
+            ? null
+            : onlineInfo.deadline - onlineInfo.clockOffset
+        }
+        clock={onlineInfo.end ? null : onlineInfo.clock}
+        clockOffset={onlineInfo.clockOffset}
+        seat={onlineInfo.seat}
+        opponentName={onlineInfo.players[onlineInfo.seat === 0 ? 1 : 0].name}
+        opponentConnected={onlineInfo.opponentConnected}
+        graceUntil={onlineInfo.opponentGraceUntil}
+      />
+    );
+    const lost = online && connection !== "ready" && (
+      <p
+        role="alert"
+        className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-red-500/20 px-2 py-1 text-xs text-red-200"
+      >
+        <span className="h-2 w-2 rounded-full bg-red-400 motion-safe:animate-pulse" />
+        {t.connectionLost}
+      </p>
+    );
+    const closeThen = (fn: () => void) => () => {
+      setMoreOpen(false);
+      fn();
+    };
+    const items: SheetItem[] = [
+      { id: "rules", label: t.rules, icon: "📖", onClick: closeThen(() => setRulesOpen(true)) },
+      { id: "settings", label: t.settings, icon: "⚙", onClick: closeThen(() => setSettingsOpen(true)) },
+    ];
+    if (phone.turned || phone.kind === "portrait")
+      items.push({
+        id: "turn",
+        label: phone.turned ? t.turnAuto : t.turnLandscape,
+        icon: "⟳",
+        onClick: closeThen(() => settings.update({ gameOrientation: phone.turned ? "auto" : "landscape" })),
+      });
+    if (fullscreenSupported())
+      items.push({
+        id: "fullscreen",
+        label: fullscreen ? t.exitFullscreen : t.fullscreen,
+        icon: "⛶",
+        onClick: closeThen(() => void toggleFullscreen(sideways)),
+      });
+    if (g.phase !== "finished" && !offer)
+      items.push({
+        id: "resign",
+        label: t.resign,
+        icon: "🏳",
+        danger: true,
+        onClick: closeThen(() => setResigning(true)),
+      });
+    if (online && onlineInfo)
+      items.push({ id: "report", label: t.report, icon: "⚑", onClick: closeThen(() => setReporting(true)) });
+
+    const board = (
+      <FitBoard ratio={sideways ? WIDTH / HEIGHT : HEIGHT / WIDTH}>
+        {boardInner}
+        {hintText && (
+          <p className="pointer-events-none absolute inset-x-2 top-2 mx-auto w-fit rounded-full bg-stone-900/90 px-3 py-1 text-xs text-amber-200 shadow-lg">
+            💡 <span className="font-mono">{hintText}</span>
           </p>
         )}
-        {!landscape && (
-          <ScoreStrip
-            className="lg:hidden"
-            names={[name(0), name(1)]}
-            frames={[frameOf(0), frameOf(1)]}
-            pips={settings.showPips ? [pipCount(rules, g.board, 0), pipCount(rules, g.board, 1)] : null}
-            score={match.score}
-            actor={actor}
-          />
-        )}
-        <div
-          className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40"
-          style={
-            landscape ? { width: `calc((100dvh - 4.5rem) * ${WIDTH / HEIGHT})`, maxWidth: "70vw" } : undefined
-          }
-        >
-          <Board
-            state={g}
-            layout={safeLayout}
-            theme={theme}
-            interactive={interactive}
-            openingDice={opening}
-            numbersFor={settings.showNumbers ? (seat ?? actor ?? 0) : null}
-            onMoves={(chain) => void playChain(chain)}
-            hint={activeHint}
-            hideDice={diceAnimating}
-            viewer={seat ?? 0}
-            rotated={portrait}
-            mirrored={settings.homeLeft}
-            diceIntro={!settings.dice3d}
-          />
-          <EventBanner placement={portrait ? "middle" : "top"} />
-          {online && <EmoteBubbles />}
-          {resignRejected && (
-            <p className="pointer-events-none absolute inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-stone-900/90 px-4 py-1.5 text-sm text-amber-200 shadow-lg">
-              {t.resignRejected}
-            </p>
-          )}
-          {diceAnimating && rollFx && (
-            <Suspense fallback={null}>
-              <Dice3D
-                roll={
-                  seat === 1
-                    ? { ...rollFx, dice: rollFx.dice.map((d) => ({ ...d, half: d.half === 0 ? 1 : 0 })) }
-                    : rollFx
-                }
-                faceColor={theme.die.fill}
-                pipColor={theme.die.pip}
-                onDone={setDoneSeq}
-                rotated={portrait}
-                mirrored={settings.homeLeft}
-              />
-            </Suspense>
-          )}
-        </div>
-
-        {/* status + controls */}
-        <div
-          className={`flex flex-col items-center gap-3 ${landscape ? "hidden" : "sm:flex-row sm:justify-between"}`}
-        >
-          <div className="flex items-center gap-2 text-lg font-medium text-stone-100" aria-live="polite">
-            {actor !== null && <Checker player={actor} />}
-            {status}
-          </div>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">{controls}</div>
-        </div>
         {online && onlineError && (
-          <p role="alert" className="text-center text-sm text-red-400">
+          <p
+            role="alert"
+            className="absolute inset-x-2 bottom-2 mx-auto w-fit rounded-full bg-stone-900/90 px-3 py-1 text-xs text-red-300 shadow-lg"
+          >
             ⚠ {errorText(t, onlineError)}
           </p>
         )}
-        {hintText && (
-          <p className="text-center text-sm text-amber-200">
-            💡 {t.suggestion}: <span className="font-mono">{hintText}</span>
-          </p>
-        )}
-        {!hintText && g.phase === "moving" && g.played.length === 0 && !noPlay && (
-          <p className="text-center text-sm text-stone-500">{t.rulesHint}</p>
-        )}
-      </div>
+      </FitBoard>
+    );
+    const more = (
+      <IconButton label={t.more} onClick={() => setMoreOpen(true)}>
+        ⋯
+      </IconButton>
+    );
+    const back = (
+      <IconButton label={t.toMenu} onClick={onMenu}>
+        ←
+      </IconButton>
+    );
+    const emote = online && onlineInfo && !onlineInfo.end && <EmoteButton />;
 
-      {/* side panel */}
-      <aside className={`flex flex-col gap-3 ${landscape ? "min-w-0 flex-1" : "w-full lg:w-72"}`}>
-        {landscape && (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-base font-medium text-stone-100" aria-live="polite">
-              {actor !== null && <Checker player={actor} />}
-              {status}
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">{controls}</div>
+    return (
+      <PhoneStage turned={phone.turned}>
+        {sideways ? (
+          <div className="flex h-full gap-2 p-2">
+            <aside className="flex w-28 shrink-0 flex-col gap-2">
+              <div className="flex gap-1.5">
+                {back}
+                {more}
+              </div>
+              <PlayerBar card p={info(top)} testId="player-top" />
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden text-center text-[11px] leading-tight text-stone-400">
+                <span className="font-semibold text-stone-300">{rules.name}</span>
+                <span>
+                  {t.game} {gameNo} · {lengthLabel}
+                </span>
+                <span className="flex flex-wrap justify-center gap-1">{badges}</span>
+                {emote}
+              </div>
+              <PlayerBar card p={info(bottom)} testId="player-bottom" />
+            </aside>
+            {board}
+            <section aria-label={t.game} className="flex w-36 shrink-0 flex-col gap-2">
+              {lost}
+              {onlineStatus}
+              <ActionArea actions={phoneActions()} status={statusLine} vertical />
+            </section>
+          </div>
+        ) : (
+          <div className="flex h-full flex-col gap-2 p-2">
+            <header className="flex shrink-0 items-center gap-2">
+              {back}
+              <div className="min-w-0 flex-1 text-center leading-tight">
+                <div className="truncate text-sm font-semibold text-stone-100">{rules.name}</div>
+                <div className="flex items-center justify-center gap-1 truncate text-xs text-stone-400">
+                  <span className="truncate">
+                    {t.game} {gameNo} · {lengthLabel}
+                  </span>
+                  {badges}
+                </div>
+              </div>
+              {emote}
+              {more}
+            </header>
+            {lost}
+            {onlineStatus && <div className="flex shrink-0 justify-center">{onlineStatus}</div>}
+            <PlayerBar p={info(top)} testId="player-top" />
+            {board}
+            <PlayerBar p={info(bottom)} testId="player-bottom" />
+            <ActionArea actions={phoneActions()} status={statusLine} vertical={false} />
           </div>
         )}
-        <div
-          className={`rounded-2xl border border-stone-800 bg-stone-900/80 p-4 ${landscape ? "" : "hidden lg:block"}`}
+        <MoreSheet
+          open={moreOpen}
+          onClose={() => setMoreOpen(false)}
+          side={sideways ? "right" : "bottom"}
+          items={items}
         >
-          <h2 className="mb-2 text-sm font-medium text-stone-400">{t.score}</h2>
-          {([0, 1] as Player[]).map((p) => (
-            <div key={p} className="flex items-center gap-2 py-1">
-              <Checker player={p} />
-              <span
-                className={`flex-1 truncate ${actor === p ? "font-bold text-amber-200" : "text-stone-200"}`}
-              >
-                <PlayerName name={name(p)} frame={frameOf(p)} />
-              </span>
-              {settings.showPips && (
-                <span className="text-xs text-stone-500">
-                  {pipCount(rules, g.board, p)} {t.pips}
-                </span>
-              )}
-              <span className="w-8 text-right text-xl font-bold tabular-nums text-stone-100">
-                {match.score[p]}
-              </span>
-            </div>
-          ))}
-        </div>
+          <div>
+            <h2 className="mb-1 text-sm font-medium text-stone-400">{t.history}</h2>
+            <ol className="max-h-48 overflow-y-auto font-mono text-sm">
+              {g.history.map((rec, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: history is append-only
+                <li key={i} className="flex items-center gap-2 py-0.5 text-stone-300">
+                  <Checker player={rec.player} />
+                  {turnText(t, g.variant, rec)}
+                </li>
+              ))}
+            </ol>
+          </div>
+          <XgidBox match={match} />
+        </MoreSheet>
+        {dialogs}
+      </PhoneStage>
+    );
+  }
 
-        <div className="rounded-2xl border border-stone-800 bg-stone-900/80 p-4">
-          <h2 className="mb-2 text-sm font-medium text-stone-400">{t.history}</h2>
-          <ol ref={historyRef} className="max-h-48 overflow-y-auto font-mono text-sm lg:max-h-80">
-            {g.history.map((rec, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: history is append-only
-              <li key={i} className="flex items-center gap-2 py-0.5 text-stone-300">
-                <Checker player={rec.player} />
-                {turnText(t, g.variant, rec)}
-              </li>
-            ))}
-          </ol>
-        </div>
+  const boardInner = (
+    <>
+      <Board
+        state={g}
+        layout={safeLayout}
+        theme={theme}
+        interactive={interactive}
+        openingDice={opening}
+        numbersFor={settings.showNumbers ? (seat ?? actor ?? 0) : null}
+        onMoves={(chain) => void playChain(chain)}
+        hint={activeHint}
+        hideDice={diceAnimating}
+        viewer={seat ?? 0}
+        rotated={boardRotated}
+        screenTurned={!!phone?.turned}
+        mirrored={settings.homeLeft}
+        diceIntro={!dice3d}
+      />
+      <EventBanner placement={boardRotated ? "middle" : "top"} />
+      {online && <EmoteBubbles />}
+      {resignRejected && (
+        <p className="pointer-events-none absolute inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-stone-900/90 px-4 py-1.5 text-sm text-amber-200 shadow-lg">
+          {t.resignRejected}
+        </p>
+      )}
+      {diceAnimating && rollFx && (
+        <Suspense fallback={null}>
+          <Dice3D
+            roll={
+              seat === 1
+                ? { ...rollFx, dice: rollFx.dice.map((d) => ({ ...d, half: d.half === 0 ? 1 : 0 })) }
+                : rollFx
+            }
+            faceColor={theme.die.fill}
+            pipColor={theme.die.pip}
+            onDone={setDoneSeq}
+            rotated={boardRotated}
+            mirrored={settings.homeLeft}
+          />
+        </Suspense>
+      )}
+    </>
+  );
 
-        <XgidBox match={match} />
-
-        {g.phase !== "finished" && !offer && (
-          <Button variant="ghost" className="hidden text-sm lg:block" onClick={() => setResigning(true)}>
-            🏳 {t.resign}
-          </Button>
-        )}
-        <p className="hidden px-1 text-xs leading-relaxed text-stone-500 lg:block">⌨ {t.shortcutsHint}</p>
-      </aside>
-
-      {g.phase === "cube-offered" && humanToAct && actor !== null && (
+  const dialogs = (
+    <>
+      {cubeDialog && !phone && (
         <Modal>
           <p className="mb-4 text-lg text-stone-100">
             {name(g.turn)} {t.offersDouble} <b>{g.cube.value * 2}</b>
           </p>
-          <p className="mb-4 text-sm text-stone-400">{name(actor)}?</p>
+          {actor !== null && <p className="mb-4 text-sm text-stone-400">{name(actor)}?</p>}
           <div className="flex gap-2">
             <Button
               variant="danger"
@@ -984,6 +1114,202 @@ export function GameScreen({
         onClose={() => setRulesOpen(false)}
         initial={match.config.variant === "tavli" ? g.variant : match.config.variant}
       />
+    </>
+  );
+
+  if (phone) return renderPhone();
+
+  return (
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-2 sm:p-4 lg:flex-row lg:items-start">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        {/* header */}
+        <div className="flex items-center justify-between gap-2 px-1">
+          <Button
+            variant="ghost"
+            onClick={onMenu}
+            className="shrink-0 px-3 py-1.5 text-sm"
+            aria-label={t.toMenu}
+          >
+            ← <span className="hidden sm:inline">{t.toMenu}</span>
+          </Button>
+          <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
+            <span className="font-semibold text-stone-200">{rules.name}</span> · {t.game}{" "}
+            {match.results.length + (g.phase === "finished" ? 0 : 1)} · {lengthLabel}
+            {online && onlineInfo && !onlineInfo.rated && (
+              <span
+                className="ml-2 rounded bg-stone-700 px-1.5 py-0.5 text-stone-200"
+                title={onlineInfo.unratedReason ? t.unratedReason[onlineInfo.unratedReason] : undefined}
+              >
+                {t.unrated}
+              </span>
+            )}
+            {online && onlineInfo?.tournament && (
+              <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-200">
+                🏆 {onlineInfo.tournament.name} ·{" "}
+                {roundName(
+                  t,
+                  onlineInfo.tournament.round,
+                  onlineInfo.tournament.rounds,
+                  onlineInfo.tournament.format,
+                )}
+              </span>
+            )}
+            {match.crawford === "crawford-game" && (
+              <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-300">{t.crawford}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {online && onlineInfo && (
+              <OnlineStatus
+                deadline={
+                  onlineInfo.end || !onlineInfo.deadline || onlineInfo.clock
+                    ? null
+                    : onlineInfo.deadline - onlineInfo.clockOffset
+                }
+                clock={onlineInfo.end ? null : onlineInfo.clock}
+                clockOffset={onlineInfo.clockOffset}
+                seat={onlineInfo.seat}
+                opponentName={onlineInfo.players[onlineInfo.seat === 0 ? 1 : 0].name}
+                opponentConnected={onlineInfo.opponentConnected}
+                graceUntil={onlineInfo.opponentGraceUntil}
+              />
+            )}
+            {online && onlineInfo && !onlineInfo.end && <EmoteButton />}
+            {g.phase !== "finished" && !offer && (
+              <Button
+                variant="ghost"
+                className="px-3 py-1.5 text-lg lg:hidden"
+                onClick={() => setResigning(true)}
+                aria-label={t.resign}
+                title={t.resign}
+              >
+                🏳
+              </Button>
+            )}
+            {online && onlineInfo && (
+              <Button
+                variant="ghost"
+                className="px-3 py-1.5 text-lg"
+                onClick={() => setReporting(true)}
+                aria-label={t.report}
+                title={t.report}
+              >
+                ⚑
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              className="px-3 py-1.5 text-lg"
+              onClick={() => setRulesOpen(true)}
+              aria-label={t.rules}
+              title={t.rules}
+            >
+              📖
+            </Button>
+            <Button
+              variant="ghost"
+              className="px-3 py-1.5 text-lg"
+              onClick={() => setSettingsOpen(true)}
+              aria-label={t.settings}
+              title={t.settings}
+            >
+              ⚙
+            </Button>
+          </div>
+        </div>
+
+        {online && connection !== "ready" && (
+          <p
+            role="alert"
+            className="flex items-center justify-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-sm text-red-200"
+          >
+            <span className="h-2 w-2 rounded-full bg-red-400 motion-safe:animate-pulse" />
+            {t.connectionLost}
+          </p>
+        )}
+        <ScoreStrip
+          className="lg:hidden"
+          names={[name(0), name(1)]}
+          frames={[frameOf(0), frameOf(1)]}
+          pips={settings.showPips ? [pipCount(rules, g.board, 0), pipCount(rules, g.board, 1)] : null}
+          score={match.score}
+          actor={actor}
+        />
+        <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+          {boardInner}
+        </div>
+
+        {/* status + controls */}
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+          <div className="flex items-center gap-2 text-lg font-medium text-stone-100" aria-live="polite">
+            {actor !== null && <Checker player={actor} />}
+            {status}
+          </div>
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">{controls}</div>
+        </div>
+        {online && onlineError && (
+          <p role="alert" className="text-center text-sm text-red-400">
+            ⚠ {errorText(t, onlineError)}
+          </p>
+        )}
+        {hintText && (
+          <p className="text-center text-sm text-amber-200">
+            💡 {t.suggestion}: <span className="font-mono">{hintText}</span>
+          </p>
+        )}
+        {!hintText && g.phase === "moving" && g.played.length === 0 && !noPlay && (
+          <p className="text-center text-sm text-stone-500">{t.rulesHint}</p>
+        )}
+      </div>
+
+      {/* side panel */}
+      <aside className="flex w-full flex-col gap-3 lg:w-72">
+        <div className="hidden rounded-2xl border border-stone-800 bg-stone-900/80 p-4 lg:block">
+          <h2 className="mb-2 text-sm font-medium text-stone-400">{t.score}</h2>
+          {([0, 1] as Player[]).map((p) => (
+            <div key={p} className="flex items-center gap-2 py-1">
+              <Checker player={p} />
+              <span
+                className={`flex-1 truncate ${actor === p ? "font-bold text-amber-200" : "text-stone-200"}`}
+              >
+                <PlayerName name={name(p)} frame={frameOf(p)} />
+              </span>
+              {settings.showPips && (
+                <span className="text-xs text-stone-500">
+                  {pipCount(rules, g.board, p)} {t.pips}
+                </span>
+              )}
+              <span className="w-8 text-right text-xl font-bold tabular-nums text-stone-100">
+                {match.score[p]}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-2xl border border-stone-800 bg-stone-900/80 p-4">
+          <h2 className="mb-2 text-sm font-medium text-stone-400">{t.history}</h2>
+          <ol ref={historyRef} className="max-h-48 overflow-y-auto font-mono text-sm lg:max-h-80">
+            {g.history.map((rec, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: history is append-only
+              <li key={i} className="flex items-center gap-2 py-0.5 text-stone-300">
+                <Checker player={rec.player} />
+                {turnText(t, g.variant, rec)}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <XgidBox match={match} />
+
+        {g.phase !== "finished" && !offer && (
+          <Button variant="ghost" className="hidden text-sm lg:block" onClick={() => setResigning(true)}>
+            🏳 {t.resign}
+          </Button>
+        )}
+        <p className="hidden px-1 text-xs leading-relaxed text-stone-500 lg:block">⌨ {t.shortcutsHint}</p>
+      </aside>
+
+      {dialogs}
     </div>
   );
 }
@@ -991,19 +1317,6 @@ export function GameScreen({
 /** Phones held upright: the board is drawn rotated to use the screen height. */
 export function usePortraitPhone(): boolean {
   const query = "(orientation: portrait) and (max-width: 700px)";
-  const [match, setMatch] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
-  useEffect(() => {
-    const mq = window.matchMedia(query);
-    const onChange = () => setMatch(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return match;
-}
-
-/** Phones held sideways (short viewport): board and controls side by side, sized by the height. */
-function useShortLandscape(): boolean {
-  const query = "(orientation: landscape) and (max-height: 500px)";
   const [match, setMatch] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
   useEffect(() => {
     const mq = window.matchMedia(query);
@@ -1115,7 +1428,7 @@ function OnlineStatus({
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   };
   return (
-    <div className="flex items-center gap-2 text-sm">
+    <div className="flex flex-wrap items-center gap-2 text-sm">
       {!opponentConnected && (
         <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-300">
           ⚠ {t.opponentAway} {graceUntil ? fmt(graceUntil - now) : ""}

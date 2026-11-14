@@ -40,6 +40,7 @@ import { useOnline } from "../online/store";
 import { useBoardTheme } from "../rewards";
 import { useSettings } from "../store/settings";
 import { Checker, usePortraitPhone } from "./GameScreen";
+import { useSidewaysBoardStyle } from "./PhoneGame";
 
 type T = ReturnType<typeof useT>;
 const variantLabel = (v: MatchVariantId, tavli: string) => (v === "tavli" ? tavli : getVariant(v).name);
@@ -436,6 +437,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
   const theme = useBoardTheme();
   const settings = useSettings();
   const portrait = usePortraitPhone();
+  const boardStyle = useSidewaysBoardStyle();
   const version = useOnline((s) => s.corrVersion);
   const [view, setView] = useState<CorrView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -526,7 +528,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
           </div>
         ))}
       </div>
-      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
         <Board
           state={g}
           layout={layout}

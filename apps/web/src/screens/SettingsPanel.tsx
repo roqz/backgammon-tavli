@@ -273,6 +273,18 @@ export function SettingsPanel() {
           checked={s.homeLeft}
           onChange={(homeLeft) => s.update({ homeLeft })}
         />
+        <div className="py-3">
+          <Segmented
+            label={t.gameOrientation}
+            value={s.gameOrientation}
+            options={[
+              { value: "auto", label: t.orientationAuto },
+              { value: "landscape", label: t.orientationLandscape },
+            ]}
+            onChange={(gameOrientation) => s.update({ gameOrientation })}
+          />
+          <p className="mt-2 text-xs leading-snug text-stone-500">{t.gameOrientationHint}</p>
+        </div>
       </Section>
 
       <Section title={t.appearance} icon="🎨" {...fold("looks")}>
