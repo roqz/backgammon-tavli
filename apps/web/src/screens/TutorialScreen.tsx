@@ -125,7 +125,7 @@ export const LESSONS: readonly Lesson[] = [
   },
   {
     variant: "plakoto",
-    spec: { white: { 24: 13, 20: 2 }, black: { 24: 13, 8: 1, 1: 1 } },
+    spec: { white: { 24: 13, 20: 2 }, black: { 24: 13, 8: 1, 7: 1 } },
     dice: [3, 1],
     title: { de: "5 · Plakoto: Einklemmen", en: "5 · Plakoto: pinning" },
     text: {
@@ -161,7 +161,106 @@ export const LESSONS: readonly Lesson[] = [
     ],
     goal: (s) => own(s, 13) === 1 && own(s, 24) === 14,
   },
+  // Lessons are stored by their index (progress, achievements): new ones go at the end.
+  {
+    variant: "tavla",
+    spec: { white: { 24: 2, 13: 5, 8: 3, 6: 5 }, black: { 21: 1, 13: 6, 8: 3, 6: 5 } },
+    dice: [2, 5],
+    title: { de: "7 · Tavla: Schlagen und stehen bleiben", en: "7 · Tavla: hit and stay" },
+    text: {
+      de: "Tavla ist türkisches Backgammon ohne Verdopplungswürfel – mit einer Besonderheit: Ein Stein, der im eigenen Heimfeld (1 bis 6) schlägt, muss dort für den Rest des Wurfs stehen bleiben. Aufgabe: Schlag den schwarzen Blot auf 4 und zieh die 5 mit einem anderen Stein.",
+      en: "Tavla is Turkish backgammon without a doubling cube – with one twist: a checker that hits in your home board (1 to 6) has to stay there for the rest of the roll. Task: hit the black blot on 4 and play the 5 with another checker.",
+    },
+    done: {
+      de: "Richtig! Der schlagende Stein bleibt auf 4 – „schlagen und weglaufen“ gibt es im Tavla-Heimfeld nicht.",
+      en: "Right! The hitter stays on 4 – there is no “hit and run” in a Tavla home board.",
+    },
+    hint: [
+      [6, 4, 2],
+      [13, 8, 5],
+    ],
+    goal: (s) => s.board.bar[1] === 1 && own(s, 4) === 1,
+  },
+  {
+    variant: "tavla",
+    spec: { white: { 6: 2, 5: 3, 4: 4, 3: 3, 2: 2, 1: 1 }, black: { 6: 5, 5: 5, 4: 5 } },
+    dice: [6, 1],
+    title: { de: "8 · Tavla: Abtragen hat Vorrang", en: "8 · Tavla: bearing off comes first" },
+    text: {
+      de: "Beim Abtragen gilt in Tavla: Kann ein Würfel einen Stein abtragen, muss er das auch tun – Augen verschenken ist nicht erlaubt. Aufgabe: Trag mit 6-1 zwei Steine ab.",
+      en: "When bearing off in Tavla, a die that can take a checker off has to do so – wasting pips is not allowed. Task: bear off two checkers with 6-1.",
+    },
+    done: {
+      de: "Genau – die 1 durfte nicht 6/5 oder 2/1 ziehen, sie musste den Stein von 1 abtragen.",
+      en: "Exactly – the 1 could not play 6/5 or 2/1, it had to bear off the checker on 1.",
+    },
+    hint: [
+      [6, "off", 6],
+      [1, "off", 1],
+    ],
+    goal: (s) => s.board.off[0] >= 2,
+  },
+  {
+    variant: "narde",
+    spec: "start",
+    dice: [5, 3],
+    title: { de: "9 · Narde: ein Stein vom Kopf", en: "9 · Narde: one checker from the head" },
+    text: {
+      de: "In Narde stehen alle 15 Steine auf dem „Kopf“ (deinem Feld 24), beide ziehen in dieselbe Richtung, und ein einzelner Stein blockiert ein Feld. Pro Wurf darf nur ein Stein den Kopf verlassen. Aufgabe: Zieh mit 5-3 einen Stein vom Kopf.",
+      en: "In Narde all 15 checkers start on the “head” (your 24 point), both players move the same way round and a single checker blocks a point. Only one checker may leave the head per roll. Task: move one checker off the head with 5-3.",
+    },
+    done: {
+      de: "Gut! Der zweite Würfel musste mit demselben Stein gezogen werden.",
+      en: "Good! The second die had to be played with the same checker.",
+    },
+    hint: [
+      [24, 19, 5],
+      [19, 16, 3],
+    ],
+    goal: (s) => own(s, 24) === 14 && own(s, 16) === 1,
+  },
+  {
+    variant: "narde",
+    spec: "start",
+    dice: [6, 6],
+    title: { de: "10 · Narde: Sechser-Pasch zu Beginn", en: "10 · Narde: double six to start" },
+    text: {
+      de: "Ausnahme beim ersten Wurf: Mit 6-6, 4-4 oder 3-3 dürfen zwei Steine den Kopf verlassen – sonst könnte man den Pasch kaum spielen, denn der gegnerische Kopf (dein Feld 12) ist blockiert. Aufgabe: Bring zwei Steine vom Kopf.",
+      en: "An exception on the first roll: with 6-6, 4-4 or 3-3 two checkers may leave the head – otherwise the double could hardly be played, as the opponent's head (your 12 point) is blocked. Task: bring two checkers off the head.",
+    },
+    done: {
+      de: "Richtig! Die übrigen Sechsen verfallen, weil das Feld 12 vom Gegner besetzt ist.",
+      en: "Right! The remaining sixes are lost because the opponent holds the 12 point.",
+    },
+    hint: [
+      [24, 18, 6],
+      [24, 18, 6],
+    ],
+    goal: (s) => own(s, 24) === 13 && own(s, 18) === 2,
+  },
+  {
+    variant: "hypergammon",
+    spec: "start",
+    dice: [6, 5],
+    title: { de: "11 · Hypergammon: nur drei Steine", en: "11 · Hypergammon: only three checkers" },
+    text: {
+      de: "Hypergammon spielt nach Backgammon-Regeln, aber jeder hat nur drei Steine – auf den Feldern 24, 23 und 22. Partien sind kurz und jeder Wurf zählt. Aufgabe: Lauf mit 6-5 mit dem hintersten Stein bis auf 13.",
+      en: "Hypergammon follows the backgammon rules, but each side has only three checkers – on the 24, 23 and 22 points. Games are short and every roll counts. Task: run your rearmost checker to 13 with 6-5.",
+    },
+    done: {
+      de: "Gelaufen! Im Rennen mit nur drei Steinen entscheidet oft schon ein großer Wurf.",
+      en: "Off it goes! With only three checkers a single big roll often decides the race.",
+    },
+    hint: [
+      [24, 18, 6],
+      [18, 13, 5],
+    ],
+    goal: (s) => own(s, 24) === 0 && own(s, 13) === 1,
+  },
 ];
+
+/** The variants with lessons, in the order of the lessons. */
+const TUTORIAL_VARIANTS: readonly VariantId[] = [...new Set(LESSONS.map((l) => l.variant))];
 
 const setup = (lesson: Lesson): GameState => {
   const rules = getVariant(lesson.variant);
@@ -195,6 +294,7 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
   const finished = state.phase === "moving" && canConfirm(state);
   const success = finished && lesson.goal(state);
   const solveLesson = useAchievements((s) => s.solveLesson);
+  const solved = useAchievements((s) => s.lessons);
   useEffect(() => {
     if (success) solveLesson(index);
   }, [success, index, solveLesson]);
@@ -222,6 +322,37 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
           {index + 1} / {LESSONS.length}
         </span>
       </div>
+      <nav
+        aria-label={t.variant}
+        className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none]"
+      >
+        {TUTORIAL_VARIANTS.map((v) => {
+          const first = LESSONS.findIndex((l) => l.variant === v);
+          const current = lesson.variant === v;
+          const done = LESSONS.every((l, i) => l.variant !== v || solved.includes(i));
+          return (
+            <button
+              key={v}
+              type="button"
+              aria-current={current ? "step" : undefined}
+              onClick={() => go(first)}
+              className={`inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full px-3 text-sm focus-visible:outline-2 focus-visible:outline-amber-400 ${
+                current
+                  ? "bg-amber-100 font-semibold text-stone-950"
+                  : "border border-stone-800 bg-stone-900 text-stone-300 hover:border-stone-600"
+              }`}
+            >
+              {getVariant(v).name}
+              {done && (
+                <>
+                  <span aria-hidden="true">✓</span>
+                  <span className="sr-only">({t.lessonsDone})</span>
+                </>
+              )}
+            </button>
+          );
+        })}
+      </nav>
       <Card className="flex flex-col gap-2 p-4">
         <h2 className="font-semibold text-amber-200">{lesson.title[lang]}</h2>
         <p className="text-sm leading-relaxed text-stone-300">{lesson.text[lang]}</p>

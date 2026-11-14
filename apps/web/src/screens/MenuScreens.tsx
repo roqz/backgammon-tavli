@@ -224,6 +224,9 @@ export function LocalSetup({ opponent, onStarted }: { opponent: "bot" | "human";
           { value: 0, label: "∞", title: t.unlimited },
         ]}
       />
+      {length === 1 && variant !== "tavli" && getVariant(variant as VariantId).cube && (
+        <p className="-mt-4 text-xs text-stone-400">{t.oneNoCube}</p>
+      )}
       {length === 0 && beaverPossible && (
         <Toggle checked={beavers} onChange={setBeavers} label={t.beavers} description={t.beaversHint} />
       )}

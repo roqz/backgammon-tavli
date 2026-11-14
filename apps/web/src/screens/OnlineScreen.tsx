@@ -158,7 +158,10 @@ export function PlayPanel() {
           label: l === 0 ? t.money : String(l),
         }))}
       />
-      {length === 0 && <p className="-mt-2 text-xs text-stone-400">{t.moneyHint}</p>}
+      {length === 0 && <p className="-mt-4 text-xs text-stone-400">{t.moneyHint}</p>}
+      {length === 1 && variant !== "tavli" && getVariant(variant).cube && (
+        <p className="-mt-4 text-xs text-stone-400">{t.oneNoCube}</p>
+      )}
       <TimeControlPicker value={clock} onChange={setClock} />
       <div className="flex flex-col gap-2">
         <label htmlFor="join-code" className="text-xs font-semibold uppercase tracking-wide text-stone-400">
