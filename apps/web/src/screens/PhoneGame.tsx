@@ -43,10 +43,21 @@ export function usePhoneLayout(): PhoneLayout {
 
 /**
  * The full-screen frame of a phone layout. Safe areas (notch, home indicator) are kept free; when
- * turned, the physical edges move round by a quarter turn.
+ * turned, the physical edges move round by a quarter turn. Sideways, both short ends keep at least
+ * a notch's width free: not every browser reports the camera cutout, and the phone may be turned
+ * either way round, so the space is the same on both sides.
  */
-export function PhoneStage({ turned, children }: { turned: boolean; children: ReactNode }) {
+export function PhoneStage({
+  turned,
+  sideways,
+  children,
+}: {
+  turned: boolean;
+  sideways: boolean;
+  children: ReactNode;
+}) {
   const inset = (side: "top" | "right" | "bottom" | "left") => `env(safe-area-inset-${side}, 0px)`;
+  const ends = (a: "top" | "left", b: "bottom" | "right") => `max(${inset(a)}, ${inset(b)}, 1.75rem)`;
   const style: CSSProperties = turned
     ? {
         top: 0,
@@ -56,16 +67,16 @@ export function PhoneStage({ turned, children }: { turned: boolean; children: Re
         transformOrigin: "top left",
         transform: "translateX(100vw) rotate(90deg)",
         paddingTop: inset("right"),
-        paddingRight: inset("bottom"),
+        paddingRight: ends("top", "bottom"),
         paddingBottom: inset("left"),
-        paddingLeft: inset("top"),
+        paddingLeft: ends("top", "bottom"),
       }
     : {
         inset: 0,
         paddingTop: inset("top"),
-        paddingRight: inset("right"),
+        paddingRight: sideways ? ends("left", "right") : inset("right"),
         paddingBottom: inset("bottom"),
-        paddingLeft: inset("left"),
+        paddingLeft: sideways ? ends("left", "right") : inset("left"),
       };
   return (
     <div
@@ -132,23 +143,24 @@ export function PlayerBar({ p, card = false, testId }: { p: PlayerInfo; card?: b
   const tone = p.active ? "border-amber-400/60 bg-amber-400/10" : "border-stone-800 bg-stone-900/80";
   if (card)
     return (
-      <div data-testid={testId} className={`flex flex-col gap-1 rounded-xl border p-2 ${tone}`}>
-        <div className="flex min-w-0 items-center gap-1.5 text-xs">
+      <div
+        data-testid={testId}
+        className={`flex w-full flex-col items-center gap-0.5 rounded-xl border px-1 py-1.5 text-center ${tone}`}
+      >
+        <div className="flex items-center gap-1">
           {p.checker}
-          <span
-            className={`min-w-0 truncate ${p.active ? "font-semibold text-amber-100" : "text-stone-300"}`}
-          >
-            <PlayerName name={p.name} frame={p.frame} />
+          <span className="text-xl font-bold leading-none tabular-nums text-stone-50">{p.score}</span>
+        </div>
+        <span
+          className={`w-full truncate text-[10px] leading-tight ${p.active ? "font-semibold text-amber-100" : "text-stone-300"}`}
+        >
+          <PlayerName name={p.name} frame={p.frame} />
+        </span>
+        {p.pips !== null && (
+          <span className="text-[10px] leading-none tabular-nums text-stone-400" title={t.pips}>
+            {p.pips} {t.pips}
           </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-1">
-          <span className="text-2xl font-bold tabular-nums text-stone-50">{p.score}</span>
-          {p.pips !== null && (
-            <span className="text-[11px] text-stone-400" title={t.pips}>
-              {p.pips} {t.pips}
-            </span>
-          )}
-        </div>
+        )}
       </div>
     );
   return (

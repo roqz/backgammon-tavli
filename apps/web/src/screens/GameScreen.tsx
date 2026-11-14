@@ -713,34 +713,31 @@ export function GameScreen({
     const emote = online && onlineInfo && !onlineInfo.end && <EmoteButton />;
 
     return (
-      <PhoneStage turned={phone.turned}>
+      <PhoneStage turned={phone.turned} sideways={sideways}>
         {sideways ? (
-          <div className="flex h-full gap-2 p-2">
-            <aside className="flex w-28 shrink-0 flex-col gap-2">
-              <div className="flex gap-1.5">
-                {back}
-                {more}
-              </div>
+          <div className="flex h-full gap-2 py-2">
+            <aside
+              aria-label={`${rules.name} · ${t.game} ${gameNo} · ${lengthLabel}`}
+              className="flex w-14 shrink-0 flex-col items-center gap-2"
+            >
+              {back}
               <PlayerBar card p={info(top)} testId="player-top" />
-              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden text-center text-[11px] leading-tight text-stone-400">
-                <span className="font-semibold text-stone-300">{rules.name}</span>
-                <span>
-                  {t.game} {gameNo} · {lengthLabel}
-                </span>
-                <span className="flex flex-wrap justify-center gap-1">{badges}</span>
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden text-center text-[10px] leading-tight">
+                <span className="flex flex-col items-center gap-1">{badges}</span>
                 {emote}
               </div>
               <PlayerBar card p={info(bottom)} testId="player-bottom" />
+              {more}
             </aside>
             {board}
-            <section aria-label={t.game} className="flex w-36 shrink-0 flex-col gap-2">
+            <section aria-label={t.game} className="flex w-32 shrink-0 flex-col gap-2">
               {lost}
               {onlineStatus}
               <ActionArea actions={phoneActions()} status={statusLine} vertical />
             </section>
           </div>
         ) : (
-          <div className="flex h-full flex-col gap-2 p-2">
+          <div className="flex h-full flex-col gap-2 px-2 pt-2 pb-6">
             <header className="flex shrink-0 items-center gap-2">
               {back}
               <div className="min-w-0 flex-1 text-center leading-tight">
@@ -769,6 +766,12 @@ export function GameScreen({
           side={sideways ? "right" : "bottom"}
           items={items}
         >
+          {sideways && (
+            <p className="text-sm text-stone-300">
+              <span className="font-semibold text-stone-100">{rules.name}</span> · {t.game} {gameNo} ·{" "}
+              {lengthLabel}
+            </p>
+          )}
           <div>
             <h2 className="mb-1 text-sm font-medium text-stone-400">{t.history}</h2>
             <ol className="max-h-48 overflow-y-auto font-mono text-sm">
