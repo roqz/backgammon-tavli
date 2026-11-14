@@ -217,8 +217,8 @@ export function EmoteButton({ onSend = sendEmote }: { onSend?: (id: EmoteId) => 
 
 const BUBBLE_MS = 3500;
 
-export function EmoteBubbles() {
-  const t = useT();
+/** The quick message of a live match for a few seconds (others' only if they are shown). */
+export function useLiveEmote(): { seat: Player; id: EmoteId; seq: number } | null {
   const info = useOnline((s) => s.match);
   const showEmotes = useSettings((s) => s.showEmotes);
   const [visible, setVisible] = useState<{ seat: Player; id: EmoteId; seq: number } | null>(null);
@@ -229,9 +229,18 @@ export function EmoteBubbles() {
     const id = setTimeout(() => setVisible(null), BUBBLE_MS);
     return () => clearTimeout(id);
   }, [emote]);
+  if (!info || !visible) return null;
+  return visible.seat === info.seat || showEmotes ? visible : null;
+}
+
+/** Quick messages over the board (desktop; phones show them in the player bars). */
+export function EmoteBubbles() {
+  const t = useT();
+  const info = useOnline((s) => s.match);
+  const visible = useLiveEmote();
   if (!info) return null;
   const mine = visible?.seat === info.seat;
-  const show = visible && (mine || showEmotes);
+  const show = visible !== null;
   return (
     <AnimatePresence>
       {show && (

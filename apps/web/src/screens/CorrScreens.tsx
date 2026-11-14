@@ -47,6 +47,7 @@ import { EmoteButton } from "./GameExtras";
 import { Checker } from "./GameScreen";
 import {
   ActionArea,
+  EmoteNote,
   FitBoard,
   fullscreenSupported,
   IconButton,
@@ -54,6 +55,7 @@ import {
   type PhoneAction,
   PhoneStage,
   PlayerBar,
+  type PlayerEmote,
   type PlayerInfo,
   type SheetItem,
   toggleFullscreen,
@@ -458,6 +460,8 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
   const [moreOpen, setMoreOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** Time of the quick message the player hid (kept per game on this device). */
+  const [hiddenEmote, setHiddenEmote] = useState(() => readHiddenEmote(id));
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: version re-runs the fetch
   useEffect(() => {
@@ -571,26 +575,29 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
     });
   }
 
+  const shownEmote =
+    view.emote && view.emote.at !== hiddenEmote && (view.emote.seat === seat || settings.showEmotes)
+      ? view.emote
+      : null;
+  const emoteOf = (p: Player): PlayerEmote | null =>
+    shownEmote?.seat === p
+      ? {
+          text: t.emote[shownEmote.id],
+          when: ago(t, shownEmote.at),
+          onDismiss: () => {
+            hideEmote(id, shownEmote.at);
+            setHiddenEmote(shownEmote.at);
+          },
+        }
+      : null;
   const info = (p: Player): PlayerInfo => ({
+    emote: emoteOf(p),
     name: name(p),
     pips: settings.showPips ? pipCount(rules, g.board, p) : null,
     score: m.score[p],
     active: view.status === "active" && view.toAct === p,
     checker: <Checker player={p} />,
   });
-  const bubble = view.emote && (view.emote.seat === seat || settings.showEmotes) && (
-    <p
-      role="status"
-      className={`pointer-events-none absolute inset-x-2 top-2 z-10 mx-auto w-fit max-w-[90%] rounded-2xl px-3 py-1.5 text-sm shadow-lg ${
-        view.emote.seat === seat ? "bg-amber-400 text-stone-950" : "bg-stone-100 text-stone-900"
-      }`}
-    >
-      <span className="font-semibold">
-        {view.emote.seat === seat ? t.tYou : view.players[view.emote.seat].name}:
-      </span>{" "}
-      {t.emote[view.emote.id]} <span className="text-xs opacity-60">· {ago(t, view.emote.at)}</span>
-    </p>
-  );
   const errorLine = error && (
     <p
       role="alert"
@@ -614,7 +621,6 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
         screenTurned={!!phone?.turned}
         mirrored={settings.homeLeft}
       />
-      {bubble}
       {errorLine}
     </>
   );
@@ -703,6 +709,9 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
             </aside>
             <FitBoard ratio={WIDTH / HEIGHT}>{board(false)}</FitBoard>
             <section aria-label={t.game} className="flex w-32 shrink-0 flex-col gap-2">
+              {shownEmote && (
+                <EmoteNote name={view.players[shownEmote.seat].name} emote={emoteOf(shownEmote.seat)!} />
+              )}
               <ActionArea actions={actions} status={statusLine} vertical />
             </section>
           </div>
@@ -778,8 +787,8 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 lg:hidden">
-          <PlayerBar p={info(0)} />
-          <PlayerBar p={info(1)} />
+          <PlayerBar p={{ ...info(0), emote: null }} />
+          <PlayerBar p={{ ...info(1), emote: null }} />
         </div>
         <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
           {board(false)}
@@ -808,9 +817,12 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
       <aside className="flex w-full flex-col gap-3 lg:w-72">
         <div className="hidden flex-col gap-2 rounded-2xl border border-stone-800 bg-stone-900/80 p-4 lg:flex">
           <h2 className="text-sm font-medium text-stone-400">{t.score}</h2>
-          <PlayerBar p={info(otherSeat(seat))} />
-          <PlayerBar p={info(seat)} />
+          <PlayerBar p={{ ...info(otherSeat(seat)), emote: null }} />
+          <PlayerBar p={{ ...info(seat), emote: null }} />
         </div>
+        {shownEmote && (
+          <EmoteNote name={view.players[shownEmote.seat].name} emote={emoteOf(shownEmote.seat)!} />
+        )}
         {view.status === "active" && (
           <Button variant="ghost" className="text-sm" onClick={() => setResigning(true)}>
             🏳 {t.resign}
@@ -824,3 +836,26 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
 }
 
 const otherSeat = (seat: Player): Player => (seat === 0 ? 1 : 0);
+
+const HIDDEN_EMOTES = "tavli.corrEmotesHidden";
+
+/** The hidden quick messages: game id → time of the message. */
+const readHiddenEmotes = (): Record<string, number> => {
+  try {
+    return JSON.parse(localStorage.getItem(HIDDEN_EMOTES) ?? "{}") as Record<string, number>;
+  } catch {
+    return {};
+  }
+};
+const readHiddenEmote = (id: string): number | null => readHiddenEmotes()[id] ?? null;
+const hideEmote = (id: string, at: number): void => {
+  try {
+    // only the most recent games are kept
+    const all = Object.entries({ ...readHiddenEmotes(), [id]: at })
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 50);
+    localStorage.setItem(HIDDEN_EMOTES, JSON.stringify(Object.fromEntries(all)));
+  } catch {
+    // storage blocked: hidden for this visit only
+  }
+};

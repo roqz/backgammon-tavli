@@ -46,11 +46,13 @@ import {
   ReportDialog,
   ResignDialog,
   ResignOfferPrompt,
+  useLiveEmote,
   useResignRejected,
   XgidBox,
 } from "./GameExtras";
 import {
   ActionArea,
+  EmoteNote,
   FitBoard,
   fullscreenSupported,
   IconButton,
@@ -219,6 +221,7 @@ export function GameScreen({
   const moneySession = online && onlineInfo?.length === 0;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const liveEmote = useLiveEmote();
   const [reporting, setReporting] = useState(false);
   const phone = usePhoneLayout();
   /** Upright phones draw the board turned by 90° to use the screen height. */
@@ -596,6 +599,7 @@ export function GameScreen({
       score: match.score[p],
       active: actor === p,
       checker: <Checker player={p} />,
+      emote: liveEmote?.seat === p ? { text: t.emote[liveEmote.id] } : null,
     });
     const statusLine = (
       <span className="inline-flex max-w-full items-center gap-2">
@@ -733,6 +737,7 @@ export function GameScreen({
             <section aria-label={t.game} className="flex w-32 shrink-0 flex-col gap-2">
               {lost}
               {onlineStatus}
+              {liveEmote && <EmoteNote name={name(liveEmote.seat)} emote={{ text: t.emote[liveEmote.id] }} />}
               <ActionArea actions={phoneActions()} status={statusLine} vertical />
             </section>
           </div>
@@ -810,7 +815,7 @@ export function GameScreen({
         diceIntro={!dice3d}
       />
       <EventBanner placement={boardRotated ? "middle" : "top"} />
-      {online && <EmoteBubbles />}
+      {online && !phone && <EmoteBubbles />}
       {resignRejected && (
         <p className="pointer-events-none absolute inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-stone-900/90 px-4 py-1.5 text-sm text-amber-200 shadow-lg">
           {t.resignRejected}

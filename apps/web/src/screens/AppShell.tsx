@@ -89,7 +89,7 @@ export function AppShell({
   ];
   const badge = (id: NavTarget) => (id === "online" ? onlineBadge : 0);
   return (
-    <div className="min-h-dvh pb-[calc(4.5rem+env(safe-area-inset-bottom))] short:pr-[env(safe-area-inset-right)] short:pb-0 short:pl-[calc(5.5rem+env(safe-area-inset-left))] wide:pb-0">
+    <div className="min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] short:pr-[env(safe-area-inset-right)] short:pb-0 short:pl-[calc(5.5rem+env(safe-area-inset-left))] wide:pb-0">
       <header className="sticky top-0 z-20 hidden border-b border-stone-800/80 bg-stone-950/95 backdrop-blur wide:block">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-8">
           <button

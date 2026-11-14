@@ -129,7 +129,17 @@ export function FitBoard({ ratio, children }: { ratio: number; children: ReactNo
   );
 }
 
+/** A quick message shown with the player who sent it. */
+export interface PlayerEmote {
+  readonly text: string;
+  /** "3 hr. ago" for correspondence games. */
+  readonly when?: string;
+  /** Hides it (correspondence games keep the last message until it is dismissed). */
+  readonly onDismiss?: () => void;
+}
+
 export interface PlayerInfo {
+  readonly emote?: PlayerEmote | null;
   readonly name: string;
   readonly frame?: Frame | null;
   readonly pips: number | null;
@@ -175,13 +185,73 @@ export function PlayerBar({ p, card = false, testId }: { p: PlayerInfo; card?: b
       >
         <PlayerName name={p.name} frame={p.frame} />
       </span>
-      {p.pips !== null && (
-        <span className="text-xs text-stone-400" title={t.pips}>
-          {p.pips} {t.pips}
-        </span>
+      {p.emote ? (
+        <EmoteChip emote={p.emote} />
+      ) : (
+        p.pips !== null && (
+          <span className="text-xs text-stone-400" title={t.pips}>
+            {p.pips} {t.pips}
+          </span>
+        )
       )}
       <span className="min-w-6 text-right text-lg font-bold tabular-nums text-stone-50">{p.score}</span>
     </div>
+  );
+}
+
+/** The quick message inside a player bar; a tap hides it where it would otherwise stay. */
+function EmoteChip({ emote }: { emote: PlayerEmote }) {
+  const t = useT();
+  const cls =
+    "flex min-w-0 max-w-[65%] items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-900";
+  const body = (
+    <>
+      <span aria-hidden>💬</span>
+      <span className="truncate" title={emote.when}>
+        {emote.text}
+      </span>
+      {emote.onDismiss && (
+        <span aria-hidden className="shrink-0 pl-0.5 opacity-60">
+          ✕
+        </span>
+      )}
+    </>
+  );
+  return emote.onDismiss ? (
+    <button type="button" onClick={emote.onDismiss} className={cls} aria-label={`${emote.text} – ${t.hide}`}>
+      {body}
+    </button>
+  ) : (
+    <span role="status" className={cls}>
+      {body}
+    </span>
+  );
+}
+
+/** Sideways the player cards are too narrow: the quick message goes above the actions. */
+export function EmoteNote({ name, emote }: { name: string; emote: PlayerEmote }) {
+  const t = useT();
+  const inner = (
+    <>
+      <span className="font-semibold">{name}:</span> {emote.text}
+      {emote.when && <span className="block text-[11px] opacity-60">{emote.when}</span>}
+    </>
+  );
+  const cls =
+    "w-full rounded-xl rounded-tl-sm bg-stone-100 px-2.5 py-1.5 text-left text-xs leading-snug text-stone-900";
+  return emote.onDismiss ? (
+    <button
+      type="button"
+      onClick={emote.onDismiss}
+      className={cls}
+      aria-label={`${name}: ${emote.text} – ${t.hide}`}
+    >
+      {inner}
+    </button>
+  ) : (
+    <p role="status" className={cls}>
+      {inner}
+    </p>
   );
 }
 

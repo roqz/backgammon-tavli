@@ -83,7 +83,7 @@ export function HomeScreen({
   const total = todoCount(todo);
 
   return (
-    <div className="mx-auto grid min-h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] w-full max-w-6xl content-center gap-8 px-5 pt-[max(2rem,env(safe-area-inset-top))] pb-8 short:min-h-dvh short:grid-cols-2 short:items-center short:gap-8 short:py-4 wide:min-h-[calc(100dvh-4rem)] wide:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] wide:gap-x-16 wide:gap-y-8 wide:px-8 wide:py-10">
+    <div className="mx-auto grid grid-cols-[minmax(0,1fr)] min-h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] w-full max-w-6xl content-center gap-8 px-5 pt-[max(2rem,env(safe-area-inset-top))] pb-8 short:min-h-dvh short:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] short:items-center short:gap-8 short:py-4 wide:min-h-[calc(100dvh-4rem)] wide:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] wide:gap-x-16 wide:gap-y-8 wide:px-8 wide:py-10">
       {/* hero */}
       <div className="flex flex-col items-center text-center wide:items-start wide:text-left">
         <Logo className="h-20 w-20 short:h-16 short:w-16 wide:h-24 wide:w-24" />
@@ -96,7 +96,7 @@ export function HomeScreen({
       {/* main menu */}
       <nav
         aria-label={t.navHome}
-        className="flex w-full flex-col gap-3 justify-self-center short:row-span-2 short:max-w-sm sm:max-w-md wide:max-w-none wide:justify-self-stretch"
+        className="flex w-full min-w-0 flex-col gap-3 justify-self-center short:row-span-2 short:max-w-sm sm:max-w-md wide:max-w-none wide:justify-self-stretch"
       >
         {lobby.kind === "queued" && (
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-1 text-sm text-amber-100">
