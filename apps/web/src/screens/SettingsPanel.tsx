@@ -8,6 +8,7 @@ import { disconnect } from "../online/client";
 import { useOnline } from "../online/store";
 import { DICE_SKINS, type DiceSkin, isUnlocked, REWARDS } from "../rewards";
 import { useSettings } from "../store/settings";
+import { PushToggle } from "./TournamentPanel";
 
 /** Miniature board in the colours of a style. */
 function StylePreview({ style }: { style: BoardStyle }) {
@@ -168,7 +169,7 @@ function ServerUrlField() {
   );
 }
 
-type SectionId = "play" | "display" | "looks" | "sound" | "language" | "online";
+type SectionId = "play" | "display" | "looks" | "sound" | "language" | "notify" | "online";
 
 /**
  * All settings, grouped: the game itself first, then what the board shows, the looks (themes,
@@ -185,6 +186,7 @@ export function SettingsPanel() {
     ["looks", "🎨", t.appearance],
     ["sound", "🔊", t.soundSection],
     ["language", "🌐", t.language],
+    ["notify", "🔔", t.pushTitle],
     ["online", "📡", t.onlineSection],
   ];
   const fold = (id: SectionId) => ({
@@ -346,6 +348,10 @@ export function SettingsPanel() {
         </div>
       </Section>
 
+      <Section title={t.pushTitle} icon="🔔" {...fold("notify")}>
+        <NotificationSettings />
+      </Section>
+
       <Section title={t.onlineSection} icon="📡" {...fold("online")}>
         <Toggle
           label={t.showEmotes}
@@ -355,6 +361,27 @@ export function SettingsPanel() {
         />
         <ServerUrlField />
       </Section>
+    </div>
+  );
+}
+
+/** What notifications are for, how to get them on an iPhone, and the switch. */
+function NotificationSettings() {
+  const t = useT();
+  const hasProfile = useOnline((s) => s.profile !== null);
+  const ios = typeof navigator !== "undefined" && /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const standalone =
+    typeof window !== "undefined" && window.matchMedia?.("(display-mode: standalone)").matches;
+  return (
+    <div className="flex flex-col gap-2 text-sm text-stone-300">
+      <p>{t.pushExplain}</p>
+      <ul className="list-disc pl-5 text-stone-400">
+        {t.pushReasons.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+      {ios && !standalone && <p className="text-xs text-amber-200/80">📱 {t.pushIphone}</p>}
+      {hasProfile ? <PushToggle /> : <p className="text-xs text-stone-500">{t.pushNeedProfile}</p>}
     </div>
   );
 }

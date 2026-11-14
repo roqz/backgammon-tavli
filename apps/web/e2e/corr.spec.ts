@@ -76,3 +76,28 @@ test("correspondence: two strangers find each other with the same search", async
   await expect(kim.getByText("Deine Suchen")).toHaveCount(0);
   await expect(kim.getByRole("button", { name: /Lou/ })).toBeVisible();
 });
+
+test("friends list starts a correspondence game; the start page lists what is waiting", async ({ browser }) => {
+  test.setTimeout(90_000);
+  const ann = await onlineGuest(browser, "Ann");
+  const ben = await onlineGuest(browser, "Ben");
+  await befriend(ann, ben);
+
+  // Ann invites Ben straight from the friends list (Ben is preselected)
+  await ann.getByRole("button", { name: "Neue Fernpartie: Ben" }).click();
+  const dialog = ann.getByRole("dialog");
+  await expect(dialog.getByRole("combobox")).toHaveValue(/.+/);
+  await expect(dialog.getByRole("combobox").locator("option:checked")).toHaveText("Ben");
+  await dialog.getByRole("button", { name: "1", exact: true }).click();
+  await dialog.getByRole("button", { name: /Anfrage senden/ }).click();
+  await expect(ann.getByText("Einladung zur Fernpartie an Ben gesendet.")).toBeVisible();
+
+  // Ben's start page shows the invitation and leads to it
+  await ben.goto("/");
+  const todo = ben.getByRole("region", { name: "Zu tun" });
+  await expect(todo.getByText("Einladungen zu Fernpartien")).toBeVisible({ timeout: 15_000 });
+  await todo.getByRole("button", { name: /Einladungen zu Fernpartien/ }).click();
+  await expect(ben.getByRole("tab", { name: "Fernpartien" })).toHaveAttribute("aria-selected", "true");
+  await ben.getByRole("button", { name: "Annehmen" }).click();
+  await expect(ben.getByText(/ist am Zug/).first()).toBeVisible();
+});

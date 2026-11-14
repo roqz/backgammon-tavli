@@ -24,6 +24,7 @@ import {
   removeFriend,
 } from "../online/client";
 import { useOnline } from "../online/store";
+import { CorrInvite } from "./CorrScreens";
 import { PushToggle, roundName } from "./TournamentPanel";
 
 const REFRESH_MS = 10_000;
@@ -38,6 +39,8 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
   const [list, setList] = useState<FriendView[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [challenging, setChallenging] = useState<FriendView | null>(null);
+  const [corrWith, setCorrWith] = useState<FriendView | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: version and reload re-run the fetch
@@ -81,6 +84,11 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
         </p>
       )}
       <OutgoingChallenge />
+      {notice && (
+        <p role="status" className="text-center text-sm text-emerald-300">
+          {notice}
+        </p>
+      )}
       {incoming.length > 0 && (
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold text-amber-200">{t.friendRequests}</h2>
@@ -135,6 +143,18 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
                 )}
                 <Button
                   variant="ghost"
+                  className="px-2 py-1 text-sm"
+                  title={t.corrNew}
+                  aria-label={`${t.corrNew}: ${f.name}`}
+                  onClick={() => {
+                    setNotice(null);
+                    setCorrWith(f);
+                  }}
+                >
+                  ♟ <span className="max-sm:sr-only">{t.friendCorr}</span>
+                </Button>
+                <Button
+                  variant="ghost"
                   className="px-2 py-1 text-sm text-stone-500"
                   aria-label={`${t.removeFriend}: ${f.name}`}
                   title={t.removeFriend}
@@ -156,6 +176,16 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
         <p className="text-xs text-stone-500">{t.friendsPushHint}</p>
         <PushToggle />
       </Card>
+      {corrWith && (
+        <CorrInvite
+          friendId={corrWith.id}
+          onClose={() => setCorrWith(null)}
+          onSent={() => {
+            setNotice(`♟ ${t.corrInviteSent.replace("{name}", corrWith.name)}`);
+            setCorrWith(null);
+          }}
+        />
+      )}
       {challenging && (
         <ChallengeDialog
           friend={challenging}

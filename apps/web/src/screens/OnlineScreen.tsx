@@ -280,13 +280,26 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
   );
 }
 
+export type OnlineTab =
+  | "play"
+  | "friends"
+  | "corr"
+  | "clubs"
+  | "live"
+  | "tournaments"
+  | "ranking"
+  | "profile";
+
 export function OnlineScreen({
   onBack,
   onReplay,
   tournament,
   onWatch,
   onCorr,
+  initialTab,
 }: {
+  /** Tab to start on (the tournament focus wins). */
+  initialTab?: OnlineTab | null;
   onBack: () => void;
   onReplay: (records: GameRecord[]) => void;
   /** Open the tournaments tab with this tournament expanded. */
@@ -297,9 +310,7 @@ export function OnlineScreen({
 }) {
   const t = useT();
   const { profile, serverUrl } = useOnline();
-  const [tab, setTab] = useState<
-    "play" | "friends" | "corr" | "clubs" | "live" | "tournaments" | "ranking" | "profile"
-  >(tournament ? "tournaments" : "play");
+  const [tab, setTab] = useState<OnlineTab>(tournament ? "tournaments" : (initialTab ?? "play"));
 
   // Connect and refresh account data once per profile (not on every profile field change).
   const profileId = profile?.id;

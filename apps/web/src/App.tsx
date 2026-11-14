@@ -11,7 +11,7 @@ import { ChallengePrompt, FriendLinkPrompt } from "./screens/FriendsPanel";
 import { GameScreen } from "./screens/GameScreen";
 import { LegalScreen } from "./screens/LegalScreen";
 import { Menu, NewGame, SettingsScreen } from "./screens/MenuScreens";
-import { OnlineScreen } from "./screens/OnlineScreen";
+import { OnlineScreen, type OnlineTab } from "./screens/OnlineScreen";
 import { PuzzleScreen } from "./screens/PuzzleScreen";
 import { ReplayScreen } from "./screens/ReplayScreen";
 import { RulesScreen } from "./screens/RulesPanel";
@@ -100,6 +100,8 @@ export function App() {
   }, []);
   /** Tournament to show when opening the online screen from a tournament match. */
   const [onlineFocus, setOnlineFocus] = useState<string | null>(null);
+  /** Tab to open the online screen on (from the start page's to-do list). */
+  const [onlineTab, setOnlineTab] = useState<OnlineTab | null>(null);
   /** Correspondence game shown on the "corr" screen (also from `?corr=<id>` links). */
   const [corrId, setCorrId] = useState<string | null>(() => new URL(location.href).searchParams.get("corr"));
   const [replay, setReplay] = useState<{ records: readonly GameRecord[]; back: Screen } | null>(null);
@@ -110,7 +112,8 @@ export function App() {
     setScreen("replay");
   };
 
-  // Opened from a tournament notification (on load, or the service worker focuses this window).
+  // Opened from a notification: on load, or the service worker focuses this already open window
+  // and passes the notification's link on.
   useEffect(() => {
     const open = (id: string | null) => {
       if (!id) return;
@@ -120,7 +123,14 @@ export function App() {
     open(takeTournament(location.href));
     const onMessage = (e: MessageEvent) => {
       const data = e.data as { type?: string; url?: string } | null;
-      if (data?.type === "open-url" && data.url) open(takeTournament(data.url));
+      if (data?.type !== "open-url" || !data.url) return;
+      open(takeTournament(data.url));
+      const corr = new URL(data.url).searchParams.get("corr");
+      // a running online match is not left for a correspondence move
+      if (corr && !(screenRef.current === "game" && useOnline.getState().match)) {
+        setCorrId(corr);
+        setScreen("corr");
+      }
     };
     navigator.serviceWorker?.addEventListener("message", onMessage);
     return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
@@ -176,7 +186,14 @@ export function App() {
             onResume={() => setScreen("game")}
             onSettings={() => setScreen("settings")}
             onStats={() => setScreen("stats")}
-            onOnline={() => setScreen(onlineMatchId ? "game" : "online")}
+            onOnline={(tab) => {
+              setOnlineTab(tab ?? null);
+              setScreen(onlineMatchId ? "game" : "online");
+            }}
+            onCorr={(id) => {
+              setCorrId(id);
+              setScreen("corr");
+            }}
             onRules={() => setScreen("rules")}
             onLegal={(page) => setScreen(page)}
             onTutorial={() => setScreen("tutorial")}
@@ -199,6 +216,7 @@ export function App() {
             onBack={() => setScreen("menu")}
             onReplay={(r) => openReplay(r, "online")}
             tournament={onlineFocus}
+            initialTab={onlineTab}
             onCorr={(id) => {
               setCorrId(id);
               setScreen("corr");
@@ -235,7 +253,9 @@ export function App() {
           <TutorialScreen onBack={() => setScreen("menu")} onPlay={() => setScreen("new")} />
         )}
         {screen === "puzzle" && <PuzzleScreen onBack={() => setScreen("menu")} />}
-        {screen === "corr" && corrId && <CorrGameScreen id={corrId} onBack={() => setScreen("online")} />}
+        {screen === "corr" && corrId && (
+          <CorrGameScreen key={corrId} id={corrId} onBack={() => setScreen("online")} />
+        )}
         <ChallengePrompt />
         <FriendLinkPrompt />
         <AchievementLayer />

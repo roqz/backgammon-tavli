@@ -387,8 +387,22 @@ const de = {
   tPlayed: "Sp.",
   tPushReady: "Runde {round}: Dein Match gegen {name} ist bereit.",
   pushTitle: "Benachrichtigungen",
-  pushHint:
-    "Bekomme eine Benachrichtigung, wenn dein nächstes Turniermatch bereit ist – auch wenn die App geschlossen ist.",
+  pushHint: "Gilt für dieses Gerät. Ein Tipp auf die Benachrichtigung öffnet direkt das passende Spiel.",
+  pushExplain: "Tavli meldet sich, auch wenn die App geschlossen ist, wenn …",
+  pushReasons: [
+    "du in einer Fernpartie am Zug bist,",
+    "dich ein Freund herausfordert,",
+    "dein nächstes Turniermatch bereit ist.",
+  ] as readonly string[],
+  pushIphone:
+    "iPhone/iPad: Zuerst über Teilen → „Zum Home-Bildschirm“ installieren und die App von dort öffnen – Safari selbst kann keine Benachrichtigungen empfangen.",
+  pushNeedProfile: "Benachrichtigungen brauchen ein Online-Profil (Gast reicht). Lege es unter „Online“ an.",
+  todoTitle: "Zu tun",
+  todoCorrTurn: "Fernpartien: du bist am Zug",
+  todoCorrInvite: "Einladungen zu Fernpartien",
+  todoFriendRequests: "Freundschaftsanfragen",
+  friendCorr: "Fernpartie",
+  corrInviteSent: "Einladung zur Fernpartie an {name} gesendet.",
   pushOn: "Benachrichtigungen an",
   pushOff: "Benachrichtigungen aktivieren",
   pushDisable: "Ausschalten",
@@ -569,7 +583,7 @@ const de = {
   friendsCanWatchHint:
     "Freunde können deine privaten Spiele (Einladungen, Herausforderungen) ansehen. Gilt nur, wenn beide Spieler es erlauben.",
   friendsPushHint:
-    "Mit Benachrichtigungen erreichen dich Herausforderungen von Freunden auch, wenn die App geschlossen ist.",
+    "Mit Benachrichtigungen erreichen dich Herausforderungen und Züge in Fernpartien auch, wenn die App geschlossen ist.",
   matImport: ".mat öffnen",
   matInvalid: "Datei nicht lesbar",
   matEmpty: "keine vollständige Partie gefunden",
@@ -1101,7 +1115,22 @@ const en: Dict = {
   tPlayed: "Pl.",
   tPushReady: "Round {round}: your match against {name} is ready.",
   pushTitle: "Notifications",
-  pushHint: "Get notified when your next tournament match is ready – even when the app is closed.",
+  pushHint: "Applies to this device. Tapping a notification opens the game it is about.",
+  pushExplain: "Tavli lets you know, even when the app is closed, when …",
+  pushReasons: [
+    "it is your move in a correspondence game,",
+    "a friend challenges you,",
+    "your next tournament match is ready.",
+  ] as readonly string[],
+  pushIphone:
+    "iPhone/iPad: first install the app via Share → “Add to Home Screen” and open it from there – Safari itself cannot receive notifications.",
+  pushNeedProfile: "Notifications need an online profile (a guest is enough). Create one under “Online”.",
+  todoTitle: "To do",
+  todoCorrTurn: "Correspondence: your move",
+  todoCorrInvite: "Correspondence invitations",
+  todoFriendRequests: "Friend requests",
+  friendCorr: "Correspondence",
+  corrInviteSent: "Correspondence invitation sent to {name}.",
   pushOn: "Notifications on",
   pushOff: "Turn on notifications",
   pushDisable: "Turn off",
@@ -1279,7 +1308,8 @@ const en: Dict = {
   friendsCanWatch: "Friends may watch",
   friendsCanWatchHint:
     "Friends can watch your private games (invites, challenges). Only when both players allow it.",
-  friendsPushHint: "With notifications, challenges from friends reach you even when the app is closed.",
+  friendsPushHint:
+    "With notifications, challenges and correspondence moves reach you even when the app is closed.",
   matImport: "Open .mat",
   matInvalid: "Cannot read the file",
   matEmpty: "no complete game found",

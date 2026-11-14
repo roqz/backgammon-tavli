@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Phones held sideways: little height, enough width for two columns. */
+@custom-variant short (@media (orientation: landscape) and (max-height: 500px));
+
 :root {
   color-scheme: dark;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

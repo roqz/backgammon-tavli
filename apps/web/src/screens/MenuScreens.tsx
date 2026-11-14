@@ -17,9 +17,11 @@ import { useT } from "../i18n";
 import { SOURCE_URL } from "../legal";
 import { unqueue } from "../online/client";
 import { useOnline } from "../online/store";
+import { todoCount, useTodo } from "../online/todo";
 import { today, usePuzzles } from "../puzzle";
 import { type PlayerInfo, useGame } from "../store/game";
 import { useSettings } from "../store/settings";
+import type { OnlineTab } from "./OnlineScreen";
 import { SettingsPanel } from "./SettingsPanel";
 
 export function Menu({
@@ -32,6 +34,7 @@ export function Menu({
   onLegal,
   onTutorial,
   onPuzzle,
+  onCorr,
 }: {
   onTutorial: () => void;
   onPuzzle: () => void;
@@ -39,7 +42,10 @@ export function Menu({
   onResume: () => void;
   onSettings: () => void;
   onStats: () => void;
-  onOnline: () => void;
+  /** Opens the online screen, optionally on a given tab. */
+  onOnline: (tab?: OnlineTab) => void;
+  /** Opens a correspondence game. */
+  onCorr: (id: string) => void;
   onRules: () => void;
   onLegal: (page: "imprint" | "privacy") => void;
 }) {
@@ -51,51 +57,118 @@ export function Menu({
   const lobby = useOnline((s) => s.lobby);
   const solvedToday = usePuzzles((s) => s.results[today()] !== undefined);
   const online = useOnlineStatus();
+  const todo = useTodo();
+  const todoTotal = todoCount(todo);
+  // Phones held sideways ("short:"): brand and to-do list on the left, the menu on the right.
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-8 p-6">
-      <div className="text-center">
-        <img src="./icon.svg" alt="" className="mx-auto mb-4 h-24 w-24 drop-shadow-xl" />
-        <h1 className="text-4xl font-bold tracking-tight text-amber-100">{t.appTitle}</h1>
-        <p className="mt-2 text-stone-400">{t.tagline}</p>
-      </div>
-      {lobby.kind === "queued" && (
-        <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-2 text-sm text-amber-100">
-          <button type="button" className="flex items-center gap-2" onClick={onOnline}>
-            <span className="h-2 w-2 rounded-full bg-amber-400 motion-safe:animate-pulse" />
-            {t.searching}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg px-2 py-0.5 text-stone-300 hover:bg-stone-800"
-            onClick={() => unqueue()}
-          >
-            ✕ {t.cancel}
-          </button>
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-8 p-6 short:max-w-3xl short:flex-row short:items-start short:gap-6 short:py-4 short:pr-[max(1rem,env(safe-area-inset-right))] short:pl-[max(1rem,env(safe-area-inset-left))]">
+      <div className="flex w-full flex-col gap-4 short:sticky short:top-4 short:w-64 short:shrink-0">
+        <div className="text-center short:flex short:items-center short:gap-3 short:text-left">
+          <img
+            src="./icon.svg"
+            alt=""
+            className="mx-auto mb-4 h-24 w-24 drop-shadow-xl short:m-0 short:h-12 short:w-12"
+          />
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-amber-100 short:text-2xl">{t.appTitle}</h1>
+            <p className="mt-2 text-stone-400 short:hidden">{t.tagline}</p>
+          </div>
         </div>
-      )}
-      {!online && <p className="text-center text-xs text-stone-500">📴 {t.offlineHint}</p>}
-      <div className="flex w-full flex-col gap-3">
+        {todo && todoTotal > 0 && (
+          <section
+            aria-label={t.todoTitle}
+            className="flex w-full flex-col gap-1 rounded-xl border border-amber-400/40 bg-amber-400/10 p-2 text-sm"
+          >
+            <h2 className="px-2 text-xs font-semibold uppercase tracking-wide text-amber-300">
+              {t.todoTitle}
+            </h2>
+            {todo.corrTurn.length > 0 && (
+              <TodoRow
+                icon="♟"
+                label={t.todoCorrTurn}
+                detail={
+                  todo.corrTurn.length === 1
+                    ? todo.corrTurn[0]!.players[todo.corrTurn[0]!.seat === 0 ? 1 : 0].name
+                    : undefined
+                }
+                count={todo.corrTurn.length}
+                onClick={() => (todo.corrTurn.length === 1 ? onCorr(todo.corrTurn[0]!.id) : onOnline("corr"))}
+              />
+            )}
+            {todo.corrInvites.length > 0 && (
+              <TodoRow
+                icon="✉"
+                label={t.todoCorrInvite}
+                count={todo.corrInvites.length}
+                onClick={() => onOnline("corr")}
+              />
+            )}
+            {todo.friendRequests > 0 && (
+              <TodoRow
+                icon="👥"
+                label={t.todoFriendRequests}
+                count={todo.friendRequests}
+                onClick={() => onOnline("friends")}
+              />
+            )}
+          </section>
+        )}
+        {lobby.kind === "queued" && (
+          <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-2 text-sm text-amber-100">
+            <button type="button" className="flex items-center gap-2" onClick={() => onOnline()}>
+              <span className="h-2 w-2 rounded-full bg-amber-400 motion-safe:animate-pulse" />
+              {t.searching}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg px-2 py-0.5 text-stone-300 hover:bg-stone-800"
+              onClick={() => unqueue()}
+            >
+              ✕ {t.cancel}
+            </button>
+          </div>
+        )}
+        {!online && <p className="text-center text-xs text-stone-500">📴 {t.offlineHint}</p>}
+        <div className="hidden short:block">
+          <LegalFooter onLegal={onLegal} />
+        </div>
+      </div>
+      <div className="flex w-full flex-col gap-3 short:grid short:flex-1 short:grid-cols-2">
         {onlineActive ? (
-          <Button variant="primary" className="py-4 text-lg" onClick={onResume}>
+          <Button variant="primary" className="py-4 text-lg short:col-span-2 short:py-3" onClick={onResume}>
             🌐 {t.resumeOnline}
           </Button>
         ) : (
           <>
             {canResume && (
-              <Button variant="primary" className="py-4 text-lg" onClick={onResume}>
+              <Button
+                variant="primary"
+                className="py-4 text-lg short:col-span-2 short:py-3"
+                onClick={onResume}
+              >
                 {t.resume}
               </Button>
             )}
-            <Button variant={canResume ? "secondary" : "primary"} className="py-4 text-lg" onClick={onNew}>
+            <Button
+              variant={canResume ? "secondary" : "primary"}
+              className="py-4 text-lg short:py-3"
+              onClick={onNew}
+            >
               {t.newGame}
             </Button>
-            <Button className="py-4 text-lg" onClick={onOnline}>
+            <Button className="relative py-4 text-lg short:py-3" onClick={() => onOnline()}>
               🌐 {t.online}
               <span className="block text-xs font-normal text-stone-400">{t.onlineSub}</span>
+              {todoTotal > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-amber-500 px-1.5 text-sm font-bold text-stone-950 tabular-nums">
+                  <span className="sr-only">{t.todoTitle}: </span>
+                  {todoTotal}
+                </span>
+              )}
             </Button>
           </>
         )}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 short:col-span-2">
           <Button variant="ghost" onClick={onTutorial}>
             🎓 {t.tutorial}
           </Button>
@@ -116,8 +189,44 @@ export function Menu({
           ⚙ {t.settings}
         </Button>
       </div>
-      <LegalFooter onLegal={onLegal} />
+      <div className="short:hidden">
+        <LegalFooter onLegal={onLegal} />
+      </div>
     </div>
+  );
+}
+
+function TodoRow({
+  icon,
+  label,
+  detail,
+  count,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  detail?: string;
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-left text-amber-50 hover:bg-amber-400/10 focus-visible:outline-2 focus-visible:outline-amber-400"
+    >
+      <span aria-hidden>{icon}</span>
+      <span className="min-w-0 flex-1">
+        {label}
+        {detail && <span className="block truncate text-xs text-amber-200/70">{detail}</span>}
+      </span>
+      <span className="rounded-full bg-amber-500 px-2 text-xs font-bold text-stone-950 tabular-nums">
+        {count}
+      </span>
+      <span aria-hidden className="text-amber-300">
+        ›
+      </span>
+    </button>
   );
 }
 

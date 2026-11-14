@@ -322,7 +322,16 @@ function CorrSeekDialog({
   );
 }
 
-function CorrInvite({ onClose, onSent }: { onClose: () => void; onSent: () => void }) {
+/** Invites a friend to a correspondence game (preselected when opened from the friends list). */
+export function CorrInvite({
+  onClose,
+  onSent,
+  friendId,
+}: {
+  onClose: () => void;
+  onSent: () => void;
+  friendId?: string;
+}) {
   const t = useT();
   const [friends, setFriends] = useState<FriendView[] | null>(null);
   const [friend, setFriend] = useState<string | null>(null);
@@ -335,10 +344,10 @@ function CorrInvite({ onClose, onSent }: { onClose: () => void; onSent: () => vo
       .then((l) => {
         const accepted = l.filter((f) => f.status === "accepted");
         setFriends(accepted);
-        setFriend(accepted[0]?.id ?? null);
+        setFriend(accepted.find((f) => f.id === friendId)?.id ?? accepted[0]?.id ?? null);
       })
       .catch(() => setFriends([]));
-  }, []);
+  }, [friendId]);
   return (
     <Modal onClose={onClose}>
       <h2 className="mb-3 text-lg font-semibold text-stone-100">♟ {t.corrNew}</h2>
