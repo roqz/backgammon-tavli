@@ -191,12 +191,6 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       {page === "looks" && (
         <Section title={t.appearance} icon="🎨">
           <StylePicker />
-          <Toggle
-            label={t.boardDepth}
-            description={t.boardDepthDesc}
-            checked={s.boardDepth}
-            onChange={(on) => s.update({ boardDepth: on })}
-          />
           <DicePicker />
           <CheckerPicker />
           {isUnlocked(REWARDS.diceCup, unlocked) ? (
