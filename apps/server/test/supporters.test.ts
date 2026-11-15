@@ -13,7 +13,7 @@ import { api, register, start } from "./helpers";
 describe("supporters", () => {
   it("grants add up from the end of a running period; lifetime stays; revoke ends it now", () => {
     const store = new Store(":memory:");
-    const sup = new Supporters(store);
+    const sup = new Supporters(store, { url: "https://ko-fi.com/example" });
     const a = store.createPlayer("Ann").id;
     const jan = new Date("2026-01-15T10:00:00.000Z");
     sup.grant(a, 3, "admin", "Ko-fi", jan);
@@ -41,7 +41,7 @@ describe("supporters", () => {
 
   it("codes work once, for anyone, and are kept only as hashes", () => {
     const store = new Store(":memory:");
-    const sup = new Supporters(store);
+    const sup = new Supporters(store, { url: "https://ko-fi.com/example" });
     const a = store.createPlayer("Ann").id;
     const b = store.createPlayer("Ben").id;
     const [code] = sup.createCodes(1, 12, "Spende Dezember");
@@ -70,6 +70,7 @@ describe("supporters", () => {
     expect(store.publicPlayer(b, "backgammon").supporter).toBeUndefined();
     expect(store.friendsOf(b)[0]).toMatchObject({ name: "Ann", supporter: true });
     expect(sup.info()).toEqual({
+      enabled: true,
       url: "https://ko-fi.com/example",
       monthlyCost: 8,
       supporters: 1,
@@ -79,6 +80,40 @@ describe("supporters", () => {
     expect(sup.info().names).toEqual(["Ann"]);
     store.deletePlayer(a);
     expect(sup.info()).toMatchObject({ supporters: 0, names: [] });
+  });
+});
+
+describe("supporters without configuration", () => {
+  it("are off: nobody counts as supporter and the API says nothing", async () => {
+    const store = new Store(":memory:");
+    const sup = new Supporters(store);
+    const a = store.createPlayer("Ann").id;
+    sup.grant(a, 6, "admin");
+    expect(store.isSupporter(a)).toBe(false);
+    expect(store.account(a)?.supporter).toBeNull();
+    expect(store.publicPlayer(a, "backgammon").supporter).toBeUndefined();
+    expect(store.setFrame(a, "patron")).toBe(false);
+    expect(sup.info()).toEqual({ enabled: false, url: null, monthlyCost: null, supporters: 0, names: [] });
+  });
+
+  it("turns the routes off", async () => {
+    const server = await start({}, {}, {}, undefined, { adminToken: "a-long-enough-admin-token" });
+    try {
+      expect(await api<SupportInfo>(server, "/api/support")).toMatchObject({ enabled: false });
+      await expect(
+        api(server, "/api/admin/supporters", { headers: { "X-Admin-Token": "a-long-enough-admin-token" } }),
+      ).rejects.toThrow(/404/);
+      const p = await register(server, "Pia");
+      await expect(
+        api(server, "/api/account/supporter/redeem", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${p.id}.${p.token}` },
+          body: JSON.stringify({ code: "SUPP-AAAA-BBBB-CCCC" }),
+        }),
+      ).rejects.toThrow(/404/);
+    } finally {
+      await server.close();
+    }
   });
 });
 

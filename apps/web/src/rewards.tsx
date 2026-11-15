@@ -1,7 +1,7 @@
-import type { Frame } from "@tavli/protocol";
+import { FRAME_IDS, FRAMES, type Frame } from "@tavli/protocol";
 import { type ReactNode, useMemo } from "react";
 import { useAchievements } from "./achievements";
-import { type BoardStyle, type BoardTheme, THEMES } from "./board/themes";
+import { BOARD_STYLES, type BoardStyle, type BoardTheme, THEMES } from "./board/themes";
 import { hasSeason, type SeasonKey, useCareer } from "./career";
 import { useOnline } from "./online/store";
 import { useSettings } from "./store/settings";
@@ -146,13 +146,25 @@ export const CHECKER_LOOKS: Record<
 /** Marks looks for supporters of the project (while they support it). */
 export const SUPPORTER = "supporter";
 
+/** Board styles to offer: the supporter board only where supporting is configured. */
+export const useOfferedStyles = (): readonly BoardStyle[] => {
+  const on = useOnline((s) => s.supportEnabled);
+  return on ? BOARD_STYLES : BOARD_STYLES.filter((s) => REWARDS.style[s] !== SUPPORTER);
+};
+
+/** Frames to offer: the supporter frame only where supporting is configured. */
+export const useOfferedFrames = (): readonly Frame[] => {
+  const on = useOnline((s) => s.supportEnabled);
+  return on ? FRAME_IDS : FRAME_IDS.filter((f) => FRAMES[f] !== SUPPORTER);
+};
+
 /**
  * What is unlocked on this device, plus "supporter" while the profile supports the project –
  * the one entry that comes from the server rather than from play.
  */
 export function useUnlocked(): Record<string, string> {
   const unlocked = useAchievements((s) => s.unlocked);
-  const supporter = useOnline((s) => s.supporter && s.profile !== null);
+  const supporter = useOnline((s) => s.supportEnabled && s.supporter && s.profile !== null);
   return useMemo(() => (supporter ? { ...unlocked, [SUPPORTER]: "1" } : unlocked), [unlocked, supporter]);
 }
 

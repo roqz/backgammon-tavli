@@ -456,6 +456,8 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (!allowPasswordChange(player.id)) throw new HttpError(429, "too many requests");
         return await account(() => store.disableTwoFactor(player.id, body.data.password, body.data.code));
       }
+      if (path.startsWith("/api/account/supporter/") && !supporters.enabled)
+        throw new HttpError(404, "not found");
       if (req.method === "POST" && path === "/api/account/supporter/redeem") {
         const body = SupporterCodeSchema.safeParse(await readJson(req));
         if (!body.success) throw new HttpError(400, "code not valid");
@@ -522,6 +524,8 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (!store.resolveReport(Number(a[1]), body.data.resolution)) throw new HttpError(404, "not found");
         return { ok: true };
       }
+      if (path.startsWith("/api/admin/supporter") && !supporters.enabled)
+        throw new HttpError(404, "support not configured");
       if (req.method === "GET" && path === "/api/admin/supporters") return supporters.overview();
       if (req.method === "POST" && path === "/api/admin/supporters") {
         const body = AdminGrantSchema.safeParse(await readJson(req));

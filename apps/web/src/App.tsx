@@ -6,7 +6,7 @@ import { afterHistory, historySettling } from "./components/overlay";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useT } from "./i18n";
 import { OPEN_SETTINGS } from "./navigation";
-import { connect, joinInvite, watchMatch } from "./online/client";
+import { connect, fetchSupportInfo, joinInvite, watchMatch } from "./online/client";
 import { useOnline } from "./online/store";
 import { todoCount, useTodo } from "./online/todo";
 import { AdminScreen } from "./screens/AdminScreen";
@@ -223,6 +223,13 @@ export function App() {
     useOnline.getState().set({ pendingFriend: id });
     if (!useOnline.getState().profile) setScreen("online");
   }, [setScreen]);
+
+  // Whether the server offers supporting the project (nothing of it shows otherwise).
+  const supportServer = useOnline((s) => s.serverUrl);
+  useEffect(() => {
+    if (supportServer) fetchSupportInfo().catch(() => {});
+    else useOnline.getState().set({ supportEnabled: false });
+  }, [supportServer]);
 
   // With a profile the app stays connected, so friends see you online and can challenge you.
   const profileId = useOnline((s) => s.profile?.id);

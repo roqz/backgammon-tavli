@@ -489,6 +489,7 @@ export function ProfileScreen({
 }) {
   const t = useT();
   const profile = useOnline((s) => s.profile);
+  const supportEnabled = useOnline((s) => s.supportEnabled);
   const supporter = useOnline((s) => s.supporter && s.profile !== null);
   const playerName = useSettings((s) => s.playerName);
   const [data, setData] = useState<ProfileResponse | null>(null);
@@ -582,14 +583,16 @@ export function ProfileScreen({
               onClick={onAccount}
             />
           </ListGroup>
-          <ListGroup>
-            <ListRow
-              icon={<Glyph d={GLYPH.heart} className="h-5 w-5 text-brass" />}
-              label={t.supportTitle}
-              detail={supporter ? `♥ ${t.supporterBadge}` : t.supportSub}
-              onClick={onSupport}
-            />
-          </ListGroup>
+          {supportEnabled && (
+            <ListGroup>
+              <ListRow
+                icon={<Glyph d={GLYPH.heart} className="h-5 w-5 text-brass" />}
+                label={t.supportTitle}
+                detail={supporter ? `♥ ${t.supporterBadge}` : t.supportSub}
+                onClick={onSupport}
+              />
+            </ListGroup>
+          )}
           <LegalFooter onLegal={onLegal} />
         </div>
       </div>

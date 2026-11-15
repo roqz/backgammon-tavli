@@ -66,6 +66,12 @@ export class Supporters {
     private readonly config: SupportConfig = {},
   ) {
     store.db.exec(SCHEMA);
+    store.supportEnabled = this.enabled;
+  }
+
+  /** On only with a donation page configured; until then the app shows nothing of it. */
+  get enabled(): boolean {
+    return !!this.config.url;
   }
 
   private get db() {
@@ -159,6 +165,7 @@ export class Supporters {
 
   /** The public support page. */
   info(): SupportInfo {
+    if (!this.enabled) return { enabled: false, url: null, monthlyCost: null, supporters: 0, names: [] };
     const active = (
       this.db
         .prepare(`SELECT COUNT(*) AS n FROM players p WHERE p.deleted_at IS NULL AND ${SUPPORTER_ACTIVE}`)
@@ -173,6 +180,7 @@ export class Supporters {
         .all() as { name: string }[]
     ).map((r) => r.name);
     return {
+      enabled: true,
       url: this.config.url || null,
       monthlyCost: this.config.monthlyCost ?? null,
       supporters: active,

@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS } from "../achievements";
-import { BOARD_STYLES, type BoardStyle, THEMES } from "../board/themes";
+import { type BoardStyle, THEMES } from "../board/themes";
 import { SEASON_GAMES, SEASONS, type SeasonKey, SHOP, useCareer } from "../career";
 import { type Dict, useT } from "../i18n";
 import {
@@ -12,6 +12,7 @@ import {
   REWARDS,
   SHOP_ONLY,
   SUPPORTER,
+  useOfferedStyles,
   useUnlocked,
 } from "../rewards";
 import { useSettings } from "../store/settings";
@@ -79,12 +80,13 @@ const pill = (on: boolean) =>
 /** Board styles: free ones, unlocked ones and the rest with how to get them. */
 export function StylePicker() {
   const t = useT();
+  const styles = useOfferedStyles();
   const { style, update } = useSettings();
   const unlocked = useUnlocked();
   const owned = useCareer((c) => c.owned);
   return (
     <div className="grid grid-cols-2 gap-3 py-3 sm:grid-cols-3">
-      {BOARD_STYLES.map((s) => {
+      {styles.map((s) => {
         const need = REWARDS.style[s];
         const open = hasLook("style", s, unlocked, owned);
         const lock = need ? lockText(t, need, `style-${s}`) : "";

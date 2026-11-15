@@ -702,7 +702,11 @@ const noted = (acc: AccountResponse): AccountResponse => {
   return acc;
 };
 export const fetchAccount = async () => noted(await rest<AccountResponse>("/api/account"));
-export const fetchSupportInfo = () => rest<SupportInfo>("/api/support");
+export const fetchSupportInfo = async () => {
+  const info = await rest<SupportInfo>("/api/support");
+  if (useOnline.getState().supportEnabled !== info.enabled) set({ supportEnabled: info.enabled });
+  return info;
+};
 export const redeemSupporterCode = async (code: string) =>
   noted(
     await rest<AccountResponse>("/api/account/supporter/redeem", {

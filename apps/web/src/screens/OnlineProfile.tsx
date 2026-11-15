@@ -1,6 +1,5 @@
 import { getVariant } from "@tavli/engine";
 import {
-  FRAME_IDS,
   FRAMES,
   type Frame,
   type MatchDetailResponse,
@@ -37,7 +36,7 @@ import {
   setFriendsCanWatch,
 } from "../online/client";
 import { useOnline } from "../online/store";
-import { FRAME_LOOK, useUnlocked } from "../rewards";
+import { FRAME_LOOK, useOfferedFrames, useUnlocked } from "../rewards";
 import type { GameRecord } from "../store/archive";
 import { AddFriendButton } from "./FriendsPanel";
 
@@ -258,6 +257,7 @@ export function AuthForm() {
 function FramePicker() {
   const t = useT();
   const unlocked = useUnlocked();
+  const frames = useOfferedFrames();
   const [frame, setFrame] = useState<Frame | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -284,7 +284,7 @@ function FramePicker() {
         >
           {t.frameNone}
         </Button>
-        {FRAME_IDS.map((f) => {
+        {frames.map((f) => {
           const open = !!unlocked[FRAMES[f]];
           const a = ACHIEVEMENTS.find((x) => x.id === FRAMES[f]);
           return (

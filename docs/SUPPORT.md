@@ -6,6 +6,12 @@ spielerischen Vorteil.
 
 Einstieg in der App: **Profil → Projekt unterstützen**.
 
+**Standardmäßig aus:** Solange am Spielserver kein `SUPPORT_URL` gesetzt ist, zeigt die App nichts
+davon – keinen Menüpunkt, kein Brett und keinen Rahmen „Mäzen“, kein Herz, keinen Admin-Reiter. Die
+Schnittstellen zum Einlösen und Verwalten antworten dann mit 404, `GET /api/support` mit
+`enabled: false`. Schon vergebener Status bleibt gespeichert und wird sichtbar, sobald die
+Unterstützung konfiguriert ist.
+
 ## Was Unterstützer bekommen
 
 | Dank                | Sichtbar für    | Technik                                                               |
@@ -37,11 +43,11 @@ Protokoll der Gewährungen bleibt erhalten.
 
 ## Konfiguration (Spielserver)
 
-| Variable               | Bedeutung                                                             |
-| ---------------------- | --------------------------------------------------------------------- |
-| `SUPPORT_URL`          | externe Seite für Unterstützung; ohne sie zeigt die App einen Hinweis |
-| `SUPPORT_MONTHLY_COST` | laufende Kosten in Euro pro Monat, zur Transparenz angezeigt          |
-| `ADMIN_TOKEN`          | wird für Codes und Freischaltungen gebraucht (Admin-Bereich)          |
+| Variable               | Bedeutung                                                    |
+| ---------------------- | ------------------------------------------------------------ |
+| `SUPPORT_URL`          | externe Seite für Unterstützung; schaltet die Funktion ein   |
+| `SUPPORT_MONTHLY_COST` | laufende Kosten in Euro pro Monat, zur Transparenz angezeigt |
+| `ADMIN_TOKEN`          | wird für Codes und Freischaltungen gebraucht (Admin-Bereich) |
 
 Beispiel (`deploy/.env`):
 

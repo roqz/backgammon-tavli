@@ -130,6 +130,8 @@ interface OnlineStore {
   pendingInvite: string | null;
   /** The profile supports the project right now (from the account; unlocks the supporter looks). */
   supporter: boolean;
+  /** The server offers supporting the project (configured by the operator); else nothing shows. */
+  supportEnabled: boolean;
   /** Increments when a correspondence game changed. */
   corrVersion: number;
   set: (patch: Partial<Omit<OnlineStore, "set">>) => void;
@@ -154,6 +156,7 @@ export const useOnline = create<OnlineStore>()(
       pendingFriend: null,
       pendingInvite: null,
       supporter: false,
+      supportEnabled: false,
       corrVersion: 0,
       set: (patch) => set(patch),
     }),
@@ -166,6 +169,7 @@ export const useOnline = create<OnlineStore>()(
         deviceId: s.deviceId,
         pendingInvite: s.pendingInvite,
         supporter: s.supporter,
+        supportEnabled: s.supportEnabled,
       }),
     },
   ),

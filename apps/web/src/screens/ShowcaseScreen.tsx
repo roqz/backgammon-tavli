@@ -1,4 +1,4 @@
-import { CAREER_VARIANTS, FRAME_IDS, FRAMES } from "@tavli/protocol";
+import { CAREER_VARIANTS, FRAMES } from "@tavli/protocol";
 import type { ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { ACHIEVEMENTS, seasonLabel, useAchievements } from "../achievements";
@@ -32,7 +32,15 @@ import {
 import { variantShortName } from "../components/VariantPicker";
 import { type Dict, useT } from "../i18n";
 import { usePuzzles } from "../puzzle";
-import { type CheckerSet, DICE_SKINS, type DiceSkin, FRAME_LOOK, hasLook, useUnlocked } from "../rewards";
+import {
+  type CheckerSet,
+  DICE_SKINS,
+  type DiceSkin,
+  FRAME_LOOK,
+  hasLook,
+  useOfferedFrames,
+  useUnlocked,
+} from "../rewards";
 import { useArchive } from "../store/archive";
 import { useSettings } from "../store/settings";
 import { AchievementsPanel, RareTag, rewardOf } from "./AchievementsPanel";
@@ -438,10 +446,11 @@ function Season() {
 function Frames() {
   const t = useT();
   const unlocked = useUnlocked();
+  const frames = useOfferedFrames();
   return (
     <Box title={t.framesTitle}>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-        {FRAME_IDS.map((f) => {
+        {frames.map((f) => {
           const open = !!unlocked[FRAMES[f]];
           return (
             <li

@@ -1114,6 +1114,8 @@ export interface SupporterStatus {
 
 /** The public support page: where to support, what it costs, who helps (opt-in names). */
 export interface SupportInfo {
+  /** Off unless the operator configured a donation page: then nothing of it is shown. */
+  readonly enabled: boolean;
   readonly url: string | null;
   /** Monthly running costs in euros, if the operator states them. */
   readonly monthlyCost: number | null;

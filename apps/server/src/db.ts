@@ -488,7 +488,7 @@ export class Store {
       twoFactor: totp_on === 1,
       recoveryCodesLeft: this.recoveryCodesLeft(id),
       supporter:
-        supporter_since && supporter_until
+        this.supportEnabled && supporter_since && supporter_until
           ? {
               since: supporter_since,
               until: supporter_until,
@@ -1060,7 +1060,7 @@ export class Store {
   }[] {
     const rows = this.db
       .prepare(
-        `SELECT f.requester, f.addressee, f.status, p.id, p.name, p.frame, p.club_rank, ${SUPPORTER_ACTIVE} AS supporter FROM friends f
+        `SELECT f.requester, f.addressee, f.status, p.id, p.name, p.frame, p.club_rank, ${this.supporterSql} AS supporter FROM friends f
          JOIN players p ON p.id = CASE WHEN f.requester = ?1 THEN f.addressee ELSE f.requester END
          WHERE (f.requester = ?1 OR f.addressee = ?1) AND p.deleted_at IS NULL
          ORDER BY lower(p.name)`,
@@ -1137,9 +1137,20 @@ export class Store {
     };
   }
 
+  /**
+   * Supporting the project is on only when the operator configured it (SUPPORT_URL, set by
+   * `Supporters`); otherwise nobody counts as supporter and nothing of it reaches the players.
+   */
+  supportEnabled = false;
+
+  /** SQL for "row `p` supports the project right now" (always false while support is off). */
+  get supporterSql(): string {
+    return this.supportEnabled ? SUPPORTER_ACTIVE : "0";
+  }
+
   /** Whether a player supports the project right now. */
   isSupporter(playerId: string): boolean {
-    return !!this.db.prepare(`SELECT 1 FROM players p WHERE p.id = ? AND ${SUPPORTER_ACTIVE}`).get(playerId);
+    return !!this.db.prepare(`SELECT 1 FROM players p WHERE p.id = ? AND ${this.supporterSql}`).get(playerId);
   }
 
   private rankOf(playerId: string): number {
@@ -1394,7 +1405,7 @@ export class Store {
   leaderboard(variant: MatchVariantId, limit = 50, pool: RatingPool = "normal"): LeaderboardEntry[] {
     const rows = this.db
       .prepare(
-        `SELECT r.player_id, p.name, p.frame, p.club_rank, ${SUPPORTER_ACTIVE} AS supporter, r.rating, r.matches, r.wins FROM ratings r
+        `SELECT r.player_id, p.name, p.frame, p.club_rank, ${this.supporterSql} AS supporter, r.rating, r.matches, r.wins FROM ratings r
          JOIN players p ON p.id = r.player_id
          WHERE r.variant = ? AND r.matches > 0 AND p.banned_at IS NULL ORDER BY r.rating DESC LIMIT ?`,
       )

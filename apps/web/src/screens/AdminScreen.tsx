@@ -57,6 +57,7 @@ export function AdminScreen({
   const [signals, setSignals] = useState<ModerationSignals | null>(null);
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [support, setSupport] = useState<AdminSupportOverview | null>(null);
+  const supportEnabled = useOnline((s) => s.supportEnabled);
   const [players, setPlayers] = useState<Record<string, ModerationInfo>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -146,7 +147,7 @@ export function AdminScreen({
               { value: "resolved", label: t.adminResolved },
               { value: "signals", label: t.adminSignals },
               { value: "stats", label: t.adminStats },
-              { value: "support", label: t.adminSupport },
+              ...(supportEnabled ? [{ value: "support" as const, label: t.adminSupport }] : []),
             ]}
           />
           <Button variant="primary" disabled={token.length < 16} onClick={() => void load()}>
