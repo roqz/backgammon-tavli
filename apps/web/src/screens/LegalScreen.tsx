@@ -217,9 +217,9 @@ function PrivacyEn() {
       </p>
       <h2>Notifications</h2>
       <p>
-        If you turn on notifications (correspondence games, challenges, friend requests, tournament
-        matches), the server stores your browser's push address and which kinds of notifications you switched
-        off. Notifications are sent encrypted through the push service of your browser vendor (e.g. Google,
+        If you turn on notifications (correspondence games, challenges, friend requests, tournament matches),
+        the server stores your browser's push address and which kinds of notifications you switched off.
+        Notifications are sent encrypted through the push service of your browser vendor (e.g. Google,
         Mozilla, Apple, Microsoft), which may use servers outside the EU. Turn them off at any time under
         Settings → Notifications.
       </p>
