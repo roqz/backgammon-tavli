@@ -294,6 +294,19 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Vitrine im Profil zeigt alles Gesammelte und wie man den Rest bekommt
 - Raritäten für die Langzeitmotivation: 100 Rätsel (Jade-Würfel), 25 Siege gegen den Experten (Obsidian-Würfel), 12 perfekte Wochen (Ebenholz-Brett), 500 Siege (Lapis-Steine), Ehrenmitglied (Rahmen Ehrennadel), 1000 Partien (Rahmen Rosette); dazu Luxus-Looks nur im Tausch (Silber 12, Bernstein 20, Salon 30 Marken)
 
+### Konto ohne E-Mail, Einladungen, erster Start ✅
+
+- Wiederherstellungscodes: 10 Einmal-Codes beim Sichern des Kontos (nur als Hash gespeichert), jederzeit neu erzeugbar; ein Code ersetzt ein vergessenes Passwort (alle Sitzungen enden) oder dient bei der Anmeldung als zweiter Faktor
+- Zwei-Faktor-Anmeldung mit Authenticator-Apps (TOTP nach RFC 6238, QR-Code und `otpauth://`-Link, jeder Code nur einmal); mit 2FA braucht auch die Wiederherstellung den App-Code
+- Einladungslinks (`?invite=CODE`): persönlicher Code, erneuerbar; wer ihn öffnet, ist sofort befreundet. Neue Spieler legen dabei Profil und auf Wunsch gleich ein Konto an (Wiederherstellungscodes inklusive)
+- Erster Start: Willkommen mit Sprachwahl, dann „Wie gut kennst du das Spiel?“ → Tutorial, Computer oder Online
+
+### Fortschritt vom Server, Saisons, Unterstützer ✅
+
+- Der Server zählt Online-Partien, Fernpartien und Ligaspiele selbst und vergibt Online-Erfolge; ihre Rahmen prüft er gegen die eigenen Daten (`docs/GAMIFICATION.md`)
+- Vier Saisons mit eigenen Brettern (Frühling, Ägäis-Sommer, Herbst, Winter)
+- Unterstützer nach dem Lichess-Modell: Herz neben dem Namen, Rahmen und Brett „Mäzen“, Danke-Liste (Opt-in); keine Zahlungen in der App, sondern externer Link plus Codes oder Freischaltung durch den Betreiber (`docs/SUPPORT.md`)
+
 ### Clubs und Ligen ✅
 
 - Clubs: gründen mit Konto oder nach 3 Matches (wie Turniere), Name eindeutig, Beschreibung, offen (direkt beitreten) oder geschlossen (Anfrage, ein Admin bestätigt); Rollen Gründer, Admin, Mitglied; höchstens 100 Mitglieder, höchstens 10 Clubs je Spieler; Suche nach Namen; Mitglieder sehen sich mit Online-Status; verlässt der Gründer den Club, übernimmt der dienstälteste Admin bzw. das dienstälteste Mitglied

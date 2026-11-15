@@ -17,6 +17,8 @@ const SUMMER_WOOD = woodTexture({ dark: "#b9b2a3", mid: "#d8d2c4", light: "#efea
 const SUMMER_FELT = feltTexture("#1f5f8b", 384, 624, 27);
 const AUTUMN_WOOD = woodTexture({ dark: "#3e2412", mid: "#6a3f1f", light: "#8f5a2f" }, 640, 220, 53);
 const AUTUMN_FELT = feltTexture("#6b4a1f", 384, 624, 33);
+const PATRON_WOOD = woodTexture({ dark: "#141b29", mid: "#222d42", light: "#34425c" }, 640, 220, 59);
+const PATRON_FELT = feltTexture("#1b2740", 384, 624, 37);
 const EBONY_WOOD = woodTexture({ dark: "#0d0907", mid: "#1f1510", light: "#352419" }, 640, 220, 37);
 const EBONY_FELT = feltTexture("#13261c", 384, 624, 17);
 const SALON_WOOD = woodTexture({ dark: "#3a140c", mid: "#5e2416", light: "#82402a" }, 640, 220, 41);
@@ -56,6 +58,7 @@ export type BoardStyle =
   | "summer"
   | "autumn"
   | "ebony"
+  | "patron"
   | "salon";
 
 /** Order in the settings. */
@@ -73,6 +76,7 @@ export const BOARD_STYLES: readonly BoardStyle[] = [
   "winter",
   "ebony",
   "salon",
+  "patron",
   "contrast",
 ];
 
@@ -497,6 +501,36 @@ export const THEMES: Record<BoardStyle, BoardTheme> = {
     ],
     die: { fill: "#f4ead2", pip: "#4d1620", edge: "#a8946a" },
     cube: { fill: "#c9a14a", text: "#2a0d08" },
+  },
+  /** Supporters: midnight blue leather with brass tooling, ivory and oxblood checkers. */
+  patron: {
+    id: "patron",
+    defs: (
+      <>
+        {woodPattern("pa-grain", PATRON_WOOD)}
+        {feltPattern("pa-felt", PATRON_FELT)}
+        <linearGradient id="pa-pointB" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#d9b75e" />
+          <stop offset="1" stopColor="#9a7424" />
+        </linearGradient>
+        {shadow(0.5)}
+      </>
+    ),
+    frame: "url(#pa-grain)",
+    felt: "url(#pa-felt)",
+    bar: "url(#pa-grain)",
+    tray: "#0e1420",
+    pointA: "#ece2c9",
+    pointB: "url(#pa-pointB)",
+    label: "#d9b75e",
+    highlight: "#7fd3ff",
+    selected: "#f472b6",
+    checkers: [
+      { fill: "#f6eedb", edge: "#a8946a", ring: "#d9b75e" },
+      { fill: "#5a1620", edge: "#2a0a0f", ring: "#c9a14a" },
+    ],
+    die: { fill: "#f6eedb", pip: "#1b2740", edge: "#c9a14a" },
+    cube: { fill: "#d9b75e", text: "#141b29" },
   },
   /**
    * High contrast for low vision and colour blindness: black board, white and yellow points,

@@ -32,6 +32,7 @@ import type {
   RegisterResponse,
   ReportReason,
   ServerMessage,
+  SupportInfo,
   TimeControl,
   TournamentFormat,
   TournamentMatchView,
@@ -665,7 +666,7 @@ export const disableTwoFactor = (password: string, code: string) =>
 export const logout = async () => {
   await rest("/api/account/logout", { method: "POST" }).catch(() => {});
   disconnect();
-  set({ profile: null, match: null, lobby: { kind: "idle" } });
+  set({ profile: null, match: null, lobby: { kind: "idle" }, supporter: false });
 };
 
 /** Downloads everything the server stores about the player as a JSON file. */
@@ -694,7 +695,28 @@ export const deleteProfile = async (password?: string) => {
 export const changePassword = (oldPassword: string, newPassword: string) =>
   rest("/api/account/password", { method: "POST", body: JSON.stringify({ oldPassword, newPassword }) });
 
-export const fetchAccount = () => rest<AccountResponse>("/api/account");
+/** Remembers what the account says about supporting the project. */
+const noted = (acc: AccountResponse): AccountResponse => {
+  const supporter = acc.supporter?.active ?? false;
+  if (useOnline.getState().supporter !== supporter) set({ supporter });
+  return acc;
+};
+export const fetchAccount = async () => noted(await rest<AccountResponse>("/api/account"));
+export const fetchSupportInfo = () => rest<SupportInfo>("/api/support");
+export const redeemSupporterCode = async (code: string) =>
+  noted(
+    await rest<AccountResponse>("/api/account/supporter/redeem", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+  );
+export const setSupporterPublic = async (value: boolean) =>
+  noted(
+    await rest<AccountResponse>("/api/account/supporter/public", {
+      method: "POST",
+      body: JSON.stringify({ public: value }),
+    }),
+  );
 export const setFrame = (frame: Frame | null) =>
   rest<AccountResponse>("/api/account/frame", { method: "POST", body: JSON.stringify({ frame }) });
 /** Sends this device's achievements, lessons and puzzle results; returns the merged state. */
@@ -707,7 +729,7 @@ export const setFriendsCanWatch = (friendsCanWatch: boolean) =>
   });
 
 export const syncAccount = async () => {
-  const acc = await rest<AccountResponse>("/api/account");
+  const acc = noted(await rest<AccountResponse>("/api/account"));
   const p = useOnline.getState().profile;
   if (p) set({ profile: { ...p, name: acc.name, username: acc.username } });
   return acc;

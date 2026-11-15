@@ -5,6 +5,9 @@ import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import {
   AccountSettingsSchema,
+  AdminCodesSchema,
+  AdminGrantSchema,
+  AdminRevokeSchema,
   BanSchema,
   ClaimSchema,
   ClientMessageSchema,
@@ -37,6 +40,8 @@ import {
   ReportSchema,
   ResolveSchema,
   type ServerMessage,
+  SupporterCodeSchema,
+  SupporterPublicSchema,
   TwoFactorOffSchema,
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
@@ -56,10 +61,13 @@ import {
   type PushOptions,
 } from "./push";
 import type { Conn, RoomTimings } from "./room";
+import { type SupportConfig, Supporters } from "./supporters";
 import type { TournamentOptions } from "./tournaments";
 
 export interface ServerOptions {
   readonly port: number;
+  /** Supporting the project: donation page and running costs (docs/SUPPORT.md). */
+  readonly support?: SupportConfig;
   readonly host?: string;
   readonly dbPath: string;
   /** Allowed browser origins for REST calls ("*" = any). */
@@ -194,6 +202,7 @@ export interface RunningServer {
 export const startServer = async (opts: ServerOptions): Promise<RunningServer> => {
   const log = opts.log ?? (() => {});
   const store = new Store(opts.dbPath);
+  const supporters = new Supporters(store, opts.support);
   const analyzer = new Analyzer(opts.analysis ?? "inline", log);
   const push =
     opts.push === false
@@ -321,6 +330,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       return { ok: true, rooms: lobby.activeRooms };
     }
     if (req.method === "GET" && path === "/api/online") return lobby.onlineStats;
+    if (req.method === "GET" && path === "/api/support") return supporters.info();
     if (req.method === "POST" && path === "/api/players") {
       if (!allowRegister(limitKey(req))) throw new HttpError(429, "too many requests");
       const body = NameSchema.safeParse(await readJson(req));
@@ -444,6 +454,21 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (!allowPasswordChange(player.id)) throw new HttpError(429, "too many requests");
         return await account(() => store.disableTwoFactor(player.id, body.data.password, body.data.code));
       }
+      if (req.method === "POST" && path === "/api/account/supporter/redeem") {
+        const body = SupporterCodeSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "code not valid");
+        // codes are long, but guessing stays slow anyway
+        if (!allowPasswordChange(player.id)) throw new HttpError(429, "too many requests");
+        const months = await account(() => supporters.redeem(player.id, body.data.code));
+        log(`player ${player.id} redeemed a supporter code (${months || "lifetime"} months)`);
+        return store.account(player.id);
+      }
+      if (req.method === "POST" && path === "/api/account/supporter/public") {
+        const body = SupporterPublicSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        supporters.setPublic(player.id, body.data.public);
+        return store.account(player.id);
+      }
       if (req.method === "POST" && path === "/api/account/logout") {
         store.logout(credentials(req).token);
         return { ok: true };
@@ -494,6 +519,30 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (!body.success) throw new HttpError(400, "invalid resolution");
         if (!store.resolveReport(Number(a[1]), body.data.resolution)) throw new HttpError(404, "not found");
         return { ok: true };
+      }
+      if (req.method === "GET" && path === "/api/admin/supporters") return supporters.overview();
+      if (req.method === "POST" && path === "/api/admin/supporters") {
+        const body = AdminGrantSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        const id = supporters.findPlayer(body.data.player);
+        if (!id) throw new HttpError(404, "unknown player");
+        await account(() => supporters.grant(id, body.data.months, "admin", body.data.note));
+        log(`support: player ${id} granted ${body.data.months || "lifetime"} months`);
+        return supporters.overview();
+      }
+      if (req.method === "POST" && path === "/api/admin/supporters/revoke") {
+        const body = AdminRevokeSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        if (!supporters.revoke(body.data.playerId)) throw new HttpError(404, "not found");
+        log(`support: player ${body.data.playerId} revoked`);
+        return supporters.overview();
+      }
+      if (req.method === "POST" && path === "/api/admin/supporter-codes") {
+        const body = AdminCodesSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        const codes = supporters.createCodes(body.data.count, body.data.months, body.data.note);
+        log(`support: ${codes.length} codes created (${body.data.months || "lifetime"} months)`);
+        return { codes };
       }
       a = /^\/api\/admin\/players\/([\w-]{1,64})$/.exec(path);
       if (req.method === "GET" && a) {

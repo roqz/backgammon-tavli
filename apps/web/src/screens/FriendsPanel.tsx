@@ -132,6 +132,7 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
                   name={f.name}
                   frame={f.frame}
                   rank={f.rank}
+                  supporter={f.supporter}
                 />
                 <span className="text-xs text-stone-500">{t.presence[f.presence ?? "offline"]}</span>
                 {f.presence === "playing" && f.matchId && (

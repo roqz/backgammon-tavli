@@ -110,6 +110,18 @@ function PrivacyDe() {
         </li>
         <li>Anmeldesitzungen (als Hash, mit Zeitpunkten);</li>
         <li>
+          Wiederherstellungscodes (nur als Hash, mit Zeitpunkt der Nutzung) und – wenn du die
+          Zwei-Faktor-Anmeldung einschaltest – den geheimen Schlüssel deiner Authenticator-App;
+        </li>
+        <li>deinen Einladungscode für Freunde und deine Freundschaften;</li>
+        <li>
+          wenn du das Projekt unterstützt: Beginn und Ende des Unterstützer-Status, wann und wie lange er
+          gewährt wurde (Code oder durch den Betreiber) und ob du in der Danke-Liste genannt werden möchtest.
+          Das Herz neben deinem Namen ist für andere sichtbar, die Danke-Liste nur, wenn du sie einschaltest.
+          Zahlungen laufen nicht über diese App, sondern über den verlinkten Anbieter und dessen
+          Datenschutzbestimmungen;
+        </li>
+        <li>
           Ratings und das Archiv deiner Matches (Züge, Würfel, Ergebnisse) für Rangliste, Profil und
           Wiederholungen;
         </li>
@@ -195,6 +207,17 @@ function PrivacyEn() {
           if you create an account: username, password (only as a scrypt hash) and – optionally – your e-mail;
         </li>
         <li>login sessions (hashed, with timestamps);</li>
+        <li>
+          recovery codes (only as hashes, with the time they were used) and – if you turn on two-factor login
+          – the secret key of your authenticator app;
+        </li>
+        <li>your invitation code for friends and your friendships;</li>
+        <li>
+          if you support the project: start and end of the supporter status, when and for how long it was
+          granted (code or by the operator) and whether you want to be named in the thank-you list. The heart
+          next to your name is visible to others, the thank-you list only if you turn it on. Payments do not
+          run through this app but through the linked provider and its privacy terms;
+        </li>
         <li>
           ratings and the archive of your matches (moves, dice, results) for ranking, profile and replays;
         </li>

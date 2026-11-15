@@ -5,7 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { describeUnlock, reached, useAchievements } from "../achievements";
 import { plaqueIds, seasonIds, taskProgress, tasksFor, useCareer, weekId, weekRange } from "../career";
 import { useT } from "../i18n";
-import { fetchProfile, syncProgress } from "../online/client";
+import { fetchAccount, fetchProfile, syncProgress } from "../online/client";
 import { useOnline } from "../online/store";
 import { usePuzzles } from "../puzzle";
 import { LESSONS } from "../screens/TutorialScreen";
@@ -33,6 +33,8 @@ export function AchievementLayer() {
     fetchProfile(profileId)
       .then(setProfile)
       .catch(() => {});
+    // supporter status (unlocks the supporter looks)
+    fetchAccount().catch(() => {});
   }, [profileId, status, matchEnded]);
 
   // lasting counters first (they outlive the archive), then everything that depends on them

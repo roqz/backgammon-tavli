@@ -349,6 +349,7 @@ export const GLYPH = {
   play: "M7 4v16l13-8z",
   bell: "M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4",
   trophy: "M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4",
+  heart: "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z",
 } as const;
 
 /** Rows of a navigation list (profile, settings). */

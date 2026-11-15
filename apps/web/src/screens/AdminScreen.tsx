@@ -1,12 +1,14 @@
-import type {
-  AdminReport,
-  AnalysisSummary,
-  MatchDetailResponse,
-  ModerationInfo,
-  ModerationSignals,
-  PlayerStats,
-  PublicPlayerRef,
-  TimingSummary,
+import {
+  type AdminReport,
+  type AdminSupportOverview,
+  type AnalysisSummary,
+  type MatchDetailResponse,
+  type ModerationInfo,
+  type ModerationSignals,
+  type PlayerStats,
+  type PublicPlayerRef,
+  SUPPORTER_LIFETIME,
+  type TimingSummary,
 } from "@tavli/protocol";
 import { useState } from "react";
 import { Button, Card, Segmented } from "../components/ui";
@@ -50,10 +52,11 @@ export function AdminScreen({
 }) {
   const t = useT();
   const [token, setToken] = useState(readToken);
-  const [status, setStatus] = useState<"open" | "resolved" | "signals" | "stats">("open");
+  const [status, setStatus] = useState<"open" | "resolved" | "signals" | "stats" | "support">("open");
   const [reports, setReports] = useState<AdminReport[] | null>(null);
   const [signals, setSignals] = useState<ModerationSignals | null>(null);
   const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [support, setSupport] = useState<AdminSupportOverview | null>(null);
   const [players, setPlayers] = useState<Record<string, ModerationInfo>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +69,7 @@ export function AdminScreen({
     }
   };
 
-  const load = (which: "open" | "resolved" | "signals" | "stats" = status) =>
+  const load = (which: "open" | "resolved" | "signals" | "stats" | "support" = status) =>
     run(async () => {
       try {
         sessionStorage.setItem(TOKEN_KEY, token);
@@ -76,7 +79,11 @@ export function AdminScreen({
       setReports(null);
       setSignals(null);
       setStats(null);
-      if (which === "signals") setSignals(await adminApi<ModerationSignals>(token, "/api/admin/signals"));
+      setSupport(null);
+      if (which === "support")
+        setSupport(await adminApi<AdminSupportOverview>(token, "/api/admin/supporters"));
+      else if (which === "signals")
+        setSignals(await adminApi<ModerationSignals>(token, "/api/admin/signals"));
       else if (which === "stats") setStats(await adminApi<PlayerStats>(token, "/api/admin/stats"));
       else setReports(await adminApi<AdminReport[]>(token, `/api/admin/reports?status=${which}`));
     });
@@ -132,13 +139,14 @@ export function AdminScreen({
             value={status}
             onChange={(v) => {
               setStatus(v);
-              if (reports || signals || stats) void load(v);
+              if (reports || signals || stats || support) void load(v);
             }}
             options={[
               { value: "open", label: t.adminOpen },
               { value: "resolved", label: t.adminResolved },
               { value: "signals", label: t.adminSignals },
               { value: "stats", label: t.adminStats },
+              { value: "support", label: t.adminSupport },
             ]}
           />
           <Button variant="primary" disabled={token.length < 16} onClick={() => void load()}>
@@ -149,6 +157,7 @@ export function AdminScreen({
       </Card>
 
       {stats && <StatsView stats={stats} />}
+      {support && <SupportView overview={support} token={token} onChange={setSupport} />}
       {signals && (
         <SignalsView
           signals={signals}
@@ -465,6 +474,183 @@ function PlayerLine({
       >
         {banned ? t.adminUnban : t.adminBan}
       </Button>
+    </div>
+  );
+}
+
+const SUPPORT_MONTHS = [1, 3, 6, 12, 0] as const;
+
+/** Supporters: grant by hand, end, create one-time codes for donors. */
+function SupportView({
+  overview,
+  token,
+  onChange,
+}: {
+  overview: AdminSupportOverview;
+  token: string;
+  onChange: (o: AdminSupportOverview) => void;
+}) {
+  const t = useT();
+  const [player, setPlayer] = useState("");
+  const [months, setMonths] = useState<number>(12);
+  const [note, setNote] = useState("");
+  const [count, setCount] = useState(5);
+  const [codes, setCodes] = useState<readonly string[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const field =
+    "rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-stone-100 outline-none focus:border-amber-400";
+  const monthsLabel = (m: number) => (m === 0 ? t.adminLifetime : t.adminMonthsN.replace("{n}", String(m)));
+  const run = async (fn: () => Promise<void>) => {
+    setError(null);
+    try {
+      await fn();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  const date = (iso: string) =>
+    iso === SUPPORTER_LIFETIME ? t.adminLifetime : new Date(iso).toLocaleDateString(t.locale);
+  return (
+    <div className="flex flex-col gap-4">
+      <Card className="flex flex-col gap-3">
+        <h2 className="font-semibold text-stone-100">💛 {t.adminGrant}</h2>
+        <input
+          className={field}
+          placeholder={t.adminGrantPlayer}
+          aria-label={t.adminGrantPlayer}
+          value={player}
+          onChange={(e) => setPlayer(e.target.value)}
+        />
+        <div className="flex flex-wrap gap-2">
+          <select
+            className={field}
+            aria-label={t.adminMonths}
+            value={months}
+            onChange={(e) => setMonths(Number(e.target.value))}
+          >
+            {SUPPORT_MONTHS.map((m) => (
+              <option key={m} value={m}>
+                {monthsLabel(m)}
+              </option>
+            ))}
+          </select>
+          <input
+            className={`${field} min-w-0 flex-1`}
+            placeholder={t.adminNote}
+            aria-label={t.adminNote}
+            maxLength={200}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="primary"
+            disabled={!player.trim()}
+            onClick={() =>
+              void run(async () => {
+                onChange(
+                  await adminApi<AdminSupportOverview>(token, "/api/admin/supporters", {
+                    player: player.trim(),
+                    months,
+                    note,
+                  }),
+                );
+                setPlayer("");
+              })
+            }
+          >
+            {t.adminGrant}
+          </Button>
+          <span className="flex items-center gap-2 text-sm text-stone-400">
+            {t.adminCodeCount}
+            <input
+              type="number"
+              min={1}
+              max={50}
+              className={`${field} w-20`}
+              value={count}
+              onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+            />
+          </span>
+          <Button
+            onClick={() =>
+              void run(async () => {
+                const r = await adminApi<{ codes: string[] }>(token, "/api/admin/supporter-codes", {
+                  count,
+                  months,
+                  note,
+                });
+                setCodes(r.codes);
+                onChange(await adminApi<AdminSupportOverview>(token, "/api/admin/supporters"));
+              })
+            }
+          >
+            {t.adminCodes} ({monthsLabel(months)})
+          </Button>
+        </div>
+        {codes && (
+          <div className="rounded-lg border border-brass/40 bg-stone-950 p-3">
+            <p className="mb-2 text-sm text-amber-200">{t.adminCodesNew}</p>
+            <pre className="select-all whitespace-pre-wrap font-mono text-sm text-stone-100">
+              {codes.join("\n")}
+            </pre>
+          </div>
+        )}
+        <p className="text-xs text-stone-500">
+          {t.adminOpenCodes.replace("{n}", String(overview.openCodes.length))}
+        </p>
+        {error && <p className="text-sm text-red-400">{error}</p>}
+      </Card>
+      {overview.supporters.length === 0 ? (
+        <p className="text-center text-stone-500">{t.adminNoSupporters}</p>
+      ) : (
+        <Card>
+          <ul className="divide-y divide-stone-800" data-testid="admin-supporters">
+            {overview.supporters.map((s) => (
+              <li key={s.id} className="flex flex-col gap-1 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className={s.active ? "text-brass" : "text-stone-600"}>♥</span>
+                  <span className="min-w-0 flex-1 truncate text-stone-100">
+                    {s.name}
+                    {s.username && <span className="text-stone-500"> · {s.username}</span>}
+                  </span>
+                  <span className={`text-xs ${s.active ? "text-emerald-300" : "text-stone-500"}`}>
+                    {s.active ? t.adminActive : t.adminExpired} · {date(s.since)} – {date(s.until)}
+                  </span>
+                  {s.active && (
+                    <Button
+                      variant="ghost"
+                      className="px-2 py-1 text-xs"
+                      onClick={() =>
+                        void run(async () =>
+                          onChange(
+                            await adminApi<AdminSupportOverview>(token, "/api/admin/supporters/revoke", {
+                              playerId: s.id,
+                            }),
+                          ),
+                        )
+                      }
+                    >
+                      {t.adminRevoke}
+                    </Button>
+                  )}
+                </div>
+                {s.grants.length > 0 && (
+                  <p className="pl-5 text-xs text-stone-500">
+                    {s.grants
+                      .map(
+                        (g) =>
+                          `${new Date(g.at).toLocaleDateString(t.locale)}: ${monthsLabel(g.months)} (${g.source}${g.note ? `, ${g.note}` : ""})`,
+                      )
+                      .join(" · ")}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </div>
   );
 }

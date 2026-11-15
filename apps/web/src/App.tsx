@@ -23,6 +23,7 @@ import { RulesScreen } from "./screens/RulesPanel";
 import { type SectionId, SettingsPanel } from "./screens/SettingsPanel";
 import { ShowcaseScreen } from "./screens/ShowcaseScreen";
 import { StatsScreen } from "./screens/StatsScreen";
+import { SupportScreen } from "./screens/SupportScreen";
 import { TutorialScreen } from "./screens/TutorialScreen";
 import { WatchScreen } from "./screens/WatchScreen";
 import type { GameRecord } from "./store/archive";
@@ -32,6 +33,7 @@ type Screen =
   | NavTarget
   | "setup"
   | "showcase"
+  | "support"
   | "account"
   | "game"
   | "settings"
@@ -51,6 +53,7 @@ const NAV_SCREENS: readonly NavTarget[] = ["menu", "play", "online", "profile"];
 const SUB_SCREENS: Partial<Record<Screen, NavTarget>> = {
   settings: "profile",
   showcase: "profile",
+  support: "profile",
   stats: "profile",
   account: "profile",
   imprint: "profile",
@@ -304,6 +307,7 @@ export function App() {
         <ProfileScreen
           onStats={() => setScreen("stats")}
           onShowcase={() => setScreen("showcase")}
+          onSupport={() => setScreen("support")}
           onSettings={() => {
             setSettingsPage(null);
             setScreen("settings");
@@ -318,6 +322,9 @@ export function App() {
         />
       )}
       {screen === "showcase" && <ShowcaseScreen onBack={() => setScreen("profile")} />}
+      {screen === "support" && (
+        <SupportScreen onBack={() => setScreen("profile")} onOnline={() => openOnline()} />
+      )}
       {screen === "account" && (
         <AccountScreen onBack={() => setScreen("profile")} onReplay={(r) => openReplay(r, "account")} />
       )}

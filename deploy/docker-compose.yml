@@ -23,6 +23,9 @@ services:
       TOURNAMENT_SPECTATOR_DELAY_SECONDS: ${TOURNAMENT_SPECTATOR_DELAY_SECONDS:-60}
       BACKUP_DIR: /data/backups
       BACKUP_KEEP: ${BACKUP_KEEP:-14}
+      # Supporting the project (docs/SUPPORT.md): donation page and monthly costs in euros
+      SUPPORT_URL: ${SUPPORT_URL:-}
+      SUPPORT_MONTHLY_COST: ${SUPPORT_MONTHLY_COST:-}
     logging: &logging
       driver: json-file
       options:

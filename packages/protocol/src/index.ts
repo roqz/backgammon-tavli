@@ -193,6 +193,8 @@ export interface PublicPlayer {
   readonly frame?: Frame | null;
   /** Club rank (0 = guest, see CLUB_RANKS). */
   readonly rank?: number;
+  /** Supports the project (badge next to the name). */
+  readonly supporter?: boolean;
 }
 
 // ---- progress and rewards ----------------------------------------------------------------------
@@ -210,6 +212,8 @@ export const FRAMES = {
   // rarities (docs/GAMIFICATION.md)
   rosette: "games-1000",
   medal: "honor-member",
+  // while supporting the project (not an achievement)
+  patron: "supporter",
 } as const;
 export type Frame = keyof typeof FRAMES;
 export const FRAME_IDS = Object.keys(FRAMES) as Frame[];
@@ -345,6 +349,7 @@ export interface FriendView {
   readonly name: string;
   readonly frame?: Frame | null;
   readonly rank?: number;
+  readonly supporter?: boolean;
   /** accepted: friends · incoming: they asked you · outgoing: you asked them */
   readonly status: "accepted" | "incoming" | "outgoing";
   /** Only for accepted friends. */
@@ -703,6 +708,7 @@ export interface RatingEntry {
 }
 
 export interface LeaderboardEntry extends RatingEntry {
+  readonly supporter?: boolean;
   readonly playerId: string;
   readonly name: string;
   readonly frame?: Frame | null;
@@ -1088,6 +1094,77 @@ export interface AccountResponse {
   readonly twoFactor: boolean;
   /** Unused recovery codes (accounts only). */
   readonly recoveryCodesLeft: number;
+  /** Supporting the project: since when and until when (null when never). */
+  readonly supporter: SupporterStatus | null;
+}
+
+// ---- supporting the project ---------------------------------------------------------------------
+
+/** "Until" of a lifetime supporter. */
+export const SUPPORTER_LIFETIME = "9999-12-31T00:00:00.000Z";
+
+export interface SupporterStatus {
+  readonly since: string;
+  /** ISO date; SUPPORTER_LIFETIME for good. */
+  readonly until: string;
+  readonly active: boolean;
+  /** Named in the public thank-you list (opt-in). */
+  readonly public: boolean;
+}
+
+/** The public support page: where to support, what it costs, who helps (opt-in names). */
+export interface SupportInfo {
+  readonly url: string | null;
+  /** Monthly running costs in euros, if the operator states them. */
+  readonly monthlyCost: number | null;
+  readonly supporters: number;
+  readonly names: readonly string[];
+}
+
+/** Supporter codes look like "SUPP-7KQM-2XRP-9D4H". */
+export const SupporterCodeSchema = z.object({ code: z.string().min(12).max(30) });
+export const SupporterPublicSchema = z.object({ public: z.boolean() });
+
+/** Months of support (0 = lifetime). */
+const supportMonths = z.number().int().min(0).max(120);
+export const AdminGrantSchema = z.object({
+  /** Username or player id. */
+  player: z.string().min(1).max(64),
+  months: supportMonths,
+  note: z.string().max(200).default(""),
+});
+export const AdminRevokeSchema = z.object({ playerId: z.string().min(1).max(64) });
+export const AdminCodesSchema = z.object({
+  count: z.number().int().min(1).max(50),
+  months: supportMonths,
+  note: z.string().max(200).default(""),
+});
+
+export interface AdminSupporter {
+  readonly id: string;
+  readonly name: string;
+  readonly username: string | null;
+  readonly since: string;
+  readonly until: string;
+  readonly active: boolean;
+  readonly public: boolean;
+  /** Grants so far (codes and by hand), newest first. */
+  readonly grants: readonly {
+    readonly months: number;
+    readonly source: string;
+    readonly note: string;
+    readonly at: string;
+  }[];
+}
+
+export interface AdminSupportOverview {
+  readonly supporters: readonly AdminSupporter[];
+  /** Codes not redeemed yet (without the codes themselves, which are shown only once). */
+  readonly openCodes: readonly {
+    readonly months: number;
+    readonly note: string;
+    readonly createdAt: string;
+  }[];
 }
 
 export const AccountSettingsSchema = z.object({ friendsCanWatch: z.boolean() });

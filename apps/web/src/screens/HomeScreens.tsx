@@ -471,6 +471,7 @@ export function SetupScreen({
 export function ProfileScreen({
   onStats,
   onShowcase,
+  onSupport,
   onSettings,
   onDesigns,
   onRanking,
@@ -479,6 +480,7 @@ export function ProfileScreen({
 }: {
   onStats: () => void;
   onShowcase: () => void;
+  onSupport: () => void;
   onSettings: () => void;
   onDesigns: () => void;
   onRanking: () => void;
@@ -487,6 +489,7 @@ export function ProfileScreen({
 }) {
   const t = useT();
   const profile = useOnline((s) => s.profile);
+  const supporter = useOnline((s) => s.supporter && s.profile !== null);
   const playerName = useSettings((s) => s.playerName);
   const [data, setData] = useState<ProfileResponse | null>(null);
   useEffect(() => {
@@ -577,6 +580,14 @@ export function ProfileScreen({
               label={t.accountAndData}
               detail={t.accountSub}
               onClick={onAccount}
+            />
+          </ListGroup>
+          <ListGroup>
+            <ListRow
+              icon={<Glyph d={GLYPH.heart} className="h-5 w-5 text-brass" />}
+              label={t.supportTitle}
+              detail={supporter ? `♥ ${t.supporterBadge}` : t.supportSub}
+              onClick={onSupport}
             />
           </ListGroup>
           <LegalFooter onLegal={onLegal} />

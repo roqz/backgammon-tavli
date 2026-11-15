@@ -13,7 +13,7 @@ import {
   USERNAME_PATTERN,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
-import { ACHIEVEMENTS, useAchievements } from "../achievements";
+import { ACHIEVEMENTS } from "../achievements";
 import { OtpInput, RecoveryCodesModal, SecurityCard } from "../components/Security";
 import { Sparkline } from "../components/Sparkline";
 import { Button, Card, Modal, Toggle } from "../components/ui";
@@ -37,7 +37,7 @@ import {
   setFriendsCanWatch,
 } from "../online/client";
 import { useOnline } from "../online/store";
-import { FRAME_LOOK } from "../rewards";
+import { FRAME_LOOK, useUnlocked } from "../rewards";
 import type { GameRecord } from "../store/archive";
 import { AddFriendButton } from "./FriendsPanel";
 
@@ -257,7 +257,7 @@ export function AuthForm() {
 /** Avatar frame next to the name; frames need their achievement. */
 function FramePicker() {
   const t = useT();
-  const unlocked = useAchievements((s) => s.unlocked);
+  const unlocked = useUnlocked();
   const [frame, setFrame] = useState<Frame | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -296,10 +296,12 @@ function FramePicker() {
               title={
                 open
                   ? undefined
-                  : t.unlockBy.replace(
-                      "{name}",
-                      a ? `${a.icon} ${a.title[t.locale.startsWith("de") ? "de" : "en"]}` : FRAMES[f],
-                    )
+                  : FRAMES[f] === "supporter"
+                    ? t.supporterOnly
+                    : t.unlockBy.replace(
+                        "{name}",
+                        a ? `${a.icon} ${a.title[t.locale.startsWith("de") ? "de" : "en"]}` : FRAMES[f],
+                      )
               }
               onClick={() => choose(f)}
             >

@@ -70,5 +70,6 @@ Hinter einem bestehenden Reverse Proxy (gemeinsames Caddy, das TLS übernimmt):
 | web    | `OPERATOR_NAME`, `OPERATOR_ADDRESS`, `OPERATOR_EMAIL`, `HOSTING` | Impressum/Datenschutz                                           |
 | server | `TRUST_PROXY`                                                    | `2` (zwei Proxys vor dem Server)                                |
 | server | `VAPID_SUBJECT`, `ADMIN_TOKEN`, `BACKUP_DIR=/data/backups`       | wie oben                                                        |
+| server | `SUPPORT_URL`, `SUPPORT_MONTHLY_COST`                            | Unterstützen-Seite (optional, `docs/SUPPORT.md`)                |
 
 Ein Bind-Mount für `/data` muss dem Nutzer 1000 gehören (`chown -R 1000:1000 data`).

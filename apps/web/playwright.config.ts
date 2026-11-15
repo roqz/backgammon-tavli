@@ -7,6 +7,7 @@ import { defineConfig, devices } from "@playwright/test";
  */
 const WEB_PORT = 4180;
 export const E2E_SERVER_PORT = 2580;
+export const E2E_ADMIN_TOKEN = "e2e-admin-token-0123456789";
 
 export default defineConfig({
   testDir: "e2e",
@@ -45,6 +46,9 @@ export default defineConfig({
         DB_PATH: ":memory:",
         ALLOW_SAME_NETWORK: "1",
         TOURNAMENT_GUEST_MIN_MATCHES: "0",
+        ADMIN_TOKEN: E2E_ADMIN_TOKEN,
+        SUPPORT_URL: "https://example.org/support",
+        SUPPORT_MONTHLY_COST: "8",
       },
     },
   ],

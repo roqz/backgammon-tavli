@@ -32,7 +32,7 @@ import {
 import { variantShortName } from "../components/VariantPicker";
 import { type Dict, useT } from "../i18n";
 import { usePuzzles } from "../puzzle";
-import { type CheckerSet, DICE_SKINS, type DiceSkin, FRAME_LOOK, hasLook } from "../rewards";
+import { type CheckerSet, DICE_SKINS, type DiceSkin, FRAME_LOOK, hasLook, useUnlocked } from "../rewards";
 import { useArchive } from "../store/archive";
 import { useSettings } from "../store/settings";
 import { AchievementsPanel, RareTag, rewardOf } from "./AchievementsPanel";
@@ -437,7 +437,7 @@ function Season() {
 
 function Frames() {
   const t = useT();
-  const unlocked = useAchievements((s) => s.unlocked);
+  const unlocked = useUnlocked();
   return (
     <Box title={t.framesTitle}>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
@@ -446,7 +446,7 @@ function Frames() {
           return (
             <li
               key={f}
-              title={open ? undefined : lockText(t, FRAMES[f])}
+              title={open ? undefined : FRAMES[f] === "supporter" ? t.supporterOnly : lockText(t, FRAMES[f])}
               className={`flex items-center gap-2 rounded-lg border px-2 py-2 text-sm ${open ? "border-stone-700 text-stone-100" : "border-stone-800 text-stone-500"}`}
             >
               <span

@@ -2,9 +2,10 @@
 
 Alles hier ist **kosmetisch**: Es verändert weder Regeln noch Wertung, und das Basisspiel bleibt
 vollständig frei. Fortschritt entsteht auf dem Gerät (lokale Spiele, Rätsel, Tutorial) und wird mit
-einem Online-Profil geräteübergreifend zusammengeführt. Der Server rechnet Erfolge nicht nach – wer
-seinen Browser-Speicher manipuliert, betrügt sich nur um Kosmetik. Einzige serverseitige Prüfung: Ein
-Avatar-Rahmen lässt sich nur wählen, wenn sein Erfolg im gespeicherten Fortschritt steht.
+einem Online-Profil geräteübergreifend zusammengeführt. Was online passiert, zählt der Server selbst
+(siehe „Vom Server gezählt“); was nur auf dem Gerät passiert (Spiele gegen den Computer, Rätsel,
+Tutorial), kann er nicht prüfen – wer seinen Browser-Speicher manipuliert, betrügt sich dort nur um
+Kosmetik.
 
 Einstieg in der App: **Profil → Vitrine** (auch über die Zeile „Wochenaufgaben“ auf der Startseite).
 
@@ -20,7 +21,7 @@ Einstieg in der App: **Profil → Vitrine** (auch über die Zeile „Wochenaufga
 | Eintauschen       | Spielmarken                                                                     | Steine, Würfel, Bretter (keine Prestige-Looks)                                                   |
 | Besondere Momente | einzelne Partien im Archiv                                                      | Erfolge                                                                                          |
 | Online-Rahmen     | Fernpartien, Herausforderungen, Ligen                                           | Rahmen Brief, Handschlag, Wappen; Messing-Würfel                                                 |
-| Saison            | Partien im Saisonzeitraum                                                       | Winter-Brett (bleibt)                                                                            |
+| Saisons           | Partien in der laufenden Jahreszeit                                             | Bretter Frühling, Ägäis-Sommer, Herbst, Winter (bleiben)                                         |
 | Raritäten         | Ziele über Monate/Jahre; Luxus-Looks im Tausch                                  | Ebenholz-Brett, Lapis-Steine, Jade/Obsidian, Rahmen Rosette/Ehrennadel; Salon, Bernstein, Silber |
 
 ## Was zählt
@@ -121,7 +122,7 @@ Hinweis oben.
 | **Rarität:** Steinsatz Bernstein & Mokka                                    | 20    |
 | **Rarität:** Brett Salon                                                    | 30    |
 
-Prestige-Looks gibt es **nur** über Erfolge: Intarsien (alle Plaketten Gold), Winter (Saison),
+Prestige-Looks gibt es **nur** über Erfolge: Intarsien (alle Plaketten Gold), die Saison-Bretter,
 Messing-Würfel (Liga), die Raritäten-Belohnungen und alle Rahmen. Was bereits per Erfolg frei ist,
 wird nicht angeboten. Umgekehrt gibt es die drei Luxus-Looks (Silber, Bernstein, Salon) **nur** im
 Tausch (`REWARDS` → `SHOP_ONLY`, `rare: true` im `SHOP`).
@@ -161,16 +162,42 @@ Rückstand je Seite über den Matchverlauf.
 | Rahmen 🛡️ Wappen     | `league-win`    | eine Club-Liga gewonnen                                       |
 | Messing-Würfel       | `league-player` | eine Ligapartie zu Ende gespielt                              |
 
-Die Rahmen-Zuordnung steht in `FRAMES` (Protokoll); der Server prüft sie beim Wählen.
+Die Rahmen-Zuordnung steht in `FRAMES` (Protokoll); der Server prüft sie beim Wählen. Der Rahmen
+„Mäzen“ gehört zu den Unterstützern (`docs/SUPPORT.md`), nicht zu einem Erfolg.
 
-## Saison
+## Vom Server gezählt
 
-- **Wintersaison**: 1. Dezember bis Ende Februar, benannt nach dem Jahr des Dezembers
-  (`season-winter-2026` = Dez. 2026 bis Feb. 2027).
-- 10 Partien in der Saison schalten das Brett **Winter** dauerhaft frei (jede Saison zählt einzeln,
-  eine reicht).
-- Weitere Saisons: `winterSeason` und `seasonIds` in `career.ts` erweitern, Brett in
-  `board/themes.tsx` anlegen, in `REWARDS.style` eintragen und in `hasLook` behandeln.
+Was online passiert, zählt der Server aus seinen eigenen Daten (`Store.verifiedCareer`,
+`Store.verifiedAchievements` in `apps/server/src/db.ts`):
+
+| Was                                    | Quelle                                      |
+| -------------------------------------- | ------------------------------------------- |
+| Partien und Siege (je Variante) online | `matches.games` (jedes Spiel eines Matches) |
+| Partien und Siege in Fernpartien       | `corr_games.games` (beendete Partien)       |
+| beendete Fernpartien, Ligapartien      | `corr_games`, `league_matches`              |
+| Erfolge `online-win`, `rating-1600`    | Matches, Ratings                            |
+| `tournament-win`, `league-win`         | Turniere, Ligen                             |
+| `corr-ten`, `league-player`            | Fernpartien, Ligapartien                    |
+
+Beim Zusammenführen des Fortschritts sind diese Zahlen die **Untergrenze**: Ein Gerät, das weniger
+weiß (etwa ein neues Handy), kann sie nicht senken; Spiele gegen den Computer kommen vom Gerät dazu
+(höherer Wert gewinnt). Die Online-Erfolge trägt der Server selbst ein. Die Rahmen dieser Erfolge
+(Gold, Lorbeer, Brief, Wappen) lassen sich nur wählen, wenn der Server sie in seinen Daten findet –
+ein nur behaupteter Erfolg genügt nicht. Rahmen für Offline-Ziele (Tutorial, Rätsel, Raritäten)
+prüft er weiterhin nur gegen den gespeicherten Fortschritt.
+
+## Saisons
+
+- Jede Jahreszeit ist eine Saison: **Frühling** (März–Mai), **Sommer** (Juni–August), **Herbst**
+  (September–November), **Winter** (Dezember–Februar, benannt nach dem Jahr des Dezembers:
+  `season-winter-2026` = Dez. 2026 bis Feb. 2027). IDs: `season-<art>-<jahr>`.
+- 10 Partien (gegen den Computer oder online) innerhalb der Saison schalten ihr Brett dauerhaft frei:
+  Frühling, Ägäis-Sommer, Herbst, Winter. Eine Saison der Art genügt; verpasst man sie, kommt sie im
+  nächsten Jahr wieder.
+- Code: `SEASONS`, `seasonOf`, `seasonIds`, `hasSeason` in `career.ts`; Bretter in
+  `board/themes.tsx`; `REWARDS.style` verweist auf `season-<art>`, `hasLook` prüft jede Saison der
+  Art. Eine neue Saison-Art (etwa ein Event) braucht dort einen Eintrag, ein Brett und Texte
+  (`seasonNames`).
 
 ## Raritäten
 

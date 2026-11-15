@@ -7,15 +7,28 @@ export function PlayerName({
   name,
   frame,
   rank = 0,
+  supporter = false,
   className = "",
 }: {
   name: string;
   frame?: Frame | null;
   /** Club rank: from 1 (regular) on a small brass mark after the name. */
   rank?: number;
+  /** Supports the project: a small brass heart. */
+  supporter?: boolean;
   className?: string;
 }) {
   const t = useT();
+  const heart = supporter && (
+    <span
+      className="ml-1 shrink-0 text-[11px] leading-none text-brass"
+      title={t.supporterBadge}
+      role="img"
+      aria-label={t.supporterBadge}
+    >
+      ♥
+    </span>
+  );
   const badge = rank > 0 && (
     <span
       className="ml-1 inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-sm border border-brass/60 px-0.5 font-display text-[10px] leading-none text-brass"
@@ -30,6 +43,7 @@ export function PlayerName({
     return (
       <span className={`inline-flex min-w-0 items-center ${className}`}>
         <span className="truncate">{name}</span>
+        {heart}
         {badge}
       </span>
     );
@@ -45,6 +59,7 @@ export function PlayerName({
         {look.icon}
       </span>
       <span className="truncate">{name}</span>
+      {heart}
       {badge}
     </span>
   );

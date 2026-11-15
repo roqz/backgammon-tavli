@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, useAchievements } from "../achievements";
+import { ACHIEVEMENTS } from "../achievements";
 import { BOARD_STYLES, type BoardStyle, THEMES } from "../board/themes";
 import { SEASON_GAMES, SEASONS, type SeasonKey, SHOP, useCareer } from "../career";
 import { type Dict, useT } from "../i18n";
@@ -11,6 +11,8 @@ import {
   hasLook,
   REWARDS,
   SHOP_ONLY,
+  SUPPORTER,
+  useUnlocked,
 } from "../rewards";
 import { useSettings } from "../store/settings";
 
@@ -22,6 +24,7 @@ export const seasonHow = (t: Dict, key: SeasonKey): string =>
 
 /** "Unlock: <achievement>" (plus "or N tokens" where the look can be exchanged). */
 export const lockText = (t: Dict, achievement: string, shopId?: string): string => {
+  if (achievement === SUPPORTER) return t.supporterOnly;
   if (achievement === SHOP_ONLY)
     return t.shopOnly.replace("{n}", String(SHOP.find((o) => o.id === shopId)?.price ?? "?"));
   const a = ACHIEVEMENTS.find((x) => x.id === achievement);
@@ -77,7 +80,7 @@ const pill = (on: boolean) =>
 export function StylePicker() {
   const t = useT();
   const { style, update } = useSettings();
-  const unlocked = useAchievements((a) => a.unlocked);
+  const unlocked = useUnlocked();
   const owned = useCareer((c) => c.owned);
   return (
     <div className="grid grid-cols-2 gap-3 py-3 sm:grid-cols-3">
@@ -119,7 +122,7 @@ export function StylePicker() {
 export function DicePicker() {
   const t = useT();
   const { diceSkin, update } = useSettings();
-  const unlocked = useAchievements((a) => a.unlocked);
+  const unlocked = useUnlocked();
   const owned = useCareer((c) => c.owned);
   const skins: { id: DiceSkin; color: string; pip: string }[] = [
     { id: "theme", color: "#fbf7ec", pip: "#2a1a10" },
@@ -186,7 +189,7 @@ export function CheckerSwatch({ set }: { set: CheckerSet }) {
 export function CheckerPicker() {
   const t = useT();
   const { checkerSet, update } = useSettings();
-  const unlocked = useAchievements((a) => a.unlocked);
+  const unlocked = useUnlocked();
   const owned = useCareer((c) => c.owned);
   const sets: CheckerSet[] = ["theme", ...CHECKER_SETS];
   return (

@@ -23,6 +23,11 @@ const server = await startServer({
   // Behind reverse proxies: how many (1 = one proxy in front, 2 = e.g. a shared Caddy in front of
   // the app's own Caddy); the client address is taken from X-Forwarded-For accordingly.
   trustProxy: env.TRUST_PROXY === "true" ? 1 : Number(env.TRUST_PROXY ?? 0) || 0,
+  // Supporting the project: external donation page and monthly running costs (both optional).
+  support: {
+    url: env.SUPPORT_URL || undefined,
+    monthlyCost: env.SUPPORT_MONTHLY_COST ? Number(env.SUPPORT_MONTHLY_COST) : undefined,
+  },
   // Moderation API (reports, bans); disabled unless set.
   adminToken: env.ADMIN_TOKEN,
   // Fair-play analysis in a worker thread (falls back to inline when the worker file is missing).

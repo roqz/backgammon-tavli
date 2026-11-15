@@ -1,8 +1,9 @@
 import type { Frame } from "@tavli/protocol";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { useAchievements } from "./achievements";
 import { type BoardStyle, type BoardTheme, THEMES } from "./board/themes";
 import { hasSeason, type SeasonKey, useCareer } from "./career";
+import { useOnline } from "./online/store";
 import { useSettings } from "./store/settings";
 
 /** Dice looks on top of the board style; "theme" uses the style's own dice. */
@@ -142,6 +143,19 @@ export const CHECKER_LOOKS: Record<
   },
 };
 
+/** Marks looks for supporters of the project (while they support it). */
+export const SUPPORTER = "supporter";
+
+/**
+ * What is unlocked on this device, plus "supporter" while the profile supports the project –
+ * the one entry that comes from the server rather than from play.
+ */
+export function useUnlocked(): Record<string, string> {
+  const unlocked = useAchievements((s) => s.unlocked);
+  const supporter = useOnline((s) => s.supporter && s.profile !== null);
+  return useMemo(() => (supporter ? { ...unlocked, [SUPPORTER]: "1" } : unlocked), [unlocked, supporter]);
+}
+
 /** Marks looks that only the exchange gives (luxury items, see SHOP in career.ts). */
 export const SHOP_ONLY = "shop";
 
@@ -164,6 +178,7 @@ export const REWARDS = {
     winter: "season-winter",
     ebony: "perfect-12",
     salon: SHOP_ONLY,
+    patron: SUPPORTER,
   } as Partial<Record<BoardStyle, string>>,
   dice: {
     gold: "beat-hard",
@@ -214,7 +229,7 @@ export function useBoardTheme(): BoardTheme {
   const style = useSettings((s) => s.style);
   const dice = useSettings((s) => s.diceSkin);
   const set = useSettings((s) => s.checkerSet);
-  const unlocked = useAchievements((s) => s.unlocked);
+  const unlocked = useUnlocked();
   const owned = useCareer((s) => s.owned);
   let theme = THEMES[hasLook("style", style, unlocked, owned) ? style : "classic"];
   if (dice !== "theme" && hasLook("dice", dice, unlocked, owned)) theme = { ...theme, die: DICE_SKINS[dice] };
@@ -259,4 +274,6 @@ export const FRAME_LOOK: Record<Frame, { icon: string; ring: string }> = {
   // rarities: double rings in brass
   rosette: { icon: "🏵️", ring: "ring-[#c9a14a] outline outline-1 outline-offset-2 outline-[#c9a14a]/60" },
   medal: { icon: "🎖️", ring: "ring-[#e3c574] outline outline-1 outline-offset-2 outline-[#d1603d]/70" },
+  // supporters: a brass heart, double ring like the rarities
+  patron: { icon: "💛", ring: "ring-[#c9a14a] outline outline-1 outline-offset-2 outline-[#e3c574]/70" },
 };

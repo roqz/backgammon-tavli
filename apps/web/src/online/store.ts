@@ -128,6 +128,8 @@ interface OnlineStore {
   pendingFriend: string | null;
   /** Friend invitation code from a link (redeemed with the profile, or right away). */
   pendingInvite: string | null;
+  /** The profile supports the project right now (from the account; unlocks the supporter looks). */
+  supporter: boolean;
   /** Increments when a correspondence game changed. */
   corrVersion: number;
   set: (patch: Partial<Omit<OnlineStore, "set">>) => void;
@@ -151,6 +153,7 @@ export const useOnline = create<OnlineStore>()(
       friendsVersion: 0,
       pendingFriend: null,
       pendingInvite: null,
+      supporter: false,
       corrVersion: 0,
       set: (patch) => set(patch),
     }),
@@ -162,6 +165,7 @@ export const useOnline = create<OnlineStore>()(
         profile: s.profile,
         deviceId: s.deviceId,
         pendingInvite: s.pendingInvite,
+        supporter: s.supporter,
       }),
     },
   ),

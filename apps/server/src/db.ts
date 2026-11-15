@@ -36,6 +36,7 @@ import {
   type Progress,
   type RatingPool,
   ratingKey,
+  type SupporterStatus,
 } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
 import {
@@ -163,6 +164,13 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["players", "club_rank", "ALTER TABLE players ADD COLUMN club_rank INTEGER NOT NULL DEFAULT 0"],
   ["players", "frame", "ALTER TABLE players ADD COLUMN frame TEXT"],
   ["players", "totp_secret", "ALTER TABLE players ADD COLUMN totp_secret TEXT"],
+  ["players", "supporter_since", "ALTER TABLE players ADD COLUMN supporter_since TEXT"],
+  ["players", "supporter_until", "ALTER TABLE players ADD COLUMN supporter_until TEXT"],
+  [
+    "players",
+    "supporter_public",
+    "ALTER TABLE players ADD COLUMN supporter_public INTEGER NOT NULL DEFAULT 0",
+  ],
   ["players", "totp_on", "ALTER TABLE players ADD COLUMN totp_on INTEGER NOT NULL DEFAULT 0"],
   ["players", "totp_step", "ALTER TABLE players ADD COLUMN totp_step INTEGER NOT NULL DEFAULT -1"],
   ["matches", "pool", "ALTER TABLE matches ADD COLUMN pool TEXT NOT NULL DEFAULT 'normal'"],
@@ -313,6 +321,7 @@ export interface AccountRow {
   readonly frame: Frame | null;
   readonly twoFactor: boolean;
   readonly recoveryCodesLeft: number;
+  readonly supporter: SupporterStatus | null;
 }
 
 /** Achievements for online feats: granted and checked by the server from its own records. */
@@ -324,6 +333,10 @@ export const SERVER_ACHIEVEMENTS: readonly string[] = [
   "corr-ten",
   "league-player",
 ];
+
+/** SQL: whether the player row `p` supports the project right now (dates are ISO strings). */
+export const SUPPORTER_ACTIVE =
+  "(p.supporter_until IS NOT NULL AND p.supporter_until > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))";
 
 /** Name of the app in authenticator apps. */
 const TOTP_ISSUER = "Tavli";
@@ -453,23 +466,36 @@ export class Store {
   account(id: string): AccountRow | null {
     const row = this.db
       .prepare(
-        "SELECT id, name, username, email, friends_can_watch, frame, totp_on FROM players WHERE id = ?",
+        "SELECT id, name, username, email, friends_can_watch, frame, totp_on, supporter_since, supporter_until, supporter_public FROM players WHERE id = ?",
       )
       .get(id) as
       | (Pick<AccountRow, "id" | "name" | "username" | "email"> & {
           friends_can_watch: number;
           frame: string | null;
           totp_on: number;
+          supporter_since: string | null;
+          supporter_until: string | null;
+          supporter_public: number;
         })
       | undefined;
     if (!row) return null;
-    const { friends_can_watch, frame, totp_on, ...rest } = row;
+    const { friends_can_watch, frame, totp_on, supporter_since, supporter_until, supporter_public, ...rest } =
+      row;
     return {
       ...rest,
       friendsCanWatch: friends_can_watch !== 0,
       frame: (frame as Frame | null) ?? null,
       twoFactor: totp_on === 1,
       recoveryCodesLeft: this.recoveryCodesLeft(id),
+      supporter:
+        supporter_since && supporter_until
+          ? {
+              since: supporter_since,
+              until: supporter_until,
+              active: supporter_until > new Date().toISOString(),
+              public: supporter_public === 1,
+            }
+          : null,
     };
   }
 
@@ -760,6 +786,10 @@ export class Store {
       // the secret itself stays on the server: an export must not work as a second factor
       twoFactor: this.account(id)?.twoFactor ?? false,
       recoveryCodes: all("SELECT used_at FROM recovery_codes WHERE player_id = ?"),
+      supporter: this.account(id)?.supporter ?? null,
+      supporterGrants: this.tableExists("supporter_grants")
+        ? all("SELECT months, source, created_at FROM supporter_grants WHERE player_id = ?")
+        : [],
       ratings: all("SELECT variant, rating, experience, matches, wins FROM ratings WHERE player_id = ?"),
       matches,
       reportsFiled: all(
@@ -809,6 +839,12 @@ export class Store {
       run("DELETE FROM recovery_codes WHERE player_id = ?");
       run("DELETE FROM friend_invites WHERE player_id = ?");
       run("UPDATE players SET totp_secret = NULL, totp_on = 0 WHERE id = ?");
+      // supporter status ends with the profile; the grants stay without the person (bookkeeping)
+      run(
+        "UPDATE players SET supporter_since = NULL, supporter_until = NULL, supporter_public = 0 WHERE id = ?",
+      );
+      if (this.tableExists("supporter_grants"))
+        run("UPDATE supporter_grants SET note = '' WHERE player_id = ?");
       run("UPDATE players SET frame = NULL, club_rank = 0 WHERE id = ?");
       if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
       if (this.tableExists("push_prefs")) run("DELETE FROM push_prefs WHERE player_id = ?");
@@ -1019,11 +1055,12 @@ export class Store {
     name: string;
     frame: Frame | null;
     rank: number;
+    supporter?: boolean;
     status: "accepted" | "incoming" | "outgoing";
   }[] {
     const rows = this.db
       .prepare(
-        `SELECT f.requester, f.addressee, f.status, p.id, p.name, p.frame, p.club_rank FROM friends f
+        `SELECT f.requester, f.addressee, f.status, p.id, p.name, p.frame, p.club_rank, ${SUPPORTER_ACTIVE} AS supporter FROM friends f
          JOIN players p ON p.id = CASE WHEN f.requester = ?1 THEN f.addressee ELSE f.requester END
          WHERE (f.requester = ?1 OR f.addressee = ?1) AND p.deleted_at IS NULL
          ORDER BY lower(p.name)`,
@@ -1035,12 +1072,14 @@ export class Store {
       name: string;
       frame: Frame | null;
       club_rank: number;
+      supporter: number;
     }[];
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
       frame: r.frame,
       rank: r.club_rank,
+      ...(r.supporter ? { supporter: true } : {}),
       status: r.status === "accepted" ? "accepted" : r.requester === me ? "outgoing" : "incoming",
     }));
   }
@@ -1094,7 +1133,13 @@ export class Store {
       rating: Math.round(this.rating(playerId, variant, pool).rating),
       frame: this.frameOf(playerId),
       rank: this.rankOf(playerId),
+      ...(this.isSupporter(playerId) ? { supporter: true } : {}),
     };
+  }
+
+  /** Whether a player supports the project right now. */
+  isSupporter(playerId: string): boolean {
+    return !!this.db.prepare(`SELECT 1 FROM players p WHERE p.id = ? AND ${SUPPORTER_ACTIVE}`).get(playerId);
   }
 
   private rankOf(playerId: string): number {
@@ -1166,10 +1211,13 @@ export class Store {
    */
   setFrame(playerId: string, frame: Frame | null): boolean {
     if (frame !== null) {
-      const needed = FRAMES[frame];
-      const ok = SERVER_ACHIEVEMENTS.includes(needed)
-        ? this.verifiedAchievements(playerId).includes(needed)
-        : !!this.progress(playerId).unlocked[needed];
+      const needed: string = FRAMES[frame];
+      const ok =
+        needed === "supporter"
+          ? this.isSupporter(playerId)
+          : SERVER_ACHIEVEMENTS.includes(needed)
+            ? this.verifiedAchievements(playerId).includes(needed)
+            : !!this.progress(playerId).unlocked[needed];
       if (!ok) return false;
     }
     this.db.prepare("UPDATE players SET frame = ? WHERE id = ?").run(frame, playerId);
@@ -1345,7 +1393,7 @@ export class Store {
   leaderboard(variant: MatchVariantId, limit = 50, pool: RatingPool = "normal"): LeaderboardEntry[] {
     const rows = this.db
       .prepare(
-        `SELECT r.player_id, p.name, p.frame, p.club_rank, r.rating, r.matches, r.wins FROM ratings r
+        `SELECT r.player_id, p.name, p.frame, p.club_rank, ${SUPPORTER_ACTIVE} AS supporter, r.rating, r.matches, r.wins FROM ratings r
          JOIN players p ON p.id = r.player_id
          WHERE r.variant = ? AND r.matches > 0 AND p.banned_at IS NULL ORDER BY r.rating DESC LIMIT ?`,
       )
@@ -1354,6 +1402,7 @@ export class Store {
       name: string;
       frame: Frame | null;
       club_rank: number;
+      supporter: number;
       rating: number;
       matches: number;
       wins: number;
@@ -1363,6 +1412,7 @@ export class Store {
       name: r.name,
       frame: r.frame,
       rank: r.club_rank,
+      ...(r.supporter ? { supporter: true } : {}),
       variant,
       ...(pool === "normal" ? {} : { pool }),
       rating: Math.round(r.rating),

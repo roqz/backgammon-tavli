@@ -344,6 +344,7 @@ export function GameScreen({
   const mine: Player | null = online && onlineInfo ? onlineInfo.seat : seat;
   const frameOf = (p: Player) => (online && onlineInfo ? onlineInfo.players[p].frame : null);
   const rankOf = (p: Player) => (online && onlineInfo ? (onlineInfo.players[p].rank ?? 0) : 0);
+  const supporterOf = (p: Player) => !!(online && onlineInfo?.players[p].supporter);
   const won = g.phase === "finished" && g.result !== null && mine !== null && g.result.winner === mine;
   const opponentSeat: Player | null = online && onlineInfo ? opponent(onlineInfo.seat) : null;
 
@@ -597,6 +598,7 @@ export function GameScreen({
       name: name(p),
       frame: frameOf(p),
       rank: rankOf(p),
+      supporter: supporterOf(p),
       pips: settings.showPips ? pipCount(rules, g.board, p) : null,
       score: match.score[p],
       active: actor === p,
@@ -1282,7 +1284,7 @@ export function GameScreen({
               <span
                 className={`flex-1 truncate ${actor === p ? "font-bold text-amber-200" : "text-stone-200"}`}
               >
-                <PlayerName name={name(p)} frame={frameOf(p)} rank={rankOf(p)} />
+                <PlayerName name={name(p)} frame={frameOf(p)} rank={rankOf(p)} supporter={supporterOf(p)} />
               </span>
               {settings.showPips && (
                 <span className="text-xs text-stone-500">
