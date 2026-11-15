@@ -126,6 +126,8 @@ interface OnlineStore {
   friendsVersion: number;
   /** Player id from a friend link, shown once a profile exists. */
   pendingFriend: string | null;
+  /** Friend invitation code from a link (redeemed with the profile, or right away). */
+  pendingInvite: string | null;
   /** Increments when a correspondence game changed. */
   corrVersion: number;
   set: (patch: Partial<Omit<OnlineStore, "set">>) => void;
@@ -148,13 +150,19 @@ export const useOnline = create<OnlineStore>()(
       outgoing: null,
       friendsVersion: 0,
       pendingFriend: null,
+      pendingInvite: null,
       corrVersion: 0,
       set: (patch) => set(patch),
     }),
     {
       name: "tavli.online",
       version: 1,
-      partialize: (s) => ({ serverUrl: s.serverUrl, profile: s.profile, deviceId: s.deviceId }),
+      partialize: (s) => ({
+        serverUrl: s.serverUrl,
+        profile: s.profile,
+        deviceId: s.deviceId,
+        pendingInvite: s.pendingInvite,
+      }),
     },
   ),
 );

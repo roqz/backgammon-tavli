@@ -18,8 +18,10 @@ import {
   cancelChallenge,
   challengeFriend,
   fetchFriends,
+  fetchInviteCode,
   fetchLive,
   friendLink,
+  inviteLink,
   type MatchLength,
   removeFriend,
 } from "../online/client";
@@ -208,15 +210,31 @@ function PresenceDot({ presence }: { presence: FriendView["presence"] }) {
   return <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${color}`} />;
 }
 
-/** Share your friend link: whoever opens it can send you a request. */
+/** Share your invitation link: whoever opens it becomes your friend at once (new players too). */
 function FriendLinkCard({ playerId }: { playerId: string }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
-  const link = friendLink(playerId);
+  const [code, setCode] = useState<string | null>(null);
+  const [renewing, setRenewing] = useState(false);
+  useEffect(() => {
+    fetchInviteCode()
+      .then(setCode)
+      .catch(() => {});
+  }, []);
+  // the old friend link (request only) until the server answers
+  const link = code ? inviteLink(code) : friendLink(playerId);
   return (
     <Card className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold text-stone-300">{t.friendLink}</h2>
+      <h2 className="text-sm font-semibold text-stone-300">🤝 {t.friendLink}</h2>
       <p className="text-xs text-stone-500">{t.friendLinkHint}</p>
+      {code && (
+        <p className="text-sm text-stone-300">
+          {t.inviteCode}:{" "}
+          <span className="select-all font-mono tracking-widest text-amber-100" data-testid="invite-code">
+            {code}
+          </span>
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Button
           onClick={async () => {
@@ -232,6 +250,24 @@ function FriendLinkCard({ playerId }: { playerId: string }) {
         >
           🔗 {copied ? t.copied : t.copyLink}
         </Button>
+        {code && (
+          <Button
+            variant="ghost"
+            className="text-sm"
+            disabled={renewing}
+            title={t.inviteRenewHint}
+            onClick={() => {
+              setRenewing(true);
+              setCopied(false);
+              fetchInviteCode(true)
+                .then(setCode)
+                .catch(() => {})
+                .finally(() => setRenewing(false));
+            }}
+          >
+            ↻ {t.inviteRenew}
+          </Button>
+        )}
         <span className="select-all break-all font-mono text-xs text-stone-500">{link}</span>
       </div>
     </Card>

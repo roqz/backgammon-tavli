@@ -21,6 +21,13 @@ export default defineConfig({
     channel: process.env.PW_CHANNEL,
     locale: "de-DE",
     trace: "retain-on-failure",
+    // returning players: no first-start welcome (onboarding.spec.ts opts back in)
+    storageState: {
+      cookies: [],
+      origins: [
+        { origin: `http://127.0.0.1:${WEB_PORT}`, localStorage: [{ name: "tavli.onboarded", value: "1" }] },
+      ],
+    },
   },
   projects: [{ name: "desktop", use: { ...devices["Desktop Chrome"], channel: process.env.PW_CHANNEL } }],
   webServer: [

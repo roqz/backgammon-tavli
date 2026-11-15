@@ -11,7 +11,9 @@ import type {
   CorrView,
   EmoteId,
   Frame,
+  FriendInvite,
   FriendView,
+  InviteInfo,
   LEAGUE_DIVISIONS,
   LEAGUE_WEEKS,
   LeaderboardEntry,
@@ -26,6 +28,7 @@ import type {
   PublicLeagueResponse,
   RatingPool,
   RecoveryCodes,
+  RedeemResult,
   RegisterResponse,
   ReportReason,
   ServerMessage,
@@ -517,6 +520,32 @@ export const stopWatching = () => {
 };
 
 /** Link that opens the app and offers to send a friend request to this player. */
+/** The own invitation code; `renew` makes the old link stop working. */
+export const fetchInviteCode = async (renew = false) =>
+  (
+    await rest<FriendInvite>(
+      renew ? "/api/friends/invite/renew" : "/api/friends/invite",
+      renew ? { method: "POST" } : undefined,
+    )
+  ).code;
+export const fetchInviteInfo = (code: string) => rest<InviteInfo>(`/api/invites/${encodeURIComponent(code)}`);
+/** Becomes friends with the inviter at once. */
+export const redeemInvite = async (code: string) => {
+  const r = await rest<RedeemResult>("/api/friends/redeem", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+  set({ friendsVersion: useOnline.getState().friendsVersion + 1 });
+  return r;
+};
+export const inviteLink = (code: string) => {
+  const url = new URL(location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("invite", code);
+  return url.toString();
+};
+
 export const friendLink = (playerId: string) => {
   const url = new URL(location.href);
   url.search = "";

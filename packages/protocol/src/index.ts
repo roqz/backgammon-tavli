@@ -1039,6 +1039,21 @@ export const PasswordConfirmSchema = z.object({ password: z.string().min(1).max(
 export const OtpSchema = z.object({ code: otp });
 export const TwoFactorOffSchema = z.object({ password: z.string().min(1).max(200), code: otp });
 
+/** Friend invitation codes (personal, reusable; whoever redeems one becomes a friend at once). */
+export const INVITE_CODE_PATTERN = /^[2-9A-HJ-NP-Z]{8}$/;
+export const InviteCodeSchema = z.object({ code: z.string().toUpperCase().regex(INVITE_CODE_PATTERN) });
+export interface FriendInvite {
+  readonly code: string;
+}
+/** Public info about an invitation code (shown before joining). */
+export interface InviteInfo {
+  readonly name: string;
+}
+export interface RedeemResult {
+  readonly friend: { readonly id: string; readonly name: string };
+  readonly result: "accepted" | "already";
+}
+
 /** Server error messages of the login with two factors. */
 export const OTP_REQUIRED = "2fa code required";
 export const OTP_WRONG = "wrong 2fa code";

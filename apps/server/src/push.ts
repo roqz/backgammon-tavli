@@ -210,6 +210,17 @@ export const friendRequestMessage = (lang: PushLang, from: string): PushMessage 
   url: "./?online=friends",
 });
 
+/** Someone joined through the player's invitation and is now a friend. */
+export const friendJoinedMessage = (lang: PushLang, name: string): PushMessage => ({
+  title: `🤝 ${name}`,
+  body:
+    lang === "de"
+      ? `${name} hat deine Einladung angenommen – ihr seid jetzt befreundet.`
+      : `${name} accepted your invitation – you are friends now.`,
+  tag: `friend-${name}`,
+  url: "./?online=friends",
+});
+
 /** "A friend challenges you" for a player who is not connected. */
 export const challengeMessage = (
   lang: PushLang,

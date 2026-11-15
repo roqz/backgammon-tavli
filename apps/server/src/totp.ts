@@ -88,6 +88,13 @@ const recoveryCode = (): string => {
   return `${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8)}`;
 };
 
+/** Friend invitation code: 8 characters of the same alphabet (about 40 bits). */
+export const inviteCode = (): string => {
+  let s = "";
+  for (let i = 0; i < 8; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
+  return s;
+};
+
 export const newRecoveryCodes = (): string[] => Array.from({ length: RECOVERY_CODES }, recoveryCode);
 
 /** Normalised (case, dashes, spaces) and hashed for storage. */

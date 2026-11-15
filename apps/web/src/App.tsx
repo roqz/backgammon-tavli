@@ -1,6 +1,7 @@
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AchievementLayer } from "./components/AchievementLayer";
+import { FirstStart, InviteFlow } from "./components/Onboarding";
 import { afterHistory, historySettling } from "./components/overlay";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useT } from "./i18n";
@@ -199,6 +200,16 @@ export function App() {
     setScreen("corr");
   }, [setScreen]);
 
+  // Invitation links (`?invite=<code>`): join and become friends in one step (Onboarding.tsx).
+  useEffect(() => {
+    const url = new URL(location.href);
+    const code = url.searchParams.get("invite");
+    if (!code) return;
+    url.searchParams.delete("invite");
+    history.replaceState(history.state, "", url);
+    useOnline.getState().set({ pendingInvite: code.toUpperCase() });
+  }, []);
+
   // Friend links (`?friend=<id>`): the prompt appears once a profile exists.
   useEffect(() => {
     const url = new URL(location.href);
@@ -383,6 +394,12 @@ export function App() {
         )}
         <ChallengePrompt />
         <FriendLinkPrompt />
+        <InviteFlow onFriends={() => openOnline("friends")} />
+        <FirstStart
+          onTutorial={() => setScreen("tutorial")}
+          onBot={() => openSetup("bot")}
+          onOnline={() => openOnline()}
+        />
         <AchievementLayer />
         <UpdatePrompt />
       </main>

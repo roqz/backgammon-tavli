@@ -36,6 +36,7 @@ import {
 import { ratingChange, STARTING_RATING } from "./rating";
 import {
   hashRecoveryCode,
+  inviteCode,
   looksLikeRecoveryCode,
   newRecoveryCodes,
   newTotpSecret,
@@ -132,6 +133,11 @@ CREATE TABLE IF NOT EXISTS timings (
 );
 CREATE INDEX IF NOT EXISTS timings_player ON timings(player_id, created_at);
 CREATE INDEX IF NOT EXISTS matches_ended ON matches(ended_at);
+CREATE TABLE IF NOT EXISTS friend_invites (
+  code TEXT PRIMARY KEY,
+  player_id TEXT NOT NULL UNIQUE REFERENCES players(id),
+  created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS recovery_codes (
   player_id TEXT NOT NULL REFERENCES players(id),
   code_hash TEXT NOT NULL,
@@ -787,6 +793,7 @@ export class Store {
       run("DELETE FROM friends WHERE requester = ?1 OR addressee = ?1");
       run("DELETE FROM player_progress WHERE player_id = ?");
       run("DELETE FROM recovery_codes WHERE player_id = ?");
+      run("DELETE FROM friend_invites WHERE player_id = ?");
       run("UPDATE players SET totp_secret = NULL, totp_on = 0 WHERE id = ?");
       run("UPDATE players SET frame = NULL, club_rank = 0 WHERE id = ?");
       if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
@@ -897,6 +904,77 @@ export class Store {
       .prepare("INSERT INTO friends (requester, addressee, status, created_at) VALUES (?, ?, 'pending', ?)")
       .run(me, other, new Date().toISOString());
     return "requested";
+  }
+
+  // ---- friend invitations --------------------------------------------------------------------
+
+  /** The player's invitation code (created on first use). */
+  inviteCode(playerId: string): string {
+    const row = this.db.prepare("SELECT code FROM friend_invites WHERE player_id = ?").get(playerId) as
+      | { code: string }
+      | undefined;
+    return row?.code ?? this.renewInviteCode(playerId);
+  }
+
+  /** A new code; links with the old one stop working. */
+  renewInviteCode(playerId: string): string {
+    for (;;) {
+      const code = inviteCode();
+      try {
+        this.db
+          .prepare(
+            "INSERT INTO friend_invites (code, player_id, created_at) VALUES (?, ?, ?) ON CONFLICT(player_id) DO UPDATE SET code = excluded.code, created_at = excluded.created_at",
+          )
+          .run(code, playerId, new Date().toISOString());
+        return code;
+      } catch {
+        // the rare clash with another player's code: draw again
+      }
+    }
+  }
+
+  /** Who invites with this code (not for deleted or banned players). */
+  inviter(code: string): { id: string; name: string } | null {
+    return (
+      (this.db
+        .prepare(
+          `SELECT p.id, p.name FROM friend_invites i JOIN players p ON p.id = i.player_id
+           WHERE i.code = ? AND p.deleted_at IS NULL AND p.banned_at IS NULL`,
+        )
+        .get(code.toUpperCase()) as { id: string; name: string } | undefined) ?? null
+    );
+  }
+
+  /** Redeems an invitation: both are friends at once (a pending request either way is accepted). */
+  redeemInvite(
+    me: string,
+    code: string,
+  ): { friend: { id: string; name: string }; result: "accepted" | "already" } {
+    const friend = this.inviter(code);
+    if (!friend) throw new AccountError(404, "invitation not found");
+    if (friend.id === me) throw new AccountError(400, "cannot befriend yourself");
+    const row = this.friendRow(me, friend.id);
+    if (row?.status === "accepted") return { friend, result: "already" };
+    if (row) {
+      this.db
+        .prepare("UPDATE friends SET status = 'accepted' WHERE requester = ? AND addressee = ?")
+        .run(row.requester, row.requester === me ? friend.id : me);
+      return { friend, result: "accepted" };
+    }
+    if (this.friendCount(me) >= MAX_FRIENDS || this.friendCount(friend.id) >= MAX_FRIENDS)
+      throw new AccountError(409, "friend list full");
+    this.db
+      .prepare("INSERT INTO friends (requester, addressee, status, created_at) VALUES (?, ?, 'accepted', ?)")
+      .run(friend.id, me, new Date().toISOString());
+    return { friend, result: "accepted" };
+  }
+
+  private friendCount(id: string): number {
+    return (
+      this.db.prepare("SELECT COUNT(*) AS n FROM friends WHERE requester = ?1 OR addressee = ?1").get(id) as {
+        n: number;
+      }
+    ).n;
   }
 
   /** Ends a friendship, withdraws a request or declines one. */

@@ -18,6 +18,8 @@ import {
   DeleteAccountSchema,
   FrameSchema,
   FriendRequestSchema,
+  INVITE_CODE_PATTERN,
+  InviteCodeSchema,
   LeagueCreateSchema,
   LoginSchema,
   MATCH_VARIANTS,
@@ -48,6 +50,7 @@ import {
   corrInviteMessage,
   corrMoveMessage,
   corrReminderMessage,
+  friendJoinedMessage,
   friendRequestMessage,
   Push,
   type PushOptions,
@@ -257,6 +260,8 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
   const allowPasswordChange = rateLimiter(5, 15 * 60_000);
   const allowExport = rateLimiter(5, 60 * 60_000);
   const allowFriendRequest = rateLimiter(30, 60 * 60_000);
+  /** Looking up invitation codes (per network): enough for people, too slow for guessing. */
+  const allowInviteLookup = rateLimiter(30, 60 * 60_000);
   const allowProgress = rateLimiter(60, 60 * 60_000);
   /** Failed logins per username: after 10 in 15 minutes the account waits (against password guessing). */
   const failedLogins = rateLimiter(10, 15 * 60_000);
@@ -671,6 +676,35 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
           friendRequestMessage(lang, player.name),
         );
       return { ok: true, result };
+    }
+    if (path === "/api/friends/invite" && req.method === "GET") {
+      const player = authPlayer(req);
+      return { code: store.inviteCode(player.id) };
+    }
+    if (path === "/api/friends/invite/renew" && req.method === "POST") {
+      const player = authPlayer(req);
+      if (!allowRename(player.id)) throw new HttpError(429, "too many requests");
+      return { code: store.renewInviteCode(player.id) };
+    }
+    if (path.startsWith("/api/invites/") && req.method === "GET") {
+      if (!allowInviteLookup(limitKey(req))) throw new HttpError(429, "too many requests");
+      const code = decodeURIComponent(path.slice("/api/invites/".length)).toUpperCase();
+      const inviter = INVITE_CODE_PATTERN.test(code) ? store.inviter(code) : null;
+      if (!inviter) throw new HttpError(404, "invitation not found");
+      return { name: inviter.name };
+    }
+    if (path === "/api/friends/redeem" && req.method === "POST") {
+      const player = authPlayer(req);
+      const body = InviteCodeSchema.safeParse(await readJson(req));
+      if (!body.success) throw new HttpError(400, "invitation not found");
+      if (!allowFriendRequest(player.id)) throw new HttpError(429, "too many requests");
+      const r = await account(() => store.redeemInvite(player.id, body.data.code));
+      if (r.result === "accepted") {
+        lobby.notify(r.friend.id, { t: "friends-changed" });
+        if (!lobby.isConnected(r.friend.id))
+          void push?.send(r.friend.id, "friendRequest", (lang) => friendJoinedMessage(lang, player.name));
+      }
+      return r;
     }
     if (path === "/api/friends/remove" && req.method === "POST") {
       const player = authPlayer(req);

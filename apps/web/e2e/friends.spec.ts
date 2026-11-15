@@ -1,23 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { nav, newGame, onlineGuest } from "./helpers";
 
-test("friends via link, a challenge starts a match, a third player watches it live", async ({ browser }) => {
+test("friends via invitation link, a challenge starts a match, a third player watches it live", async ({
+  browser,
+}) => {
   test.setTimeout(120_000);
   const ann = await onlineGuest(browser, "Ada");
   const ben = await onlineGuest(browser, "Bodo");
   const wes = await onlineGuest(browser, "Wes");
 
-  // Ada shares her friend link, Bodo opens it and sends a request
+  // Ada shares her invitation link, Bodo opens it: friends at once, no request to accept
   await ann.getByRole("tab", { name: /Freunde/ }).click();
-  const link = (await ann.locator("span.select-all").textContent()) ?? "";
+  await expect(ann.getByTestId("invite-code")).toBeVisible();
+  const link = (await ann.locator("span.select-all.break-all").textContent()) ?? "";
+  expect(link).toMatch(/[?]invite=/);
   await ben.goto(link);
-  await ben.getByRole("button", { name: "Anfrage senden" }).click();
-  await expect(ben.getByText("Anfrage gesendet.")).toBeVisible();
+  await ben.getByRole("button", { name: "Freund werden" }).click();
+  await expect(ben.getByText("Du und Ada seid jetzt befreundet.")).toBeVisible();
   await ben.getByRole("button", { name: "OK" }).click();
-
-  // Ada accepts; Bodo shows as online
-  await expect(ann.getByText("Freundschaftsanfragen")).toBeVisible({ timeout: 15_000 });
-  await ann.getByRole("button", { name: "Annehmen" }).click();
   await expect(ann.getByText("online", { exact: true })).toBeVisible({ timeout: 15_000 });
 
   // Ada challenges Bodo to a 1-point Portes match; Bodo accepts from wherever he is
