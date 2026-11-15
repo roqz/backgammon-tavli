@@ -112,7 +112,7 @@ describe("career", () => {
 
   it("offers nothing an achievement unlocks; what was taken before stays", () => {
     for (const o of SHOP.filter((x) => !x.retired)) {
-      if (o.kind === "sound" || o.kind === "emotes") continue;
+      if (o.kind === "sound" || o.kind === "roll" || o.kind === "emotes") continue;
       expect((REWARDS[o.kind] as Record<string, string>)[o.look]).toBe(SHOP_ONLY);
     }
     useCareer.getState().markTasks("2026-W46", [0, 1, 2]);

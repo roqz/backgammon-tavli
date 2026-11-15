@@ -1,6 +1,7 @@
 import { createMatch } from "@tavli/engine";
 import type {
   AccountResponse,
+  AccuracyReport,
   ClientAction,
   ClientMessage,
   ClubSummary,
@@ -522,6 +523,9 @@ export const stopWatching = () => {
 
 /** Link that opens the app and offers to send a friend request to this player. */
 /** The own invitation code; `renew` makes the old link stop working. */
+/** The own accuracy from the fair-play analysis (only for oneself). */
+export const fetchAccuracy = () => rest<AccuracyReport>("/api/account/accuracy");
+
 export const fetchInviteCode = async (renew = false) =>
   (
     await rest<FriendInvite>(

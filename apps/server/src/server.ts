@@ -431,6 +431,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         const { username, password, email } = body.data;
         return await account(() => store.claimAccount(player.id, username, password, email || null));
       }
+      if (req.method === "GET" && path === "/api/account/accuracy") return store.accuracy(player.id);
       if (req.method === "POST" && path === "/api/account/recovery-codes") {
         const body = PasswordConfirmSchema.safeParse(await readJson(req));
         if (!body.success) throw new HttpError(400, "invalid request");

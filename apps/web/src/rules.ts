@@ -395,6 +395,15 @@ const de: Record<RulesTopic, RulesChapter> = {
         ],
       },
       {
+        title: "Erfolge, Spielmarken und Tausch",
+        bullets: [
+          "Erfolge schalten Bretter, Würfel, Steine, Rahmen und Extras frei – nur über den Erfolg selbst, nicht im Tausch.",
+          "Wochenaufgaben bringen Spielmarken: 1 je Aufgabe, 2 extra, wenn alle drei einer Woche erledigt sind.",
+          "Im Tausch (Profil → Vitrine) gibt es nur, was kein Erfolg freischaltet: Klangsets für Steine, Schlagen und Spielende, Würfelklänge (Filz, Bein, Marmortisch), Kurznachrichten-Pakete und drei Luxus-Looks. Klänge lassen sich vorher anhören und danach unter Einstellungen → Ton wählen.",
+          "Der Punkt beim Tagesrätsel auf der Startseite zeigt den heutigen Stand: Punkt = noch offen, grauer Kreis = versucht, grüner Haken = gelöst.",
+        ],
+      },
+      {
         title: "Online",
         bullets: [
           "Der Server würfelt und prüft jeden Zug – Manipulation im Browser ist wirkungslos.",
@@ -404,9 +413,10 @@ const de: Record<RulesTopic, RulesChapter> = {
           "Nach einem Verbindungsabbruch hast du 90 Sekunden, um zurückzukehren.",
           "Rating nach der FIBS-Formel, getrennt pro Variante und Tempo: Blitz-Matches haben ein eigenes Rating und eine eigene Rangliste, entspannte und Standard-Matches teilen sich das normale. Neue Spieler gewinnen und verlieren anfangs schneller Punkte.",
           "Fair Play: Zwei Profile vom selben Gerät oder Netzwerk werden in der Gegnersuche nie gepaart; private Partien zwischen ihnen sind ungewertet. Gegen denselben Gegner zählen höchstens 3 gewertete Matches pro 24 Stunden.",
-          "Kurznachrichten: nur vorgegebene Emotes, kein freier Chat; in den Einstellungen ausblendbar.",
+          "Kurznachrichten: nur vorgegebene Emotes, kein freier Chat; in den Einstellungen ausblendbar. Zusätzliche Pakete („Kafeneio“, „Sportsgeist“) gibt es im Tausch gegen Spielmarken.",
           "Melden (⚑): Gegner lassen sich wegen Betrug, Beleidigung oder Verzögern melden; die Moderation prüft die Meldung und kann Profile sperren.",
           "Fair-Play-Analyse: Nach jedem Online-Match vergleicht der Server die Züge beider Spieler mit dem starken Computer. Fast völlige Übereinstimmung über viele Züge, auffällig viele Abbrüche oder wiederholt billige Niederlagen gegen denselben Gegner werden der Moderation als Hinweis angezeigt – niemals automatisch bestraft.",
+          "Deine Genauigkeit: Unter Profil → Konto & Daten siehst du aus derselben Analyse, wie oft du in den letzten 90 Tagen so gezogen hast wie der starke Computer, den durchschnittlichen Verlust je Entscheidung, die Entwicklung gegenüber den 90 Tagen davor und den Wert jeder Partie. Gezählt werden nur Züge mit echter Wahl. Nur du siehst diese Werte.",
           "Turniere mit 4, 8 oder 16 Spielern, Setzliste nach Rating. Im K.-o.-System scheidet aus, wer ein Match verliert. Im Schweizer System spielen alle jede Runde (3 Runden, bei 16 Spielern 4) gegen Gegner mit gleich vielen Siegen, ohne dass sich zwei Spieler zweimal treffen; bei ungerader Zahl bekommt einer ein Freilos, das als Sieg zählt. Es gewinnt, wer die meisten Siege hat, bei Gleichstand entscheidet die Buchholz-Wertung (Summe der Siege der Gegner). Jedes Turnier-Match ist ein normales, gewertetes Online-Match und startet, sobald beide Spieler online und frei sind. Wer 5 Minuten nicht erscheint oder sich zurückzieht, verliert kampflos.",
           "Öffentliche Liga (Backgammon): jeden Monat eine Saison für alle, Fernpartien auf 1 Punkt mit 24 Stunden pro Zug über vier Wochen, Divisionen mit etwa 7 Spielern nach Stärke, Auf- und Abstieg. Wer mitgespielt hat, ist für die nächste Saison automatisch angemeldet, außer nach zwei Niederlagen auf Zeit.",
           "Turniere mit festem Starttermin nehmen Anmeldungen bis zum Termin an und beginnen dann mit allen Angemeldeten (mindestens 4, sonst fällt das Turnier aus); im K.-o. bekommen die besten Gesetzten Freilose. Ligen mit Termin starten dann von selbst, wenn genug Spieler dabei sind.",
@@ -757,6 +767,15 @@ const en: Record<RulesTopic, RulesChapter> = {
         ],
       },
       {
+        title: "Achievements, tokens and the exchange",
+        bullets: [
+          "Achievements unlock boards, dice, checkers, frames and extras – only through the achievement itself, never in the exchange.",
+          "Weekly tasks earn tokens: 1 per task, 2 more when all three of a week are done.",
+          "The exchange (Profile → Showcase) has only what no achievement unlocks: sound sets for checkers, hits and game end, dice sounds (felt, bone, marble table), quick-message packs and three luxury looks. Sounds can be heard before and chosen afterwards under Settings → Sound.",
+          "The mark next to the daily puzzle on the start page shows today's state: dot = still open, grey circle = tried, green tick = solved.",
+        ],
+      },
+      {
         title: "Online",
         bullets: [
           "The server rolls the dice and checks every move – tampering in the browser has no effect.",
@@ -766,9 +785,10 @@ const en: Record<RulesTopic, RulesChapter> = {
           "After a disconnect you have 90 seconds to come back.",
           "FIBS ratings per variant and tempo: blitz matches have their own rating and leaderboard, relaxed and standard matches share the normal one. New players gain and lose points faster at first.",
           "Fair play: two profiles from the same device or network are never paired by matchmaking; private games between them are unrated. At most 3 rated matches per 24 hours count against the same opponent.",
-          "Quick messages: predefined emotes only, no free chat; they can be hidden in the settings.",
+          "Quick messages: predefined emotes only, no free chat; they can be hidden in the settings. Extra packs (“Kafeneio”, “Sportsmanship”) are in the token exchange.",
           "Report (⚑): opponents can be reported for cheating, abuse or stalling; moderators review reports and can ban profiles.",
           "Fair-play analysis: after every online match the server compares both players' moves with the strong computer. Near-total agreement over many moves, unusually many abandons or repeated cheap losses to the same opponent are shown to moderators as hints – never punished automatically.",
+          "Your accuracy: under Profile → Account & data the same analysis shows how often you moved like the strong computer over the last 90 days, the average loss per decision, the trend against the 90 days before and the value of each match. Only moves with a real choice count. Only you see these numbers.",
           "Tournaments with 4, 8 or 16 players, seeded by rating. In a knockout the loser of a match is out. In the Swiss system everyone plays every round (3 rounds, 4 with 16 players) against an opponent with the same number of wins, never the same opponent twice; with an odd number one player gets a bye, which counts as a win. Most wins take the tournament, ties are broken by Buchholz (the sum of the opponents' wins). Every tournament match is a normal rated online match and starts as soon as both players are online and free. A player missing for 5 minutes, or who withdraws, loses by walkover.",
           "Public league (backgammon): a season for everyone every month, correspondence games to 1 point with 24 hours per move over four weeks, divisions of about 7 players by strength, promotion and relegation. Players are entered for the next season automatically, except after two losses on time.",
           "Tournaments with a fixed start time take entries until then and begin with everyone who entered (at least 4, otherwise the tournament is called off); in a knockout the best seeds get byes. Leagues with a start time then start by themselves if enough players entered.",

@@ -42,9 +42,9 @@ import {
   useOfferedFrames,
   useUnlocked,
 } from "../rewards";
-import { previewSoundSet } from "../sound";
+import { previewSoundSet, sounds } from "../sound";
 import { useArchive } from "../store/archive";
-import { type SoundSet, useSettings } from "../store/settings";
+import { type DiceSurface, type SoundSet, useSettings } from "../store/settings";
 import { AchievementsPanel, RareTag, rewardOf } from "./AchievementsPanel";
 import { Page, ScreenTitle } from "./AppShell";
 import { LESSONS } from "./TutorialScreen";
@@ -206,8 +206,8 @@ function WeeklyTasks() {
 const EMOTE_PACK_ICON: Record<EmotePack, string> = { kafeneio: "☕", sport: "🏅" };
 
 function ShopPreview({ kind, look }: { kind: string; look: string }) {
-  if (kind === "sound" || kind === "emotes") {
-    const icon = kind === "sound" ? "🔊" : EMOTE_PACK_ICON[look as EmotePack];
+  if (kind === "sound" || kind === "roll" || kind === "emotes") {
+    const icon = kind === "sound" ? "🔊" : kind === "roll" ? "🎲" : EMOTE_PACK_ICON[look as EmotePack];
     return (
       <span aria-hidden className="inline-flex h-6 w-12 items-center justify-center text-lg">
         {icon}
@@ -243,13 +243,15 @@ function Exchange() {
   const name = (kind: ShopKind, look: string) =>
     kind === "sound"
       ? t.soundSetItem.replace("{name}", t.soundSets[look as SoundSet])
-      : kind === "emotes"
-        ? t.emotePacks[look as EmotePack]
-        : kind === "checkers"
-          ? t.checkerSets[look as CheckerSet]
-          : kind === "dice"
-            ? t.diceSkins[look as DiceSkin]
-            : t.styleNames[look as BoardStyle];
+      : kind === "roll"
+        ? t.diceSurfaceItem.replace("{name}", t.diceSurfaces[look as DiceSurface])
+        : kind === "emotes"
+          ? t.emotePacks[look as EmotePack]
+          : kind === "checkers"
+            ? t.checkerSets[look as CheckerSet]
+            : kind === "dice"
+              ? t.diceSkins[look as DiceSkin]
+              : t.styleNames[look as BoardStyle];
   /** A sample of what an item gives: the sound set, or the quick messages of the pack. */
   const sample = (kind: ShopKind, look: string): string | null =>
     kind === "emotes" ? EMOTE_PACKS[look as EmotePack].map((e) => t.emote[e]).join(" · ") : null;
@@ -282,11 +284,15 @@ function Exchange() {
                   <span className="block text-sm text-stone-200">{name(item.kind, item.look)}</span>
                   {more && <span className="block text-xs text-stone-500">{more}</span>}
                 </span>
-                {item.kind === "sound" && (
+                {(item.kind === "sound" || item.kind === "roll") && (
                   <button
                     type="button"
                     aria-label={`${t.preview}: ${name(item.kind, item.look)}`}
-                    onClick={() => previewSoundSet(item.look as SoundSet)}
+                    onClick={() =>
+                      item.kind === "roll"
+                        ? sounds.dice(item.look as DiceSurface)
+                        : previewSoundSet(item.look as SoundSet)
+                    }
                     className="min-h-9 rounded-lg px-2 text-sm text-stone-300 hover:text-amber-300"
                   >
                     ▶

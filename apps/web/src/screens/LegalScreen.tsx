@@ -150,8 +150,9 @@ function PrivacyDe() {
       <p>
         Nach jedem Online-Match vergleicht der Server deine Zugentscheidungen mit einem Computergegner und
         misst, wie lange du für Züge brauchst. Daraus entstehen Hinweise für Moderatoren auf mögliche
-        Computerhilfe; es gibt keine automatischen Strafen. Rechtsgrundlage ist das berechtigte Interesse an
-        einem fairen Spiel (Art. 6 Abs. 1 lit. f DSGVO). Diese Daten werden nach 180 Tagen gelöscht.
+        Computerhilfe; es gibt keine automatischen Strafen. Dir selbst zeigt die App daraus deine Genauigkeit;
+        andere Spieler sehen sie nicht. Rechtsgrundlage ist das berechtigte Interesse an einem fairen Spiel
+        (Art. 6 Abs. 1 lit. f DSGVO). Diese Daten werden nach 180 Tagen gelöscht.
       </p>
       <h2>Benachrichtigungen</h2>
       <p>
@@ -245,8 +246,9 @@ function PrivacyEn() {
       <p>
         After each online match the server compares your move decisions with a computer player and measures
         how long you take to move. This gives moderators hints at possible computer assistance; there are no
-        automatic penalties. The legal basis is the legitimate interest in fair play (Art. 6(1)(f) GDPR). This
-        data is deleted after 180 days.
+        automatic penalties. The app also shows you your own accuracy from it; other players never see it. The
+        legal basis is the legitimate interest in fair play (Art. 6(1)(f) GDPR). This data is deleted after
+        180 days.
       </p>
       <h2>Notifications</h2>
       <p>

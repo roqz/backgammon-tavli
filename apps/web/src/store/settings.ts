@@ -7,6 +7,9 @@ import type { CheckerSet, DiceSkin } from "../rewards";
 
 export const SOUND_SETS = ["classic", "wood", "stone", "bells"] as const;
 export type SoundSet = (typeof SOUND_SETS)[number];
+/** What the dice land on (the others come from the exchange). */
+export const DICE_SURFACES = ["classic", "felt", "bone", "marble"] as const;
+export type DiceSurface = (typeof DICE_SURFACES)[number];
 
 export interface Settings {
   style: BoardStyle;
@@ -47,6 +50,8 @@ export interface Settings {
   diceSound: "classic" | "cup";
   /** Checker, hit and game-end sounds (the others come from the exchange). */
   soundSet: SoundSet;
+  /** How the dice sound when they land. */
+  diceSurface: DiceSurface;
   /** Last choice on the "Play" screen. */
   playMode: PlayMode;
   /** Last game against the computer, for the one-tap start on the home screen. */
@@ -89,6 +94,7 @@ export const useSettings = create<SettingsStore>()(
       fireworks: true,
       diceSound: "classic",
       soundSet: "classic",
+      diceSurface: "classic",
       playMode: "bot",
       lastBot: null,
       update: (patch) => set(patch),

@@ -307,6 +307,13 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Vier Saisons mit eigenen Brettern (Frühling, Ägäis-Sommer, Herbst, Winter)
 - Unterstützer nach dem Lichess-Modell: Herz neben dem Namen, Rahmen und Brett „Mäzen“, Danke-Liste (Opt-in); keine Zahlungen in der App, sondern externer Link plus Codes oder Freischaltung durch den Betreiber (`docs/SUPPORT.md`)
 
+### Tausch, Klänge, eigene Genauigkeit ✅
+
+- Spielmarken-Tausch nur noch für das, was kein Erfolg freischaltet: Klangsets (Holz, Marmor, Kafeneio-Glocke), Würfelklänge (Filz, Bein, Marmortisch), Kurznachrichten-Pakete („Kafeneio“, „Sportsgeist“) und die Luxus-Looks; früher Getauschtes bleibt (`retired` im `SHOP`)
+- Eigene Genauigkeit unter Profil → Konto & Daten: Übereinstimmung mit dem starken Computer und Ø Verlust je Entscheidung (90 Tage, aus der Fair-Play-Analyse), Stufe, Trend gegenüber den 90 Tagen davor, ein Balken je Partie und der Wert in der eigenen Partienliste; nur für einen selbst (`GET /api/account/accuracy`)
+- Tagesrätsel auf der Startseite mit Stand: Punkt = offen, grauer Kreis = versucht, grüner Haken = gelöst
+- Ausprobiert und wieder entfernt: geneigtes Brett mit Perspektive („Brett mit Tiefe“) – brachte nicht den erhofften Effekt
+
 ### Clubs und Ligen ✅
 
 - Clubs: gründen mit Konto oder nach 3 Matches (wie Turniere), Name eindeutig, Beschreibung, offen (direkt beitreten) oder geschlossen (Anfrage, ein Admin bestätigt); Rollen Gründer, Admin, Mitglied; höchstens 100 Mitglieder, höchstens 10 Clubs je Spieler; Suche nach Namen; Mitglieder sehen sich mit Online-Status; verlässt der Gründer den Club, übernimmt der dienstälteste Admin bzw. das dienstälteste Mitglied

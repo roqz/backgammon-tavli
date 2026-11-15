@@ -1,7 +1,9 @@
 import { getVariant } from "@tavli/engine";
 import {
+  type AccuracyReport,
   FRAMES,
   type Frame,
+  type MatchAccuracy,
   type MatchDetailResponse,
   type MatchSummary,
   type MatchVariantId,
@@ -13,6 +15,7 @@ import {
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { ACHIEVEMENTS } from "../achievements";
+import { AccuracyCard, percent } from "../components/Accuracy";
 import { OtpInput, RecoveryCodesModal, SecurityCard } from "../components/Security";
 import { Sparkline } from "../components/Sparkline";
 import { Button, Card, Modal, Toggle } from "../components/ui";
@@ -25,6 +28,7 @@ import {
   deleteProfile,
   exportData,
   fetchAccount,
+  fetchAccuracy,
   fetchMatch,
   fetchProfile,
   login,
@@ -612,9 +616,12 @@ function PasswordChange() {
 export function MatchList({
   playerId,
   onReplay,
+  accuracy,
 }: {
   playerId: string;
   onReplay: (records: GameRecord[]) => void;
+  /** The own accuracy per match (only in the own list). */
+  accuracy?: readonly MatchAccuracy[];
 }) {
   const t = useT();
   const me = useOnline((s) => s.profile?.id);
@@ -674,6 +681,7 @@ export function MatchList({
             const seat = m.players[0].id === playerId ? 0 : 1;
             const opp = m.players[seat === 0 ? 1 : 0];
             const won = m.winner === seat;
+            const acc = accuracy?.find((a) => a.matchId === m.id);
             return (
               <li key={m.id} className="flex items-center gap-3 py-2 text-sm">
                 <span
@@ -690,6 +698,7 @@ export function MatchList({
                   <div className="text-xs text-stone-500">
                     {variantName(m.variant, t.tavliMatch)} · {m.length === 0 ? `💰 ${t.money}` : m.length} ·{" "}
                     {new Date(m.endedAt).toLocaleDateString(t.locale)}
+                    {acc && ` · ${t.accuracyMatch.replace("{n}", percent(acc.agreement))}`}
                   </div>
                 </div>
                 <Button
@@ -711,13 +720,22 @@ export function MatchList({
 export function ProfileTab({ onReplay }: { onReplay: (records: GameRecord[]) => void }) {
   const t = useT();
   const profile = useOnline((s) => s.profile);
+  const [accuracy, setAccuracy] = useState<AccuracyReport | null>(null);
+  const id = profile?.id;
+  useEffect(() => {
+    if (!id) return;
+    fetchAccuracy()
+      .then(setAccuracy)
+      .catch(() => setAccuracy({ summary: null, before: null, matches: [] }));
+  }, [id]);
   if (!profile) return null;
   return (
     <div className="flex flex-col gap-4">
       <AccountCard />
+      <AccuracyCard report={accuracy} />
       <Card>
         <h2 className="mb-3 font-semibold text-stone-200">{t.myMatches}</h2>
-        <MatchList playerId={profile.id} onReplay={onReplay} />
+        <MatchList playerId={profile.id} onReplay={onReplay} accuracy={accuracy?.matches} />
       </Card>
     </div>
   );

@@ -10,8 +10,8 @@ import { disconnect } from "../online/client";
 import { fetchPushPrefs, savePushPrefs, usePushState } from "../online/push";
 import { useOnline } from "../online/store";
 import { isUnlocked, REWARDS } from "../rewards";
-import { previewSoundSet } from "../sound";
-import { SOUND_SETS, useSettings } from "../store/settings";
+import { previewSoundSet, sounds } from "../sound";
+import { DICE_SURFACES, SOUND_SETS, useSettings } from "../store/settings";
 import { ListGroup, ListRow } from "./AppShell";
 import { PushToggle } from "./TournamentPanel";
 
@@ -226,7 +226,30 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
             checked={s.sound}
             onChange={(sound) => s.update({ sound })}
           />
-          <SoundSetPicker />
+          <SoundPicker
+            label={t.soundSet}
+            description={t.soundSetDesc}
+            options={SOUND_SETS}
+            names={t.soundSets}
+            prefix="sound-"
+            chosen={s.soundSet}
+            onChoose={(soundSet) => {
+              s.update({ soundSet });
+              previewSoundSet(soundSet);
+            }}
+          />
+          <SoundPicker
+            label={t.diceSurface}
+            description={t.diceSurfaceDesc}
+            options={DICE_SURFACES}
+            names={t.diceSurfaces}
+            prefix="roll-"
+            chosen={s.diceSurface}
+            onChoose={(diceSurface) => {
+              s.update({ diceSurface });
+              sounds.dice(diceSurface);
+            }}
+          />
         </Section>
       )}
 
@@ -343,22 +366,37 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
   );
 }
 
-/** Sound sets: classic for everyone, the others from the token exchange. */
-function SoundSetPicker() {
+/** Sound sets and dice sounds: classic for everyone, the others from the token exchange. */
+function SoundPicker<T extends string>({
+  label,
+  description,
+  options,
+  names,
+  prefix,
+  chosen,
+  onChoose,
+}: {
+  label: string;
+  description: string;
+  options: readonly T[];
+  names: Record<T, string>;
+  /** Shop id prefix (`sound-`, `roll-`). */
+  prefix: string;
+  chosen: T;
+  onChoose: (value: T) => void;
+}) {
   const t = useT();
-  const chosen = useSettings((s) => s.soundSet);
-  const update = useSettings((s) => s.update);
   const owned = useCareer((s) => s.owned);
   return (
     <div className="flex flex-col gap-2 py-3">
       <div>
-        <div className="text-sm text-stone-200">{t.soundSet}</div>
-        <div className="text-xs text-stone-500">{t.soundSetDesc}</div>
+        <div className="text-sm text-stone-200">{label}</div>
+        <div className="text-xs text-stone-500">{description}</div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        {SOUND_SETS.map((set) => {
-          const item = SHOP.find((o) => o.id === `sound-${set}`);
-          const open = set === "classic" || owned.includes(`sound-${set}`);
+      <fieldset className="grid grid-cols-2 gap-2" aria-label={label}>
+        {options.map((set) => {
+          const item = SHOP.find((o) => o.id === `${prefix}${set}`);
+          const open = set === "classic" || owned.includes(`${prefix}${set}`);
           return (
             <button
               key={set}
@@ -366,10 +404,7 @@ function SoundSetPicker() {
               aria-pressed={chosen === set}
               disabled={!open}
               title={open ? undefined : t.soundSetLocked.replace("{n}", String(item?.price ?? "?"))}
-              onClick={() => {
-                update({ soundSet: set });
-                previewSoundSet(set);
-              }}
+              onClick={() => onChoose(set)}
               className={`min-h-11 rounded-lg border px-3 py-2 text-left text-sm transition-colors disabled:opacity-50 ${
                 chosen === set
                   ? "border-amber-400 bg-amber-400/10 text-amber-200"
@@ -377,11 +412,11 @@ function SoundSetPicker() {
               }`}
             >
               {open ? "" : "🔒 "}
-              {t.soundSets[set]}
+              {names[set]}
             </button>
           );
         })}
-      </div>
+      </fieldset>
     </div>
   );
 }

@@ -117,6 +117,9 @@ Hinweis oben.
 | --------------------------------------------------------------------------- | ----- |
 | Klangsets Holz, Marmor                                                      | 5     |
 | Klangset Kafeneio-Glocke                                                    | 7     |
+| Würfelklang Filz                                                            | 4     |
+| Würfelklang Bein                                                            | 5     |
+| Würfelklang Marmortisch                                                     | 6     |
 | Kurznachrichten „Kafeneio“ (Opa!, Jassou!, Bravo!, Siga siga …, Pame!)      | 6     |
 | Kurznachrichten „Sportsgeist“ (Revanche?, Respekt!, Wahnsinn!, Knapp!, Puh) | 6     |
 | **Rarität:** Würfel Silber                                                  | 12    |
@@ -131,6 +134,9 @@ Früher ließen sich auch Steinsätze, Gold-/Rubin-Würfel und vier Bretter eint
 stehen noch mit `retired: true` im `SHOP`: Wer sie getauscht hat, behält sie, und die Marken bleiben
 ausgegeben. Neu nehmen kann man sie nicht mehr (`SHOP_OFFERS`).
 
+- **Würfelklänge** (`diceSurface` in den Einstellungen, `SURFACES` in `sound.ts`, Shop-IDs `roll-…`):
+  worauf die Würfel fallen – Filz (weich, kurz), Bein (hell, trocken), Marmortisch (hart, mehr
+  Sprünge, kurzer Nachklang). Der Würfelbecher (Erfolg „Gammon“) kommt unabhängig davon davor.
 - **Klangsets** (`soundSet` in den Einstellungen, `SETS` in `sound.ts`): andere Klänge für Steine,
   Schlagen und Spielende; Würfel und Doppler klingen gleich. Anhören geht auch vor dem Tausch.
 - **Kurznachrichten-Pakete** (`EMOTE_PACKS` im Protokoll): zusätzliche Kurznachrichten für Online-
@@ -242,7 +248,8 @@ vollständige Erfolgsliste. Gesperrtes zeigt immer, wie man es bekommt (`lockTex
   `REWARDS` (`rewards.tsx`). Ids: `[a-z0-9-]{1,40}`; der Fortschritt fasst bis zu 300 Freischaltungen.
 - **Neues im Tausch:** Eintrag in `SHOP` (`career.ts`); nur, was kein Erfolg freischaltet. Looks
   folgen dem Muster `style-…`, `dice-…`, `set-…` und tragen in `REWARDS` den Wert `SHOP_ONLY`,
-  damit `hasLook` sie findet. Klangsets heißen `sound-…`, Kurznachrichten-Pakete `emotes-…`.
+  damit `hasLook` sie findet. Klangsets heißen `sound-…`, Würfelklänge `roll-…`, Kurznachrichten-Pakete
+  `emotes-…`.
 - **Neuer Rahmen:** `FRAMES` im Protokoll (Server prüft automatisch), Aussehen in `FRAME_LOOK`, Name in
   `frameNames` (i18n).
 - Tests: `apps/web/src/career.test.ts`, `apps/web/src/achievements.test.ts`,

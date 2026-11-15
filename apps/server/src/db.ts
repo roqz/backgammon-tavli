@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from "no
 import { DatabaseSync } from "node:sqlite";
 import type { GameResult, TurnRecord } from "@tavli/engine";
 import type {
+  AccuracyReport,
   AdminReport,
   AnalysisSummary,
   FairnessReveal,
@@ -1654,14 +1655,48 @@ export class Store {
   }
 
   /** Agreement with the bot over the last `SIGNALS.days` days (null without analysed decisions). */
-  analysisSummary(playerId: string): AnalysisSummary | null {
+  analysisSummary(playerId: string, from = this.since(SIGNALS.days), to?: string): AnalysisSummary | null {
     const row = this.db
       .prepare(
-        "SELECT SUM(decisions) AS d, SUM(agree) AS a, SUM(loss) AS l FROM analyses WHERE player_id = ? AND created_at >= ?",
+        "SELECT SUM(decisions) AS d, SUM(agree) AS a, SUM(loss) AS l FROM analyses WHERE player_id = ? AND created_at >= ? AND created_at < ?",
       )
-      .get(playerId, this.since(SIGNALS.days)) as { d: number | null; a: number | null; l: number | null };
+      .get(playerId, from, to ?? "9999") as { d: number | null; a: number | null; l: number | null };
     if (!row.d) return null;
     return { decisions: row.d, agreement: (row.a ?? 0) / row.d, averageLoss: (row.l ?? 0) / row.d };
+  }
+
+  /**
+   * The player's own accuracy: the last 90 days, the 90 before (trend) and the last analysed
+   * matches. Only for the player themselves; others never see it.
+   */
+  accuracy(playerId: string, now = Date.now()): AccuracyReport {
+    const day = 24 * 60 * 60 * 1000;
+    const recent = new Date(now - SIGNALS.days * day).toISOString();
+    const older = new Date(now - 2 * SIGNALS.days * day).toISOString();
+    const matches = (
+      this.db
+        .prepare(
+          "SELECT match_id, decisions, agree, loss, created_at FROM analyses WHERE player_id = ? AND decisions > 0 ORDER BY created_at DESC LIMIT 30",
+        )
+        .all(playerId) as {
+        match_id: string;
+        decisions: number;
+        agree: number;
+        loss: number;
+        created_at: string;
+      }[]
+    ).map((r) => ({
+      matchId: r.match_id,
+      at: r.created_at,
+      decisions: r.decisions,
+      agreement: r.agree / r.decisions,
+      averageLoss: r.loss / r.decisions,
+    }));
+    return {
+      summary: this.analysisSummary(playerId, recent),
+      before: this.analysisSummary(playerId, older, recent),
+      matches,
+    };
   }
 
   private playerRef(id: string): PublicPlayerRef {

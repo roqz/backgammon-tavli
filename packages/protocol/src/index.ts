@@ -856,6 +856,22 @@ export interface AnalysisSummary {
   readonly averageLoss: number;
 }
 
+/** One analysed online match of the player (only shown to the player themselves). */
+export interface MatchAccuracy extends AnalysisSummary {
+  readonly matchId: string;
+  readonly at: string;
+}
+
+/** The player's own accuracy from the fair-play analysis of their online matches. */
+export interface AccuracyReport {
+  /** The last 90 days (null without analysed decisions). */
+  readonly summary: AnalysisSummary | null;
+  /** The 90 days before that, for the trend. */
+  readonly before: AnalysisSummary | null;
+  /** The last analysed matches, newest first. */
+  readonly matches: readonly MatchAccuracy[];
+}
+
 /** Public: how many players are connected right now. */
 export interface OnlineStats {
   readonly online: number;

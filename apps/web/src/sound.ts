@@ -1,8 +1,8 @@
 import { type GameState, isDraw } from "@tavli/engine";
 import { useEffect, useRef } from "react";
-import { diceCupOn, soundSetOn } from "./rewards";
+import { diceCupOn, diceSurfaceOn, soundSetOn } from "./rewards";
 import { useGame } from "./store/game";
-import { type SoundSet, useSettings } from "./store/settings";
+import { type DiceSurface, type SoundSet, useSettings } from "./store/settings";
 
 /**
  * Tiny synthesized sound effects (Web Audio, no asset files): dice, checker clicks, hits,
@@ -76,11 +76,45 @@ const knock = (ac: AudioContext, at: number, freq: number, dur: number, gain: nu
   osc.stop(at + dur + 0.02);
 };
 
-/** One impact of a die: sharp click, wooden knock and a short resonance of the die itself. */
-const dieImpact = (ac: AudioContext, at: number, amp: number) => {
-  noiseBurst(ac, at, 0.008, 5000, amp * 0.9, "highpass", 0.7);
-  knock(ac, at, 190 + Math.random() * 140, 0.06, amp * 0.55);
-  noiseBurst(ac, at, 0.025, 2600 + Math.random() * 1800, amp * 0.5, "bandpass", 5);
+/**
+ * What the dice land on: click brightness, knock pitch, ring of the surface, number of bounces
+ * and how fast they die down. Classic is the wooden board; the others come from the exchange.
+ */
+const SURFACES: Record<
+  DiceSurface,
+  {
+    click: number;
+    knock: [number, number];
+    knockLen: number;
+    ring: [number, number];
+    bounces: number;
+    damp: number;
+    ping?: [number, number];
+  }
+> = {
+  classic: { click: 5000, knock: [190, 330], knockLen: 0.06, ring: [2600, 4400], bounces: 6, damp: 0.6 },
+  // a felt-lined tray: soft and short
+  felt: { click: 2200, knock: [120, 180], knockLen: 0.05, ring: [900, 1400], bounces: 4, damp: 0.45 },
+  // bone dice on a hard board: bright and dry
+  bone: { click: 6500, knock: [330, 450], knockLen: 0.035, ring: [3600, 5200], bounces: 6, damp: 0.58 },
+  // a marble table: hard, more bounces and a short ring of the stone
+  marble: {
+    click: 7500,
+    knock: [420, 560],
+    knockLen: 0.03,
+    ring: [4200, 6000],
+    bounces: 7,
+    damp: 0.66,
+    ping: [2400, 3100],
+  },
+};
+
+/** One impact of a die: sharp click, knock and a short resonance of the die itself. */
+const dieImpact = (ac: AudioContext, at: number, amp: number, s = SURFACES.classic) => {
+  noiseBurst(ac, at, 0.008, s.click, amp * 0.9, "highpass", 0.7);
+  knock(ac, at, rand(...s.knock), s.knockLen, amp * 0.55);
+  noiseBurst(ac, at, 0.025, rand(...s.ring), amp * 0.5, "bandpass", 5);
+  if (s.ping) tone(ac, at, rand(...s.ping), 0.07, amp * 0.06);
 };
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -149,9 +183,10 @@ const SETS = {
 
 export const sounds = {
   /** Two dice landing: bounces with shrinking gaps and loudness, then a short roll-out. */
-  dice() {
+  dice(surface: DiceSurface = diceSurfaceOn()) {
     const ac = audio();
     if (!ac) return;
+    const s = SURFACES[surface];
     // the cup: a short rattle of the dice against the leather before the throw
     const cup = diceCupOn() ? 0.45 : 0;
     for (let i = 0; cup > 0 && i < 9; i++)
@@ -161,14 +196,14 @@ export const sounds = {
       let at = t + d * rand(0.03, 0.07);
       let gap = rand(0.1, 0.14);
       let amp = rand(0.5, 0.65);
-      for (let k = 0; k < 6; k++) {
-        dieImpact(ac, at, amp);
+      for (let k = 0; k < s.bounces; k++) {
+        dieImpact(ac, at, amp, s);
         at += gap * rand(0.85, 1.15);
         gap *= 0.66;
-        amp *= 0.6;
+        amp *= s.damp;
       }
-      for (let r = 0; r < 6; r++)
-        noiseBurst(ac, at + r * rand(0.012, 0.022), 0.006, rand(3500, 6000), amp * 0.6, "bandpass", 3);
+      for (let r = 0; r < (surface === "felt" ? 2 : 6); r++)
+        noiseBurst(ac, at + r * rand(0.012, 0.022), 0.006, rand(...s.ring) * 1.3, amp * 0.6, "bandpass", 3);
     }
     // the two dice clicking against each other
     noiseBurst(ac, t + rand(0.15, 0.25), 0.01, 4200, 0.25, "bandpass", 4);

@@ -248,7 +248,7 @@ export const weekTokens = (done: number): number => done + (done >= 3 ? 2 : 0);
 
 // ---- tokens and the exchange -------------------------------------------------------------------
 
-export type ShopKind = "checkers" | "dice" | "style" | "sound" | "emotes";
+export type ShopKind = "checkers" | "dice" | "style" | "sound" | "roll" | "emotes";
 
 export interface ShopItem {
   /** Also the id in `owned` (and the achievement id that unlocks the same look). */
@@ -274,6 +274,9 @@ export const SHOP: readonly ShopItem[] = [
   { id: "sound-wood", kind: "sound", look: "wood", price: 5 },
   { id: "sound-stone", kind: "sound", look: "stone", price: 5 },
   { id: "sound-bells", kind: "sound", look: "bells", price: 7 },
+  { id: "roll-felt", kind: "roll", look: "felt", price: 4 },
+  { id: "roll-bone", kind: "roll", look: "bone", price: 5 },
+  { id: "roll-marble", kind: "roll", look: "marble", price: 6 },
   { id: "emotes-kafeneio", kind: "emotes", look: "kafeneio", price: 6 },
   { id: "emotes-sport", kind: "emotes", look: "sport", price: 6 },
   // once also for tokens; whoever took them keeps them

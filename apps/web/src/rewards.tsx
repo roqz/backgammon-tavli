@@ -12,7 +12,7 @@ import { useAchievements } from "./achievements";
 import { BOARD_STYLES, type BoardStyle, type BoardTheme, THEMES } from "./board/themes";
 import { hasSeason, type SeasonKey, useCareer } from "./career";
 import { useOnline } from "./online/store";
-import { type SoundSet, useSettings } from "./store/settings";
+import { type DiceSurface, type SoundSet, useSettings } from "./store/settings";
 
 /** Dice looks on top of the board style; "theme" uses the style's own dice. */
 export type DiceSkin = "theme" | "gold" | "ruby" | "brass" | "jade" | "obsidian" | "silver";
@@ -282,6 +282,12 @@ export const ownsItem = (id: string): boolean => useCareer.getState().owned.incl
 export const soundSetOn = (): SoundSet => {
   const s = useSettings.getState().soundSet;
   return s === "classic" || ownsItem(`sound-${s}`) ? s : "classic";
+};
+
+/** The chosen dice sound, if it may be used (classic, or taken in the exchange). */
+export const diceSurfaceOn = (): DiceSurface => {
+  const s = useSettings.getState().diceSurface;
+  return s === "classic" || ownsItem(`roll-${s}`) ? s : "classic";
 };
 
 /** The quick messages to offer: the basic ones and those of the packs taken in the exchange. */

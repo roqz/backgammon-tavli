@@ -3,7 +3,9 @@
 Open-source Backgammon, Greek Tavli (Portes, Plakoto, Fevga), Turkish Tavla, Long Nardy and Hypergammon for the web: an offline-first PWA with
 games against the computer and on one device, plus online play with ratings, matchmaking, private
 invites, friends and challenges, clubs with leagues, correspondence games, live spectating, tournaments (knockout and Swiss) and provably fair
-dice. Cosmetic progression – achievements, club ranks, weekly tasks, variant plaques, checker sets and
+dice. Players see their own accuracy (agreement with the strong computer in their online matches, only
+visible to themselves). Cosmetic progression – achievements, club ranks, weekly tasks with a token
+exchange for sound sets, dice sounds and quick-message packs, variant plaques, checker sets and
 seasonal boards – is described in [`docs/GAMIFICATION.md`](docs/GAMIFICATION.md) (German). Supporting the
 project (badge, frame and board as thanks, no pay-to-win, no payments inside the app):
 [`docs/SUPPORT.md`](docs/SUPPORT.md).

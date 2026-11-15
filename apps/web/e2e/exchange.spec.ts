@@ -38,8 +38,31 @@ test("the exchange offers only what no achievement unlocks; a sound set taken th
   await nav(page, "Profil");
   await page.getByRole("button", { name: "Einstellungen" }).click();
   await page.getByRole("button", { name: /^Ton/ }).click();
-  await expect(page.getByRole("button", { name: "Holz" })).toBeEnabled();
-  await expect(page.getByRole("button", { name: /Marmor/ })).toBeDisabled();
-  await page.getByRole("button", { name: "Holz" }).click();
-  await expect(page.getByRole("button", { name: "Holz" })).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("group", { name: "Klangset" }).getByRole("button", { name: "Holz" }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("group", { name: "Klangset" }).getByRole("button", { name: /Marmor/ }),
+  ).toBeDisabled();
+  await page.getByRole("group", { name: "Klangset" }).getByRole("button", { name: "Holz" }).click();
+  await expect(
+    page.getByRole("group", { name: "Klangset" }).getByRole("button", { name: "Holz" }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("dice sounds are in the exchange too and stay locked in the settings until taken", async ({ page }) => {
+  await page.goto("/");
+  await nav(page, "Profil");
+  await page
+    .getByRole("button", { name: /Vitrine/ })
+    .first()
+    .click();
+  await expect(page.getByText("Würfelklang „Filz“", { exact: true })).toBeVisible();
+  await page.goto("/");
+  await nav(page, "Profil");
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("button", { name: /^Ton/ }).click();
+  const dice = page.getByRole("group", { name: "Würfelklang" });
+  await expect(dice.getByRole("button", { name: "Holzbrett" })).toHaveAttribute("aria-pressed", "true");
+  await expect(dice.getByRole("button", { name: /Filz/ })).toBeDisabled();
 });
