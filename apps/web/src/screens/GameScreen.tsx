@@ -1243,7 +1243,7 @@ export function GameScreen({
           score={match.score}
           actor={actor}
         />
-        <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+        <div className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-black/40">
           {boardInner}
         </div>
 
@@ -1272,7 +1272,7 @@ export function GameScreen({
 
       {/* side panel */}
       <aside className="flex w-full flex-col gap-3 lg:w-72">
-        <div className="hidden rounded-2xl border border-stone-800 bg-stone-900/80 p-4 lg:block">
+        <div className="hidden rounded-xl border border-stone-800 bg-stone-900/80 p-4 lg:block">
           <h2 className="mb-2 text-sm font-medium text-stone-400">{t.score}</h2>
           {([0, 1] as Player[]).map((p) => (
             <div key={p} className="flex items-center gap-2 py-1">
@@ -1294,7 +1294,7 @@ export function GameScreen({
           ))}
         </div>
 
-        <div className="rounded-2xl border border-stone-800 bg-stone-900/80 p-4">
+        <div className="rounded-xl border border-stone-800 bg-stone-900/80 p-4">
           <h2 className="mb-2 text-sm font-medium text-stone-400">{t.history}</h2>
           <ol ref={historyRef} className="max-h-48 overflow-y-auto font-mono text-sm lg:max-h-80">
             {g.history.map((rec, i) => (

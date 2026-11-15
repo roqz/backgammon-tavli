@@ -5,6 +5,46 @@
 /* Tablets and desktops: the main navigation is a bar at the top, pages use several columns. */
 @custom-variant wide (@media (min-width: 768px) and (min-height: 501px));
 
+/*
+ * The "Clubraum" look: a walnut ground, ivory text, felt green for the main action and
+ * terracotta for markers – the colours of the board and the logo, no glow, no gradients.
+ * The stone and amber scales are remapped, so existing classes take the look on.
+ */
+@theme {
+  --color-stone-50: #f7f1e6;
+  --color-stone-100: #efe6d2;
+  --color-stone-200: #ddd2c0;
+  --color-stone-300: #c9bcab;
+  --color-stone-400: #ab9c8c;
+  --color-stone-500: #8a7b6b;
+  --color-stone-600: #5f5246;
+  --color-stone-700: #463a2f;
+  --color-stone-800: #30261d;
+  --color-stone-900: #211913;
+  --color-stone-950: #17110d;
+
+  --color-amber-50: #fbf5ea;
+  --color-amber-100: #f3e8d3;
+  --color-amber-200: #ecdcbf;
+  --color-amber-300: #e8956f;
+  --color-amber-400: #dc7a52;
+  --color-amber-500: #d1603d;
+  --color-amber-600: #b44f30;
+  --color-amber-700: #8f3e26;
+  --color-amber-800: #6e3020;
+  --color-amber-900: #4a2116;
+  --color-amber-950: #2e140d;
+
+  --color-felt-400: #2d6449;
+  --color-felt-500: #24533b;
+  --color-felt-600: #1b4332;
+  --color-felt-700: #143326;
+
+  --color-brass: #c9a14a;
+
+  --font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
+}
+
 :root {
   color-scheme: dark;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -13,5 +53,5 @@
 
 body {
   margin: 0;
-  background: #0c0a09;
+  background: #17110d;
 }

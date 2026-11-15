@@ -449,7 +449,7 @@ export function PushHint() {
   const [state] = usePushState();
   if (state === "on" || state === "busy" || state === "unsupported") return null;
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-stone-800 bg-stone-900/60 px-4 py-3 text-sm text-stone-300">
+    <div className="flex items-center gap-3 rounded-xl border border-stone-800 bg-stone-900/60 px-4 py-3 text-sm text-stone-300">
       <span aria-hidden>🔕</span>
       <span className="min-w-0 flex-1">{state === "denied" ? t.pushDenied : t.pushOffNotice}</span>
       {state !== "denied" && (

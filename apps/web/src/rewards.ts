@@ -52,9 +52,10 @@ export const diceCupOn = (): boolean =>
 
 /** Avatar frames: icon and ring colour; the achievement comes from the protocol (FRAMES). */
 export const FRAME_LOOK: Record<Frame, { icon: string; ring: string }> = {
-  gold: { icon: "👑", ring: "ring-amber-400" },
-  laurel: { icon: "🌿", ring: "ring-emerald-400" },
-  flame: { icon: "🔥", ring: "ring-orange-500" },
-  star: { icon: "🌟", ring: "ring-yellow-300" },
-  scholar: { icon: "🎓", ring: "ring-sky-400" },
+  // the "Clubraum" materials: brass, olive, terracotta, bone, slate
+  gold: { icon: "👑", ring: "ring-[#c9a14a]" },
+  laurel: { icon: "🌿", ring: "ring-[#7d9a5a]" },
+  flame: { icon: "🔥", ring: "ring-[#d1603d]" },
+  star: { icon: "🌟", ring: "ring-[#e6d6a3]" },
+  scholar: { icon: "🎓", ring: "ring-[#7c9cbb]" },
 };

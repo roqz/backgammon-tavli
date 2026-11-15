@@ -20,6 +20,7 @@ import {
   ListRow,
   Logo,
   Page,
+  PointStrip,
   ScreenTitle,
   SectionTitle,
 } from "./AppShell";
@@ -88,10 +89,11 @@ export function HomeScreen({
       {/* hero */}
       <div className="flex flex-col items-center text-center wide:items-start wide:text-left">
         <Logo className="h-20 w-20 short:h-16 short:w-16 wide:h-24 wide:w-24" />
-        <h1 className="mt-4 text-4xl font-bold tracking-tight text-amber-100 short:text-3xl wide:mt-6 wide:text-5xl">
+        <h1 className="mt-4 font-display text-[40px] font-semibold leading-none text-amber-100 short:text-3xl wide:mt-6 wide:text-6xl">
           {t.appTitle}
         </h1>
         <p className="mt-2 max-w-xs text-stone-400 wide:max-w-none wide:text-lg">{t.tagline}</p>
+        <PointStrip className="mt-6 max-w-xs wide:max-w-sm" />
       </div>
 
       {/* main menu */}
@@ -100,7 +102,7 @@ export function HomeScreen({
         className="flex w-full min-w-0 flex-col gap-3 justify-self-center short:row-span-2 short:max-w-sm sm:max-w-md wide:max-w-none wide:justify-self-stretch"
       >
         {lobby.kind === "queued" && (
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-1 text-sm text-amber-100">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-1 text-sm text-amber-100">
             <button
               type="button"
               className="flex min-h-11 items-center gap-2"
@@ -172,7 +174,7 @@ export function HomeScreen({
         {todo && total > 0 && (
           <section
             aria-label={t.todoTitle}
-            className="mt-1 flex flex-col rounded-2xl border border-stone-800 bg-stone-900/70 p-2"
+            className="mt-1 flex flex-col rounded-xl border border-stone-800 bg-stone-900/70 p-2"
           >
             <h2 className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-stone-400">
               {t.todoTitle} · {total}
@@ -212,7 +214,7 @@ export function HomeScreen({
       <div className="hidden wide:col-start-2 wide:row-span-2 wide:row-start-1 wide:block">
         <BoardPreview
           variant={resume && match ? match.config.variant : (lastBot?.variant ?? "backgammon")}
-          className="rounded-2xl"
+          className="rounded-xl"
         />
       </div>
     </div>
@@ -238,13 +240,13 @@ function MenuButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-[4.5rem] w-full items-center gap-4 rounded-2xl px-5 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+      className={`flex min-h-[4.5rem] w-full items-center gap-4 rounded-xl px-5 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
         primary
-          ? "bg-amber-500 text-stone-950 hover:bg-amber-400"
+          ? "bg-felt-500 text-stone-50 hover:bg-felt-400"
           : "border border-stone-700/80 bg-stone-900/80 text-stone-50 hover:border-amber-400/50 hover:bg-stone-900"
       }`}
     >
-      <span aria-hidden className={primary ? "text-stone-900" : "text-amber-300"}>
+      <span aria-hidden className={primary ? "text-stone-100" : "text-amber-300"}>
         {icon}
       </span>
       <span className="min-w-0 flex-1">
@@ -252,7 +254,7 @@ function MenuButton({
           {title}
           <CountBadge n={badge} />
         </span>
-        <span className={`block truncate text-sm ${primary ? "text-stone-800" : "text-stone-400"}`}>
+        <span className={`block truncate text-sm ${primary ? "text-[#bcd4c5]" : "text-stone-400"}`}>
           {detail}
         </span>
       </span>
@@ -275,7 +277,7 @@ function SmallButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-stone-800 px-3 text-[15px] text-stone-200 hover:border-stone-600 hover:bg-stone-900/70 focus-visible:outline-2 focus-visible:outline-amber-400"
+      className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-stone-800 px-3 text-[15px] text-stone-200 hover:border-stone-600 hover:bg-stone-900/70 focus-visible:outline-2 focus-visible:outline-amber-400"
     >
       <span aria-hidden className="text-amber-300">
         {icon}
@@ -465,14 +467,14 @@ export function ProfileScreen({
       <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
         <section
           aria-label={name}
-          className="flex flex-col gap-4 rounded-2xl border border-stone-800 bg-stone-900/80 p-5"
+          className="flex flex-col gap-4 rounded-xl border border-stone-800 bg-stone-900/80 p-5"
         >
           <div className="flex items-center gap-4">
             <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-amber-500 bg-stone-700 text-xl font-bold text-stone-50">
               {initials(name)}
             </span>
             <div className="min-w-0">
-              <h2 className="truncate text-xl font-bold text-stone-50">{name}</h2>
+              <h2 className="truncate font-display text-2xl font-semibold text-stone-50">{name}</h2>
               <p className="text-sm text-stone-400">
                 {!profile
                   ? t.profileLocal

@@ -351,7 +351,7 @@ export function OnlineScreen({
                 [GLYPH.people, t.friendsTab, t.onlineFeatureFriends],
               ] as const
             ).map(([d, title, detail]) => (
-              <li key={title} className="flex items-center gap-4 rounded-2xl border border-stone-800/70 p-4">
+              <li key={title} className="flex items-center gap-4 rounded-xl border border-stone-800/70 p-4">
                 <span
                   aria-hidden
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-amber-300"

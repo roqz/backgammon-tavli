@@ -86,7 +86,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
           </p>
         )}
       </Card>
-      <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
+      <div className="overflow-hidden rounded-xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
         <Board
           state={shownState}
           layout={showBest ? layoutFromBoard(puzzle.state.board) : layout}

@@ -434,14 +434,18 @@ function CorrGroup({
     }
   };
   return (
-    <section className="rounded-2xl border border-stone-800 bg-stone-900/80">
+    <section className="rounded-xl border border-stone-800 bg-stone-900/80">
       <button
         type="button"
         aria-expanded={open}
         onClick={toggle}
         className="flex min-h-12 w-full items-center gap-2 px-4 text-left focus-visible:outline-2 focus-visible:outline-amber-400"
       >
-        <h2 className={`flex-1 font-semibold ${accent ? "text-amber-200" : "text-stone-200"}`}>{title}</h2>
+        <h2
+          className={`flex-1 font-display text-lg font-medium ${accent ? "text-amber-100" : "text-stone-300"}`}
+        >
+          {title}
+        </h2>
         <span
           className={`rounded-full px-2 text-xs font-bold tabular-nums ${accent ? "bg-amber-500 text-stone-950" : "bg-stone-700 text-stone-200"}`}
         >
@@ -861,7 +865,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
           <PlayerBar p={{ ...info(0), emote: null }} />
           <PlayerBar p={{ ...info(1), emote: null }} />
         </div>
-        <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40">
+        <div className="relative overflow-hidden rounded-xl shadow-2xl ring-1 ring-black/40">
           {board(false)}
         </div>
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
@@ -886,7 +890,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
         </div>
       </div>
       <aside className="flex w-full flex-col gap-3 lg:w-72">
-        <div className="hidden flex-col gap-2 rounded-2xl border border-stone-800 bg-stone-900/80 p-4 lg:flex">
+        <div className="hidden flex-col gap-2 rounded-xl border border-stone-800 bg-stone-900/80 p-4 lg:flex">
           <h2 className="text-sm font-medium text-stone-400">{t.score}</h2>
           <PlayerBar p={{ ...info(otherSeat(seat)), emote: null }} />
           <PlayerBar p={{ ...info(seat), emote: null }} />

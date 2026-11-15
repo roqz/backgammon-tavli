@@ -4,7 +4,7 @@ import { useBackToClose, useDialogFocus } from "./overlay";
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-amber-500 text-stone-950 hover:bg-amber-400 disabled:bg-stone-700 disabled:text-stone-400",
+  primary: "bg-felt-500 text-stone-50 hover:bg-felt-400 disabled:bg-stone-700 disabled:text-stone-400",
   secondary: "bg-stone-700 text-stone-100 hover:bg-stone-600 disabled:opacity-40",
   ghost: "bg-transparent text-stone-300 hover:bg-stone-800 disabled:opacity-40",
   danger: "bg-red-800 text-red-50 hover:bg-red-700 disabled:opacity-40",
@@ -163,10 +163,10 @@ export function Toggle({
         aria-label={label}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 disabled:cursor-not-allowed ${checked ? "bg-amber-500" : "bg-stone-700"}`}
+        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 disabled:cursor-not-allowed ${checked ? "bg-felt-400" : "bg-stone-700"}`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : ""}`}
+          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-stone-100 transition-transform ${checked ? "translate-x-5" : ""}`}
         />
       </button>
     </div>
@@ -205,7 +205,7 @@ export function Section({
     </>
   );
   return (
-    <section id={id} className="scroll-mt-20 rounded-2xl border border-stone-800 bg-stone-900/70 px-5 py-4">
+    <section id={id} className="scroll-mt-20 rounded-xl border border-stone-800 bg-stone-900/70 px-5 py-4">
       <h2 className="text-sm font-semibold text-amber-100">
         {onToggle ? (
           <button
@@ -237,7 +237,7 @@ export function Card({
   return (
     <div
       data-testid={testId}
-      className={`rounded-2xl border border-stone-800 bg-stone-900/80 p-5 shadow-xl ${className}`}
+      className={`rounded-xl border border-stone-800 bg-stone-900/80 p-5 ${className}`}
     >
       {children}
     </div>
@@ -264,7 +264,7 @@ export function Modal({ children, onClose }: { children: ReactNode; onClose?: ()
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl border border-stone-700 bg-stone-900 p-6 shadow-2xl outline-none"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-xl border border-stone-700 bg-stone-900 p-6 shadow-2xl outline-none"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >

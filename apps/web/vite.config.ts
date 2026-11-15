@@ -19,8 +19,8 @@ export default defineConfig({
         name: "Backgammon & Tavli",
         short_name: "Tavli",
         description: "Backgammon, Portes, Plakoto and Fevga – offline in your browser",
-        theme_color: "#3b2a1a",
-        background_color: "#1c1917",
+        theme_color: "#17110d",
+        background_color: "#17110d",
         display: "standalone",
         orientation: "any",
         icons: [

@@ -270,7 +270,7 @@ export interface PhoneAction {
 }
 
 const ACTION_STYLE: Record<PhoneAction["variant"], string> = {
-  primary: "bg-amber-500 text-stone-950 active:bg-amber-400 disabled:bg-stone-700 disabled:text-stone-400",
+  primary: "bg-felt-500 text-stone-50 active:bg-felt-400 disabled:bg-stone-700 disabled:text-stone-400",
   secondary: "bg-stone-800 text-stone-100 active:bg-stone-700 disabled:opacity-40",
   danger: "bg-red-800 text-red-50 active:bg-red-700 disabled:opacity-40",
   ghost: "border border-stone-700 bg-transparent text-stone-300 active:bg-stone-800 disabled:opacity-40",
@@ -285,7 +285,7 @@ function ActionButton({ a, className = "" }: { a: PhoneAction; className?: strin
       disabled={a.disabled}
       aria-keyshortcuts={a.keys}
       title={a.title}
-      className={`flex min-w-0 items-center justify-center gap-1.5 rounded-2xl px-2 font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 disabled:cursor-not-allowed ${primary ? "text-base" : "flex-col gap-0.5 text-xs"} ${ACTION_STYLE[a.variant]} ${className}`}
+      className={`flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 disabled:cursor-not-allowed ${primary ? "text-base" : "flex-col gap-0.5 text-xs"} ${ACTION_STYLE[a.variant]} ${className}`}
     >
       {a.icon && (
         <span aria-hidden className={primary ? "" : "text-lg leading-none"}>
@@ -419,7 +419,7 @@ export function MoreSheet({
             aria-label={t.more}
             tabIndex={-1}
             className={`flex flex-col gap-3 overflow-y-auto border-stone-800 bg-stone-900 p-4 shadow-2xl outline-none ${
-              bottom ? "max-h-[85%] w-full rounded-t-2xl border-t" : "h-full w-80 max-w-[85%] border-l"
+              bottom ? "max-h-[85%] w-full rounded-t-xl border-t" : "h-full w-80 max-w-[85%] border-l"
             }`}
             initial={bottom ? { y: "100%" } : { x: "100%" }}
             animate={bottom ? { y: 0 } : { x: 0 }}

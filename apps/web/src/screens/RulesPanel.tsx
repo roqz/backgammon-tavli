@@ -35,7 +35,7 @@ export function RulesPanel({ initial = "general" }: { initial?: RulesTopic }) {
       <article className="flex flex-col gap-4">
         <p className="text-stone-300">{chapter.intro}</p>
         {chapter.sections.map((s) => (
-          <section key={s.title} className="rounded-2xl border border-stone-800 bg-stone-900/70 px-4 py-3">
+          <section key={s.title} className="rounded-xl border border-stone-800 bg-stone-900/70 px-4 py-3">
             <h3 className="mb-2 font-semibold text-amber-100">{s.title}</h3>
             {s.paragraphs?.map((p) => (
               <p key={p} className="mb-2 text-sm leading-relaxed text-stone-300">

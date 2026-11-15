@@ -253,7 +253,7 @@ export function EventBanner({ placement = "top" }: { placement?: "top" | "middle
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
             transition={{ type: "spring", stiffness: 380, damping: 26 }}
-            className={`rounded-2xl border-2 px-6 py-3 text-center shadow-2xl backdrop-blur-sm ${TONES[event.tone]}`}
+            className={`rounded-xl border-2 px-6 py-3 text-center shadow-2xl backdrop-blur-sm ${TONES[event.tone]}`}
           >
             <div className="text-xl font-bold tracking-tight sm:text-2xl">{event.title}</div>
             {event.sub && (

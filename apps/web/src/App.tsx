@@ -345,7 +345,7 @@ export function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <main className="min-h-dvh bg-stone-950 bg-[radial-gradient(ellipse_at_top,#292017_0%,#0c0a09_70%)] text-stone-100">
+      <main className="min-h-dvh bg-stone-950 text-stone-100">
         {inShell ? (
           <AppShell active={navActive} onNav={nav} onlineBadge={todoCount(todo) + (challengeWaiting ? 1 : 0)}>
             {content}

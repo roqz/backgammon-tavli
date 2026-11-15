@@ -98,7 +98,7 @@ export function AppShell({
             className="flex items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-amber-400"
           >
             <Logo className="h-9 w-9" />
-            <span className="text-lg font-bold tracking-tight text-amber-100">{t.appTitle}</span>
+            <span className="font-display text-xl font-semibold text-amber-100">{t.appTitle}</span>
           </button>
           <nav aria-label={t.mainNav} className="ml-auto flex items-center gap-1">
             {items.map(([id, label]) => {
@@ -213,11 +213,34 @@ export function ScreenTitle({
         </button>
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-2xl font-bold tracking-tight text-amber-100 wide:text-3xl">{title}</h1>
+        <h1 className="truncate font-display text-[28px] font-semibold leading-tight text-amber-100 wide:text-4xl">
+          {title}
+        </h1>
         {subtitle && <p className="line-clamp-2 text-sm text-stone-400">{subtitle}</p>}
       </div>
       {children}
     </header>
+  );
+}
+
+/** A row of board points (the "Clubraum" divider). */
+export function PointStrip({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={`block h-2.5 w-full ${className}`}
+      preserveAspectRatio="none"
+      viewBox="0 0 336 10"
+    >
+      {Array.from({ length: 14 }, (_, i) => (
+        <path
+          // biome-ignore lint/suspicious/noArrayIndexKey: a fixed pattern
+          key={i}
+          d={`M${i * 24} 0h12l-6 10z`}
+          className={i % 2 === 0 ? "fill-amber-500/60" : "fill-stone-100/35"}
+        />
+      ))}
+    </svg>
   );
 }
 
@@ -253,7 +276,7 @@ export function ActionCard({
     <button
       type="button"
       onClick={onClick}
-      className={`group flex items-center rounded-2xl border border-stone-800 bg-stone-900/80 text-left transition-colors hover:border-amber-400/50 hover:bg-stone-900 focus-visible:outline-2 focus-visible:outline-amber-400 ${
+      className={`group flex items-center rounded-xl border border-stone-800 bg-stone-900/80 text-left transition-colors hover:border-amber-400/50 hover:bg-stone-900 focus-visible:outline-2 focus-visible:outline-amber-400 ${
         compact
           ? "min-h-14 gap-3 p-3 lg:min-h-20 lg:gap-4 lg:p-4"
           : "min-h-20 gap-4 p-4 wide:min-h-28 wide:p-5"
@@ -387,7 +410,7 @@ export function ListGroup({ title, children }: { title?: string; children: React
       {title && (
         <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-stone-400">{title}</h2>
       )}
-      <div className="flex flex-col divide-y divide-stone-800 overflow-hidden rounded-2xl border border-stone-800 bg-stone-900/80">
+      <div className="flex flex-col divide-y divide-stone-800 overflow-hidden rounded-xl border border-stone-800 bg-stone-900/80">
         {children}
       </div>
     </section>

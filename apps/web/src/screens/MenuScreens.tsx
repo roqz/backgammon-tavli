@@ -261,7 +261,7 @@ export function LocalSetup({ opponent, onStarted }: { opponent: "bot" | "human";
             <span aria-hidden>{more ? "▴" : "▾"}</span>
           </button>
           {more && (
-            <div className="flex flex-col gap-4 rounded-2xl border border-stone-800 bg-stone-900/60 p-4">
+            <div className="flex flex-col gap-4 rounded-xl border border-stone-800 bg-stone-900/60 p-4">
               {opponent === "bot" && (
                 <Choice
                   label={t.playAs}

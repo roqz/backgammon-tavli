@@ -163,7 +163,7 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
           <div className="w-16" />
         </div>
         {tabs}
-        <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
+        <div className="overflow-hidden rounded-xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
           <Board
             state={frame.state}
             layout={layout}
@@ -209,7 +209,7 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
           </span>
         </div>
       </div>
-      <aside className="flex w-full flex-col gap-3 rounded-2xl border border-stone-800 bg-stone-900/80 p-4 lg:w-80">
+      <aside className="flex w-full flex-col gap-3 rounded-xl border border-stone-800 bg-stone-900/80 p-4 lg:w-80">
         {review === null && <Button onClick={() => void runReview()}>🔍 {t.reviewGame}</Button>}
         {review === "running" && (
           <p className="flex items-center gap-2 text-sm text-stone-400">

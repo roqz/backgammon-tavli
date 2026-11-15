@@ -74,7 +74,7 @@ export function Choice<T extends string | number>({
     <fieldset className="flex min-w-0 flex-col">
       <legend className={legend}>{label}</legend>
       <div
-        className="grid gap-1 rounded-2xl bg-stone-900 p-1"
+        className="grid gap-1 rounded-xl bg-stone-900 p-1"
         style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
       >
         {options.map((o) => (

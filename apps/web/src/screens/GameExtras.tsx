@@ -249,7 +249,7 @@ export function EmoteBubbles() {
           initial={{ opacity: 0, y: mine ? 8 : -8, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0 }}
-          className={`pointer-events-none absolute z-30 max-w-[60%] rounded-2xl px-4 py-2 text-sm font-medium shadow-xl ${
+          className={`pointer-events-none absolute z-30 max-w-[60%] rounded-xl px-4 py-2 text-sm font-medium shadow-xl ${
             mine
               ? "right-3 bottom-3 rounded-br-sm bg-amber-400 text-stone-950"
               : "left-3 top-3 rounded-tl-sm bg-stone-100 text-stone-900"
@@ -371,7 +371,7 @@ export function XgidBox({ match }: { match: MatchState }) {
     }
   };
   return (
-    <div className="rounded-2xl border border-stone-800 bg-stone-900/80 p-4">
+    <div className="rounded-xl border border-stone-800 bg-stone-900/80 p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-medium text-stone-400">{t.xgid}</h2>
         <span className="flex gap-3">
