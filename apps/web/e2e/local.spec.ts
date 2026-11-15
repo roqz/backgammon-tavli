@@ -106,6 +106,22 @@ test("a mirrored board (home board left) can still be played by tapping", async 
   expect(await checkerCount(page)).toBe(30);
 });
 
+test("the board with depth (tilted) can be played by tapping", async ({ page }) => {
+  await newGame(page, "Zu zweit");
+  await page.getByRole("button", { name: "Starten" }).click();
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("button", { name: /^Designs/ }).click();
+  await page.getByRole("switch", { name: "Brett mit Tiefe" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("application", { name: "Spielbrett" })).toHaveCSS("transform", /matrix3d/);
+  await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
+  // taps land where they are seen, although the board leans back
+  expect(await tapMove(page)).toBe(true);
+  await expect(page.getByTestId("board-live")).toContainText(/Letzter Zug/);
+  expect(await checkerCount(page)).toBe(30);
+});
+
 test("settings opened from the profile return there; the start screen resumes the game", async ({ page }) => {
   await newGame(page);
   await page.getByRole("button", { name: "Starten" }).click();

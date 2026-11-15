@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { tokens, useCareer, weekId } from "../career";
 import { BoardPreview } from "../components/Setup";
 import { variantShortName } from "../components/VariantPicker";
-import { useT } from "../i18n";
+import { type Dict, useT } from "../i18n";
 import { openSettings } from "../navigation";
 import { fetchProfile, unqueue } from "../online/client";
 import { useOnlinePlayers } from "../online/presence";
@@ -69,7 +69,7 @@ export function HomeScreen({
   const lobby = useOnline((s) => s.lobby);
   const challenge = useOnline((s) => s.incoming !== null);
   const lastBot = useSettings((s) => s.lastBot);
-  const solvedToday = usePuzzles((s) => s.results[today()] !== undefined);
+  const puzzleToday = usePuzzleToday();
   const online = useOnlineStatus();
   const playersOnline = useOnlinePlayers();
   const canResume = mode === "local" && match !== null && match.winner === null;
@@ -169,7 +169,8 @@ export function HomeScreen({
           <SmallButton
             icon={<Glyph d={GLYPH.puzzle} className="h-5 w-5" />}
             onClick={onPuzzle}
-            dot={!solvedToday}
+            label={`${t.puzzle}: ${PUZZLE_STATE_TEXT[puzzleToday](t)}`}
+            status={<PuzzleStatus state={puzzleToday} />}
           >
             {t.puzzle}
           </SmallButton>
@@ -296,20 +297,63 @@ function MenuButton({
   );
 }
 
+/** Today's daily puzzle: not tried yet, solved, or tried without the best move. */
+type PuzzleToday = "open" | "solved" | "tried";
+
+const usePuzzleToday = (): PuzzleToday =>
+  usePuzzles((s) => {
+    const r = s.results[today()];
+    return r === undefined ? "open" : r.solved ? "solved" : "tried";
+  });
+
+const PUZZLE_STATE_TEXT: Record<PuzzleToday, (t: Dict) => string> = {
+  open: (t) => t.puzzleOpen,
+  solved: (t) => t.puzzleDone,
+  tried: (t) => t.puzzleTried,
+};
+
+/** Small status mark: open (terracotta), solved (felt green ✓), tried (muted). */
+function PuzzleStatus({ state }: { state: PuzzleToday }) {
+  const t = useT();
+  const look = {
+    open: "border border-amber-400/70 text-amber-300",
+    solved: "bg-felt-500 text-stone-50",
+    tried: "border border-stone-600 text-stone-400",
+  }[state];
+  const text = { open: t.puzzleShortOpen, solved: `✓ ${t.puzzleShortDone}`, tried: t.puzzleShortTried }[
+    state
+  ];
+  return (
+    <span
+      aria-hidden
+      data-testid="puzzle-status"
+      data-state={state}
+      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none ${look}`}
+    >
+      {text}
+    </span>
+  );
+}
+
 function SmallButton({
   icon,
   onClick,
-  dot = false,
+  status,
+  label,
   children,
 }: {
   icon: ReactNode;
   onClick: () => void;
-  dot?: boolean;
+  /** Shown after the text (e.g. today's puzzle state). */
+  status?: ReactNode;
+  /** Accessible name when the status adds to the text. */
+  label?: string;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
+      aria-label={label}
       onClick={onClick}
       className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-stone-800 px-3 text-[15px] text-stone-200 hover:border-stone-600 hover:bg-stone-900/70 focus-visible:outline-2 focus-visible:outline-amber-400"
     >
@@ -317,7 +361,7 @@ function SmallButton({
         {icon}
       </span>
       {children}
-      {dot && <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden />}
+      {status}
     </button>
   );
 }
@@ -373,7 +417,7 @@ export function OfflineScreen({
 }) {
   const t = useT();
   const lastBot = useSettings((s) => s.lastBot);
-  const solvedToday = usePuzzles((s) => s.results[today()] !== undefined);
+  const puzzleToday = usePuzzleToday();
   return (
     <Page>
       <ScreenTitle title={t.navPlay} subtitle={t.offlineSub} />
@@ -406,8 +450,8 @@ export function OfflineScreen({
           <ActionCard
             icon={<Glyph d={GLYPH.puzzle} />}
             title={t.puzzle}
-            detail={solvedToday ? t.puzzleDone : t.puzzleOpen}
-            dot={!solvedToday}
+            detail={PUZZLE_STATE_TEXT[puzzleToday](t)}
+            dot={puzzleToday === "open"}
             onClick={onPuzzle}
           />
           <ActionCard

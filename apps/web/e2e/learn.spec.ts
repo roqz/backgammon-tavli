@@ -20,6 +20,8 @@ test("tutorial: the first lesson is solved by making the 5 point", async ({ page
 });
 
 test("daily puzzle: a move is checked and the result recorded", async ({ page }) => {
+  // the start page says whether today's puzzle is still open
+  await expect(page.getByTestId("puzzle-status")).toHaveAttribute("data-state", "open");
   await page.getByRole("button", { name: /Tagesrätsel/ }).click();
   await expect(page.getByText(/Finde den besten Zug/)).toBeVisible({ timeout: 30_000 });
   for (let i = 0; i < 4 && (await page.getByRole("button", { name: /Prüfen/ }).isDisabled()); i++)
@@ -30,6 +32,9 @@ test("daily puzzle: a move is checked and the result recorded", async ({ page })
     .getByRole("button", { name: /Lösung zeigen|Mein Zug/ })
     .first()
     .click();
+  // back to the start page (the browser Back button)
+  await page.goBack();
+  await expect(page.getByTestId("puzzle-status")).toHaveAttribute("data-state", /solved|tried/);
 });
 
 test("the rule book shows board diagrams", async ({ page }) => {

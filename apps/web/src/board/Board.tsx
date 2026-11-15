@@ -11,7 +11,9 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { type PointerEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useT } from "../i18n";
+import { useSettings } from "../store/settings";
 import { FocusCells, LiveRegion, useBoardKeyboard } from "./BoardKeyboard";
+import { DEPTH_DEFS, tiltStyle, untilt, useTilt } from "./depth";
 import {
   BAR_W,
   BAR_X,
@@ -110,6 +112,11 @@ export function Board({
   screenTurned = false,
 }: BoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  // "board with depth": tilted (not when the whole screen is turned by CSS), lit and shaded
+  const depth = useSettings((s) => s.boardDepth);
+  const tilt = useTilt(svgRef, depth && !screenTurned);
+  /** Checker thickness as seen from the front: towards the bottom of the screen. */
+  const side: Pos | null = !depth ? null : rotated ? { x: mirrored ? -4 : 4, y: 0 } : { x: 0, y: 4 };
   /** All board content; pointer positions are mapped through its (possibly rotated) transform. */
   const rootRef = useRef<SVGGElement>(null);
   const rules = getVariant(state.variant);
@@ -143,6 +150,14 @@ export function Board({
       const r = svg.getBoundingClientRect();
       const s = svg.viewBox.baseVal.width / r.height;
       let p = new DOMPoint((e.clientY - r.top) * s, (r.right - e.clientX) * s);
+      const m = rootRef.current?.transform.baseVal.consolidate()?.matrix;
+      if (m) p = p.matrixTransform(DOMMatrix.fromMatrix(m).inverse());
+      return { x: p.x, y: p.y };
+    }
+    if (tilt) {
+      // the CSS tilt is undone by hand (getScreenCTM does not see 3D transforms reliably)
+      const flat = untilt(svg, tilt, e.clientX, e.clientY);
+      let p = new DOMPoint(flat.x, flat.y);
       const m = rootRef.current?.transform.baseVal.consolidate()?.matrix;
       if (m) p = p.matrixTransform(DOMMatrix.fromMatrix(m).inverse());
       return { x: p.x, y: p.y };
@@ -247,6 +262,7 @@ export function Board({
         ref={svgRef}
         viewBox={rotated ? `0 0 ${HEIGHT} ${WIDTH}` : `0 0 ${WIDTH} ${HEIGHT}`}
         className="block h-auto w-full touch-none select-none"
+        style={tilt ? tiltStyle(tilt) : undefined}
         role="application"
         aria-label={t.boardLabel}
         aria-describedby={hintId}
@@ -258,6 +274,7 @@ export function Board({
       >
         <defs>
           {theme.defs}
+          {side && DEPTH_DEFS(side)}
           <marker
             id="hint-arrow"
             viewBox="0 0 10 10"
@@ -297,6 +314,43 @@ export function Board({
             rx={6}
             fill={theme.tray}
           />
+          {side && (
+            <g pointerEvents="none">
+              {/* raised frame: light edge on top, dark below */}
+              <rect
+                x={1.5}
+                y={1.5}
+                width={WIDTH - 3}
+                height={HEIGHT - 3}
+                rx={13}
+                fill="none"
+                stroke="url(#dp-bevel)"
+                strokeWidth={3}
+              />
+              {/* the playing fields lie lower: shadow under the frame */}
+              {[LEFT_X, RIGHT_X].map((x) => (
+                <rect
+                  key={x}
+                  x={x}
+                  y={TOP_Y}
+                  width={6 * POINT_W}
+                  height={HEIGHT - 2 * FRAME}
+                  fill="url(#dp-inset)"
+                />
+              ))}
+              {[TRAY_X].map((x) => (
+                <rect
+                  key={x}
+                  x={x}
+                  y={TOP_Y}
+                  width={TRAY_W}
+                  height={HEIGHT - 2 * FRAME}
+                  rx={6}
+                  fill="url(#dp-inset)"
+                />
+              ))}
+            </g>
+          )}
 
           {/* points */}
           {POINT_INDICES.map((phys) => (
@@ -400,7 +454,7 @@ export function Board({
                 animate={{ x: pos.x, y: pos.y }}
                 transition={isDragged ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 26 }}
                 style={{ pointerEvents: "none" }}
-                filter="url(#cl-shadow)"
+                filter={side ? "url(#dp-shadow)" : "url(#cl-shadow)"}
               >
                 {off ? (
                   <rect
@@ -414,7 +468,12 @@ export function Board({
                   />
                 ) : (
                   <>
+                    {side && (
+                      // the checker's edge, seen from the front
+                      <circle cx={side.x} cy={side.y} r={CHECKER_R} fill={look.edge} />
+                    )}
                     <circle r={CHECKER_R} fill={look.fill} stroke={look.edge} strokeWidth={2} />
+                    {side && <circle r={CHECKER_R - 1} fill="url(#dp-gloss)" />}
                     <circle
                       r={CHECKER_R * 0.62}
                       fill="none"

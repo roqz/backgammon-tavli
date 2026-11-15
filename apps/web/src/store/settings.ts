@@ -40,6 +40,8 @@ export interface Settings {
   checkerSet: CheckerSet;
   /** Confetti after a won game (a reward). */
   fireworks: boolean;
+  /** The board tilted with perspective, light and shadows (board/depth.ts). */
+  boardDepth: boolean;
   /** Dice sound: plain or rattling in a cup (a reward). */
   diceSound: "classic" | "cup";
   /** Last choice on the "Play" screen. */
@@ -82,6 +84,7 @@ export const useSettings = create<SettingsStore>()(
       diceSkin: "theme",
       checkerSet: "theme",
       fireworks: true,
+      boardDepth: false,
       diceSound: "classic",
       playMode: "bot",
       lastBot: null,
