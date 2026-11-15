@@ -21,8 +21,12 @@ import type {
   TimingSummary,
 } from "@tavli/protocol";
 import {
+  CAREER_VARIANTS,
+  type Career,
+  type CareerVariant,
   clubPoints,
   clubRank,
+  EMPTY_CAREER,
   FRAMES,
   type Frame,
   MAX_FRIENDS,
@@ -310,6 +314,16 @@ export interface AccountRow {
   readonly twoFactor: boolean;
   readonly recoveryCodesLeft: number;
 }
+
+/** Achievements for online feats: granted and checked by the server from its own records. */
+export const SERVER_ACHIEVEMENTS: readonly string[] = [
+  "online-win",
+  "rating-1600",
+  "tournament-win",
+  "league-win",
+  "corr-ten",
+  "league-player",
+];
 
 /** Name of the app in authenticator apps. */
 const TOTP_ISSUER = "Tavli";
@@ -1119,10 +1133,14 @@ export class Store {
     // keep about a year of puzzle days
     const days = Object.keys(puzzles).sort().reverse();
     for (const d of days.slice(400)) delete puzzles[d];
-    const career =
-      current.career && incoming.career
-        ? mergeCareer(current.career, incoming.career)
-        : (current.career ?? incoming.career);
+    // what the server saw itself (online games, correspondence, leagues) is the floor
+    const verified = this.verifiedCareer(playerId);
+    const career = [current.career, incoming.career].reduce<Career>(
+      (acc, c) => (c ? mergeCareer(acc, c) : acc),
+      verified,
+    );
+    const now = new Date().toISOString();
+    for (const id of this.verifiedAchievements(playerId)) unlocked[id] ??= now;
     const merged: Progress = {
       unlocked,
       lessons: [...new Set([...current.lessons, ...incoming.lessons])].sort((a, b) => a - b),
@@ -1142,11 +1160,90 @@ export class Store {
     return merged;
   }
 
-  /** Chooses an avatar frame; only frames whose achievement is in the stored progress. */
+  /**
+   * Chooses an avatar frame. Frames for online feats need the server's own records; the others
+   * (tutorial, puzzles, long-term goals) the achievement in the stored progress.
+   */
   setFrame(playerId: string, frame: Frame | null): boolean {
-    if (frame !== null && !this.progress(playerId).unlocked[FRAMES[frame]]) return false;
+    if (frame !== null) {
+      const needed = FRAMES[frame];
+      const ok = SERVER_ACHIEVEMENTS.includes(needed)
+        ? this.verifiedAchievements(playerId).includes(needed)
+        : !!this.progress(playerId).unlocked[needed];
+      if (!ok) return false;
+    }
     this.db.prepare("UPDATE players SET frame = ? WHERE id = ?").run(frame, playerId);
     return true;
+  }
+
+  // ---- progress the server can count itself ----------------------------------------------------
+
+  /**
+   * Career counters from the server's own records: games and wins (per variant) of online
+   * matches and finished correspondence games, finished correspondence and league games.
+   * Merged into the stored career as a floor, so these never depend on what a device reports.
+   */
+  verifiedCareer(playerId: string): Career {
+    const winsBy: Career["winsBy"] = {};
+    let games = 0;
+    let wins = 0;
+    const count = (table: string, where: string) => {
+      const rows = this.db
+        .prepare(
+          `SELECT json_extract(g.value, '$.variant') AS v, COUNT(*) AS n,
+             SUM(json_extract(g.value, '$.result.winner') = (CASE WHEN t.p0 = ?1 THEN 0 ELSE 1 END)) AS w
+           FROM ${table} t, json_each(t.games) g
+           WHERE (t.p0 = ?1 OR t.p1 = ?1) AND ${where} AND json_extract(g.value, '$.result') IS NOT NULL
+           GROUP BY v`,
+        )
+        .all(playerId) as { v: string; n: number; w: number | null }[];
+      for (const r of rows) {
+        games += r.n;
+        wins += r.w ?? 0;
+        if ((CAREER_VARIANTS as readonly string[]).includes(r.v) && r.w)
+          winsBy[r.v as CareerVariant] = (winsBy[r.v as CareerVariant] ?? 0) + r.w;
+      }
+    };
+    count("matches", "1");
+    let corrFinished = 0;
+    let leagueGames = 0;
+    if (this.tableExists("corr_games")) {
+      count("corr_games", "t.status = 'finished'");
+      const c = this.db
+        .prepare(
+          `SELECT COUNT(*) AS n, COUNT(league_id) AS league FROM corr_games
+           WHERE (p0 = ?1 OR p1 = ?1) AND status = 'finished' AND winner IS NOT NULL`,
+        )
+        .get(playerId) as { n: number; league: number };
+      corrFinished = c.n;
+      leagueGames = c.league;
+    }
+    if (this.tableExists("league_matches")) {
+      const live = this.db
+        .prepare("SELECT COUNT(*) AS n FROM league_matches WHERE (p0 = ?1 OR p1 = ?1) AND status = 'done'")
+        .get(playerId) as { n: number } | undefined;
+      // correspondence league games are in both tables: the larger count, not the sum
+      leagueGames = Math.max(leagueGames, live?.n ?? 0);
+    }
+    return { ...EMPTY_CAREER, games, wins, winsBy, corrFinished, leagueGames };
+  }
+
+  /** Achievements the server can grant (and check) from its own records. */
+  verifiedAchievements(playerId: string): string[] {
+    const one = (sql: string) => !!this.db.prepare(sql).get(playerId);
+    const out: string[] = [];
+    if (one("SELECT 1 FROM matches WHERE (p0 = ?1 AND winner = 0) OR (p1 = ?1 AND winner = 1) LIMIT 1"))
+      out.push("online-win");
+    if (one("SELECT 1 FROM ratings WHERE player_id = ? AND rating >= 1600 AND matches > 0 LIMIT 1"))
+      out.push("rating-1600");
+    if (this.tableExists("tournaments") && one("SELECT 1 FROM tournaments WHERE winner = ? LIMIT 1"))
+      out.push("tournament-win");
+    if (this.tableExists("leagues") && one("SELECT 1 FROM leagues WHERE winner = ? LIMIT 1"))
+      out.push("league-win");
+    const c = this.verifiedCareer(playerId);
+    if (c.corrFinished >= 10) out.push("corr-ten");
+    if (c.leagueGames >= 1) out.push("league-player");
+    return out;
   }
 
   /** Sets a rating directly (administration and tests). */
