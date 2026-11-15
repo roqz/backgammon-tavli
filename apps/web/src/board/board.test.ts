@@ -12,7 +12,14 @@ import {
 import { describe, expect, it } from "vitest";
 import { checkerPos, makeView, pointX, slotAt } from "./geometry";
 import { targetsFrom } from "./interaction";
-import { applyMoveToLayout, layoutFromBoard, layoutMatches, stackAt, undoMoveInLayout } from "./layout";
+import {
+  applyMoveToLayout,
+  layoutFromBoard,
+  layoutMatches,
+  reconcileLayout,
+  stackAt,
+  undoMoveInLayout,
+} from "./layout";
 
 describe("geometry", () => {
   it("maps every point centre back to its point", () => {
@@ -113,4 +120,49 @@ describe("perspective", () => {
     expect(view.toScreen(5)).toBe(5);
     expect(view.toScreen("bar0")).toBe("bar0");
   });
+});
+
+/** Boards that arrive without their moves (correspondence, puzzles) keep the other checkers in place. */
+describe("reconcileLayout", () => {
+  const slotOf = (layout: ReturnType<typeof layoutFromBoard>) => {
+    const m = new Map<string, string>();
+    for (const [slot, ids] of Object.entries(layout)) ids.forEach((id) => m.set(id, slot));
+    return m;
+  };
+  const variants: VariantId[] = ["backgammon", "plakoto", "fevga"];
+  for (const variant of variants) {
+    it(`${variant}: only the moved checkers change place, and they come from the top`, () => {
+      const rng = seededRng(7);
+      let g: GameState = createGame({ variant });
+      let layout = layoutFromBoard(g.board);
+      for (let turn = 0; turn < 60 && g.phase !== "finished"; turn++) {
+        if (g.phase === "opening" || g.phase === "rolling") {
+          g = applyAction(g, { type: "roll", dice: rollDice(rng) });
+          continue;
+        }
+        // a whole turn at once, as a correspondence opponent sends it
+        const start = g;
+        while (g.phase === "moving" && legalMoves(g).length > 0)
+          g = applyAction(g, { type: "move", move: legalMoves(g)[Math.floor(rng() * legalMoves(g).length)]! });
+        if (g.phase === "moving") g = applyAction(g, { type: "confirm" });
+        const next = reconcileLayout(layout, g.board);
+        expect(layoutMatches(next, g.board)).toBe(true);
+        const before = slotOf(layout);
+        const after = slotOf(next);
+        const changed = [...after.keys()].filter((id) => after.get(id) !== before.get(id));
+        // at most one checker per die (four with a double), plus hit checkers
+        expect(changed.length).toBeLessThanOrEqual(8);
+        // every checker that left a point was the top one of its colour there
+        for (const id of changed) {
+          const from = before.get(id)!;
+          const stack = layout[from]!;
+          const own = stack.filter((c) => c[0] === id[0]);
+          const left = own.filter((c) => after.get(c) !== from);
+          expect(own.slice(own.length - left.length)).toContain(id);
+        }
+        expect(start).not.toBe(g);
+        layout = next;
+      }
+    });
+  }
 });

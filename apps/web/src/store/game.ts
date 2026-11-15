@@ -23,6 +23,7 @@ import {
   type Layout,
   layoutFromBoard,
   layoutMatches,
+  reconcileLayout,
   undoMoveInLayout,
 } from "../board/layout";
 import type { DiceThrow } from "../dice3d/Dice3D";
@@ -113,7 +114,7 @@ const nextLayout = (layout: Layout, before: GameState, after: GameState, action:
   } else if (action.type === "next-game") {
     next = layoutFromBoard(after.board);
   }
-  return layoutMatches(next, after.board) ? next : layoutFromBoard(after.board);
+  return layoutMatches(next, after.board) ? next : reconcileLayout(layout, after.board);
 };
 
 /** Dice animation descriptor for a throw. */
@@ -267,8 +268,10 @@ export const useGame = create<GameStore>()(
         }
         const sameGame = before && before.results.length === match.results.length;
         patch.layout =
-          before && sameGame && action
-            ? nextLayout(s.layout, before.game, match.game, action)
+          before && sameGame
+            ? action
+              ? nextLayout(s.layout, before.game, match.game, action)
+              : reconcileLayout(s.layout, match.game.board)
             : layoutFromBoard(match.game.board);
         set(patch);
         if (before && sameGame) archiveIfFinished(before, match, s.players);

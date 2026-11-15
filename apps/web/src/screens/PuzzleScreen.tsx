@@ -1,7 +1,7 @@
 import { applyAction, canConfirm, getVariant, type Move } from "@tavli/engine";
 import { useEffect, useMemo, useState } from "react";
 import { Board } from "../board/Board";
-import { layoutFromBoard } from "../board/layout";
+import { layoutFromBoard, useFollowingLayout } from "../board/layout";
 import { askBot } from "../bot/client";
 import { Button, Card } from "../components/ui";
 import { useT } from "../i18n";
@@ -34,7 +34,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
       .catch(() => setError(true));
   }, [date]);
 
-  const layout = useMemo(() => (state ? layoutFromBoard(state.board) : null), [state]);
+  const layout = useFollowingLayout(state?.board ?? null, date);
   if (error) return <Centered onBack={onBack} text={t.errors.generic} />;
   if (!puzzle || !state || !layout) return <Centered onBack={onBack} text={t.puzzleLoading} />;
 

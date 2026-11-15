@@ -396,6 +396,7 @@ export function Board({
             return (
               <motion.g
                 key={id}
+                data-checker={id}
                 initial={false}
                 animate={{ x: pos.x, y: pos.y }}
                 transition={isDragged ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 26 }}

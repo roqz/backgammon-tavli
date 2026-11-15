@@ -17,10 +17,10 @@ import {
   MATCH_VARIANTS,
   type MatchVariantId,
 } from "@tavli/protocol";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Board } from "../board/Board";
 import { HEIGHT, WIDTH } from "../board/geometry";
-import { layoutFromBoard } from "../board/layout";
+import { useFollowingLayout } from "../board/layout";
 import { SetupLayout } from "../components/Setup";
 import { Button, Card, Modal, Segmented } from "../components/ui";
 import { Choice, VariantPicker } from "../components/VariantPicker";
@@ -566,7 +566,8 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
   );
 
   const m = view?.match as MatchState | null | undefined;
-  const layout = useMemo(() => (m ? layoutFromBoard(m.game.board) : null), [m]);
+  // the opponent's moves arrive as a new board: only the moved checkers animate
+  const layout = useFollowingLayout(m?.game.board ?? null, `${id}:${m?.results.length ?? 0}`);
   if (!view || !m || !layout)
     return (
       <div className="mx-auto flex max-w-lg flex-col items-center gap-4 p-6 text-center">
