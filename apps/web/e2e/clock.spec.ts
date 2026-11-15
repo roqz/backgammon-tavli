@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { newGame, onlineGuest } from "./helpers";
+import { closeContexts, newGame, onlineGuest } from "./helpers";
+
+test.afterEach(closeContexts);
 
 test("blitz: both players see the chess clock with delay and reserve", async ({ browser }) => {
   test.setTimeout(90_000);

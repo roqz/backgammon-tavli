@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { nav, newGame, onlineGuest, openAccount, prepare, tapMove } from "./helpers";
+import { closeContexts, nav, newGame, onlineGuest, openAccount, prepare, tapMove, track } from "./helpers";
+
+test.afterEach(closeContexts);
 
 test("two players: invite link, play, resign, verified dice, leaderboard", async ({ browser }) => {
   const alice = await onlineGuest(browser, "Alice");
@@ -57,7 +59,7 @@ test("a guest can secure an account and log in on a second device", async ({ bro
     .click();
   await expect(first.getByText(`Konto: ${username}`)).toBeVisible();
 
-  const ctx = await browser.newContext({ locale: "de-DE" });
+  const ctx = track(await browser.newContext({ locale: "de-DE" }));
   const second = await ctx.newPage();
   await prepare(second);
   await second.goto("/");

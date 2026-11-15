@@ -1,5 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
-import { onlineGuest } from "./helpers";
+import { closeContexts, onlineGuest } from "./helpers";
+
+test.afterEach(closeContexts);
 
 test("four players fill a tournament; first-round matches start and lead back to the bracket", async ({
   browser,

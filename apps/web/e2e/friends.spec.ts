@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { nav, newGame, onlineGuest } from "./helpers";
+import { closeContexts, nav, newGame, onlineGuest } from "./helpers";
+
+test.afterEach(closeContexts);
 
 test("friends via invitation link, a challenge starts a match, a third player watches it live", async ({
   browser,

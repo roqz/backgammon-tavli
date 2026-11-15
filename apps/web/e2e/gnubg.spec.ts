@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { nav, newGame, onlineGuest, openAccount, prepare } from "./helpers";
+import { closeContexts, nav, newGame, onlineGuest, openAccount, prepare } from "./helpers";
+
+test.afterEach(closeContexts);
 
 test("imports a GNU Backgammon ID; both IDs are shown for the position", async ({ page }) => {
   await prepare(page);

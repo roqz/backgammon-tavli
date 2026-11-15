@@ -1,5 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
-import { nav, onlineGuest } from "./helpers";
+import { closeContexts, nav, onlineGuest } from "./helpers";
+
+test.afterEach(closeContexts);
 
 const openClubs = async (p: Page) => p.getByRole("tab", { name: "Clubs" }).click();
 

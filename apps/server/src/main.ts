@@ -42,6 +42,8 @@ const server = await startServer({
           publicKey: env.VAPID_PUBLIC_KEY,
           privateKey: env.VAPID_PRIVATE_KEY,
         },
+  // New profiles per network and minute (default 10); only raise it for tests or LAN events.
+  ...(env.REGISTRATIONS_PER_MINUTE ? { registrationsPerMinute: Number(env.REGISTRATIONS_PER_MINUTE) } : {}),
   // Allow pairing players from the same network (local testing, LAN events).
   fairPlay: { blockSameNetwork: env.ALLOW_SAME_NETWORK !== "1" },
   log: (msg) => console.log(`[${new Date().toISOString()}] ${msg}`),

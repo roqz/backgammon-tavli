@@ -1,15 +1,16 @@
 import { expect, type Page, test } from "@playwright/test";
-import { nav, newGame, onlineGuest, tapMove } from "./helpers";
+import { closeContexts, nav, newGame, onlineGuest, tapMove } from "./helpers";
 
-/** Ann and Ben become friends through Ann's friend link. */
+test.afterEach(closeContexts);
+
+/** Ann and Ben become friends through Ann's invitation link (no request to accept). */
 const befriend = async (ann: Page, ben: Page) => {
   await ann.getByRole("tab", { name: /Freunde/ }).click();
-  const link = (await ann.locator("span.select-all").textContent()) ?? "";
+  await expect(ann.getByTestId("invite-code")).toBeVisible();
+  const link = (await ann.locator("span.select-all.break-all").textContent()) ?? "";
   await ben.goto(link);
-  await ben.getByRole("button", { name: "Anfrage senden" }).click();
+  await ben.getByRole("button", { name: "Freund werden" }).click();
   await ben.getByRole("button", { name: "OK" }).click();
-  await expect(ann.getByText("Freundschaftsanfragen")).toBeVisible({ timeout: 15_000 });
-  await ann.getByRole("button", { name: "Annehmen" }).click();
 };
 
 test("correspondence: invite a friend, accept, and the player to move makes a move", async ({ browser }) => {
@@ -41,7 +42,9 @@ test("correspondence: invite a friend, accept, and the player to move makes a mo
   await ann.reload();
   await nav(ann, "Online");
   await ann.getByRole("tab", { name: "Fernpartien" }).click();
-  const annMoves = await ann.getByText("Du bist am Zug").isVisible();
+  // the list loads first: only then does "your turn" (or "opponent's turn") say who moves
+  await expect(ann.getByText(/^(Du bist am Zug|Gegner am Zug)$/).first()).toBeVisible({ timeout: 15_000 });
+  const annMoves = await ann.getByText("Du bist am Zug").first().isVisible();
   const mover = annMoves ? ann : ben;
   if (annMoves)
     await ann

@@ -47,6 +47,8 @@ export default defineConfig({
         ALLOW_SAME_NETWORK: "1",
         TOURNAMENT_GUEST_MIN_MATCHES: "0",
         ADMIN_TOKEN: E2E_ADMIN_TOKEN,
+        // every test creates several guests from 127.0.0.1
+        REGISTRATIONS_PER_MINUTE: "1000",
         SUPPORT_URL: "https://example.org/support",
         SUPPORT_MONTHLY_COST: "8",
       },

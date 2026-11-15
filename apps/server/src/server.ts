@@ -95,6 +95,8 @@ export interface ServerOptions {
   readonly spectatorDelay?: Partial<SpectatorDelay>;
   /** WebSocket connections per IP; default 20. */
   readonly maxConnectionsPerIp?: number;
+  /** New profiles per network and minute (default 10; raised for end-to-end tests). */
+  readonly registrationsPerMinute?: number;
   /** Daily copies of the database (VACUUM INTO) into this directory, keeping the newest `backupKeep`. */
   readonly backupDir?: string;
   readonly backupKeep?: number;
@@ -263,7 +265,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
     }
   }, 60_000);
   corrTimer.unref();
-  const allowRegister = rateLimiter(10, 60_000);
+  const allowRegister = rateLimiter(opts.registrationsPerMinute ?? 10, 60_000);
   /** Per player: renames, password changes, exports. */
   const allowRename = rateLimiter(5, 60 * 60_000);
   const allowPasswordChange = rateLimiter(5, 15 * 60_000);

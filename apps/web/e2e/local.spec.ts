@@ -157,10 +157,11 @@ test("Tavla and Narde can be played against the computer", async ({ page }) => {
           if (await roll.isVisible()) await roll.click();
           return page.locator("svg circle[stroke-dasharray]").count();
         },
-        { timeout: 45_000 },
+        { timeout: 60_000, intervals: [500, 1000] },
       )
       .toBeGreaterThan(0);
-    expect(await tapMove(page)).toBe(true);
+    // the highlighted checkers are ours only while it is our turn: retry the tap once if the board moved on
+    if (!(await tapMove(page))) expect(await tapMove(page)).toBe(true);
     expect(await checkerCount(page)).toBe(30);
   }
 });
@@ -194,6 +195,8 @@ test("settings sections fold; keyboard plays the main buttons; the local name is
   await page.getByRole("button", { name: "1 s" }).click();
   await expect(page.getByRole("button", { name: "1 s" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("switch", { name: /Automatisch würfeln/ }).click();
+  // the turn must stay open after one move (a chained target can use both dice)
+  await page.getByRole("switch", { name: /Zug automatisch beenden/ }).click();
   await page.getByRole("button", { name: "Einstellungen", exact: true }).click();
   await expect(page.getByRole("button", { name: /^Spielablauf.*Automatisch würfeln: aus/ })).toBeVisible();
   await page.goBack();
@@ -213,10 +216,15 @@ test("settings sections fold; keyboard plays the main buttons; the local name is
   // one move, U takes it back
   await expect(page.locator("svg circle[stroke-dasharray]").first()).toBeVisible();
   const before = await page.locator("svg [aria-label^='Punkt']").allInnerTexts();
-  await tapMove(page);
+  expect(await tapMove(page)).toBe(true);
   await expect(page.getByRole("button", { name: /Rückgängig/ })).toBeEnabled();
-  await page.locator("body").press("u");
-  await expect(page.getByRole("button", { name: /Rückgängig/ })).toBeDisabled();
+  // a chained target is two single moves: U takes back one at a time
+  const undo = page.getByRole("button", { name: /Rückgängig/ });
+  for (let i = 0; i < 4 && (await undo.isEnabled()); i++) {
+    await page.locator("body").press("u");
+    await page.waitForTimeout(200);
+  }
+  await expect(undo).toBeDisabled();
   expect(before.length).toBeGreaterThan(0);
 
   await page.getByRole("button", { name: /Menü/ }).first().click();

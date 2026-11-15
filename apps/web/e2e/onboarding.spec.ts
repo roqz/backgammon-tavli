@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { onlineGuest, SERVER_URL } from "./helpers";
+import { closeContexts, onlineGuest, SERVER_URL, track } from "./helpers";
+
+test.afterEach(closeContexts);
 
 /** A browser that has never been here: no settings, no welcome seen. */
 const fresh = { storageState: { cookies: [], origins: [] } };
@@ -7,7 +9,7 @@ const fresh = { storageState: { cookies: [], origins: [] } };
 test("first start: welcome, language, then straight into the tutorial; not shown again", async ({
   browser,
 }) => {
-  const page = await (await browser.newContext(fresh)).newPage();
+  const page = await track(await browser.newContext(fresh)).newPage();
   await page.goto("/");
   const welcome = page.getByRole("dialog", { name: /Willkommen|Welcome/ });
   await expect(welcome).toBeVisible();
@@ -30,7 +32,7 @@ test("an invitation link creates the profile, an account and the friendship in o
   const code = (await ada.getByTestId("invite-code").textContent()) ?? "";
   expect(code).toMatch(/^[2-9A-HJ-NP-Z]{8}$/);
 
-  const page = await (await browser.newContext(fresh)).newPage();
+  const page = await track(await browser.newContext(fresh)).newPage();
   await page.addInitScript(
     (server) =>
       localStorage.setItem("tavli.online", JSON.stringify({ state: { serverUrl: server }, version: 1 })),

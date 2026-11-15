@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { E2E_ADMIN_TOKEN } from "../playwright.config";
-import { nav, onlineGuest, SERVER_URL } from "./helpers";
+import { closeContexts, nav, onlineGuest, SERVER_URL } from "./helpers";
+
+test.afterEach(closeContexts);
 
 test("support page: link and costs, a code makes the profile a supporter with the patron looks", async ({
   browser,

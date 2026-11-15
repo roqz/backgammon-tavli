@@ -1,4 +1,4 @@
-import type { Browser, Page } from "@playwright/test";
+import type { Browser, BrowserContext, Page } from "@playwright/test";
 
 export const SERVER_URL = "http://127.0.0.1:2580";
 
@@ -77,15 +77,29 @@ export const openAccount = async (page: Page) => {
   await page.getByRole("button", { name: /Konto & Daten/ }).click();
 };
 
+/**
+ * Browser contexts a test opens itself (the browser fixture outlives the test). Closed after each
+ * test: open pages keep their WebSocket, and the server allows only 20 per network.
+ */
+const opened: BrowserContext[] = [];
+export const track = <T extends BrowserContext>(ctx: T): T => {
+  opened.push(ctx);
+  return ctx;
+};
+export const closeContexts = async () => {
+  await Promise.all(opened.splice(0).map((c) => c.close().catch(() => {})));
+};
+
 /** New browser context with a guest profile on the online screen. */
 export const onlineGuest = async (browser: Browser, name: string): Promise<Page> => {
-  const ctx = await browser.newContext({ locale: "de-DE" });
+  const ctx = track(await browser.newContext({ locale: "de-DE" }));
   const page = await ctx.newPage();
   await prepare(page);
   await page.goto("/");
   await nav(page, "Online");
   await page.getByLabel("Dein Spielername").fill(name);
   await page.getByRole("button", { name: "Profil anlegen" }).click();
-  await page.getByText("Verbunden").waitFor();
+  // fails fast with the page in the trace (e.g. a rate limit) instead of waiting for the test timeout
+  await page.getByText("Verbunden").waitFor({ timeout: 20_000 });
   return page;
 };
