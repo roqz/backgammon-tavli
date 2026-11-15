@@ -1,5 +1,6 @@
 import type { ProfileResponse } from "@tavli/protocol";
 import { type ReactNode, useEffect, useState } from "react";
+import { tokens, useCareer, weekId } from "../career";
 import { BoardPreview } from "../components/Setup";
 import { variantShortName } from "../components/VariantPicker";
 import { useT } from "../i18n";
@@ -47,8 +48,10 @@ export function HomeScreen({
   onOnline,
   onCorr,
   onPuzzle,
+  onShowcase,
 }: {
   todo: Todo | null;
+  onShowcase: () => void;
   onResume: () => void;
   /** Opens the setup of a new game. */
   onSetup: (mode: PlayMode) => void;
@@ -207,6 +210,7 @@ export function HomeScreen({
             )}
           </section>
         )}
+        <WeekLine onClick={onShowcase} />
         {!online && <p className="text-center text-xs text-stone-500">📴 {t.offlineHint}</p>}
       </nav>
 
@@ -218,6 +222,36 @@ export function HomeScreen({
         />
       </div>
     </div>
+  );
+}
+
+/** This week's tasks in one line (opens the showcase). */
+function WeekLine({ onClick }: { onClick: () => void }) {
+  const t = useT();
+  const done = useCareer((s) => s.weeks[weekId()]?.length ?? 0);
+  const balance = useCareer((s) => tokens(s));
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-left text-sm text-stone-300 hover:bg-stone-900/70 focus-visible:outline-2 focus-visible:outline-amber-400"
+    >
+      <span aria-hidden className="flex gap-1.5">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={`h-2.5 w-2.5 rotate-45 ${i < done ? "bg-amber-500" : "border border-stone-600"}`}
+          />
+        ))}
+      </span>
+      <span className="flex-1">
+        {t.weeklyTitle} · {done}/3
+      </span>
+      <span className="text-xs text-stone-400">{t.tokens.replace("{n}", String(balance))}</span>
+      <span aria-hidden className="text-stone-500">
+        ›
+      </span>
+    </button>
   );
 }
 
@@ -436,6 +470,7 @@ export function SetupScreen({
 
 export function ProfileScreen({
   onStats,
+  onShowcase,
   onSettings,
   onDesigns,
   onRanking,
@@ -443,6 +478,7 @@ export function ProfileScreen({
   onLegal,
 }: {
   onStats: () => void;
+  onShowcase: () => void;
   onSettings: () => void;
   onDesigns: () => void;
   onRanking: () => void;
@@ -503,6 +539,12 @@ export function ProfileScreen({
         </section>
         <div className="flex flex-col gap-6">
           <ListGroup>
+            <ListRow
+              icon={<Glyph d={GLYPH.trophy} className="h-5 w-5" />}
+              label={t.showcase}
+              detail={t.showcaseSub}
+              onClick={onShowcase}
+            />
             <ListRow
               icon={<Glyph d={GLYPH.stats} className="h-5 w-5" />}
               label={t.statsAndAchievements}

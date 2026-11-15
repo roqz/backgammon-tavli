@@ -7,6 +7,10 @@ const CLASSIC_FELT = feltTexture("#1f4d36");
 const OLIVE_WOOD = woodTexture({ dark: "#463a20", mid: "#6e6038", light: "#988a5e" }, 640, 220, 19);
 const OLIVE_FELT = feltTexture("#4d5a2c", 384, 624, 5);
 const TOURNAMENT_FELT = feltTexture("#1f6b3a", 384, 624, 9);
+const INLAY_WOOD = woodTexture({ dark: "#2a1810", mid: "#4a2c1a", light: "#6d4428" }, 640, 220, 23);
+const INLAY_FELT = woodTexture({ dark: "#5a3b22", mid: "#7a5232", light: "#94683f" }, 640, 220, 29);
+const WINTER_WOOD = woodTexture({ dark: "#2b3036", mid: "#454c55", light: "#626b76" }, 640, 220, 31);
+const WINTER_FELT = feltTexture("#1c2a3a", 384, 624, 13);
 
 /** A wood tile repeated over the frame. */
 const woodPattern = (id: string, href: string) => (
@@ -28,7 +32,16 @@ const feltPattern = (id: string, href: string) => (
   </pattern>
 );
 
-export type BoardStyle = "classic" | "modern" | "marble" | "night" | "tournament" | "olive" | "contrast";
+export type BoardStyle =
+  | "classic"
+  | "modern"
+  | "marble"
+  | "night"
+  | "tournament"
+  | "olive"
+  | "contrast"
+  | "inlay"
+  | "winter";
 
 /** Order in the settings. */
 export const BOARD_STYLES: readonly BoardStyle[] = [
@@ -38,6 +51,8 @@ export const BOARD_STYLES: readonly BoardStyle[] = [
   "night",
   "tournament",
   "olive",
+  "inlay",
+  "winter",
   "contrast",
 ];
 
@@ -264,6 +279,66 @@ export const THEMES: Record<BoardStyle, BoardTheme> = {
     ],
     die: { fill: "#f7f1de", pip: "#2f3a17", edge: "#a99d74" },
     cube: { fill: "#ece3c4", text: "#2f3a17" },
+  },
+  /** Intarsia: walnut frame, a field of inlaid wood, maple and rosewood points (all gold plaques). */
+  inlay: {
+    id: "inlay",
+    defs: (
+      <>
+        {woodPattern("in-grain", INLAY_WOOD)}
+        {woodPattern("in-field", INLAY_FELT)}
+        <linearGradient id="in-pointA" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f0dcb4" />
+          <stop offset="1" stopColor="#d6b98a" />
+        </linearGradient>
+        <linearGradient id="in-pointB" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#5b2a1a" />
+          <stop offset="1" stopColor="#3d1a10" />
+        </linearGradient>
+        {shadow(0.45)}
+      </>
+    ),
+    frame: "url(#in-grain)",
+    felt: "url(#in-field)",
+    bar: "url(#in-grain)",
+    tray: "#24150d",
+    pointA: "url(#in-pointA)",
+    pointB: "url(#in-pointB)",
+    label: "#f0dcb4",
+    highlight: "#ffd54a",
+    selected: "#7fd3ff",
+    checkers: [
+      { fill: "#f6ecd6", edge: "#b39b6c", ring: "#d9c49a" },
+      { fill: "#2a1a12", edge: "#0f0805", ring: "#6b4a34" },
+    ],
+    die: { fill: "#f6ecd6", pip: "#3d1a10", edge: "#b39b6c" },
+    cube: { fill: "#f0dcb4", text: "#3d1a10" },
+  },
+  /** Winter season: slate frame, night-blue felt, ice and frost points. */
+  winter: {
+    id: "winter",
+    defs: (
+      <>
+        {woodPattern("wi-grain", WINTER_WOOD)}
+        {feltPattern("wi-felt", WINTER_FELT)}
+        {shadow(0.4)}
+      </>
+    ),
+    frame: "url(#wi-grain)",
+    felt: "url(#wi-felt)",
+    bar: "url(#wi-grain)",
+    tray: "#161d26",
+    pointA: "#e6eef5",
+    pointB: "#6f8fae",
+    label: "#d7e3ee",
+    highlight: "#ffd54a",
+    selected: "#f472b6",
+    checkers: [
+      { fill: "#f7fafc", edge: "#9fb3c6", ring: "#cfdbe6" },
+      { fill: "#24384d", edge: "#0e1823", ring: "#5b7894" },
+    ],
+    die: { fill: "#f7fafc", pip: "#24384d", edge: "#9fb3c6" },
+    cube: { fill: "#e6eef5", text: "#24384d" },
   },
   /**
    * High contrast for low vision and colour blindness: black board, white and yellow points,

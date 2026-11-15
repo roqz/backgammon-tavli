@@ -114,6 +114,11 @@ function PrivacyDe() {
           Wiederholungen;
         </li>
         <li>Turnieranmeldungen und -ergebnisse;</li>
+        <li>
+          deinen Spielfortschritt: Erfolge, Tutorial, Tagesrätsel, Zähler (Spiele, Siege je Variante, beendete
+          Fernpartien), erledigte Wochenaufgaben, eingetauschte Looks und die IDs der Freunde, die du
+          herausgefordert hast – damit er auf allen Geräten gleich ist. Dein Clubrang ist für andere sichtbar;
+        </li>
         <li>Meldungen, die du abgibst oder die über dich abgegeben werden, und Moderationsentscheidungen.</li>
       </ul>
       <p>
@@ -194,6 +199,11 @@ function PrivacyEn() {
           ratings and the archive of your matches (moves, dice, results) for ranking, profile and replays;
         </li>
         <li>tournament entries and results;</li>
+        <li>
+          your progress: achievements, tutorial, daily puzzles, counters (games, wins per variant, finished
+          correspondence games), weekly tasks done, looks taken for tokens and the ids of friends you
+          challenged – so it is the same on all devices. Your club rank is visible to others;
+        </li>
         <li>reports you file or that are filed about you, and moderation decisions.</li>
       </ul>
       <p>

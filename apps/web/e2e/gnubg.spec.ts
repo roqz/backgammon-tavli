@@ -78,6 +78,6 @@ test("achievements sync with the profile; an unlocked frame can be chosen", asyn
   // the frame is accepted by the server only once the progress was synced
   await expect(async () => {
     await page.getByRole("button", { name: /Doktorhut/ }).click();
-    await expect(page.getByRole("button", { name: /Doktorhut/ })).toHaveClass(/bg-amber-500/);
+    await expect(page.getByRole("button", { name: /Doktorhut/ })).toHaveClass(/bg-felt-500/);
   }).toPass({ timeout: 15_000 });
 });

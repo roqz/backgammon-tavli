@@ -1,7 +1,9 @@
 import type { ProfileResponse } from "@tavli/protocol";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { ACHIEVEMENTS, reached, useAchievements } from "../achievements";
+import { useShallow } from "zustand/react/shallow";
+import { describeUnlock, reached, useAchievements } from "../achievements";
+import { plaqueIds, seasonIds, taskProgress, tasksFor, useCareer, weekId, weekRange } from "../career";
 import { useT } from "../i18n";
 import { fetchProfile, syncProgress } from "../online/client";
 import { useOnline } from "../online/store";
@@ -33,9 +35,26 @@ export function AchievementLayer() {
       .catch(() => {});
   }, [profileId, status, matchEnded]);
 
+  // lasting counters first (they outlive the archive), then everything that depends on them
   useEffect(() => {
-    useAchievements.getState().unlock(
-      reached({
+    useCareer.getState().count(records);
+  }, [records]);
+  const career = useCareer(
+    useShallow((s) => ({
+      games: s.games,
+      wins: s.wins,
+      winsBy: s.winsBy,
+      corrFinished: s.corrFinished,
+      leagueGames: s.leagueGames,
+      challenged: s.challenged,
+      weeks: s.weeks,
+      owned: s.owned,
+    })),
+  );
+
+  useEffect(() => {
+    useAchievements.getState().unlock([
+      ...reached({
         records,
         puzzles,
         lessonsSolved: lessons.length,
@@ -43,9 +62,19 @@ export function AchievementLayer() {
         profile,
         tournaments: Object.values(tournaments),
         me: profileId,
+        career,
       }),
-    );
-  }, [records, puzzles, lessons, profile, tournaments, profileId]);
+      ...plaqueIds(career),
+      ...seasonIds(records),
+    ]);
+    // this week's tasks
+    const week = weekId();
+    const range = weekRange();
+    const done = tasksFor(week)
+      .map((task, i) => (taskProgress(task, records, puzzles, range)[0] >= task.target ? i : -1))
+      .filter((i) => i >= 0);
+    if (done.length) useCareer.getState().markTasks(week, done);
+  }, [records, puzzles, lessons, profile, tournaments, profileId, career]);
 
   // keep achievements, lessons and puzzle results with the profile (all devices)
   const unlocked = useAchievements((s) => s.unlocked);
@@ -58,15 +87,16 @@ export function AchievementLayer() {
           { solved: r.solved, loss: Number.isFinite(r.loss) ? r.loss : null },
         ]),
       );
-      syncProgress({ unlocked, lessons, puzzles: puzzleResults })
+      syncProgress({ unlocked, lessons, puzzles: puzzleResults, career })
         .then((merged) => {
           useAchievements.getState().absorb(merged.unlocked, merged.lessons);
           usePuzzles.getState().absorb(merged.puzzles);
+          if (merged.career) useCareer.getState().absorb(merged.career);
         })
         .catch(() => {});
     }, 1500);
     return () => clearTimeout(id);
-  }, [profileId, status, unlocked, lessons, puzzles]);
+  }, [profileId, status, unlocked, lessons, puzzles, career]);
 
   return <AchievementToast />;
 }
@@ -76,17 +106,19 @@ function AchievementToast() {
   const lang = useSettings((s) => s.lang);
   const fresh = useAchievements((s) => s.fresh[0] ?? null);
   const dismiss = useAchievements((s) => s.dismiss);
-  const a = useMemo(() => ACHIEVEMENTS.find((x) => x.id === fresh), [fresh]);
+  const a = useMemo(() => (fresh ? describeUnlock(fresh, t, lang) : null), [fresh, t, lang]);
   useEffect(() => {
     if (!fresh) return;
+    // nothing to show for it: on to the next one
+    if (!a) return dismiss();
     const id = setTimeout(dismiss, 4000);
     return () => clearTimeout(id);
-  }, [fresh, dismiss]);
+  }, [fresh, dismiss, a]);
   return (
     <AnimatePresence>
-      {a && (
+      {a && fresh && (
         <motion.button
-          key={a.id}
+          key={fresh}
           type="button"
           role="status"
           onClick={dismiss}
@@ -102,7 +134,7 @@ function AchievementToast() {
             <span className="block text-xs uppercase tracking-wider text-amber-300">
               {t.achievementUnlocked}
             </span>
-            <span className="block font-semibold text-stone-100">{a.title[lang]}</span>
+            <span className="block font-semibold text-stone-100">{a.title}</span>
           </span>
         </motion.button>
       )}

@@ -1,4 +1,4 @@
-import type { GameResult, TurnRecord, VariantId } from "@tavli/engine";
+import type { GameResult, Player, TurnRecord, VariantId } from "@tavli/engine";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { PlayerInfo } from "./game";
@@ -14,6 +14,8 @@ export interface GameRecord {
   readonly matchLength: number;
   readonly result: GameResult;
   readonly history: readonly TurnRecord[];
+  /** Set on the game that decided a match: its winner and how far each seat was behind at worst. */
+  readonly matchEnd?: { readonly winner: Player; readonly maxDeficit: readonly [number, number] };
 }
 
 const MAX_RECORDS = 200;

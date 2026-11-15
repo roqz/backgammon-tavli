@@ -1,5 +1,6 @@
 import type { CorrView } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { useCareer } from "../career";
 import { fetchCorrGames, fetchFriends } from "./client";
 import { useOnline } from "./store";
 
@@ -47,6 +48,11 @@ export function useTodo(): Todo | null {
       };
       setTodo(next);
       setBadge(todoCount(next));
+      // finished correspondence and league games count for the career (achievements, rank)
+      if (games) {
+        const finished = games.filter((g) => g.status === "finished" && g.seat !== null);
+        useCareer.getState().setCorr(finished.length, finished.filter((g) => g.league).length);
+      }
     };
     void load();
     const id = setInterval(() => void load(), REFRESH_MS);

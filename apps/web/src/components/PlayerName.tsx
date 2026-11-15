@@ -6,14 +6,33 @@ import { FRAME_LOOK } from "../rewards";
 export function PlayerName({
   name,
   frame,
+  rank = 0,
   className = "",
 }: {
   name: string;
   frame?: Frame | null;
+  /** Club rank: from 1 (regular) on a small brass mark after the name. */
+  rank?: number;
   className?: string;
 }) {
   const t = useT();
-  if (!frame) return <span className={className}>{name}</span>;
+  const badge = rank > 0 && (
+    <span
+      className="ml-1 inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-sm border border-brass/60 px-0.5 font-display text-[10px] leading-none text-brass"
+      title={t.clubRanks[rank]}
+      role="img"
+      aria-label={`${t.clubRankTitle}: ${t.clubRanks[rank]}`}
+    >
+      {RANK_MARK[rank]}
+    </span>
+  );
+  if (!frame)
+    return (
+      <span className={`inline-flex min-w-0 items-center ${className}`}>
+        <span className="truncate">{name}</span>
+        {badge}
+      </span>
+    );
   const look = FRAME_LOOK[frame];
   return (
     <span className={`inline-flex min-w-0 items-center gap-1 ${className}`}>
@@ -26,6 +45,10 @@ export function PlayerName({
         {look.icon}
       </span>
       <span className="truncate">{name}</span>
+      {badge}
     </span>
   );
 }
+
+/** Marks of the club ranks (0 = guest has none). */
+const RANK_MARK = ["", "I", "II", "III", "★"];

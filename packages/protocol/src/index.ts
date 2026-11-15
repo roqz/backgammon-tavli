@@ -191,6 +191,8 @@ export interface PublicPlayer {
   readonly rating: number;
   /** Avatar frame the player chose (unlocked by an achievement). */
   readonly frame?: Frame | null;
+  /** Club rank (0 = guest, see CLUB_RANKS). */
+  readonly rank?: number;
 }
 
 // ---- progress and rewards ----------------------------------------------------------------------
@@ -202,15 +204,112 @@ export const FRAMES = {
   flame: "puzzle-week",
   star: "puzzle-month",
   scholar: "tutorial",
+  post: "corr-ten",
+  handshake: "friends-five",
+  shield: "league-win",
 } as const;
 export type Frame = keyof typeof FRAMES;
 export const FRAME_IDS = Object.keys(FRAMES) as Frame[];
+
+/** Variants with their own counters (a Tavli match is played as Portes, Plakoto and Fevga). */
+export const CAREER_VARIANTS = [
+  "backgammon",
+  "portes",
+  "plakoto",
+  "fevga",
+  "tavla",
+  "narde",
+  "hypergammon",
+] as const;
+export type CareerVariant = (typeof CAREER_VARIANTS)[number];
+
+const counter = z.number().int().min(0).max(1_000_000);
+
+/**
+ * Lasting counters that outlive the local game archive (which keeps only the latest games),
+ * weekly tasks done and items taken in exchange for tokens. See docs/GAMIFICATION.md.
+ */
+export const CareerSchema = z.object({
+  games: counter,
+  wins: counter,
+  winsBy: z.partialRecord(z.enum(CAREER_VARIANTS), counter),
+  corrFinished: counter,
+  leagueGames: counter,
+  /** Friends challenged or invited (ids), up to 50. */
+  challenged: z.array(z.string().max(64)).max(50),
+  /** ISO week ("2026-W46") → indexes of the weekly tasks done. */
+  weeks: z
+    .record(z.string().regex(/^\d{4}-W\d{2}$/), z.array(z.number().int().min(0).max(2)).max(3))
+    .refine((r) => Object.keys(r).length <= 160),
+  /** Shop items taken in exchange for tokens. */
+  owned: z.array(z.string().regex(/^[a-z0-9-]{1,40}$/)).max(80),
+});
+export type Career = z.infer<typeof CareerSchema>;
+
+export const EMPTY_CAREER: Career = {
+  games: 0,
+  wins: 0,
+  winsBy: {},
+  corrFinished: 0,
+  leagueGames: 0,
+  challenged: [],
+  weeks: {},
+  owned: [],
+};
+
+/** Two devices' careers together: counters take the higher value, lists are united. */
+export const mergeCareer = (a: Career, b: Career): Career => {
+  const winsBy: Career["winsBy"] = { ...a.winsBy };
+  for (const [v, n] of Object.entries(b.winsBy) as [CareerVariant, number][])
+    winsBy[v] = Math.max(winsBy[v] ?? 0, n);
+  const weeks: Career["weeks"] = { ...a.weeks };
+  for (const [w, done] of Object.entries(b.weeks))
+    weeks[w] = [...new Set([...(weeks[w] ?? []), ...done])].sort((x, y) => x - y);
+  // keep about three years of weeks
+  for (const w of Object.keys(weeks).sort().reverse().slice(156)) delete weeks[w];
+  return {
+    games: Math.max(a.games, b.games),
+    wins: Math.max(a.wins, b.wins),
+    winsBy,
+    corrFinished: Math.max(a.corrFinished, b.corrFinished),
+    leagueGames: Math.max(a.leagueGames, b.leagueGames),
+    challenged: [...new Set([...a.challenged, ...b.challenged])].slice(0, 50),
+    weeks,
+    owned: [...new Set([...a.owned, ...b.owned])].slice(0, 80),
+  };
+};
+
+/** Club ranks by activity points; index = rank. */
+export const CLUB_RANKS = [0, 30, 120, 350, 900] as const;
+
+/**
+ * Activity points: every game, win, solved puzzle and lesson counts one; a finished
+ * correspondence game two; a weekly task three.
+ */
+export const clubPoints = (p: {
+  career?: Career;
+  lessons: readonly number[];
+  puzzles: Record<string, { solved: boolean }>;
+}): number => {
+  const c = p.career ?? EMPTY_CAREER;
+  const tasks = Object.values(c.weeks).reduce((s, d) => s + d.length, 0);
+  const puzzles = Object.values(p.puzzles).filter((r) => r.solved).length;
+  return c.games + c.wins + puzzles + p.lessons.length + 2 * c.corrFinished + 3 * tasks;
+};
+
+export const clubRank = (points: number): number => {
+  let rank = 0;
+  CLUB_RANKS.forEach((min, i) => {
+    if (points >= min) rank = i;
+  });
+  return rank;
+};
 
 /** Achievements, tutorial lessons and puzzle results, kept with the profile for all devices. */
 export const ProgressSchema = z.object({
   unlocked: z
     .record(z.string().regex(/^[a-z0-9-]{1,40}$/), z.string().max(40))
-    .refine((r) => Object.keys(r).length <= 200),
+    .refine((r) => Object.keys(r).length <= 300),
   lessons: z.array(z.number().int().min(0).max(100)).max(100),
   puzzles: z
     .record(
@@ -218,6 +317,7 @@ export const ProgressSchema = z.object({
       z.object({ solved: z.boolean(), loss: z.number().nullable() }),
     )
     .refine((r) => Object.keys(r).length <= 800),
+  career: CareerSchema.optional(),
 });
 export type Progress = z.infer<typeof ProgressSchema>;
 
@@ -237,6 +337,7 @@ export interface FriendView {
   readonly id: string;
   readonly name: string;
   readonly frame?: Frame | null;
+  readonly rank?: number;
   /** accepted: friends · incoming: they asked you · outgoing: you asked them */
   readonly status: "accepted" | "incoming" | "outgoing";
   /** Only for accepted friends. */
@@ -598,6 +699,7 @@ export interface LeaderboardEntry extends RatingEntry {
   readonly playerId: string;
   readonly name: string;
   readonly frame?: Frame | null;
+  readonly rank?: number;
 }
 
 export interface MatchSummary {

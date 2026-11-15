@@ -1,8 +1,10 @@
-import type { ProfileResponse, TournamentView } from "@tavli/protocol";
+import type { MatchVariant } from "@tavli/engine";
+import type { Career, CareerVariant, ProfileResponse, TournamentView } from "@tavli/protocol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { humanSeat } from "./bot/useBotDriver";
-import type { Lang } from "./i18n";
+import { variantShortName } from "./components/VariantPicker";
+import type { Dict, Lang } from "./i18n";
 import { PUZZLE_VARIANTS, streak } from "./puzzle";
 import type { GameRecord } from "./store/archive";
 
@@ -15,6 +17,8 @@ export interface AchievementContext {
   readonly profile: ProfileResponse | null;
   readonly tournaments: readonly TournamentView[];
   readonly me: string | null;
+  /** Lasting counters (career.ts). */
+  readonly career: Career;
 }
 
 interface Achievement {
@@ -37,6 +41,20 @@ const vsBotWins = (c: AchievementContext, level?: string) =>
   wins(c).filter((r) => r.players.some((p) => p.kind === "bot" && (!level || p.level === level)));
 
 const count = (n: number, target: number) => [Math.min(n, target), target] as const;
+
+const careerWins = (c: AchievementContext, ...variants: CareerVariant[]) =>
+  variants.reduce((s, v) => s + (c.career.winsBy[v] ?? 0), 0);
+
+/** Won games with something special about them. */
+const wonWith = (c: AchievementContext, test: (r: GameRecord, seat: 0 | 1) => boolean) =>
+  c.records.some((r) => {
+    const seat = humanSeat(r.players);
+    return seat !== null && r.result.winner === seat && test(r, seat);
+  });
+
+const doubleSixes = (r: GameRecord, seat: 0 | 1) =>
+  r.history.filter((t) => t.kind === "move" && t.player === seat && t.dice[0] === 6 && t.dice[1] === 6)
+    .length;
 const flag = (ok: boolean) => [ok ? 1 : 0, 1] as const;
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
@@ -158,6 +176,114 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     text: { de: "Gewinne eine Club-Liga.", en: "Win a club league." },
     progress: (c) => count(c.profile?.leaguesWon ?? 0, 1),
   },
+  // ---- checker sets: wins per variant (career counters, beyond the archive) ----
+  {
+    id: "set-pearl",
+    icon: "⚪",
+    title: { de: "Perlmutt-Steine", en: "Mother-of-pearl checkers" },
+    text: { de: "Gewinne 10 Spiele Backgammon.", en: "Win 10 games of backgammon." },
+    progress: (c) => count(careerWins(c, "backgammon"), 10),
+  },
+  {
+    id: "set-wood",
+    icon: "🪵",
+    title: { de: "Olivenholz-Steine", en: "Olive wood checkers" },
+    text: { de: "Gewinne 10 Spiele Plakoto.", en: "Win 10 games of plakoto." },
+    progress: (c) => count(careerWins(c, "plakoto"), 10),
+  },
+  {
+    id: "set-onyx",
+    icon: "⚫",
+    title: { de: "Onyx & Alabaster", en: "Onyx & alabaster" },
+    text: { de: "Gewinne 10 Spiele Fevga.", en: "Win 10 games of fevga." },
+    progress: (c) => count(careerWins(c, "fevga"), 10),
+  },
+  {
+    id: "set-brass",
+    icon: "🟡",
+    title: { de: "Messing-Steine", en: "Brass checkers" },
+    text: { de: "Gewinne 10 Spiele Portes oder Tavla.", en: "Win 10 games of portes or tavla." },
+    progress: (c) => count(careerWins(c, "portes", "tavla"), 10),
+  },
+  {
+    id: "set-bone",
+    icon: "🦴",
+    title: { de: "Bein & Ebenholz", en: "Bone & ebony" },
+    text: { de: "Gewinne 10 Spiele Narde oder Hypergammon.", en: "Win 10 games of narde or hypergammon." },
+    progress: (c) => count(careerWins(c, "narde", "hypergammon"), 10),
+  },
+  // ---- special moments ----
+  {
+    id: "comeback",
+    icon: "🔄",
+    title: { de: "Comeback", en: "Comeback" },
+    text: {
+      de: "Gewinne ein Match, in dem du mit 4 Punkten zurücklagst.",
+      en: "Win a match in which you were 4 points behind.",
+    },
+    progress: (c) =>
+      flag(
+        c.records.some((r) => {
+          const seat = humanSeat(r.players);
+          return seat !== null && r.matchEnd?.winner === seat && r.matchEnd.maxDeficit[seat] >= 4;
+        }),
+      ),
+  },
+  {
+    id: "double-sixes",
+    icon: "🎲",
+    title: { de: "Sechser-Regen", en: "Raining sixes" },
+    text: {
+      de: "Würfle in einem gewonnenen Spiel dreimal 6-6.",
+      en: "Roll 6-6 three times in a game you win.",
+    },
+    progress: (c) => flag(wonWith(c, (r, seat) => doubleSixes(r, seat) >= 3)),
+  },
+  {
+    id: "mana",
+    icon: "📌",
+    title: { de: "Mutter eingeklemmt", en: "Mother pinned" },
+    text: {
+      de: "Gewinne Plakoto, indem du den letzten Startstein des Gegners einklemmst.",
+      en: "Win plakoto by pinning the opponent's last starting checker.",
+    },
+    progress: (c) => flag(wonWith(c, (r) => r.result.reason === "mana")),
+  },
+  {
+    id: "cube-eight",
+    icon: "🎯",
+    title: { de: "Hoch gepokert", en: "High stakes" },
+    text: {
+      de: "Gewinne ein Spiel mit dem Verdopplungswürfel auf 8 oder höher.",
+      en: "Win a game with the cube on 8 or higher.",
+    },
+    progress: (c) => flag(wonWith(c, (r) => r.result.cube >= 8)),
+  },
+  // ---- online (frames and the league dice) ----
+  {
+    id: "corr-ten",
+    icon: "✉️",
+    title: { de: "Briefpartner", en: "Pen pal" },
+    text: { de: "Spiele 10 Fernpartien zu Ende.", en: "Finish 10 correspondence games." },
+    progress: (c) => count(c.career.corrFinished, 10),
+  },
+  {
+    id: "friends-five",
+    icon: "🤝",
+    title: { de: "Gesellig", en: "Sociable" },
+    text: {
+      de: "Fordere 5 verschiedene Freunde heraus (live oder als Fernpartie).",
+      en: "Challenge 5 different friends (live or by correspondence).",
+    },
+    progress: (c) => count(c.career.challenged.length, 5),
+  },
+  {
+    id: "league-player",
+    icon: "🏟️",
+    title: { de: "Ligaspieler", en: "League player" },
+    text: { de: "Spiele eine Ligapartie zu Ende.", en: "Finish a league game." },
+    progress: (c) => count(c.career.leagueGames, 1),
+  },
   {
     id: "analyst",
     icon: "🔍",
@@ -224,3 +350,30 @@ export const reached = (c: AchievementContext): string[] =>
     const [n, target] = a.progress(c);
     return target > 0 && n >= target;
   }).map((a) => a.id);
+
+/** Icon and title of anything that can be unlocked (achievements, plaques, seasons), for the toast. */
+export const describeUnlock = (id: string, t: Dict, lang: Lang): { icon: string; title: string } | null => {
+  const a = ACHIEVEMENTS.find((x) => x.id === id);
+  if (a) return { icon: a.icon, title: a.title[lang] };
+  const plaque = /^master-([a-z]+)-([123])$/.exec(id);
+  if (plaque) {
+    const tier = Number(plaque[2]) - 1;
+    return {
+      icon: ["🥉", "🥈", "🥇"][tier]!,
+      title: t.plaqueTitle
+        .replace("{tier}", t.plaqueTiers[tier]!)
+        .replace("{variant}", variantShortName(plaque[1] as MatchVariant)),
+    };
+  }
+  if (id === "master-all") return { icon: "🏛️", title: t.masterAll };
+  const season = /^season-winter-(\d{4})$/.exec(id);
+  if (season)
+    return {
+      icon: "❄️",
+      title: t.seasonWinter.replace(
+        "{year}",
+        `${season[1]}/${String((Number(season[1]) + 1) % 100).padStart(2, "0")}`,
+      ),
+    };
+  return null;
+};

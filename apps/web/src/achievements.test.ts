@@ -1,3 +1,4 @@
+import { EMPTY_CAREER } from "@tavli/protocol";
 import { describe, expect, it } from "vitest";
 import { type AchievementContext, reached } from "./achievements";
 import type { GameRecord } from "./store/archive";
@@ -28,6 +29,7 @@ const base: AchievementContext = {
   profile: null,
   tournaments: [],
   me: null,
+  career: EMPTY_CAREER,
 };
 
 describe("achievements", () => {

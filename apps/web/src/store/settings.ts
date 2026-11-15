@@ -3,7 +3,7 @@ import type { MatchVariant } from "@tavli/engine";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { BoardStyle } from "../board/themes";
-import type { DiceSkin } from "../rewards";
+import type { CheckerSet, DiceSkin } from "../rewards";
 
 export interface Settings {
   style: BoardStyle;
@@ -36,6 +36,8 @@ export interface Settings {
   showEmotes: boolean;
   /** Dice look (rewards unlock more). */
   diceSkin: DiceSkin;
+  /** Checker set over the board style ("theme" = the style's own checkers). */
+  checkerSet: CheckerSet;
   /** Confetti after a won game (a reward). */
   fireworks: boolean;
   /** Dice sound: plain or rattling in a cup (a reward). */
@@ -78,6 +80,7 @@ export const useSettings = create<SettingsStore>()(
       gameOrientation: "auto",
       showEmotes: true,
       diceSkin: "theme",
+      checkerSet: "theme",
       fireworks: true,
       diceSound: "classic",
       playMode: "bot",

@@ -1,6 +1,7 @@
 import { FRAME_IDS, FRAMES } from "@tavli/protocol";
 import { ACHIEVEMENTS, useAchievements } from "../achievements";
 import type { THEMES } from "../board/themes";
+import { currentCareer } from "../career";
 import { Card } from "../components/ui";
 import { useT } from "../i18n";
 import { useOnline } from "../online/store";
@@ -47,6 +48,7 @@ export function AchievementsPanel() {
     profile: null,
     tournaments: Object.values(tournaments),
     me,
+    career: currentCareer(),
   };
   const done = ACHIEVEMENTS.filter((a) => unlocked[a.id]).length;
   return (

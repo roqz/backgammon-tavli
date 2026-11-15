@@ -137,12 +137,25 @@ const archiveIfFinished = (
 ) => {
   const result = after.game.result;
   if (!result || before.game.result) return;
+  let matchEnd: { winner: Player; maxDeficit: [number, number] } | undefined;
+  if (after.winner !== null) {
+    // the running score after every game, and how far each side was behind at worst
+    const score = [0, 0];
+    const maxDeficit: [number, number] = [0, 0];
+    for (const r of after.results) {
+      score[r.winner] = (score[r.winner] ?? 0) + r.points;
+      maxDeficit[0] = Math.max(maxDeficit[0], score[1]! - score[0]!);
+      maxDeficit[1] = Math.max(maxDeficit[1], score[0]! - score[1]!);
+    }
+    matchEnd = { winner: after.winner, maxDeficit };
+  }
   useArchive.getState().add({
     variant: after.game.variant,
     players,
     matchLength: after.config.length,
     result,
     history: after.game.history,
+    ...(matchEnd ? { matchEnd } : {}),
   });
 };
 

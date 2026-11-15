@@ -1,0 +1,183 @@
+# Gamification: Erfolge, Vitrine und Freischaltbares
+
+Alles hier ist **kosmetisch**: Es verändert weder Regeln noch Wertung, und das Basisspiel bleibt
+vollständig frei. Fortschritt entsteht auf dem Gerät (lokale Spiele, Rätsel, Tutorial) und wird mit
+einem Online-Profil geräteübergreifend zusammengeführt. Der Server rechnet Erfolge nicht nach – wer
+seinen Browser-Speicher manipuliert, betrügt sich nur um Kosmetik. Einzige serverseitige Prüfung: Ein
+Avatar-Rahmen lässt sich nur wählen, wenn sein Erfolg im gespeicherten Fortschritt steht.
+
+Einstieg in der App: **Profil → Vitrine** (auch über die Zeile „Wochenaufgaben“ auf der Startseite).
+
+## Überblick
+
+| Baustein | Woraus berechnet | Belohnung |
+|---|---|---|
+| Erfolge (29) | lokales Spielarchiv, Karriere-Zähler, Rätsel, Tutorial, Online-Profil, Turniere | Bretter, Würfel, Steine, Rahmen, Extras |
+| Steinsätze | Siege je Variante (Karriere) oder Spielmarken | 5 Steindesigns |
+| Clubrang | Aktivitätspunkte (Karriere + Rätsel + Lektionen) | Abzeichen neben dem Namen (online sichtbar) |
+| Varianten-Meister | Siege je Variante (Karriere) | Plaketten Bronze/Silber/Gold, Intarsien-Brett |
+| Wochenaufgaben | Spiele und Rätsel der laufenden Woche | Spielmarken |
+| Eintauschen | Spielmarken | Steine, Würfel, Bretter (keine Prestige-Looks) |
+| Besondere Momente | einzelne Partien im Archiv | Erfolge |
+| Online-Rahmen | Fernpartien, Herausforderungen, Ligen | Rahmen Brief, Handschlag, Wappen; Messing-Würfel |
+| Saison | Partien im Saisonzeitraum | Winter-Brett (bleibt) |
+
+## Was zählt
+
+- **Partien** = Spiele gegen den Computer oder online (alles im lokalen Archiv mit genau einem
+  menschlichen Spieler). Spiele zu zweit an einem Gerät zählen nicht, weil sich der Sieg niemandem
+  zuordnen lässt.
+- **Siege je Variante** zählen die einzelnen Spiele; ein Tavli-Match zählt also als Portes, Plakoto
+  bzw. Fevga.
+- **Fernpartien** zählen, sobald der Server sie als beendet listet (abgebrochene Einladungen nicht).
+
+## Karriere-Zähler (`apps/web/src/career.ts`)
+
+Das lokale Archiv hält nur die letzten 200 Spiele. Für langfristige Ziele (100 Siege für Gold) führt
+der Client deshalb Zähler, die nie kleiner werden:
+
+| Feld | Bedeutung |
+|---|---|
+| `games`, `wins` | Partien und Siege insgesamt |
+| `winsBy` | Siege je Variante (`CAREER_VARIANTS`) |
+| `corrFinished`, `leagueGames` | beendete Fernpartien, davon Ligapartien |
+| `challenged` | IDs herausgeforderter/eingeladener Freunde (max. 50) |
+| `weeks` | ISO-Woche → erledigte Aufgaben (Indizes 0–2) |
+| `owned` | eingetauschte Looks (Shop-IDs) |
+| `seen` | Datum des zuletzt gezählten Archiv-Eintrags (nur lokal) |
+
+Neue Archiv-Einträge werden genau einmal gezählt (alles nach `seen`). Bei der ersten Nutzung wird
+das vorhandene Archiv übernommen.
+
+**Synchronisation:** `Progress.career` (Protokoll `CareerSchema`). Zusammenführen mit
+`mergeCareer`: Zähler nehmen den höheren Wert, Listen werden vereinigt, Wochen bleiben etwa drei Jahre
+erhalten. Spielmarken werden nicht gespeichert, sondern immer berechnet (verdient minus Preise der
+eingetauschten Looks) – so kann es durch zwei Geräte keine doppelt ausgegebenen Marken geben.
+
+## Clubrang
+
+Punkte (`clubPoints` im Protokoll, Server und Client rechnen identisch):
+
+| Quelle | Punkte |
+|---|---|
+| Partie | 1 |
+| Sieg | 1 (zusätzlich) |
+| gelöstes Tagesrätsel | 1 |
+| gelöste Tutorial-Lektion | 1 |
+| beendete Fernpartie | 2 |
+| erledigte Wochenaufgabe | 3 |
+
+| Rang | ab Punkten | Abzeichen |
+|---|---|---|
+| Gast | 0 | – |
+| Stammgast | 30 | I |
+| Mitglied | 120 | II |
+| Vorstand | 350 | III |
+| Ehrenmitglied | 900 | ★ |
+
+Der Server speichert den Rang beim Zusammenführen des Fortschritts in `players.club_rank` und liefert
+ihn als `rank` in `PublicPlayer`, `FriendView` und `LeaderboardEntry`. `PlayerName` zeigt ihn als
+kleines Messing-Abzeichen; das Löschen des Profils setzt ihn zurück.
+
+## Varianten-Meister
+
+Pro Variante (Backgammon, Portes, Plakoto, Fevga, Tavla, Narde, Hypergammon) eine Plakette:
+**Bronze ab 5, Silber ab 25, Gold ab 100 Siegen**. IDs `master-<variante>-<1|2|3>`; alle sieben in
+Gold ergeben `master-all` und schalten das Brett **Intarsien** frei. Plaketten stehen nicht in der
+Erfolgsliste (sonst 21 Einträge), sondern in der Vitrine; beim Erreichen erscheint trotzdem der
+Hinweis oben.
+
+## Wochenaufgaben und Spielmarken
+
+- Woche = ISO-Woche in Ortszeit, Montag 0 Uhr bis Montag 0 Uhr (`weekId`, `weekRange`).
+- Jede Woche drei verschiedene Aufgaben, deterministisch aus der Wochen-ID gewürfelt (`tasksFor`) –
+  alle Geräte und Spieler bekommen dieselben.
+- Aufgabenvorrat (`TaskKind`):
+
+| Art | Ziel |
+|---|---|
+| `win-variant` | 1 Sieg in einer zufälligen Variante |
+| `win` | 3 Siege |
+| `play` | 5 Partien |
+| `puzzles` | 3 Tagesrätsel gelöst |
+| `beat-strong` | 1 Sieg gegen den Computer auf Stark oder Experte |
+| `gammon` | 1 doppelter Sieg (Gammon/Mars) |
+| `online` | 2 Online-Partien |
+
+- Fortschritt wird aus Archiv und Rätseln der Woche berechnet; erledigte Aufgaben werden in
+  `career.weeks` festgehalten und bleiben erledigt.
+- **Spielmarken:** 1 je Aufgabe, 2 extra, wenn alle drei einer Woche erledigt sind (max. 5 pro Woche).
+
+### Eintauschen (`SHOP`)
+
+| Look | Preis |
+|---|---|
+| Steinsätze Perlmutt, Olivenholz, Onyx & Alabaster, Messing, Bein & Ebenholz | 6 |
+| Würfel Gold, Rubin | 4 |
+| Bretter Nacht, Marmor, Turnier, Olive | 8 |
+
+Prestige-Looks gibt es **nur** über Erfolge: Intarsien (alle Plaketten Gold), Winter (Saison),
+Messing-Würfel (Liga) und alle Rahmen. Was bereits per Erfolg frei ist, wird nicht angeboten.
+
+## Steinsätze
+
+Einstellung `checkerSet` (Standard: passend zum Brett). Ein Satz ersetzt beide Steinfarben, damit
+Hell und Dunkel klar unterscheidbar bleiben; er wirkt nur auf dem eigenen Gerät (der Gegner sieht
+seine eigene Einstellung).
+
+| Satz | Erfolg | Bedingung |
+|---|---|---|
+| Perlmutt | `set-pearl` | 10 Siege Backgammon |
+| Olivenholz | `set-wood` | 10 Siege Plakoto |
+| Onyx & Alabaster | `set-onyx` | 10 Siege Fevga |
+| Messing | `set-brass` | 10 Siege Portes oder Tavla |
+| Bein & Ebenholz | `set-bone` | 10 Siege Narde oder Hypergammon |
+
+## Besondere Momente
+
+| Erfolg | Bedingung |
+|---|---|
+| `comeback` | Match gewonnen, in dem man mit mindestens 4 Punkten zurücklag (Archiv-Feld `matchEnd.maxDeficit`) |
+| `double-sixes` | in einem gewonnenen Spiel dreimal 6-6 gewürfelt |
+| `mana` | Plakoto gewonnen durch Einklemmen der „Mutter“ |
+| `cube-eight` | Spiel gewonnen mit dem Verdopplungswürfel auf 8 oder höher |
+
+`matchEnd` wird beim letzten Spiel eines Matches ins Archiv geschrieben: Sieger und der größte
+Rückstand je Seite über den Matchverlauf.
+
+## Online-Rahmen und Liga
+
+| Belohnung | Erfolg | Bedingung |
+|---|---|---|
+| Rahmen ✉️ Brief | `corr-ten` | 10 Fernpartien zu Ende gespielt |
+| Rahmen 🤝 Handschlag | `friends-five` | 5 verschiedene Freunde herausgefordert (live oder Fernpartie) |
+| Rahmen 🛡️ Wappen | `league-win` | eine Club-Liga gewonnen |
+| Messing-Würfel | `league-player` | eine Ligapartie zu Ende gespielt |
+
+Die Rahmen-Zuordnung steht in `FRAMES` (Protokoll); der Server prüft sie beim Wählen.
+
+## Saison
+
+- **Wintersaison**: 1. Dezember bis Ende Februar, benannt nach dem Jahr des Dezembers
+  (`season-winter-2026` = Dez. 2026 bis Feb. 2027).
+- 10 Partien in der Saison schalten das Brett **Winter** dauerhaft frei (jede Saison zählt einzeln,
+  eine reicht).
+- Weitere Saisons: `winterSeason` und `seasonIds` in `career.ts` erweitern, Brett in
+  `board/themes.tsx` anlegen, in `REWARDS.style` eintragen und in `hasLook` behandeln.
+
+## Vitrine (`screens/ShowcaseScreen.tsx`)
+
+Eine Seite mit allem Gesammelten und Fehlenden: Clubrang mit Fortschritt, Wochenaufgaben,
+Eintauschen, Varianten-Meister, Saison, Rahmen, die Auswahl von Brett/Würfeln/Steinen und die
+vollständige Erfolgsliste. Gesperrtes zeigt immer, wie man es bekommt (`lockText`).
+
+## Erweitern
+
+- **Neuer Erfolg:** Eintrag in `ACHIEVEMENTS` (`achievements.ts`) mit `progress`, ggf. Belohnung in
+  `REWARDS` (`rewards.tsx`). Ids: `[a-z0-9-]{1,40}`; der Fortschritt fasst bis zu 300 Freischaltungen.
+- **Neuer Look zum Eintauschen:** Eintrag in `SHOP` (`career.ts`); die Shop-ID folgt dem Muster
+  `style-…`, `dice-…`, `set-…`, damit `hasLook` sie findet.
+- **Neuer Rahmen:** `FRAMES` im Protokoll (Server prüft automatisch), Aussehen in `FRAME_LOOK`, Name in
+  `frameNames` (i18n).
+- Tests: `apps/web/src/career.test.ts`, `apps/web/src/achievements.test.ts`,
+  `apps/server/test/security.test.ts` („merges careers …“).

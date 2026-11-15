@@ -262,7 +262,8 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
                 >
                   <span className="w-6 text-right text-stone-500 tabular-nums">{i + 1}</span>
                   <span className="min-w-0 flex-1 truncate">
-                    <PlayerName name={r.name} frame={r.frame} /> {r.playerId === profile?.id && t.you2}
+                    <PlayerName name={r.name} frame={r.frame} rank={r.rank} />{" "}
+                    {r.playerId === profile?.id && t.you2}
                   </span>
                   <span className="text-xs text-stone-500 tabular-nums">
                     {r.wins}/{r.matches}

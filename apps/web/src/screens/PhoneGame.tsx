@@ -142,6 +142,7 @@ export interface PlayerInfo {
   readonly emote?: PlayerEmote | null;
   readonly name: string;
   readonly frame?: Frame | null;
+  readonly rank?: number;
   readonly pips: number | null;
   readonly score: number;
   readonly active: boolean;
@@ -165,7 +166,7 @@ export function PlayerBar({ p, card = false, testId }: { p: PlayerInfo; card?: b
         <span
           className={`w-full truncate text-[10px] leading-tight ${p.active ? "font-semibold text-amber-100" : "text-stone-300"}`}
         >
-          <PlayerName name={p.name} frame={p.frame} />
+          <PlayerName name={p.name} frame={p.frame} rank={p.rank} />
         </span>
         {p.pips !== null && (
           <span className="text-[10px] leading-none tabular-nums text-stone-400" title={t.pips}>
@@ -183,7 +184,7 @@ export function PlayerBar({ p, card = false, testId }: { p: PlayerInfo; card?: b
       <span
         className={`min-w-0 flex-1 truncate ${p.active ? "font-semibold text-amber-100" : "text-stone-200"}`}
       >
-        <PlayerName name={p.name} frame={p.frame} />
+        <PlayerName name={p.name} frame={p.frame} rank={p.rank} />
       </span>
       {p.emote ? (
         <EmoteChip emote={p.emote} />

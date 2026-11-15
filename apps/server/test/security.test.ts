@@ -281,4 +281,44 @@ describe("progress and frames", () => {
     expect(store.publicPlayer(a, "backgammon").frame).toBe("scholar");
     store.close();
   });
+
+  it("merges careers (higher counters, united lists) and keeps the club rank", () => {
+    const store = new Store(":memory:");
+    const a = store.createPlayer("Ann").id;
+    const base = { unlocked: {}, lessons: [], puzzles: {} };
+    const career = {
+      games: 20,
+      wins: 8,
+      winsBy: { plakoto: 5 },
+      corrFinished: 1,
+      leagueGames: 0,
+      challenged: ["f1"],
+      weeks: { "2026-W45": [0] },
+      owned: ["set-pearl"],
+    };
+    store.mergeProgress(a, { ...base, career });
+    const merged = store.mergeProgress(a, {
+      ...base,
+      career: {
+        ...career,
+        games: 12,
+        winsBy: { plakoto: 3, fevga: 2 },
+        challenged: ["f2"],
+        weeks: { "2026-W45": [2] },
+        owned: [],
+      },
+    });
+    expect(merged.career).toMatchObject({
+      games: 20,
+      winsBy: { plakoto: 5, fevga: 2 },
+      challenged: ["f1", "f2"],
+      weeks: { "2026-W45": [0, 2] },
+      owned: ["set-pearl"],
+    });
+    // 20 games + 8 wins + 2 × 1 correspondence + 3 × 2 weekly tasks = 36 points: rank 1
+    expect(store.publicPlayer(a, "backgammon").rank).toBe(1);
+    // the new frames need their achievements too
+    expect(store.setFrame(a, "post")).toBe(false);
+    store.close();
+  });
 });

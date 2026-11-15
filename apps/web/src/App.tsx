@@ -20,6 +20,7 @@ import { PuzzleScreen } from "./screens/PuzzleScreen";
 import { ReplayScreen } from "./screens/ReplayScreen";
 import { RulesScreen } from "./screens/RulesPanel";
 import { type SectionId, SettingsPanel } from "./screens/SettingsPanel";
+import { ShowcaseScreen } from "./screens/ShowcaseScreen";
 import { StatsScreen } from "./screens/StatsScreen";
 import { TutorialScreen } from "./screens/TutorialScreen";
 import { WatchScreen } from "./screens/WatchScreen";
@@ -29,6 +30,7 @@ import { type PlayMode, useSettings } from "./store/settings";
 type Screen =
   | NavTarget
   | "setup"
+  | "showcase"
   | "account"
   | "game"
   | "settings"
@@ -47,6 +49,7 @@ const NAV_SCREENS: readonly NavTarget[] = ["menu", "play", "online", "profile"];
 /** Screens shown inside the navigation shell, with the destination they belong to. */
 const SUB_SCREENS: Partial<Record<Screen, NavTarget>> = {
   settings: "profile",
+  showcase: "profile",
   stats: "profile",
   account: "profile",
   imprint: "profile",
@@ -266,6 +269,7 @@ export function App() {
           onOnline={openOnline}
           onCorr={openCorr}
           onPuzzle={() => setScreen("puzzle")}
+          onShowcase={() => setScreen("showcase")}
         />
       )}
       {screen === "play" && (
@@ -288,6 +292,7 @@ export function App() {
       {screen === "profile" && (
         <ProfileScreen
           onStats={() => setScreen("stats")}
+          onShowcase={() => setScreen("showcase")}
           onSettings={() => {
             setSettingsPage(null);
             setScreen("settings");
@@ -301,6 +306,7 @@ export function App() {
           onLegal={(page) => setScreen(page)}
         />
       )}
+      {screen === "showcase" && <ShowcaseScreen onBack={() => setScreen("profile")} />}
       {screen === "account" && (
         <AccountScreen onBack={() => setScreen("profile")} onReplay={(r) => openReplay(r, "account")} />
       )}

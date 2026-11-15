@@ -20,7 +20,17 @@ import type {
   RatingPoint,
   TimingSummary,
 } from "@tavli/protocol";
-import { FRAMES, type Frame, MAX_FRIENDS, type Progress, type RatingPool, ratingKey } from "@tavli/protocol";
+import {
+  clubPoints,
+  clubRank,
+  FRAMES,
+  type Frame,
+  MAX_FRIENDS,
+  mergeCareer,
+  type Progress,
+  type RatingPool,
+  ratingKey,
+} from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
 
 const SCHEMA = `
@@ -124,6 +134,7 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["players", "ban_reason", "ALTER TABLE players ADD COLUMN ban_reason TEXT"],
   ["players", "last_seen", "ALTER TABLE players ADD COLUMN last_seen TEXT"],
   ["players", "deleted_at", "ALTER TABLE players ADD COLUMN deleted_at TEXT"],
+  ["players", "club_rank", "ALTER TABLE players ADD COLUMN club_rank INTEGER NOT NULL DEFAULT 0"],
   ["players", "frame", "ALTER TABLE players ADD COLUMN frame TEXT"],
   ["matches", "pool", "ALTER TABLE matches ADD COLUMN pool TEXT NOT NULL DEFAULT 'normal'"],
   [
@@ -593,7 +604,7 @@ export class Store {
       run("DELETE FROM reports WHERE reporter = ?1 OR reported = ?1");
       run("DELETE FROM friends WHERE requester = ?1 OR addressee = ?1");
       run("DELETE FROM player_progress WHERE player_id = ?");
-      run("UPDATE players SET frame = NULL WHERE id = ?");
+      run("UPDATE players SET frame = NULL, club_rank = 0 WHERE id = ?");
       if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
       if (this.tableExists("push_prefs")) run("DELETE FROM push_prefs WHERE player_id = ?");
       this.db.exec("COMMIT");
@@ -731,20 +742,29 @@ export class Store {
     id: string;
     name: string;
     frame: Frame | null;
+    rank: number;
     status: "accepted" | "incoming" | "outgoing";
   }[] {
     const rows = this.db
       .prepare(
-        `SELECT f.requester, f.addressee, f.status, p.id, p.name, p.frame FROM friends f
+        `SELECT f.requester, f.addressee, f.status, p.id, p.name, p.frame, p.club_rank FROM friends f
          JOIN players p ON p.id = CASE WHEN f.requester = ?1 THEN f.addressee ELSE f.requester END
          WHERE (f.requester = ?1 OR f.addressee = ?1) AND p.deleted_at IS NULL
          ORDER BY lower(p.name)`,
       )
-      .all(me) as { requester: string; status: string; id: string; name: string; frame: Frame | null }[];
+      .all(me) as {
+      requester: string;
+      status: string;
+      id: string;
+      name: string;
+      frame: Frame | null;
+      club_rank: number;
+    }[];
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
       frame: r.frame,
+      rank: r.club_rank,
       status: r.status === "accepted" ? "accepted" : r.requester === me ? "outgoing" : "incoming",
     }));
   }
@@ -797,7 +817,15 @@ export class Store {
       name: p?.name ?? "?",
       rating: Math.round(this.rating(playerId, variant, pool).rating),
       frame: this.frameOf(playerId),
+      rank: this.rankOf(playerId),
     };
+  }
+
+  private rankOf(playerId: string): number {
+    const row = this.db.prepare("SELECT club_rank FROM players WHERE id = ?").get(playerId) as
+      | { club_rank: number }
+      | undefined;
+    return row?.club_rank ?? 0;
   }
 
   private frameOf(playerId: string): Frame | null {
@@ -829,11 +857,20 @@ export class Store {
     // keep about a year of puzzle days
     const days = Object.keys(puzzles).sort().reverse();
     for (const d of days.slice(400)) delete puzzles[d];
+    const career =
+      current.career && incoming.career
+        ? mergeCareer(current.career, incoming.career)
+        : (current.career ?? incoming.career);
     const merged: Progress = {
       unlocked,
       lessons: [...new Set([...current.lessons, ...incoming.lessons])].sort((a, b) => a - b),
       puzzles,
+      ...(career ? { career } : {}),
     };
+    // the club rank shown next to the name follows the activity points
+    this.db
+      .prepare("UPDATE players SET club_rank = ? WHERE id = ?")
+      .run(clubRank(clubPoints(merged)), playerId);
     this.db
       .prepare(
         `INSERT INTO player_progress (player_id, data, updated_at) VALUES (?, ?, ?)
@@ -949,7 +986,7 @@ export class Store {
   leaderboard(variant: MatchVariantId, limit = 50, pool: RatingPool = "normal"): LeaderboardEntry[] {
     const rows = this.db
       .prepare(
-        `SELECT r.player_id, p.name, p.frame, r.rating, r.matches, r.wins FROM ratings r
+        `SELECT r.player_id, p.name, p.frame, p.club_rank, r.rating, r.matches, r.wins FROM ratings r
          JOIN players p ON p.id = r.player_id
          WHERE r.variant = ? AND r.matches > 0 AND p.banned_at IS NULL ORDER BY r.rating DESC LIMIT ?`,
       )
@@ -957,6 +994,7 @@ export class Store {
       player_id: string;
       name: string;
       frame: Frame | null;
+      club_rank: number;
       rating: number;
       matches: number;
       wins: number;
@@ -965,6 +1003,7 @@ export class Store {
       playerId: r.player_id,
       name: r.name,
       frame: r.frame,
+      rank: r.club_rank,
       variant,
       ...(pool === "normal" ? {} : { pool }),
       rating: Math.round(r.rating),

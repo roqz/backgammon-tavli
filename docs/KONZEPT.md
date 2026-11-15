@@ -283,6 +283,16 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 - Erfolge, Tutorial-Fortschritt und Rätsel-Ergebnisse werden mit dem Profil synchronisiert und geräteübergreifend zusammengeführt (früheste Freischaltung, erste Rätsel-Antwort zählt); der Server erlaubt einen Rahmen nur, wenn der Erfolg im gespeicherten Fortschritt steht. Erfolge sind kosmetisch und werden vom Gerät gemeldet, nicht serverseitig nachgerechnet
 
+### Vitrine, Clubrang, Wochenaufgaben ✅
+
+- Details: [`docs/GAMIFICATION.md`](GAMIFICATION.md)
+- Karriere-Zähler über das 200-Spiele-Archiv hinaus (Siege je Variante, Fernpartien, Herausforderungen), mit dem Profil zusammengeführt
+- Clubrang (Gast bis Ehrenmitglied) aus Aktivitätspunkten, online als Abzeichen neben dem Namen
+- Varianten-Meister (Bronze/Silber/Gold je Variante, alle Gold = Intarsien-Brett), Steinsätze je Variante
+- Wochenaufgaben (3 pro ISO-Woche, für alle gleich) bringen Spielmarken; Steine, Würfel und Bretter lassen sich eintauschen, Prestige-Looks nicht
+- Besondere Momente (Comeback, Sechser-Regen, Mutter eingeklemmt, Würfel auf 8), Online-Rahmen (Brief, Handschlag, Wappen), Wintersaison mit Winter-Brett, Messing-Würfel für Ligaspieler
+- Vitrine im Profil zeigt alles Gesammelte und wie man den Rest bekommt
+
 ### Clubs und Ligen ✅
 
 - Clubs: gründen mit Konto oder nach 3 Matches (wie Turniere), Name eindeutig, Beschreibung, offen (direkt beitreten) oder geschlossen (Anfrage, ein Admin bestätigt); Rollen Gründer, Admin, Mitglied; höchstens 100 Mitglieder, höchstens 10 Clubs je Spieler; Suche nach Namen; Mitglieder sehen sich mit Online-Status; verlässt der Gründer den Club, übernimmt der dienstälteste Admin bzw. das dienstälteste Mitglied

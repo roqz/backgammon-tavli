@@ -33,6 +33,7 @@ import type {
   TournamentMatchView,
   TournamentView,
 } from "@tavli/protocol";
+import { useCareer } from "../career";
 import { DICTS } from "../i18n";
 import { type PlayerInfo, setRemoteSender, useGame } from "../store/game";
 import { useSettings } from "../store/settings";
@@ -455,8 +456,13 @@ export const inviteCorr = (
   variant: MatchVariantId,
   length: MatchLength,
   hours: CorrHours,
-) =>
-  rest<CorrView>("/api/corr", { method: "POST", body: JSON.stringify({ playerId, variant, length, hours }) });
+) => {
+  useCareer.getState().challenge(playerId);
+  return rest<CorrView>("/api/corr", {
+    method: "POST",
+    body: JSON.stringify({ playerId, variant, length, hours }),
+  });
+};
 export const fetchCorrSeeks = () => rest<CorrSeek[]>("/api/corr/seeks");
 /** Looks for an opponent: either a game starts right away or the search waits. */
 export const seekCorr = (variant: MatchVariantId, length: MatchLength, hours: CorrHours) =>
@@ -478,7 +484,8 @@ export const challengeFriend = (
   variant: MatchVariantId,
   length: MatchLength,
   opts: { leagueId?: string; clock?: TimeControl } = {},
-) =>
+) => {
+  useCareer.getState().challenge(playerId);
   send({
     t: "challenge",
     playerId,
@@ -487,6 +494,7 @@ export const challengeFriend = (
     clock: opts.clock ?? "relaxed",
     ...(opts.leagueId ? { leagueId: opts.leagueId } : {}),
   });
+};
 export const answerChallenge = (id: string, accept: boolean) => {
   send({ t: "challenge-answer", id, accept });
   set({ incoming: null });
