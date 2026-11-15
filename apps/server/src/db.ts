@@ -27,11 +27,21 @@ import {
   type Frame,
   MAX_FRIENDS,
   mergeCareer,
+  OTP_REQUIRED,
+  OTP_WRONG,
   type Progress,
   type RatingPool,
   ratingKey,
 } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
+import {
+  hashRecoveryCode,
+  looksLikeRecoveryCode,
+  newRecoveryCodes,
+  newTotpSecret,
+  otpauthUri,
+  verifyTotp,
+} from "./totp";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS players (
@@ -122,6 +132,12 @@ CREATE TABLE IF NOT EXISTS timings (
 );
 CREATE INDEX IF NOT EXISTS timings_player ON timings(player_id, created_at);
 CREATE INDEX IF NOT EXISTS matches_ended ON matches(ended_at);
+CREATE TABLE IF NOT EXISTS recovery_codes (
+  player_id TEXT NOT NULL REFERENCES players(id),
+  code_hash TEXT NOT NULL,
+  used_at TEXT,
+  PRIMARY KEY (player_id, code_hash)
+);
 `;
 
 /** Columns added after the first release (applied once, idempotent). */
@@ -136,6 +152,9 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["players", "deleted_at", "ALTER TABLE players ADD COLUMN deleted_at TEXT"],
   ["players", "club_rank", "ALTER TABLE players ADD COLUMN club_rank INTEGER NOT NULL DEFAULT 0"],
   ["players", "frame", "ALTER TABLE players ADD COLUMN frame TEXT"],
+  ["players", "totp_secret", "ALTER TABLE players ADD COLUMN totp_secret TEXT"],
+  ["players", "totp_on", "ALTER TABLE players ADD COLUMN totp_on INTEGER NOT NULL DEFAULT 0"],
+  ["players", "totp_step", "ALTER TABLE players ADD COLUMN totp_step INTEGER NOT NULL DEFAULT -1"],
   ["matches", "pool", "ALTER TABLE matches ADD COLUMN pool TEXT NOT NULL DEFAULT 'normal'"],
   [
     "players",
@@ -282,7 +301,12 @@ export interface AccountRow {
   readonly email: string | null;
   readonly friendsCanWatch: boolean;
   readonly frame: Frame | null;
+  readonly twoFactor: boolean;
+  readonly recoveryCodesLeft: number;
 }
+
+/** Name of the app in authenticator apps. */
+const TOTP_ISSUER = "Tavli";
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest();
 
@@ -408,13 +432,25 @@ export class Store {
 
   account(id: string): AccountRow | null {
     const row = this.db
-      .prepare("SELECT id, name, username, email, friends_can_watch, frame FROM players WHERE id = ?")
+      .prepare(
+        "SELECT id, name, username, email, friends_can_watch, frame, totp_on FROM players WHERE id = ?",
+      )
       .get(id) as
-      | (Omit<AccountRow, "friendsCanWatch" | "frame"> & { friends_can_watch: number; frame: string | null })
+      | (Pick<AccountRow, "id" | "name" | "username" | "email"> & {
+          friends_can_watch: number;
+          frame: string | null;
+          totp_on: number;
+        })
       | undefined;
     if (!row) return null;
-    const { friends_can_watch, frame, ...rest } = row;
-    return { ...rest, friendsCanWatch: friends_can_watch !== 0, frame: (frame as Frame | null) ?? null };
+    const { friends_can_watch, frame, totp_on, ...rest } = row;
+    return {
+      ...rest,
+      friendsCanWatch: friends_can_watch !== 0,
+      frame: (frame as Frame | null) ?? null,
+      twoFactor: totp_on === 1,
+      recoveryCodesLeft: this.recoveryCodesLeft(id),
+    };
   }
 
   /** Whether friends may watch this player's private matches. */
@@ -438,7 +474,7 @@ export class Store {
     username: string,
     password: string,
     email: string | null,
-  ): Promise<AccountRow> {
+  ): Promise<AccountRow & { recoveryCodes: string[] }> {
     const current = this.account(id);
     if (!current) throw new AccountError(404, "unknown player");
     if (current.username) throw new AccountError(409, "account already exists");
@@ -452,7 +488,8 @@ export class Store {
       .prepare("UPDATE players SET username = ?, password_hash = ?, email = ? WHERE id = ?")
       .run(username, hash, email, id);
     this.guestTokenToSession(id);
-    return this.account(id)!;
+    const recoveryCodes = this.newRecoveryCodes(id);
+    return { ...this.account(id)!, recoveryCodes };
   }
 
   /** Moves the guest token of an account into the sessions table (and disables it as guest token). */
@@ -473,28 +510,170 @@ export class Store {
       .run(`-${randomBytes(16).toString("hex")}`, id);
   }
 
-  /** Checks credentials and opens a new session (one per device). */
-  async login(username: string, password: string): Promise<{ id: string; token: string; name: string }> {
+  /**
+   * Checks credentials and opens a new session (one per device). With two-factor login the
+   * second factor is an app code or an unused recovery code; without it the error says
+   * OTP_REQUIRED, so the client can ask for it.
+   */
+  async login(
+    username: string,
+    password: string,
+    otp?: string,
+    now = Date.now(),
+  ): Promise<{ id: string; token: string; name: string }> {
     const row = this.db
       .prepare(
-        "SELECT id, name, password_hash, banned_at FROM players WHERE lower(username) = lower(?) AND deleted_at IS NULL",
+        "SELECT id, name, password_hash, banned_at, totp_on FROM players WHERE lower(username) = lower(?) AND deleted_at IS NULL",
       )
       .get(username) as
-      | { id: string; name: string; password_hash: string | null; banned_at: string | null }
+      | { id: string; name: string; password_hash: string | null; banned_at: string | null; totp_on: number }
       | undefined;
     const ok = await verifyPassword(password, row?.password_hash ?? (await DUMMY_HASH()));
     if (!row?.password_hash || !ok) throw new AccountError(401, "wrong username or password");
     if (row.banned_at) throw new AccountError(403, "banned");
+    if (row.totp_on) {
+      if (!otp) throw new AccountError(401, OTP_REQUIRED);
+      if (!this.secondFactor(row.id, otp, now)) throw new AccountError(401, OTP_WRONG);
+    }
     if (needsRehash(row.password_hash)) {
       const upgraded = await hashPassword(password);
       this.db.prepare("UPDATE players SET password_hash = ? WHERE id = ?").run(upgraded, row.id);
     }
+    return { id: row.id, token: this.openSession(row.id), name: row.name };
+  }
+
+  private openSession(playerId: string): string {
     const token = randomBytes(24).toString("base64url");
     const now = new Date().toISOString();
     this.db
       .prepare("INSERT INTO sessions (token_hash, player_id, created_at, last_used) VALUES (?, ?, ?, ?)")
-      .run(hashToken(token).toString("hex"), row.id, now, now);
-    return { id: row.id, token, name: row.name };
+      .run(hashToken(token).toString("hex"), playerId, now, now);
+    return token;
+  }
+
+  // ---- two-factor login and recovery codes ---------------------------------------------------
+
+  private recoveryCodesLeft(id: string): number {
+    return (
+      this.db
+        .prepare("SELECT count(*) AS n FROM recovery_codes WHERE player_id = ? AND used_at IS NULL")
+        .get(id) as { n: number }
+    ).n;
+  }
+
+  /** Replaces all recovery codes of an account; returns the new ones (shown once). */
+  newRecoveryCodes(id: string): string[] {
+    const codes = newRecoveryCodes();
+    this.db.exec("BEGIN");
+    try {
+      this.db.prepare("DELETE FROM recovery_codes WHERE player_id = ?").run(id);
+      const insert = this.db.prepare("INSERT INTO recovery_codes (player_id, code_hash) VALUES (?, ?)");
+      for (const c of codes) insert.run(id, hashRecoveryCode(c));
+      this.db.exec("COMMIT");
+    } catch (e) {
+      this.db.exec("ROLLBACK");
+      throw e;
+    }
+    return codes;
+  }
+
+  /** New recovery codes after confirming the password. */
+  async renewRecoveryCodes(id: string, password: string): Promise<string[]> {
+    await this.checkPassword(id, password);
+    return this.newRecoveryCodes(id);
+  }
+
+  /** Uses up a recovery code; false if it is unknown or used. */
+  private useRecoveryCode(id: string, code: string): boolean {
+    return (
+      this.db
+        .prepare(
+          "UPDATE recovery_codes SET used_at = ? WHERE player_id = ? AND code_hash = ? AND used_at IS NULL",
+        )
+        .run(new Date().toISOString(), id, hashRecoveryCode(code)).changes === 1
+    );
+  }
+
+  /** An app code (each time step only once) or, if it looks like one, a recovery code. */
+  private secondFactor(id: string, code: string, now: number): boolean {
+    if (looksLikeRecoveryCode(code)) return this.useRecoveryCode(id, code);
+    return this.appCode(id, code, now);
+  }
+
+  private appCode(id: string, code: string, now: number): boolean {
+    const row = this.db.prepare("SELECT totp_secret, totp_step FROM players WHERE id = ?").get(id) as
+      | { totp_secret: string | null; totp_step: number }
+      | undefined;
+    if (!row?.totp_secret) return false;
+    const step = verifyTotp(row.totp_secret, code, now, row.totp_step);
+    if (step === null) return false;
+    this.db.prepare("UPDATE players SET totp_step = ? WHERE id = ?").run(step, id);
+    return true;
+  }
+
+  /** Starts two-factor setup: a new secret, active only after `enableTwoFactor` with a code. */
+  async setupTwoFactor(id: string, password: string): Promise<{ secret: string; uri: string }> {
+    await this.checkPassword(id, password);
+    const acc = this.account(id);
+    if (!acc?.username) throw new AccountError(400, "account required");
+    if (acc.twoFactor) throw new AccountError(409, "2fa already on");
+    const secret = newTotpSecret();
+    this.db
+      .prepare("UPDATE players SET totp_secret = ?, totp_on = 0, totp_step = -1 WHERE id = ?")
+      .run(secret, id);
+    return { secret, uri: otpauthUri(TOTP_ISSUER, acc.username, secret) };
+  }
+
+  /** Turns two-factor login on once the app shows a matching code. */
+  enableTwoFactor(id: string, code: string, now = Date.now()): AccountRow {
+    const acc = this.account(id);
+    if (!acc?.username) throw new AccountError(400, "account required");
+    if (acc.twoFactor) throw new AccountError(409, "2fa already on");
+    if (!this.appCode(id, code, now)) throw new AccountError(401, OTP_WRONG);
+    this.db.prepare("UPDATE players SET totp_on = 1 WHERE id = ?").run(id);
+    return this.account(id)!;
+  }
+
+  /** Turns two-factor login off (password and an app or recovery code). */
+  async disableTwoFactor(id: string, password: string, code: string, now = Date.now()): Promise<AccountRow> {
+    await this.checkPassword(id, password);
+    if (!this.account(id)?.twoFactor) throw new AccountError(409, "2fa is off");
+    if (!this.secondFactor(id, code, now)) throw new AccountError(401, OTP_WRONG);
+    this.db
+      .prepare("UPDATE players SET totp_secret = NULL, totp_on = 0, totp_step = -1 WHERE id = ?")
+      .run(id);
+    return this.account(id)!;
+  }
+
+  /**
+   * Forgotten password: a recovery code (plus an app code with two-factor login) sets a new
+   * password. All sessions end; a new one is opened for this device.
+   */
+  async recoverAccount(
+    username: string,
+    code: string,
+    password: string,
+    otp?: string,
+    now = Date.now(),
+  ): Promise<{ id: string; token: string; name: string }> {
+    const row = this.db
+      .prepare(
+        "SELECT id, name, banned_at, totp_on FROM players WHERE lower(username) = lower(?) AND deleted_at IS NULL AND password_hash IS NOT NULL",
+      )
+      .get(username) as { id: string; name: string; banned_at: string | null; totp_on: number } | undefined;
+    const fail = new AccountError(401, "wrong username or recovery code");
+    if (!row) throw fail;
+    if (row.totp_on) {
+      if (!otp) throw new AccountError(401, OTP_REQUIRED);
+      // the app code first, so a wrong one does not use up the recovery code
+      if (!this.appCode(row.id, otp, now)) throw new AccountError(401, OTP_WRONG);
+    }
+    if (!this.useRecoveryCode(row.id, code)) throw fail;
+    if (row.banned_at) throw new AccountError(403, "banned");
+    const hash = await hashPassword(password);
+    this.db.prepare("UPDATE players SET password_hash = ? WHERE id = ?").run(hash, row.id);
+    this.db.prepare("DELETE FROM sessions WHERE player_id = ?").run(row.id);
+    return { id: row.id, token: this.openSession(row.id), name: row.name };
   }
 
   /** Ends a login session. */
@@ -558,6 +737,9 @@ export class Store {
       exportedAt: new Date().toISOString(),
       player: p,
       sessions: all("SELECT created_at, last_used FROM sessions WHERE player_id = ?"),
+      // the secret itself stays on the server: an export must not work as a second factor
+      twoFactor: this.account(id)?.twoFactor ?? false,
+      recoveryCodes: all("SELECT used_at FROM recovery_codes WHERE player_id = ?"),
       ratings: all("SELECT variant, rating, experience, matches, wins FROM ratings WHERE player_id = ?"),
       matches,
       reportsFiled: all(
@@ -604,6 +786,8 @@ export class Store {
       run("DELETE FROM reports WHERE reporter = ?1 OR reported = ?1");
       run("DELETE FROM friends WHERE requester = ?1 OR addressee = ?1");
       run("DELETE FROM player_progress WHERE player_id = ?");
+      run("DELETE FROM recovery_codes WHERE player_id = ?");
+      run("UPDATE players SET totp_secret = NULL, totp_on = 0 WHERE id = ?");
       run("UPDATE players SET frame = NULL, club_rank = 0 WHERE id = ?");
       if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
       if (this.tableExists("push_prefs")) run("DELETE FROM push_prefs WHERE player_id = ?");

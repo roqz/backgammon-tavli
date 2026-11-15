@@ -23,14 +23,19 @@ import {
   MATCH_VARIANTS,
   type MatchVariantId,
   NameSchema,
+  OTP_REQUIRED,
+  OtpSchema,
   PasswordChangeSchema,
+  PasswordConfirmSchema,
   ProgressSchema,
   PushPrefsSchema,
   PushSubscribeSchema,
   PushUnsubscribeSchema,
+  RecoverSchema,
   ReportSchema,
   ResolveSchema,
   type ServerMessage,
+  TwoFactorOffSchema,
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
 import { type AnalysisMode, Analyzer } from "./analysis";
@@ -335,9 +340,27 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (failedLogins.peek(user) >= 10)
           throw new HttpError(429, "too many failed logins, wait 15 minutes");
         try {
-          return await account(() => store.login(body.data.username, body.data.password));
+          return await account(() => store.login(body.data.username, body.data.password, body.data.otp));
         } catch (e) {
-          if (e instanceof HttpError && e.status === 401) failedLogins(user);
+          // asking for the second factor is not a failure
+          if (e instanceof HttpError && e.status === 401 && e.message !== OTP_REQUIRED) failedLogins(user);
+          throw e;
+        }
+      }
+      if (req.method === "POST" && path === "/api/account/recover") {
+        if (!allowLogin(limitKey(req))) throw new HttpError(429, "too many requests");
+        const body = RecoverSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        const user = body.data.username.toLowerCase();
+        if (failedLogins.peek(user) >= 10)
+          throw new HttpError(429, "too many failed logins, wait 15 minutes");
+        try {
+          const { username, code, password, otp } = body.data;
+          const session = await account(() => store.recoverAccount(username, code, password, otp));
+          log(`player ${session.id} reset the password with a recovery code`);
+          return session;
+        } catch (e) {
+          if (e instanceof HttpError && e.status === 401 && e.message !== OTP_REQUIRED) failedLogins(user);
           throw e;
         }
       }
@@ -390,6 +413,31 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (!body.success) throw new HttpError(400, "invalid username, password or email");
         const { username, password, email } = body.data;
         return await account(() => store.claimAccount(player.id, username, password, email || null));
+      }
+      if (req.method === "POST" && path === "/api/account/recovery-codes") {
+        const body = PasswordConfirmSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        if (!allowPasswordChange(player.id)) throw new HttpError(429, "too many requests");
+        if (!store.account(player.id)?.username) throw new HttpError(400, "account required");
+        return { codes: await account(() => store.renewRecoveryCodes(player.id, body.data.password)) };
+      }
+      if (req.method === "POST" && path === "/api/account/2fa/setup") {
+        const body = PasswordConfirmSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        if (!allowPasswordChange(player.id)) throw new HttpError(429, "too many requests");
+        return await account(() => store.setupTwoFactor(player.id, body.data.password));
+      }
+      if (req.method === "POST" && path === "/api/account/2fa/enable") {
+        const body = OtpSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        if (!allowPasswordChange(player.id)) throw new HttpError(429, "too many requests");
+        return await account(() => store.enableTwoFactor(player.id, body.data.code));
+      }
+      if (req.method === "POST" && path === "/api/account/2fa/disable") {
+        const body = TwoFactorOffSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        if (!allowPasswordChange(player.id)) throw new HttpError(429, "too many requests");
+        return await account(() => store.disableTwoFactor(player.id, body.data.password, body.data.code));
       }
       if (req.method === "POST" && path === "/api/account/logout") {
         store.logout(credentials(req).token);

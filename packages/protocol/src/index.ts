@@ -1017,10 +1017,43 @@ export const ClaimSchema = z.object({
   email: z.union([z.email().max(200), z.literal("")]).optional(),
 });
 
+/** A 6-digit code of an authenticator app, or a recovery code ("K7QM-2XRP-9D"). */
+const otp = z.string().min(6).max(20);
+
 export const LoginSchema = z.object({
   username: z.string().min(1).max(40),
   password: z.string().min(1).max(200),
+  /** Second factor, for accounts with two-factor login. */
+  otp: otp.optional(),
 });
+
+/** Forgotten password: a recovery code (plus the app code with two-factor login) sets a new one. */
+export const RecoverSchema = z.object({
+  username: z.string().min(1).max(40),
+  code: z.string().min(10).max(20),
+  password: z.string().min(PASSWORD_MIN).max(200),
+  otp: otp.optional(),
+});
+
+export const PasswordConfirmSchema = z.object({ password: z.string().min(1).max(200) });
+export const OtpSchema = z.object({ code: otp });
+export const TwoFactorOffSchema = z.object({ password: z.string().min(1).max(200), code: otp });
+
+/** Server error messages of the login with two factors. */
+export const OTP_REQUIRED = "2fa code required";
+export const OTP_WRONG = "wrong 2fa code";
+
+export interface TwoFactorSetup {
+  /** Base32 secret, for typing into an app by hand. */
+  readonly secret: string;
+  /** otpauth:// link (QR code, or tapped on the phone). */
+  readonly uri: string;
+}
+
+export interface RecoveryCodes {
+  /** Shown once; the server keeps only hashes. */
+  readonly codes: readonly string[];
+}
 
 export const PasswordChangeSchema = z.object({
   oldPassword: z.string().min(1).max(200),
@@ -1036,6 +1069,10 @@ export interface AccountResponse {
   /** Friends may watch this player's private matches (invites, challenges). */
   readonly friendsCanWatch: boolean;
   readonly frame: Frame | null;
+  /** Login asks for an authenticator app code. */
+  readonly twoFactor: boolean;
+  /** Unused recovery codes (accounts only). */
+  readonly recoveryCodesLeft: number;
 }
 
 export const AccountSettingsSchema = z.object({ friendsCanWatch: z.boolean() });

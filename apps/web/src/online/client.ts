@@ -25,6 +25,7 @@ import type {
   Progress,
   PublicLeagueResponse,
   RatingPool,
+  RecoveryCodes,
   RegisterResponse,
   ReportReason,
   ServerMessage,
@@ -32,6 +33,7 @@ import type {
   TournamentFormat,
   TournamentMatchView,
   TournamentView,
+  TwoFactorSetup,
 } from "@tavli/protocol";
 import { useCareer } from "../career";
 import { DICTS } from "../i18n";
@@ -578,7 +580,7 @@ export const fetchMatch = (id: string) => rest<MatchDetailResponse>(`/api/matche
 
 /** Turns the current guest profile into an account that can log in on other devices. */
 export const claimAccount = async (username: string, password: string, email: string) => {
-  const acc = await rest<AccountResponse>("/api/account/claim", {
+  const acc = await rest<AccountResponse & { recoveryCodes: string[] }>("/api/account/claim", {
     method: "POST",
     body: JSON.stringify({ username, password, email }),
   });
@@ -588,16 +590,47 @@ export const claimAccount = async (username: string, password: string, email: st
 };
 
 /** Logs in on this device; replaces a local guest profile. */
-export const login = async (username: string, password: string) => {
+export const login = async (username: string, password: string, otp?: string) => {
   const r = await rest<RegisterResponse>("/api/account/login", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, ...(otp ? { otp } : {}) }),
   });
+  signedIn(r, username);
+  return r;
+};
+
+const signedIn = (r: RegisterResponse, username: string) => {
   disconnect();
   set({ profile: { id: r.id, token: r.token, name: r.name, username }, lastError: null });
   connect();
+};
+
+/** Forgotten password: a recovery code (and the app code with two-factor login) sets a new one. */
+export const recoverAccount = async (username: string, code: string, password: string, otp?: string) => {
+  const r = await rest<RegisterResponse>("/api/account/recover", {
+    method: "POST",
+    body: JSON.stringify({ username, code, password, ...(otp ? { otp } : {}) }),
+  });
+  signedIn(r, username);
   return r;
 };
+
+export const renewRecoveryCodes = async (password: string) =>
+  (
+    await rest<RecoveryCodes>("/api/account/recovery-codes", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    })
+  ).codes;
+export const setupTwoFactor = (password: string) =>
+  rest<TwoFactorSetup>("/api/account/2fa/setup", { method: "POST", body: JSON.stringify({ password }) });
+export const enableTwoFactor = (code: string) =>
+  rest<AccountResponse>("/api/account/2fa/enable", { method: "POST", body: JSON.stringify({ code }) });
+export const disableTwoFactor = (password: string, code: string) =>
+  rest<AccountResponse>("/api/account/2fa/disable", {
+    method: "POST",
+    body: JSON.stringify({ password, code }),
+  });
 
 /** Logs out on this device: the session ends and the local profile is forgotten. */
 export const logout = async () => {

@@ -6,6 +6,7 @@ import {
   type MatchDetailResponse,
   type MatchSummary,
   type MatchVariantId,
+  OTP_REQUIRED,
   PASSWORD_MIN,
   type ProfileResponse,
   ratingKey,
@@ -13,6 +14,7 @@ import {
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { ACHIEVEMENTS, useAchievements } from "../achievements";
+import { OtpInput, RecoveryCodesModal, SecurityCard } from "../components/Security";
 import { Sparkline } from "../components/Sparkline";
 import { Button, Card, Modal, Toggle } from "../components/ui";
 import { errorOf } from "../errors";
@@ -29,6 +31,7 @@ import {
   login,
   logout,
   logoutOthers,
+  recoverAccount,
   register,
   setFrame as setFrameRemote,
   setFriendsCanWatch,
@@ -59,14 +62,18 @@ export const matchToRecords = (d: MatchDetailResponse, meId: string | undefined)
     history: g.history,
   }));
 
-/** First screen without a profile: start as guest or log in with an existing account. */
+/** First screen without a profile: start as guest, log in, or recover access with a recovery code. */
 export function AuthForm() {
   const t = useT();
   const pendingJoin = useOnline((s) => s.pendingJoin);
-  const [mode, setMode] = useState<"guest" | "login">("guest");
+  const [mode, setMode] = useState<"guest" | "login" | "recover">("guest");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [otp, setOtp] = useState("");
+  /** The server asked for the second factor. */
+  const [needOtp, setNeedOtp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const run = async (fn: () => Promise<unknown>) => {
@@ -76,11 +83,28 @@ export function AuthForm() {
       await fn();
       connect();
     } catch (e) {
-      setError(errorOf(t, e));
+      const message = e instanceof Error ? e.message : String(e);
+      if (message === OTP_REQUIRED) setNeedOtp(true);
+      else setError(errorOf(t, e));
     } finally {
       setBusy(false);
     }
   };
+  const switchTo = (m: typeof mode) => {
+    setMode(m);
+    setError(null);
+    setNeedOtp(false);
+    setOtp("");
+  };
+  const doLogin = () => void run(() => login(username.trim(), password, needOtp ? otp.trim() : undefined));
+  const doRecover = () =>
+    void run(() => recoverAccount(username.trim(), code.trim(), password, needOtp ? otp.trim() : undefined));
+  const loginReady = !!username.trim() && !!password && (!needOtp || otp.trim().length >= 6);
+  const recoverReady =
+    !!username.trim() &&
+    code.replace(/[\s-]/g, "").length === 10 &&
+    password.length >= PASSWORD_MIN &&
+    (!needOtp || /^\d{6}$/.test(otp.trim()));
   return (
     <Card className="flex flex-col gap-4">
       {pendingJoin && (
@@ -88,24 +112,26 @@ export function AuthForm() {
           ✉ {t.inviteBanner.replace("{code}", pendingJoin)}
         </p>
       )}
-      <div className="grid grid-cols-2 gap-2">
-        {(["guest", "login"] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={mode === m}
-            onClick={() => setMode(m)}
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              mode === m
-                ? "border-amber-400 bg-amber-400/15 text-amber-200"
-                : "border-stone-700 text-stone-300"
-            }`}
-          >
-            {m === "guest" ? t.guestStart : t.haveAccount}
-          </button>
-        ))}
-      </div>
-      {mode === "guest" ? (
+      {mode !== "recover" && (
+        <div className="grid grid-cols-2 gap-2">
+          {(["guest", "login"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              onClick={() => switchTo(m)}
+              className={`rounded-lg border px-3 py-2 text-sm ${
+                mode === m
+                  ? "border-amber-400 bg-amber-400/15 text-amber-200"
+                  : "border-stone-700 text-stone-300"
+              }`}
+            >
+              {m === "guest" ? t.guestStart : t.haveAccount}
+            </button>
+          ))}
+        </div>
+      )}
+      {mode === "guest" && (
         <>
           <label className="flex flex-col gap-1 text-sm text-stone-400">
             {t.yourName}
@@ -126,7 +152,8 @@ export function AuthForm() {
             {t.createProfile}
           </Button>
         </>
-      ) : (
+      )}
+      {mode === "login" && (
         <>
           <label className="flex flex-col gap-1 text-sm text-stone-400">
             {t.username}
@@ -145,16 +172,80 @@ export function AuthForm() {
               value={password}
               autoComplete="current-password"
               onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && void run(() => login(username.trim(), password))}
+              onKeyDown={(e) => e.key === "Enter" && loginReady && doLogin()}
             />
           </label>
-          <Button
-            variant="primary"
-            disabled={!username.trim() || !password || busy}
-            onClick={() => void run(() => login(username.trim(), password))}
-          >
+          {needOtp && (
+            <>
+              <p className="text-sm text-stone-300">🔐 {t.errors["2fa code required"]}</p>
+              <OtpInput value={otp} onChange={setOtp} onEnter={() => loginReady && doLogin()} />
+            </>
+          )}
+          <Button variant="primary" disabled={!loginReady || busy} onClick={doLogin}>
             {t.login}
           </Button>
+          <button
+            type="button"
+            className="self-start text-sm text-stone-400 underline underline-offset-2 hover:text-stone-200"
+            onClick={() => switchTo("recover")}
+          >
+            {t.forgotPassword}
+          </button>
+        </>
+      )}
+      {mode === "recover" && (
+        <>
+          <h2 className="font-display text-lg font-semibold text-amber-100">🔑 {t.recoverTitle}</h2>
+          <p className="text-sm leading-relaxed text-stone-400">{t.recoverHint}</p>
+          <label className="flex flex-col gap-1 text-sm text-stone-400">
+            {t.username}
+            <input
+              className={input}
+              value={username}
+              autoComplete="username"
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-stone-400">
+            {t.recoveryCode}
+            <input
+              className={`${input} font-mono tracking-wider`}
+              value={code}
+              placeholder="XXXX-XXXX-XX"
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={14}
+              onChange={(e) => setCode(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-stone-400">
+            {t.newPassword}
+            <input
+              className={input}
+              type="password"
+              value={password}
+              autoComplete="new-password"
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <span className="text-xs text-stone-500">{t.passwordRules}</span>
+          </label>
+          {needOtp && (
+            <>
+              <p className="text-sm text-stone-300">🔐 {t.errors["2fa code required"]}</p>
+              <OtpInput appOnly value={otp} onChange={setOtp} onEnter={() => recoverReady && doRecover()} />
+            </>
+          )}
+          <Button variant="primary" disabled={!recoverReady || busy} onClick={doRecover}>
+            {t.recoverSubmit}
+          </Button>
+          <button
+            type="button"
+            className="self-start text-sm text-stone-400 underline underline-offset-2 hover:text-stone-200"
+            onClick={() => switchTo("login")}
+          >
+            ← {t.backToLogin}
+          </button>
         </>
       )}
       {error && <p className="text-sm text-red-400">{error}</p>}
@@ -343,6 +434,7 @@ function AccountCard() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [codes, setCodes] = useState<readonly string[] | null>(null);
   const validName = USERNAME_PATTERN.test(username);
   const validPassword = password.length >= PASSWORD_MIN;
 
@@ -350,8 +442,9 @@ function AccountCard() {
     setBusy(true);
     setError(null);
     try {
-      await claimAccount(username, password, email.trim());
+      const acc = await claimAccount(username, password, email.trim());
       setPassword("");
+      setCodes(acc.recoveryCodes);
     } catch (e) {
       setError(errorOf(t, e));
     } finally {
@@ -422,7 +515,9 @@ function AccountCard() {
         </div>
       )}
       {profile.username && <PasswordChange />}
+      {profile.username && !codes && <SecurityCard />}
       <PrivacyCard />
+      {codes && <RecoveryCodesModal codes={codes} onClose={() => setCodes(null)} />}
       {confirmLogout && (
         <Modal onClose={() => setConfirmLogout(false)}>
           <p className="mb-2 text-stone-100">{t.logout}?</p>
