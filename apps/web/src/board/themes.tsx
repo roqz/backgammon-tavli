@@ -360,8 +360,8 @@ export const THEMES: Record<BoardStyle, BoardTheme> = {
           <stop offset="1" stopColor="#dccaa0" />
         </linearGradient>
         <linearGradient id="eb-pointB" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#e3c574" />
-          <stop offset="1" stopColor="#a8822a" />
+          <stop offset="0" stopColor="#9a7424" />
+          <stop offset="1" stopColor="#5e4310" />
         </linearGradient>
         {shadow(0.5)}
       </>

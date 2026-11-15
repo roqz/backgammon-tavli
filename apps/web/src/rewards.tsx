@@ -14,7 +14,7 @@ export const DICE_SKINS: Record<Exclude<DiceSkin, "theme">, BoardTheme["die"]> =
   brass: { fill: "#c9a14a", pip: "#2a1d08", edge: "#8a6a25" },
   // rarities
   jade: { fill: "#5f9a7c", pip: "#f4efe0", edge: "#2f5a45" },
-  obsidian: { fill: "#16131a", pip: "#e3c574", edge: "#000000" },
+  obsidian: { fill: "#2a2530", pip: "#f0d68a", edge: "#c9a14a" },
   silver: { fill: "#d9dde2", pip: "#1d2630", edge: "#8d96a0" },
 };
 
@@ -121,7 +121,7 @@ export const CHECKER_LOOKS: Record<
       </>
     ),
     checkers: [
-      { fill: "url(#cs-lapis-l)", edge: "#8a6a1f", ring: "#f0d68a" },
+      { fill: "url(#cs-lapis-l)", edge: "#4a3608", ring: "#fff1b8" },
       { fill: "url(#cs-lapis-d)", edge: "#0b1638", ring: "#d4b04a" },
     ],
     swatch: ["#e2bd55", "#24408f"],
