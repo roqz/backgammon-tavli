@@ -10,11 +10,14 @@ import {
   type DiceSkin,
   hasLook,
   REWARDS,
+  SHOP_ONLY,
 } from "../rewards";
 import { useSettings } from "../store/settings";
 
 /** "Unlock: <achievement>" (plus "or N tokens" where the look can be exchanged). */
 export const lockText = (t: Dict, achievement: string, shopId?: string): string => {
+  if (achievement === SHOP_ONLY)
+    return t.shopOnly.replace("{n}", String(SHOP.find((o) => o.id === shopId)?.price ?? "?"));
   const a = ACHIEVEMENTS.find((x) => x.id === achievement);
   const lang = t.locale.startsWith("de") ? "de" : "en";
   const name =

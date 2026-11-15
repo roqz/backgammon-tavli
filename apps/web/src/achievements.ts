@@ -1,8 +1,16 @@
 import type { MatchVariant } from "@tavli/engine";
-import type { Career, CareerVariant, ProfileResponse, TournamentView } from "@tavli/protocol";
+import {
+  type Career,
+  type CareerVariant,
+  CLUB_RANKS,
+  clubPoints,
+  type ProfileResponse,
+  type TournamentView,
+} from "@tavli/protocol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { humanSeat } from "./bot/useBotDriver";
+import { perfectWeeks } from "./career";
 import { variantShortName } from "./components/VariantPicker";
 import type { Dict, Lang } from "./i18n";
 import { PUZZLE_VARIANTS, streak } from "./puzzle";
@@ -28,6 +36,8 @@ interface Achievement {
   readonly text: Record<Lang, string>;
   /** Progress towards the goal: [current, target]. */
   readonly progress: (c: AchievementContext) => readonly [number, number];
+  /** A rarity: months or years of play, shown in its own showcase section. */
+  readonly rare?: boolean;
 }
 
 /** Games the local player won (vs the computer or online), with the result. */
@@ -291,6 +301,69 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     text: { de: "Lass eine Partie analysieren.", en: "Have a game analysed." },
     // unlocked by the replay screen (an action, not a state)
     progress: () => [0, 1],
+  },
+  // ---- rarities: long-term goals with looks that cannot be exchanged ----
+  {
+    id: "puzzles-100",
+    icon: "🗝️",
+    title: { de: "Rätselmeister", en: "Puzzle master" },
+    text: { de: "Löse 100 Tagesrätsel.", en: "Solve 100 daily puzzles." },
+    progress: (c) => count(Object.values(c.puzzles).filter((p) => p.solved).length, 100),
+    rare: true,
+  },
+  {
+    id: "expert-25",
+    icon: "🦾",
+    title: { de: "Netzbezwinger", en: "Net tamer" },
+    text: { de: "Gewinne 25 Spiele gegen den Experten (KI).", en: "Win 25 games against the expert (AI)." },
+    progress: (c) => count(Math.max(c.career.expertWins ?? 0, vsBotWins(c, "expert").length), 25),
+    rare: true,
+  },
+  {
+    id: "perfect-12",
+    icon: "📜",
+    title: { de: "Pflichtbewusst", en: "Dutiful" },
+    text: {
+      de: "Erledige in 12 Wochen alle drei Wochenaufgaben.",
+      en: "Complete all three weekly tasks in 12 weeks.",
+    },
+    progress: (c) => count(perfectWeeks(c.career), 12),
+    rare: true,
+  },
+  {
+    id: "wins-500",
+    icon: "💎",
+    title: { de: "Großmeister", en: "Grandmaster" },
+    text: { de: "Gewinne 500 Spiele.", en: "Win 500 games." },
+    progress: (c) => count(Math.max(c.career.wins, wins(c).length), 500),
+    rare: true,
+  },
+  {
+    id: "honor-member",
+    icon: "🎖️",
+    title: { de: "Ehrenmitglied", en: "Honorary member" },
+    text: {
+      de: `Erreiche den höchsten Clubrang (${CLUB_RANKS.at(-1)} Punkte).`,
+      en: `Reach the highest club rank (${CLUB_RANKS.at(-1)} points).`,
+    },
+    progress: (c) =>
+      count(
+        clubPoints({
+          career: c.career,
+          lessons: Array.from({ length: c.lessonsSolved }, (_, i) => i),
+          puzzles: c.puzzles,
+        }),
+        CLUB_RANKS.at(-1)!,
+      ),
+    rare: true,
+  },
+  {
+    id: "games-1000",
+    icon: "🏛️",
+    title: { de: "Inventar", en: "Part of the furniture" },
+    text: { de: "Spiele 1000 Partien.", en: "Play 1000 games." },
+    progress: (c) => count(c.career.games, 1000),
+    rare: true,
   },
 ];
 

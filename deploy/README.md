@@ -62,13 +62,13 @@ Container Registry ab (`.github/workflows/images.yml`):
 
 Hinter einem bestehenden Reverse Proxy (gemeinsames Caddy, das TLS übernimmt):
 
-| Dienst | Variable | Wert |
-| --- | --- | --- |
-| web | `DOMAIN` | `:80` |
-| web | `TRUSTED_PROXIES` | `private_ranges` (Client-Adresse vom vorderen Proxy übernehmen) |
-| web | `SERVER_UPSTREAM` | Name:Port des Servers, z. B. `tavli-server:2567` |
-| web | `OPERATOR_NAME`, `OPERATOR_ADDRESS`, `OPERATOR_EMAIL`, `HOSTING` | Impressum/Datenschutz |
-| server | `TRUST_PROXY` | `2` (zwei Proxys vor dem Server) |
-| server | `VAPID_SUBJECT`, `ADMIN_TOKEN`, `BACKUP_DIR=/data/backups` | wie oben |
+| Dienst | Variable                                                         | Wert                                                            |
+| ------ | ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| web    | `DOMAIN`                                                         | `:80`                                                           |
+| web    | `TRUSTED_PROXIES`                                                | `private_ranges` (Client-Adresse vom vorderen Proxy übernehmen) |
+| web    | `SERVER_UPSTREAM`                                                | Name:Port des Servers, z. B. `tavli-server:2567`                |
+| web    | `OPERATOR_NAME`, `OPERATOR_ADDRESS`, `OPERATOR_EMAIL`, `HOSTING` | Impressum/Datenschutz                                           |
+| server | `TRUST_PROXY`                                                    | `2` (zwei Proxys vor dem Server)                                |
+| server | `VAPID_SUBJECT`, `ADMIN_TOKEN`, `BACKUP_DIR=/data/backups`       | wie oben                                                        |
 
 Ein Bind-Mount für `/data` muss dem Nutzer 1000 gehören (`chown -R 1000:1000 data`).

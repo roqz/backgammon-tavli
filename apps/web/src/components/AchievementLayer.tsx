@@ -46,6 +46,7 @@ export function AchievementLayer() {
       winsBy: s.winsBy,
       corrFinished: s.corrFinished,
       leagueGames: s.leagueGames,
+      expertWins: s.expertWins ?? 0,
       challenged: s.challenged,
       weeks: s.weeks,
       owned: s.owned,

@@ -11,6 +11,10 @@ const INLAY_WOOD = woodTexture({ dark: "#2a1810", mid: "#4a2c1a", light: "#6d442
 const INLAY_FELT = woodTexture({ dark: "#5a3b22", mid: "#7a5232", light: "#94683f" }, 640, 220, 29);
 const WINTER_WOOD = woodTexture({ dark: "#2b3036", mid: "#454c55", light: "#626b76" }, 640, 220, 31);
 const WINTER_FELT = feltTexture("#1c2a3a", 384, 624, 13);
+const EBONY_WOOD = woodTexture({ dark: "#0d0907", mid: "#1f1510", light: "#352419" }, 640, 220, 37);
+const EBONY_FELT = feltTexture("#13261c", 384, 624, 17);
+const SALON_WOOD = woodTexture({ dark: "#3a140c", mid: "#5e2416", light: "#82402a" }, 640, 220, 41);
+const SALON_FELT = feltTexture("#4d1620", 384, 624, 21);
 
 /** A wood tile repeated over the frame. */
 const woodPattern = (id: string, href: string) => (
@@ -41,7 +45,9 @@ export type BoardStyle =
   | "olive"
   | "contrast"
   | "inlay"
-  | "winter";
+  | "winter"
+  | "ebony"
+  | "salon";
 
 /** Order in the settings. */
 export const BOARD_STYLES: readonly BoardStyle[] = [
@@ -53,6 +59,8 @@ export const BOARD_STYLES: readonly BoardStyle[] = [
   "olive",
   "inlay",
   "winter",
+  "ebony",
+  "salon",
   "contrast",
 ];
 
@@ -339,6 +347,66 @@ export const THEMES: Record<BoardStyle, BoardTheme> = {
     ],
     die: { fill: "#f7fafc", pip: "#24384d", edge: "#9fb3c6" },
     cube: { fill: "#e6eef5", text: "#24384d" },
+  },
+  /** Rarity (12 perfect weeks): ebony frame, dark green baize, gold and ivory points. */
+  ebony: {
+    id: "ebony",
+    defs: (
+      <>
+        {woodPattern("eb-grain", EBONY_WOOD)}
+        {feltPattern("eb-felt", EBONY_FELT)}
+        <linearGradient id="eb-pointA" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f4e7c6" />
+          <stop offset="1" stopColor="#dccaa0" />
+        </linearGradient>
+        <linearGradient id="eb-pointB" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e3c574" />
+          <stop offset="1" stopColor="#a8822a" />
+        </linearGradient>
+        {shadow(0.5)}
+      </>
+    ),
+    frame: "url(#eb-grain)",
+    felt: "url(#eb-felt)",
+    bar: "url(#eb-grain)",
+    tray: "#0b0806",
+    pointA: "url(#eb-pointA)",
+    pointB: "url(#eb-pointB)",
+    label: "#e3c574",
+    highlight: "#7fd3ff",
+    selected: "#f472b6",
+    checkers: [
+      { fill: "#f7efdc", edge: "#b39b6c", ring: "#e3c574" },
+      { fill: "#17110d", edge: "#000000", ring: "#c9a14a" },
+    ],
+    die: { fill: "#f7efdc", pip: "#17110d", edge: "#c9a14a" },
+    cube: { fill: "#e3c574", text: "#17110d" },
+  },
+  /** Rarity (exchange only): mahogany frame, bordeaux leather, cream and racing green points. */
+  salon: {
+    id: "salon",
+    defs: (
+      <>
+        {woodPattern("sa-grain", SALON_WOOD)}
+        {feltPattern("sa-felt", SALON_FELT)}
+        {shadow(0.45)}
+      </>
+    ),
+    frame: "url(#sa-grain)",
+    felt: "url(#sa-felt)",
+    bar: "url(#sa-grain)",
+    tray: "#2a0d08",
+    pointA: "#efe3c3",
+    pointB: "#1f4a35",
+    label: "#efe3c3",
+    highlight: "#ffd54a",
+    selected: "#7fd3ff",
+    checkers: [
+      { fill: "#f4ead2", edge: "#a8946a", ring: "#dccba3" },
+      { fill: "#1b1410", edge: "#000000", ring: "#7a5a3c" },
+    ],
+    die: { fill: "#f4ead2", pip: "#4d1620", edge: "#a8946a" },
+    cube: { fill: "#c9a14a", text: "#2a0d08" },
   },
   /**
    * High contrast for low vision and colour blindness: black board, white and yellow points,

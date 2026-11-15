@@ -2,6 +2,7 @@ import { EMPTY_CAREER } from "@tavli/protocol";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ACHIEVEMENTS, type AchievementContext } from "./achievements";
 import {
+  perfectWeeks,
   plaqueIds,
   SHOP,
   seasonIds,
@@ -13,6 +14,7 @@ import {
   weekRange,
   winterSeason,
 } from "./career";
+import { hasLook } from "./rewards";
 import type { GameRecord } from "./store/archive";
 
 const game = (over: Partial<GameRecord> & { date: string }): GameRecord => ({
@@ -118,6 +120,30 @@ describe("career", () => {
     expect(plaqueIds({ ...EMPTY_CAREER, winsBy: all })).toContain("master-all");
   });
 
+  it("counts expert wins and perfect weeks", () => {
+    const expert = game({
+      date: "2026-11-12T10:00:00Z",
+      players: [
+        { name: "Me", kind: "human" },
+        { name: "Bot", kind: "bot", level: "expert" },
+      ],
+    });
+    useCareer.getState().count([expert, game({ date: "2026-11-12T09:00:00Z" })]);
+    expect(useCareer.getState().expertWins).toBe(1);
+    useCareer.getState().markTasks("2026-W40", [0, 1, 2]);
+    useCareer.getState().markTasks("2026-W41", [0, 1]);
+    expect(perfectWeeks(useCareer.getState())).toBe(1);
+  });
+
+  it("keeps luxury looks to the exchange and rarity rewards out of it", () => {
+    expect(hasLook("style", "salon", { "perfect-12": "x" }, [])).toBe(false);
+    expect(hasLook("style", "salon", {}, ["style-salon"])).toBe(true);
+    expect(hasLook("style", "ebony", { "perfect-12": "x" }, [])).toBe(true);
+    expect(SHOP.filter((o) => o.rare).map((o) => o.price)).toEqual([12, 20, 30]);
+    for (const id of ["style-ebony", "set-lapis", "dice-jade", "dice-obsidian"])
+      expect(SHOP.some((o) => o.id === id)).toBe(false);
+  });
+
   it("knows the winter season and unlocks it after ten games in it", () => {
     expect(winterSeason(new Date(2026, 5, 1))).toBeNull();
     expect(winterSeason(new Date(2027, 1, 10))?.id).toBe("season-winter-2026");
@@ -150,6 +176,26 @@ describe("special moments", () => {
     const won = game({ date: "2026-11-10T10:00:00Z", matchEnd: { winner: 0, maxDeficit: [4, 0] } });
     expect(done("comeback", [won])).toBe(true);
     expect(done("comeback", [game({ date: "x", matchEnd: { winner: 0, maxDeficit: [3, 2] } })])).toBe(false);
+  });
+
+  it("rarities: long counters from the career, the highest club rank", () => {
+    const base = ctx([]);
+    const rare = (id: string, c: AchievementContext) => {
+      const [n, target] = ACHIEVEMENTS.find((a) => a.id === id)!.progress(c);
+      return n >= target;
+    };
+    expect(rare("games-1000", { ...base, career: { ...EMPTY_CAREER, games: 999 } })).toBe(false);
+    expect(rare("games-1000", { ...base, career: { ...EMPTY_CAREER, games: 1000 } })).toBe(true);
+    expect(rare("wins-500", { ...base, career: { ...EMPTY_CAREER, wins: 500 } })).toBe(true);
+    expect(rare("expert-25", { ...base, career: { ...EMPTY_CAREER, expertWins: 25 } })).toBe(true);
+    // 900 points: 300 games + 300 wins + 100 weekly tasks (300)
+    const weeks = Object.fromEntries(
+      Array.from({ length: 50 }, (_, i) => [`2025-W${String(i + 1).padStart(2, "0")}`, [0, 1]]),
+    );
+    expect(rare("honor-member", { ...base, career: { ...EMPTY_CAREER, games: 300, wins: 300, weeks } })).toBe(
+      true,
+    );
+    expect(ACHIEVEMENTS.filter((a) => a.rare)).toHaveLength(6);
   });
 
   it("raining sixes, the pinned mother and a high cube", () => {

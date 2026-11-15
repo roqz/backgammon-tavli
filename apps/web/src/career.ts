@@ -45,6 +45,7 @@ const careerOf = (s: CareerStore): Career => ({
   winsBy: s.winsBy,
   corrFinished: s.corrFinished,
   leagueGames: s.leagueGames,
+  expertWins: s.expertWins ?? 0,
   challenged: s.challenged,
   weeks: s.weeks,
   owned: s.owned,
@@ -60,6 +61,7 @@ export const useCareer = create<CareerStore>()(
         const fresh = records.filter((r) => r.date > s.seen);
         if (fresh.length === 0) return;
         let { games, wins } = s;
+        let expertWins = s.expertWins ?? 0;
         const winsBy = { ...s.winsBy };
         for (const r of fresh) {
           const seat = humanSeat(r.players);
@@ -69,11 +71,12 @@ export const useCareer = create<CareerStore>()(
             wins++;
             const v = r.variant as CareerVariant;
             if (CAREER_VARIANTS.includes(v)) winsBy[v] = (winsBy[v] ?? 0) + 1;
+            if (r.players.some((p) => p.kind === "bot" && p.level === "expert")) expertWins++;
           }
         }
         // ISO dates sort as text: the newest one counted so far
         const seen = [s.seen, ...fresh.map((r) => r.date)].sort().at(-1) ?? s.seen;
-        set({ games, wins, winsBy, seen });
+        set({ games, wins, winsBy, expertWins, seen });
       },
       setCorr: (finished, league) =>
         set((s) =>
@@ -253,6 +256,8 @@ export interface ShopItem {
   /** The look: checker set, dice skin or board style. */
   readonly look: string;
   readonly price: number;
+  /** Luxury looks: only in exchange, never by an achievement. */
+  readonly rare?: boolean;
 }
 
 /** Looks that can be taken for tokens; prestige looks (inlay, winter, frames) cannot. */
@@ -268,6 +273,10 @@ export const SHOP: readonly ShopItem[] = [
   { id: "style-marble", kind: "style", look: "marble", price: 8 },
   { id: "style-tournament", kind: "style", look: "tournament", price: 8 },
   { id: "style-olive", kind: "style", look: "olive", price: 8 },
+  // rarities: only here, and dear (a perfect week earns 5 tokens)
+  { id: "dice-silver", kind: "dice", look: "silver", price: 12, rare: true },
+  { id: "set-amber", kind: "checkers", look: "amber", price: 20, rare: true },
+  { id: "style-salon", kind: "style", look: "salon", price: 30, rare: true },
 ];
 
 export const tokensEarned = (c: Career): number =>
@@ -277,6 +286,10 @@ export const tokensSpent = (c: Career): number =>
   c.owned.reduce((s, id) => s + (SHOP.find((o) => o.id === id)?.price ?? 0), 0);
 
 export const tokens = (c: Career): number => Math.max(0, tokensEarned(c) - tokensSpent(c));
+
+/** Weeks with all three tasks done. */
+export const perfectWeeks = (c: Career): number =>
+  Object.values(c.weeks).filter((done) => done.length >= 3).length;
 
 // ---- variant plaques -----------------------------------------------------------------------------
 

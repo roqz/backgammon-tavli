@@ -207,6 +207,9 @@ export const FRAMES = {
   post: "corr-ten",
   handshake: "friends-five",
   shield: "league-win",
+  // rarities (docs/GAMIFICATION.md)
+  rosette: "games-1000",
+  medal: "honor-member",
 } as const;
 export type Frame = keyof typeof FRAMES;
 export const FRAME_IDS = Object.keys(FRAMES) as Frame[];
@@ -235,6 +238,8 @@ export const CareerSchema = z.object({
   winsBy: z.partialRecord(z.enum(CAREER_VARIANTS), counter),
   corrFinished: counter,
   leagueGames: counter,
+  /** Wins against the expert (AI); added later, so older progress has none. */
+  expertWins: counter.optional(),
   /** Friends challenged or invited (ids), up to 50. */
   challenged: z.array(z.string().max(64)).max(50),
   /** ISO week ("2026-W46") → indexes of the weekly tasks done. */
@@ -252,6 +257,7 @@ export const EMPTY_CAREER: Career = {
   winsBy: {},
   corrFinished: 0,
   leagueGames: 0,
+  expertWins: 0,
   challenged: [],
   weeks: {},
   owned: [],
@@ -273,6 +279,7 @@ export const mergeCareer = (a: Career, b: Career): Career => {
     winsBy,
     corrFinished: Math.max(a.corrFinished, b.corrFinished),
     leagueGames: Math.max(a.leagueGames, b.leagueGames),
+    expertWins: Math.max(a.expertWins ?? 0, b.expertWins ?? 0),
     challenged: [...new Set([...a.challenged, ...b.challenged])].slice(0, 50),
     weeks,
     owned: [...new Set([...a.owned, ...b.owned])].slice(0, 80),

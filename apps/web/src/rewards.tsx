@@ -6,22 +6,28 @@ import { hasWinter, useCareer } from "./career";
 import { useSettings } from "./store/settings";
 
 /** Dice looks on top of the board style; "theme" uses the style's own dice. */
-export type DiceSkin = "theme" | "gold" | "ruby" | "brass";
+export type DiceSkin = "theme" | "gold" | "ruby" | "brass" | "jade" | "obsidian" | "silver";
 
 export const DICE_SKINS: Record<Exclude<DiceSkin, "theme">, BoardTheme["die"]> = {
   gold: { fill: "#e7c15a", pip: "#3b2a07", edge: "#a07a1f" },
   ruby: { fill: "#9f1239", pip: "#fff1f2", edge: "#5f0a22" },
   brass: { fill: "#c9a14a", pip: "#2a1d08", edge: "#8a6a25" },
+  // rarities
+  jade: { fill: "#5f9a7c", pip: "#f4efe0", edge: "#2f5a45" },
+  obsidian: { fill: "#16131a", pip: "#e3c574", edge: "#000000" },
+  silver: { fill: "#d9dde2", pip: "#1d2630", edge: "#8d96a0" },
 };
 
 /** Checker sets on top of the board style (both colours, so they stay apart). */
-export type CheckerSet = "theme" | "pearl" | "wood" | "onyx" | "brass" | "bone";
+export type CheckerSet = "theme" | "pearl" | "wood" | "onyx" | "brass" | "bone" | "lapis" | "amber";
 export const CHECKER_SETS: readonly Exclude<CheckerSet, "theme">[] = [
   "pearl",
   "wood",
   "onyx",
   "brass",
   "bone",
+  "lapis",
+  "amber",
 ];
 
 const disc = (id: string, inner: string, mid: string, outer: string) => (
@@ -106,7 +112,38 @@ export const CHECKER_LOOKS: Record<
     ],
     swatch: ["#e9dfc8", "#1d1612"],
   },
+  /** Rarity (500 wins): gold against lapis lazuli. */
+  lapis: {
+    defs: (
+      <>
+        {disc("cs-lapis-l", "#fff1b8", "#e2bd55", "#a8822a")}
+        {disc("cs-lapis-d", "#4f6fc4", "#24408f", "#132458")}
+      </>
+    ),
+    checkers: [
+      { fill: "url(#cs-lapis-l)", edge: "#8a6a1f", ring: "#f0d68a" },
+      { fill: "url(#cs-lapis-d)", edge: "#0b1638", ring: "#d4b04a" },
+    ],
+    swatch: ["#e2bd55", "#24408f"],
+  },
+  /** Rarity (exchange only): amber and mocha. */
+  amber: {
+    defs: (
+      <>
+        {disc("cs-amber-l", "#ffd98a", "#e09a2e", "#a5600f")}
+        {disc("cs-amber-d", "#6a4632", "#3e2618", "#1f120a")}
+      </>
+    ),
+    checkers: [
+      { fill: "url(#cs-amber-l)", edge: "#7a4508", ring: "#f5c46a" },
+      { fill: "url(#cs-amber-d)", edge: "#120a05", ring: "#9a6a4a" },
+    ],
+    swatch: ["#e09a2e", "#3e2618"],
+  },
 };
+
+/** Marks looks that only the exchange gives (luxury items, see SHOP in career.ts). */
+export const SHOP_ONLY = "shop";
 
 /**
  * What achievements unlock. Classic, Modern and High contrast are always available (the
@@ -122,16 +159,25 @@ export const REWARDS = {
     inlay: "master-all",
     // any winter season (season-winter-<year>), see hasLook
     winter: "season-winter",
+    ebony: "perfect-12",
+    salon: SHOP_ONLY,
   } as Partial<Record<BoardStyle, string>>,
-  dice: { gold: "beat-hard", ruby: "fifty-wins", brass: "league-player" } as Partial<
-    Record<DiceSkin, string>
-  >,
+  dice: {
+    gold: "beat-hard",
+    ruby: "fifty-wins",
+    brass: "league-player",
+    jade: "puzzles-100",
+    obsidian: "expert-25",
+    silver: SHOP_ONLY,
+  } as Partial<Record<DiceSkin, string>>,
   checkers: {
     pearl: "set-pearl",
     wood: "set-wood",
     onyx: "set-onyx",
     brass: "set-brass",
     bone: "set-bone",
+    lapis: "wins-500",
+    amber: SHOP_ONLY,
   } as Partial<Record<CheckerSet, string>>,
   /** Confetti after a won game. */
   fireworks: "first-win",
@@ -155,6 +201,7 @@ export const hasLook = (
   const achievement = (REWARDS[kind] as Record<string, string | undefined>)[look];
   if (!achievement) return true;
   if (achievement === "season-winter") return hasWinter(unlocked);
+  if (achievement === SHOP_ONLY) return owned.includes(`${SHOP_ID[kind]}${look}`);
   return !!unlocked[achievement] || owned.includes(`${SHOP_ID[kind]}${look}`);
 };
 
@@ -205,4 +252,7 @@ export const FRAME_LOOK: Record<Frame, { icon: string; ring: string }> = {
   post: { icon: "✉️", ring: "ring-[#b9a27a]" },
   handshake: { icon: "🤝", ring: "ring-[#8fb39a]" },
   shield: { icon: "🛡️", ring: "ring-[#a3836a]" },
+  // rarities: double rings in brass
+  rosette: { icon: "🏵️", ring: "ring-[#c9a14a] outline outline-1 outline-offset-2 outline-[#c9a14a]/60" },
+  medal: { icon: "🎖️", ring: "ring-[#e3c574] outline outline-1 outline-offset-2 outline-[#d1603d]/70" },
 };

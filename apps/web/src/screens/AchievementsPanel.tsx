@@ -12,13 +12,16 @@ import { useSettings } from "../store/settings";
 import { LESSONS } from "./TutorialScreen";
 
 /** What an achievement unlocks, as text. */
-const rewardOf = (t: ReturnType<typeof useT>, id: string): string | null => {
+export const rewardOf = (t: ReturnType<typeof useT>, id: string): string | null => {
   const styles = Object.entries(REWARDS.style)
     .filter(([, a]) => a === id)
     .map(([s]) => `🎨 ${t.styleNames[s as keyof typeof THEMES]}`);
   const dice = Object.entries(REWARDS.dice)
     .filter(([, a]) => a === id)
     .map(([d]) => `🎲 ${t.diceSkins[d as keyof typeof t.diceSkins]}`);
+  const checkers = Object.entries(REWARDS.checkers)
+    .filter(([, a]) => a === id)
+    .map(([c]) => `⚪ ${t.checkerSets[c as keyof typeof t.checkerSets]}`);
   const extra = [
     ...(REWARDS.fireworks === id ? [`🎆 ${t.fireworks}`] : []),
     ...(REWARDS.diceCup === id ? [`🔊 ${t.diceCup}`] : []),
@@ -26,7 +29,7 @@ const rewardOf = (t: ReturnType<typeof useT>, id: string): string | null => {
       (f) => `${FRAME_LOOK[f].icon} ${t.frame}: ${t.frameNames[f]}`,
     ),
   ];
-  const all = [...styles, ...dice, ...extra];
+  const all = [...styles, ...dice, ...checkers, ...extra];
   return all.length ? all.join(", ") : null;
 };
 
@@ -76,6 +79,7 @@ export function AchievementsPanel() {
               <div className="min-w-0 flex-1">
                 <div className={open ? "font-semibold text-amber-100" : "text-stone-300"}>
                   {a.title[lang]} {open && <span className="sr-only">✓</span>}
+                  {a.rare && <RareTag />}
                 </div>
                 <div className="text-xs text-stone-500">{a.text[lang]}</div>
                 {!open && target > 1 && (
@@ -105,5 +109,15 @@ export function AchievementsPanel() {
         })}
       </ul>
     </Card>
+  );
+}
+
+/** Small brass label for rarities. */
+export function RareTag() {
+  const t = useT();
+  return (
+    <span className="ml-1 rounded border border-brass/50 px-1.5 py-px align-middle text-[10px] font-semibold uppercase tracking-wider text-brass">
+      {t.rarityTag}
+    </span>
   );
 }

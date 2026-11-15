@@ -1,7 +1,7 @@
 import { CAREER_VARIANTS, FRAME_IDS, FRAMES } from "@tavli/protocol";
 import type { ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useAchievements } from "../achievements";
+import { ACHIEVEMENTS, useAchievements } from "../achievements";
 import type { BoardStyle } from "../board/themes";
 import {
   PLAQUE_WINS,
@@ -31,8 +31,10 @@ import { type Dict, useT } from "../i18n";
 import { usePuzzles } from "../puzzle";
 import { type CheckerSet, DICE_SKINS, type DiceSkin, FRAME_LOOK, hasLook } from "../rewards";
 import { useArchive } from "../store/archive";
-import { AchievementsPanel } from "./AchievementsPanel";
+import { useSettings } from "../store/settings";
+import { AchievementsPanel, RareTag, rewardOf } from "./AchievementsPanel";
 import { Page, ScreenTitle } from "./AppShell";
+import { LESSONS } from "./TutorialScreen";
 
 const MEDALS = ["#b0764a", "#b9bec4", "#c9a14a"];
 
@@ -54,6 +56,7 @@ export function ShowcaseScreen({ onBack }: { onBack: () => void }) {
           <Frames />
         </div>
       </div>
+      <Rarities />
       <Box title={t.looksTitle}>
         <StylePicker />
         <DicePicker />
@@ -102,6 +105,7 @@ const useCareerData = () =>
       winsBy: s.winsBy,
       corrFinished: s.corrFinished,
       leagueGames: s.leagueGames,
+      expertWins: s.expertWins ?? 0,
       challenged: s.challenged,
       weeks: s.weeks,
       owned: s.owned,
@@ -229,26 +233,98 @@ function Exchange() {
       }
     >
       <p className="text-xs leading-relaxed text-stone-500">{t.exchangeHint}</p>
-      <ul className="flex flex-col divide-y divide-stone-800">
-        {SHOP.map((item) => {
-          const taken = career.owned.includes(item.id);
-          const free = !taken && hasLook(item.kind, item.look, unlocked, []);
+      {[false, true].map((rare) => (
+        <ul key={String(rare)} className="flex flex-col divide-y divide-stone-800">
+          {rare && (
+            <li className="pt-2 pb-1">
+              <RareTag />
+            </li>
+          )}
+          {SHOP.filter((o) => !!o.rare === rare).map((item) => {
+            const taken = career.owned.includes(item.id);
+            const free = !taken && hasLook(item.kind, item.look, unlocked, []);
+            return (
+              <li key={item.id} className="flex min-h-12 items-center gap-3 py-2">
+                <ShopPreview kind={item.kind} look={item.look} />
+                <span className="flex-1 text-sm text-stone-200">{name(item.kind, item.look)}</span>
+                {taken || free ? (
+                  <span className="text-xs text-stone-500">{taken ? t.exchangeDone : t.exchangeHave}</span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={balance < item.price}
+                    onClick={() => take(item.id)}
+                    className="min-h-9 rounded-lg border border-stone-700 px-3 text-sm text-stone-100 hover:border-amber-400 disabled:opacity-40"
+                  >
+                    {t.exchangeTake.replace("{n}", String(item.price))}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ))}
+    </Box>
+  );
+}
+
+/** Long-term goals whose rewards cannot be exchanged. */
+function Rarities() {
+  const t = useT();
+  const lang = useSettings((s) => s.lang);
+  const career = useCareerData();
+  const unlocked = useAchievements((s) => s.unlocked);
+  const lessons = useAchievements((s) => s.lessons);
+  const records = useArchive((s) => s.records);
+  const puzzles = usePuzzles((s) => s.results);
+  const context = {
+    records,
+    puzzles,
+    lessonsSolved: lessons.length,
+    lessonsTotal: LESSONS.length,
+    profile: null,
+    tournaments: [],
+    me: null,
+    career,
+  };
+  return (
+    <Box title={t.raritiesTitle}>
+      <p className="text-xs leading-relaxed text-stone-500">{t.raritiesHint}</p>
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="rarities">
+        {ACHIEVEMENTS.filter((a) => a.rare).map((a) => {
+          const open = !!unlocked[a.id];
+          const [n, of] = open ? [1, 1] : a.progress(context);
           return (
-            <li key={item.id} className="flex min-h-12 items-center gap-3 py-2">
-              <ShopPreview kind={item.kind} look={item.look} />
-              <span className="flex-1 text-sm text-stone-200">{name(item.kind, item.look)}</span>
-              {taken || free ? (
-                <span className="text-xs text-stone-500">{taken ? t.exchangeDone : t.exchangeHave}</span>
+            <li
+              key={a.id}
+              className={`flex flex-col gap-2 rounded-xl border p-3 ${open ? "border-brass/60 bg-brass/10" : "border-stone-800"}`}
+            >
+              <div className="flex items-start gap-3">
+                <span aria-hidden className={`text-3xl ${open ? "" : "opacity-50 grayscale"}`}>
+                  {a.icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className={`font-display font-semibold ${open ? "text-brass" : "text-stone-100"}`}>
+                    {a.title[lang]}
+                  </div>
+                  <div className="text-xs text-stone-400">{a.text[lang]}</div>
+                </div>
+              </div>
+              {open ? (
+                <p className="text-xs text-stone-300">✓ {unlocked[a.id]?.slice(0, 10)}</p>
               ) : (
-                <button
-                  type="button"
-                  disabled={balance < item.price}
-                  onClick={() => take(item.id)}
-                  className="min-h-9 rounded-lg border border-stone-700 px-3 text-sm text-stone-100 hover:border-amber-400 disabled:opacity-40"
-                >
-                  {t.exchangeTake.replace("{n}", String(item.price))}
-                </button>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Bar n={n} of={of} label={a.title[lang]} />
+                  </div>
+                  <span className="text-xs tabular-nums text-stone-400">
+                    {n}/{of}
+                  </span>
+                </div>
               )}
+              <p className="text-xs text-stone-500">
+                {t.reward}: {rewardOf(t, a.id)}
+              </p>
             </li>
           );
         })}

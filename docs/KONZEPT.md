@@ -292,6 +292,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Wochenaufgaben (3 pro ISO-Woche, für alle gleich) bringen Spielmarken; Steine, Würfel und Bretter lassen sich eintauschen, Prestige-Looks nicht
 - Besondere Momente (Comeback, Sechser-Regen, Mutter eingeklemmt, Würfel auf 8), Online-Rahmen (Brief, Handschlag, Wappen), Wintersaison mit Winter-Brett, Messing-Würfel für Ligaspieler
 - Vitrine im Profil zeigt alles Gesammelte und wie man den Rest bekommt
+- Raritäten für die Langzeitmotivation: 100 Rätsel (Jade-Würfel), 25 Siege gegen den Experten (Obsidian-Würfel), 12 perfekte Wochen (Ebenholz-Brett), 500 Siege (Lapis-Steine), Ehrenmitglied (Rahmen Ehrennadel), 1000 Partien (Rahmen Rosette); dazu Luxus-Looks nur im Tausch (Silber 12, Bernstein 20, Salon 30 Marken)
 
 ### Clubs und Ligen ✅
 
