@@ -25,6 +25,7 @@ import {
   NameSchema,
   PasswordChangeSchema,
   ProgressSchema,
+  PushPrefsSchema,
   PushSubscribeSchema,
   PushUnsubscribeSchema,
   ReportSchema,
@@ -37,7 +38,15 @@ import { ClubError, NO_SHOW_LIMIT } from "./clubs";
 import { CorrError, Correspondence } from "./correspondence";
 import { AccountError, Store } from "./db";
 import { type FairPlayOptions, Lobby, type MatchmakingOptions, type SpectatorDelay } from "./lobby";
-import { corrMoveMessage, Push, type PushOptions } from "./push";
+import {
+  corrEndMessage,
+  corrInviteMessage,
+  corrMoveMessage,
+  corrReminderMessage,
+  friendRequestMessage,
+  Push,
+  type PushOptions,
+} from "./push";
 import type { Conn, RoomTimings } from "./room";
 import type { TournamentOptions } from "./tournaments";
 
@@ -201,7 +210,26 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       isConnected: (id) => lobby.isConnected(id),
       yourMove: (id, game) => {
         const opponent = game.players[game.toAct === 0 ? 1 : 0].name;
-        void push?.send(id, (lang) => corrMoveMessage(lang, game.id, opponent, game.hours));
+        void push?.send(id, "corrMove", (lang) => corrMoveMessage(lang, game.id, opponent, game.hours));
+      },
+      reminder: (id, game, hoursLeft) => {
+        const opponent = game.players[game.seat === 0 ? 1 : 0].name;
+        void push?.send(id, "corrReminder", (lang) =>
+          corrReminderMessage(lang, game.id, opponent, hoursLeft),
+        );
+      },
+      invited: (id, game) => {
+        const from = game.players.find((p) => p.id === game.createdBy)?.name ?? "?";
+        void push?.send(id, "corrInvite", (lang) =>
+          corrInviteMessage(lang, from, game.variant, game.length, game.hours),
+        );
+      },
+      ended: (id, game) => {
+        const opponent = game.players[game.seat === 0 ? 1 : 0].name;
+        const won = game.winner === null ? null : game.winner === game.seat;
+        void push?.send(id, "corrEnd", (lang) =>
+          corrEndMessage(lang, game.id, opponent, won, game.reason === "abandoned"),
+        );
       },
       leagueResult: (league, players, winner, score) =>
         lobby.clubs.matchEnded(league, players, winner, score),
@@ -590,6 +618,10 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       if (!allowFriendRequest(player.id)) throw new HttpError(429, "too many requests");
       const result = await account(() => store.befriend(player.id, body.data.playerId));
       if (result !== "already") lobby.notify(body.data.playerId, { t: "friends-changed" });
+      if (result === "requested" && !lobby.isConnected(body.data.playerId))
+        void push?.send(body.data.playerId, "friendRequest", (lang) =>
+          friendRequestMessage(lang, player.name),
+        );
       return { ok: true, result };
     }
     if (path === "/api/friends/remove" && req.method === "POST") {
@@ -611,6 +643,17 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       if (!body.success) throw new HttpError(400, "invalid subscription");
       if (!push.subscribe(player.id, body.data)) throw new HttpError(400, "unsupported push service");
       return { ok: true };
+    }
+    if (path === "/api/push/prefs" && req.method === "GET") {
+      if (!push) throw new HttpError(404, "push disabled");
+      return push.prefs(authPlayer(req).id);
+    }
+    if (path === "/api/push/prefs" && req.method === "POST") {
+      if (!push) throw new HttpError(404, "push disabled");
+      const player = authPlayer(req);
+      const body = PushPrefsSchema.safeParse(await readJson(req));
+      if (!body.success) throw new HttpError(400, "invalid preferences");
+      return push.setPrefs(player.id, body.data);
     }
     if (path === "/api/push/unsubscribe" && req.method === "POST") {
       if (!push) throw new HttpError(404, "push disabled");

@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS corr_games (
   updated_at TEXT NOT NULL,
   league_id TEXT,
   hours INTEGER,
-  emote TEXT
+  emote TEXT,
+  reminded INTEGER
 );
 CREATE TABLE IF NOT EXISTS corr_seeks (
   id TEXT PRIMARY KEY,
@@ -85,6 +86,12 @@ export interface CorrHost {
   isConnected(playerId: string): boolean;
   /** Push notification "your move" for a player who is not connected. */
   yourMove?(playerId: string, game: CorrView): void;
+  /** Push notification: little time left for the move (player not connected). */
+  reminder?(playerId: string, game: CorrView, hoursLeft: number): void;
+  /** Push notification: an invitation (player not connected). */
+  invited?(playerId: string, game: CorrView): void;
+  /** Push notification: the game ended without the player's own action (player not connected). */
+  ended?(playerId: string, game: CorrView): void;
   /** Result of a league game (forwarded to the league table). */
   leagueResult?(
     leagueId: string,
@@ -138,6 +145,8 @@ export class Correspondence {
     if (!cols.some((c) => c.name === "hours"))
       store.db.exec("ALTER TABLE corr_games ADD COLUMN hours INTEGER");
     if (!cols.some((c) => c.name === "emote")) store.db.exec("ALTER TABLE corr_games ADD COLUMN emote TEXT");
+    if (!cols.some((c) => c.name === "reminded"))
+      store.db.exec("ALTER TABLE corr_games ADD COLUMN reminded INTEGER");
   }
 
   private get db() {
@@ -214,6 +223,7 @@ export class Correspondence {
       )
       .run(id, variant, length, days, hours, me, friend, me, now, now);
     this.changed(id);
+    if (!this.host.isConnected(friend)) this.host.invited?.(friend, this.get(friend, id));
     return this.get(me, id);
   }
 
@@ -371,7 +381,7 @@ export class Correspondence {
     const r = this.row(id);
     if (!r || (r.p0 !== me && r.p1 !== me)) throw new CorrError(404, "not found");
     if (r.status === "invited") this.update(id, { status: "declined" });
-    else if (r.status === "active") this.finish(r, r.p0 === me ? 1 : 0, "forfeit");
+    else if (r.status === "active") this.finish(r, r.p0 === me ? 1 : 0, "forfeit", me);
     this.changed(id);
     return this.get(me, id);
   }
@@ -415,7 +425,7 @@ export class Correspondence {
       games: JSON.stringify(games),
       ...(newDecision ? { deadline: Date.now() + hoursOf(r) * HOUR } : {}),
     });
-    if (m.winner !== null) this.finish({ ...this.row(id)! }, m.winner, "won");
+    if (m.winner !== null) this.finish({ ...this.row(id)! }, m.winner, "won", me);
     this.changed(id, newDecision);
     return this.get(me, id);
   }
@@ -447,9 +457,12 @@ export class Correspondence {
     return m;
   }
 
-  private finish(r: Row, winner: Player, reason: "won" | "forfeit" | "abandoned"): void {
+  /** Ends a game; `by` is the player whose action ended it (null: the time ran out). */
+  private finish(r: Row, winner: Player, reason: "won" | "forfeit" | "abandoned", by: string | null): void {
     const m = r.state ? (JSON.parse(r.state) as MatchState) : null;
     this.update(r.id, { status: "finished", winner, reason, deadline: null });
+    for (const p of [r.p0, r.p1])
+      if (p !== by && !this.host.isConnected(p)) this.host.ended?.(p, this.get(p, r.id));
     try {
       const games = JSON.parse(this.row(r.id)!.games) as StoredGame[];
       if (m && m.game.result === null && m.game.history.length > 0)
@@ -489,9 +502,33 @@ export class Correspondence {
     for (const r of late) {
       const m = JSON.parse(r.state!) as MatchState;
       const actor = playerToAct(m.game) ?? m.game.turn;
-      this.finish(r, opponent(actor), "abandoned");
+      this.finish(r, opponent(actor), "abandoned", null);
       this.log(`correspondence ${r.id}: deadline missed by seat ${actor}`);
       this.changed(r.id);
+    }
+    this.remind(now);
+  }
+
+  /** A reminder before the deadline: a fifth of the time per move, at least 2 hours, at most half. */
+  static reminderLead(hours: number): number {
+    return Math.min(hours / 2, Math.max(2, hours / 5)) * HOUR;
+  }
+
+  /** Reminds players who are not connected that their time is running out (once per move). */
+  private remind(now: number): void {
+    const due = this.db
+      .prepare(
+        "SELECT * FROM corr_games WHERE status = 'active' AND deadline IS NOT NULL AND deadline > ? AND (reminded IS NULL OR reminded <> deadline)",
+      )
+      .all(now) as unknown as (Row & { reminded: number | null })[];
+    for (const r of due) {
+      if (r.deadline! - now > Correspondence.reminderLead(hoursOf(r))) continue;
+      this.db.prepare("UPDATE corr_games SET reminded = deadline WHERE id = ?").run(r.id);
+      const m = JSON.parse(r.state!) as MatchState;
+      const actor = playerToAct(m.game) ?? m.game.turn;
+      const actorId = actor === 0 ? r.p0 : r.p1;
+      if (!this.host.isConnected(actorId))
+        this.host.reminder?.(actorId, this.get(actorId, r.id), (r.deadline! - now) / HOUR);
     }
   }
 

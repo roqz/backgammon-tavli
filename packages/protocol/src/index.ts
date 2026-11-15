@@ -383,12 +383,13 @@ export const LeagueCreateSchema = z.object({
 /** Days a player has for each decision in a correspondence league. */
 export const CORR_DAYS = [1, 3, 7] as const;
 /**
- * Hours a player has for each decision in a correspondence game: 1 and 8 hours are the "light"
- * pace (played over an evening or a day, with a notification for every move), then 1, 3, 7 days.
+ * Hours a player has for each decision in a correspondence game. 12 hours is the brisk pace
+ * (a move in the evening can wait until the next morning), then 1, 3 and 7 days. Games started
+ * with the former 1 and 8 hours keep their pace.
  */
-export const CORR_HOURS = [1, 8, 24, 72, 168] as const;
+export const CORR_HOURS = [12, 24, 72, 168] as const;
 export type CorrHours = (typeof CORR_HOURS)[number];
-const corrHours = z.union([z.literal(1), z.literal(8), z.literal(24), z.literal(72), z.literal(168)]);
+const corrHours = z.union([z.literal(12), z.literal(24), z.literal(72), z.literal(168)]);
 /** Open searches for a correspondence opponent per player. */
 export const MAX_CORR_SEEKS = 5;
 
@@ -649,6 +650,23 @@ export const PushSubscribeSchema = z.object({
 });
 
 export const PushUnsubscribeSchema = z.object({ endpoint: z.url().max(1000) });
+
+/** What a player can be notified about (each can be switched off). */
+export const PUSH_KINDS = [
+  "corrMove",
+  "corrReminder",
+  "corrInvite",
+  "corrEnd",
+  "challenge",
+  "friendRequest",
+  "tournament",
+] as const;
+export type PushKind = (typeof PUSH_KINDS)[number];
+/** The notification kinds a player switched off. */
+export interface PushPrefs {
+  readonly off: readonly PushKind[];
+}
+export const PushPrefsSchema = z.object({ off: z.array(z.enum(PUSH_KINDS)).max(PUSH_KINDS.length) });
 
 /** Deleting the profile: accounts confirm with their password. */
 export const DeleteAccountSchema = z.object({ password: z.string().max(200).optional() });

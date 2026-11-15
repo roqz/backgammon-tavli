@@ -238,6 +238,7 @@ export function ActionCard({
   onClick,
   badge = 0,
   dot = false,
+  compact = false,
 }: {
   icon: ReactNode;
   title: string;
@@ -245,16 +246,24 @@ export function ActionCard({
   onClick: () => void;
   badge?: number;
   dot?: boolean;
+  /** Small on phones (side by side, without the detail line); full size on large screens. */
+  compact?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex min-h-20 items-center gap-4 rounded-2xl border border-stone-800 bg-stone-900/80 p-4 text-left transition-colors hover:border-amber-400/50 hover:bg-stone-900 focus-visible:outline-2 focus-visible:outline-amber-400 wide:min-h-28 wide:p-5"
+      className={`group flex items-center rounded-2xl border border-stone-800 bg-stone-900/80 text-left transition-colors hover:border-amber-400/50 hover:bg-stone-900 focus-visible:outline-2 focus-visible:outline-amber-400 ${
+        compact
+          ? "min-h-14 gap-3 p-3 lg:min-h-20 lg:gap-4 lg:p-4"
+          : "min-h-20 gap-4 p-4 wide:min-h-28 wide:p-5"
+      }`}
     >
       <span
         aria-hidden
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-amber-300 group-hover:bg-amber-400/15"
+        className={`flex shrink-0 items-center justify-center rounded-xl bg-stone-800 text-amber-300 group-hover:bg-amber-400/15 ${
+          compact ? "h-9 w-9 lg:h-12 lg:w-12" : "h-12 w-12"
+        }`}
       >
         {icon}
       </span>
@@ -264,11 +273,11 @@ export function ActionCard({
           {dot && <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden />}
           <CountBadge n={badge} />
         </span>
-        <span className="block text-sm text-stone-400">{detail}</span>
+        <span className={`block text-sm text-stone-400 ${compact ? "max-lg:sr-only" : ""}`}>{detail}</span>
       </span>
       <svg
         viewBox="0 0 24 24"
-        className="h-5 w-5 shrink-0 text-stone-500 group-hover:text-amber-300"
+        className={`h-5 w-5 shrink-0 text-stone-500 group-hover:text-amber-300 ${compact ? "max-lg:hidden" : ""}`}
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
@@ -315,6 +324,7 @@ export const GLYPH = {
     "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1",
   shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
   play: "M7 4v16l13-8z",
+  bell: "M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4",
 } as const;
 
 /** Rows of a navigation list (profile, settings). */

@@ -186,7 +186,7 @@ export class Lobby {
           if (this.connByPlayer.has(id) || !opts.push) return;
           const m = view.rounds[ref.round]?.find((x) => x.players.includes(id));
           const opponent = view.players.find((p) => p.id !== id && m?.players.includes(p.id))?.name ?? "?";
-          void opts.push.send(id, (lang) => tournamentReadyMessage(lang, ref, opponent));
+          void opts.push.send(id, "tournament", (lang) => tournamentReadyMessage(lang, ref, opponent));
         },
         clubRole: (clubId, id) =>
           this.clubs.isAdmin(clubId, id) ? "admin" : this.clubs.isMember(clubId, id) ? "member" : null,
@@ -882,7 +882,10 @@ export class Lobby {
     conn.send({ t: "challenge-update", id: c.id, to: publicTo(), status: online ? "sent" : "notified" });
     const from = store.publicPlayer(id, variant);
     if (online) this.notify(to, { t: "challenge", id: c.id, from, variant, length, clock });
-    else void this.opts.push?.send(to, (lang) => challengeMessage(lang, c.id, from.name, variant, length));
+    else
+      void this.opts.push?.send(to, "challenge", (lang) =>
+        challengeMessage(lang, c.id, from.name, variant, length),
+      );
   }
 
   /** Challenges waiting for a player who just connected (after a push notification). */

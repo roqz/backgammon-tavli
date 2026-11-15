@@ -4,6 +4,7 @@ import { AchievementLayer } from "./components/AchievementLayer";
 import { afterHistory, historySettling } from "./components/overlay";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useT } from "./i18n";
+import { OPEN_SETTINGS } from "./navigation";
 import { connect, joinInvite, watchMatch } from "./online/client";
 import { useOnline } from "./online/store";
 import { todoCount, useTodo } from "./online/todo";
@@ -73,6 +74,18 @@ const takeTournament = (href: string): string | null => {
   return id;
 };
 
+const ONLINE_TABS: readonly OnlineTab[] = ["corr", "friends", "tournaments", "clubs", "live", "ranking"];
+
+/** Notification links to an online section look like `…/?online=friends`. */
+const takeOnlineTab = (href: string): OnlineTab | null => {
+  const url = new URL(href);
+  const tab = url.searchParams.get("online") as OnlineTab | null;
+  if (!tab) return null;
+  url.searchParams.delete("online");
+  if (href === location.href) history.replaceState(history.state, "", url);
+  return ONLINE_TABS.includes(tab) ? tab : null;
+};
+
 export function App() {
   const onlineMatchId = useOnline((s) => s.match?.matchId ?? null);
   const lang = useSettings((s) => s.lang);
@@ -140,11 +153,19 @@ export function App() {
       setOnlineFocus(id);
       setScreen((s) => (s === "game" && useOnline.getState().match ? s : "online"));
     };
+    const openTab = (tab: OnlineTab | null) => {
+      if (!tab) return;
+      setOnlineTab(tab);
+      setOnlineFocus(null);
+      setScreen((s) => (s === "game" && useOnline.getState().match ? s : "online"));
+    };
     open(takeTournament(location.href));
+    openTab(takeOnlineTab(location.href));
     const onMessage = (e: MessageEvent) => {
       const data = e.data as { type?: string; url?: string } | null;
       if (data?.type !== "open-url" || !data.url) return;
       open(takeTournament(data.url));
+      openTab(takeOnlineTab(data.url));
       const corr = new URL(data.url).searchParams.get("corr");
       // a running online match is not left for a correspondence move
       if (corr && !(screenRef.current === "game" && useOnline.getState().match)) {
@@ -154,6 +175,16 @@ export function App() {
     };
     navigator.serviceWorker?.addEventListener("message", onMessage);
     return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
+  }, [setScreen]);
+
+  // "Settings" links elsewhere in the app (e.g. notifications are off).
+  useEffect(() => {
+    const open = (e: Event) => {
+      setSettingsPage((e as CustomEvent<SectionId | null>).detail);
+      setScreen("settings");
+    };
+    window.addEventListener(OPEN_SETTINGS, open);
+    return () => window.removeEventListener(OPEN_SETTINGS, open);
   }, [setScreen]);
 
   // Links from "your move" notifications open the correspondence game.
@@ -288,6 +319,7 @@ export function App() {
       )}
       {screen === "online" && (
         <OnlineScreen
+          key={onlineTab ?? "default"}
           onReplay={(r) => openReplay(r, "online")}
           tournament={onlineFocus}
           initialTab={onlineTab}

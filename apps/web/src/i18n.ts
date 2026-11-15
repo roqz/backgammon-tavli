@@ -1,4 +1,5 @@
 import { formatTurn, type TurnRecord, type VariantId } from "@tavli/engine";
+import type { PushKind } from "@tavli/protocol";
 import { useSettings } from "./store/settings";
 
 const de = {
@@ -388,7 +389,20 @@ const de = {
   tPushReady: "Runde {round}: Dein Match gegen {name} ist bereit.",
   pushTitle: "Benachrichtigungen",
   pushHint: "Gilt für dieses Gerät. Ein Tipp auf die Benachrichtigung öffnet direkt das passende Spiel.",
-  pushExplain: "Tavli meldet sich, auch wenn die App geschlossen ist, wenn …",
+  pushExplain: "Tavli meldet sich, auch wenn die App geschlossen ist. Wofür, legst du hier fest:",
+  pushKinds: {
+    corrMove: "Fernpartie: du bist am Zug",
+    corrReminder: "Fernpartie: deine Zeit wird knapp",
+    corrInvite: "Einladungen zu Fernpartien",
+    corrEnd: "Fernpartie beendet (Aufgabe des Gegners, Zeit abgelaufen)",
+    challenge: "Herausforderungen von Freunden",
+    friendRequest: "Freundschaftsanfragen",
+    tournament: "Dein Turniermatch ist bereit",
+  } as Record<PushKind, string>,
+  pushKindsOnlyOffline: "Benachrichtigt wird nur, wenn die App gerade nicht offen ist.",
+  pushOffNotice:
+    "Benachrichtigungen sind aus – Herausforderungen, Züge und Turnierrunden bemerkst du nur bei geöffneter App.",
+  pushOpenSettings: "Einstellen",
   pushReasons: [
     "du in einer Fernpartie am Zug bist,",
     "dich ein Freund herausfordert,",
@@ -730,7 +744,7 @@ const de = {
   corrEnded: "Saisonende – ohne Wertung",
   corrTab: "Fernpartien",
   corrHint:
-    "Fernpartien: Ihr zieht, wann ihr Zeit habt – kein Verbindungsabbruch, eine Benachrichtigung, sobald du am Zug bist. Zügig mit 1 oder 8 Stunden pro Entscheidung, gemütlich mit 1, 3 oder 7 Tagen. Wer die Frist verpasst, verliert. Fernpartien sind ungewertet.",
+    "Fernpartien: Ihr zieht, wann ihr Zeit habt – kein Verbindungsabbruch, eine Benachrichtigung, sobald du am Zug bist. Zügig mit 12 Stunden pro Entscheidung (ein Zug am Abend kann bis zum Morgen warten), gemütlich mit 1, 3 oder 7 Tagen. Wer die Frist verpasst, verliert. Fernpartien sind ungewertet.",
   corrNew: "Neue Fernpartie",
   corrInvitations: "Einladungen",
   corrYourTurn: "Du bist am Zug",
@@ -1186,7 +1200,20 @@ const en: Dict = {
   tPushReady: "Round {round}: your match against {name} is ready.",
   pushTitle: "Notifications",
   pushHint: "Applies to this device. Tapping a notification opens the game it is about.",
-  pushExplain: "Tavli lets you know, even when the app is closed, when …",
+  pushExplain: "Tavli lets you know even when the app is closed. Choose what for:",
+  pushKinds: {
+    corrMove: "Correspondence: your move",
+    corrReminder: "Correspondence: your time is running out",
+    corrInvite: "Correspondence invitations",
+    corrEnd: "Correspondence game ended (opponent resigned, time ran out)",
+    challenge: "Challenges from friends",
+    friendRequest: "Friend requests",
+    tournament: "Your tournament match is ready",
+  },
+  pushKindsOnlyOffline: "You are only notified while the app is not open.",
+  pushOffNotice:
+    "Notifications are off – you only notice challenges, moves and tournament rounds while the app is open.",
+  pushOpenSettings: "Settings",
   pushReasons: [
     "it is your move in a correspondence game,",
     "a friend challenges you,",
@@ -1526,7 +1553,7 @@ const en: Dict = {
   corrEnded: "Season over – no result",
   corrTab: "Correspondence",
   corrHint:
-    "Correspondence games: move whenever you have time – no disconnects, a notification as soon as it is your move. Brisk with 1 or 8 hours per decision, relaxed with 1, 3 or 7 days. Missing the deadline loses. Correspondence games are unrated.",
+    "Correspondence games: move whenever you have time – no disconnects, a notification as soon as it is your move. Brisk with 12 hours per decision (a move in the evening can wait until the morning), relaxed with 1, 3 or 7 days. Missing the deadline loses. Correspondence games are unrated.",
   corrNew: "New correspondence game",
   corrInvitations: "Invitations",
   corrYourTurn: "Your move",

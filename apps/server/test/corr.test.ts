@@ -103,19 +103,19 @@ describe("correspondence games", () => {
       await register(server, "Cid"),
     ];
     type SeekResult = { game?: CorrView; seek?: CorrSeek };
-    const first = await post<SeekResult>(a, "/api/corr/seeks", { variant: "narde", length: 3, hours: 1 });
-    expect(first.seek).toMatchObject({ variant: "narde", length: 3, hours: 1 });
+    const first = await post<SeekResult>(a, "/api/corr/seeks", { variant: "narde", length: 3, hours: 12 });
+    expect(first.seek).toMatchObject({ variant: "narde", length: 3, hours: 12 });
     // the same search again does not add a second one
-    await post(a, "/api/corr/seeks", { variant: "narde", length: 3, hours: 1 });
+    await post(a, "/api/corr/seeks", { variant: "narde", length: 3, hours: 12 });
     expect(await api<CorrSeek[]>(server, "/api/corr/seeks", { headers: bearer(a) })).toHaveLength(1);
     // other settings do not match
     expect(
-      (await post<SeekResult>(b, "/api/corr/seeks", { variant: "narde", length: 3, hours: 8 })).seek,
+      (await post<SeekResult>(b, "/api/corr/seeks", { variant: "narde", length: 3, hours: 24 })).seek,
     ).toBeTruthy();
-    const matched = await post<SeekResult>(c, "/api/corr/seeks", { variant: "narde", length: 3, hours: 1 });
-    expect(matched.game).toMatchObject({ status: "active", hours: 1, variant: "narde", league: null });
+    const matched = await post<SeekResult>(c, "/api/corr/seeks", { variant: "narde", length: 3, hours: 12 });
+    expect(matched.game).toMatchObject({ status: "active", hours: 12, variant: "narde", league: null });
     expect(matched.game!.players.map((p) => p.id).sort()).toEqual([a.id, c.id].sort());
-    expect(matched.game!.deadline! - Date.now()).toBeLessThanOrEqual(3_600_000);
+    expect(matched.game!.deadline! - Date.now()).toBeLessThanOrEqual(12 * 3_600_000);
     expect(await api<CorrSeek[]>(server, "/api/corr/seeks", { headers: bearer(a) })).toHaveLength(0);
     // Ann sees the game; Ben cancels his search
     expect((await api<CorrView[]>(server, "/api/corr", { headers: bearer(a) }))[0]!.id).toBe(

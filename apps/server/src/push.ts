@@ -8,7 +8,13 @@ import {
   randomBytes,
   sign,
 } from "node:crypto";
-import type { PushLang, TournamentRef } from "@tavli/protocol";
+import {
+  PUSH_KINDS,
+  type PushKind,
+  type PushLang,
+  type PushPrefs,
+  type TournamentRef,
+} from "@tavli/protocol";
 import type { Store } from "./db";
 
 /**
@@ -29,6 +35,10 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS push_subscriptions_player ON push_subscriptions(player_id);
+CREATE TABLE IF NOT EXISTS push_prefs (
+  player_id TEXT PRIMARY KEY REFERENCES players(id),
+  off TEXT NOT NULL
+);
 `;
 
 /** Subscriptions kept per player (one per browser/device); older ones are dropped. */
@@ -119,6 +129,87 @@ export const corrMoveMessage = (
   url: `./?corr=${encodeURIComponent(id)}`,
 });
 
+const variantName = (variant: string): string =>
+  variant === "tavli" ? "Tavli" : variant.charAt(0).toUpperCase() + variant.slice(1);
+const pointsText = (lang: PushLang, length: number): string =>
+  length === 0
+    ? lang === "de"
+      ? "Geldspiel"
+      : "money game"
+    : `${length} ${lang === "de" ? (length === 1 ? "Punkt" : "Punkte") : length === 1 ? "point" : "points"}`;
+
+/** Little time left for a move in a correspondence game. */
+export const corrReminderMessage = (
+  lang: PushLang,
+  id: string,
+  opponent: string,
+  hoursLeft: number,
+): PushMessage => {
+  const left = Math.max(1, Math.round(hoursLeft));
+  return {
+    title: `⏳ ${opponent}`,
+    body:
+      lang === "de"
+        ? `Noch etwa ${left} ${left === 1 ? "Stunde" : "Stunden"} für deinen Zug in der Fernpartie gegen ${opponent} – danach ist sie verloren.`
+        : `About ${left} ${left === 1 ? "hour" : "hours"} left for your move in the correspondence game against ${opponent} – then it is lost.`,
+    tag: `corr-${id}`,
+    url: `./?corr=${encodeURIComponent(id)}`,
+  };
+};
+
+/** An invitation to a correspondence game. */
+export const corrInviteMessage = (
+  lang: PushLang,
+  from: string,
+  variant: string,
+  length: number,
+  hours: number,
+): PushMessage => ({
+  title: `♟ ${from}`,
+  body:
+    lang === "de"
+      ? `${from} lädt dich zu einer Fernpartie ein: ${variantName(variant)}, ${pointsText("de", length)}, ${corrTime("de", hours)} pro Zug.`
+      : `${from} invites you to a correspondence game: ${variantName(variant)}, ${pointsText("en", length)}, ${corrTime("en", hours)} per move.`,
+  tag: `corr-invite-${from}`,
+  url: "./?online=corr",
+});
+
+/** A correspondence game ended without the player's own last action (resignation, time). */
+export const corrEndMessage = (
+  lang: PushLang,
+  id: string,
+  opponent: string,
+  won: boolean | null,
+  onTime: boolean,
+): PushMessage => {
+  const de =
+    won === null
+      ? `Die Fernpartie gegen ${opponent} wurde beendet.`
+      : won
+        ? `Du hast die Fernpartie gegen ${opponent} gewonnen${onTime ? " – die Zeit ist abgelaufen" : ""}.`
+        : `Du hast die Fernpartie gegen ${opponent} verloren${onTime ? " – deine Zeit ist abgelaufen" : ""}.`;
+  const en =
+    won === null
+      ? `The correspondence game against ${opponent} has ended.`
+      : won
+        ? `You won the correspondence game against ${opponent}${onTime ? " – the time ran out" : ""}.`
+        : `You lost the correspondence game against ${opponent}${onTime ? " – your time ran out" : ""}.`;
+  return {
+    title: `🏁 ${opponent}`,
+    body: lang === "de" ? de : en,
+    tag: `corr-${id}`,
+    url: `./?corr=${encodeURIComponent(id)}`,
+  };
+};
+
+/** A friend request. */
+export const friendRequestMessage = (lang: PushLang, from: string): PushMessage => ({
+  title: `👋 ${from}`,
+  body: lang === "de" ? `${from} möchte mit dir befreundet sein.` : `${from} would like to be your friend.`,
+  tag: `friend-${from}`,
+  url: "./?online=friends",
+});
+
 /** "A friend challenges you" for a player who is not connected. */
 export const challengeMessage = (
   lang: PushLang,
@@ -127,7 +218,7 @@ export const challengeMessage = (
   variant: string,
   length: number,
 ): PushMessage => {
-  const name = variant === "tavli" ? "Tavli" : variant.charAt(0).toUpperCase() + variant.slice(1);
+  const name = variantName(variant);
   return {
     title: `⚔ ${from}`,
     body:
@@ -283,8 +374,31 @@ export class Push {
     return !!this.store.db.prepare("SELECT 1 FROM push_subscriptions WHERE player_id = ?").get(playerId);
   }
 
-  /** Sends a notification to all devices of a player, built per subscription language. */
-  async send(playerId: string, message: (lang: PushLang) => PushMessage): Promise<number> {
+  /** The kinds of notifications a player switched off. */
+  prefs(playerId: string): PushPrefs {
+    const row = this.store.db.prepare("SELECT off FROM push_prefs WHERE player_id = ?").get(playerId) as
+      | { off: string }
+      | undefined;
+    const off = row ? (JSON.parse(row.off) as string[]) : [];
+    return { off: PUSH_KINDS.filter((k) => off.includes(k)) };
+  }
+
+  setPrefs(playerId: string, prefs: PushPrefs): PushPrefs {
+    const off = PUSH_KINDS.filter((k) => prefs.off.includes(k));
+    this.store.db
+      .prepare(
+        "INSERT INTO push_prefs (player_id, off) VALUES (?, ?) ON CONFLICT(player_id) DO UPDATE SET off = excluded.off",
+      )
+      .run(playerId, JSON.stringify(off));
+    return { off };
+  }
+
+  /**
+   * Sends a notification of one kind to all devices of a player (unless the player switched
+   * that kind off), built per subscription language.
+   */
+  async send(playerId: string, kind: PushKind, message: (lang: PushLang) => PushMessage): Promise<number> {
+    if (this.prefs(playerId).off.includes(kind)) return 0;
     const subs = this.store.db
       .prepare("SELECT endpoint, p256dh, auth, lang FROM push_subscriptions WHERE player_id = ?")
       .all(playerId) as { endpoint: string; p256dh: string; auth: string; lang: PushLang }[];

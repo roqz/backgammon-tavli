@@ -165,6 +165,7 @@ export function CorrSetup({ onOpen }: { onOpen: (id: string) => void }) {
       )}
       {inviting && (
         <CorrInvite
+          config={{ variant, length, hours }}
           onClose={() => setInviting(false)}
           onSent={() => {
             setInviting(false);
@@ -208,106 +209,95 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
     }
   };
   const games = list ?? [];
-  const incoming = games.filter((g) => g.status === "invited" && g.createdBy !== me);
-  const sent = games.filter((g) => g.status === "invited" && g.createdBy === me);
-  const myTurn = games.filter((g) => g.status === "active" && g.toAct === g.seat);
-  const waiting = games.filter((g) => g.status === "active" && g.toAct !== g.seat);
-  const finished = games.filter((g) => g.status === "finished");
+  const byUpdate = (x: CorrView, y: CorrView) => y.updatedAt.localeCompare(x.updatedAt);
+  const incoming = games.filter((g) => g.status === "invited" && g.createdBy !== me).sort(byUpdate);
+  const sent = games.filter((g) => g.status === "invited" && g.createdBy === me).sort(byUpdate);
+  // own turn: the most urgent deadline first
+  const myTurn = games
+    .filter((g) => g.status === "active" && g.toAct === g.seat)
+    .sort((x, y) => (x.deadline ?? 0) - (y.deadline ?? 0));
+  const waiting = games.filter((g) => g.status === "active" && g.toAct !== g.seat).sort(byUpdate);
+  const finished = games.filter((g) => g.status === "finished").sort(byUpdate);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {error && (
         <p role="alert" className="text-center text-sm text-red-400">
           {error}
         </p>
       )}
-      {seeks.length > 0 && (
-        <Card>
-          <h2 className="mb-1 font-semibold text-stone-300">{t.corrSeeks}</h2>
-          <p className="mb-1 text-xs text-stone-500">{t.corrSeekWaiting}</p>
-          <ul className="divide-y divide-stone-800">
-            {seeks.map((s) => (
-              <li key={s.id} className="flex items-center gap-2 py-2 text-sm">
-                <span className="min-w-0 flex-1 text-stone-200">
-                  🔍 {variantLabel(s.variant, t.tavliMatch)} · {lengthText(t, s.length)} ·{" "}
-                  {corrPace(t, s.hours)}
-                </span>
-                <Button
-                  variant="ghost"
-                  className="px-2 py-1 text-sm"
-                  onClick={() => void act(() => cancelCorrSeek(s.id))}
-                >
-                  {t.cancel}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-      {incoming.length > 0 && (
-        <Card>
-          <h2 className="mb-1 font-semibold text-amber-200">{t.corrInvitations}</h2>
-          <ul className="divide-y divide-stone-800">
-            {incoming.map((g) => (
-              <CorrRow key={g.id} g={g} onOpen={onOpen}>
-                <Button
-                  variant="ghost"
-                  className="px-2 py-1 text-sm"
-                  onClick={() => void act(() => answerCorr(g.id, false))}
-                >
-                  {t.decline}
-                </Button>
-                <Button
-                  variant="primary"
-                  className="px-2 py-1 text-sm"
-                  onClick={() =>
-                    void act(async () => {
-                      const v = await answerCorr(g.id, true);
-                      onOpen(v.id);
-                    })
-                  }
-                >
-                  {t.accept}
-                </Button>
-              </CorrRow>
-            ))}
-          </ul>
-        </Card>
-      )}
-      {[
-        [t.corrYourTurn, myTurn],
-        [t.corrWaiting, waiting],
-        [t.corrFinished, finished],
-      ].map(([title, items]) =>
-        (items as CorrView[]).length === 0 ? null : (
-          <Card key={title as string}>
-            <h2 className="mb-1 font-semibold text-stone-200">{title as string}</h2>
-            <ul className="divide-y divide-stone-800">
-              {(items as CorrView[]).map((g) => (
-                <CorrRow key={g.id} g={g} onOpen={onOpen} />
-              ))}
-            </ul>
-          </Card>
-        ),
-      )}
-      {sent.length > 0 && (
-        <Card>
-          <h2 className="mb-1 font-semibold text-stone-300">{t.corrSent}</h2>
-          <ul className="divide-y divide-stone-800">
-            {sent.map((g) => (
-              <CorrRow key={g.id} g={g} onOpen={onOpen}>
-                <Button
-                  variant="ghost"
-                  className="px-2 py-1 text-sm"
-                  onClick={() => void act(() => abandonCorr(g.id))}
-                >
-                  {t.cancel}
-                </Button>
-              </CorrRow>
-            ))}
-          </ul>
-        </Card>
-      )}
+      <CorrGroup id="invitations" title={t.corrInvitations} count={incoming.length} accent>
+        {incoming.map((g) => (
+          <CorrRow key={g.id} g={g} onOpen={onOpen}>
+            <Button
+              variant="ghost"
+              className="px-2 py-1 text-sm"
+              onClick={() => void act(() => answerCorr(g.id, false))}
+            >
+              {t.decline}
+            </Button>
+            <Button
+              variant="primary"
+              className="px-2 py-1 text-sm"
+              onClick={() =>
+                void act(async () => {
+                  const v = await answerCorr(g.id, true);
+                  onOpen(v.id);
+                })
+              }
+            >
+              {t.accept}
+            </Button>
+          </CorrRow>
+        ))}
+      </CorrGroup>
+      <CorrGroup id="my-turn" title={t.corrYourTurn} count={myTurn.length} accent>
+        {myTurn.map((g) => (
+          <CorrRow key={g.id} g={g} onOpen={onOpen} />
+        ))}
+      </CorrGroup>
+      <CorrGroup id="waiting" title={t.corrWaiting} count={waiting.length}>
+        {waiting.map((g) => (
+          <CorrRow key={g.id} g={g} onOpen={onOpen} />
+        ))}
+      </CorrGroup>
+      <CorrGroup id="sent" title={t.corrSent} count={sent.length + seeks.length}>
+        {seeks.map((sk) => (
+          <li key={sk.id} className="flex items-center gap-2 py-2 text-sm">
+            <span className="min-w-0 flex-1">
+              <span className="block text-stone-200">🔍 {t.corrSeeks}</span>
+              <span className="block text-xs text-stone-500">
+                {variantLabel(sk.variant, t.tavliMatch)} · {lengthText(t, sk.length)} ·{" "}
+                {corrPace(t, sk.hours)}
+              </span>
+            </span>
+            <span className="text-xs text-stone-500">{ago(t, Date.parse(sk.createdAt))}</span>
+            <Button
+              variant="ghost"
+              className="px-2 py-1 text-sm"
+              onClick={() => void act(() => cancelCorrSeek(sk.id))}
+            >
+              {t.cancel}
+            </Button>
+          </li>
+        ))}
+        {sent.map((g) => (
+          <CorrRow key={g.id} g={g} onOpen={onOpen}>
+            <Button
+              variant="ghost"
+              className="px-2 py-1 text-sm"
+              onClick={() => void act(() => abandonCorr(g.id))}
+            >
+              {t.cancel}
+            </Button>
+          </CorrRow>
+        ))}
+      </CorrGroup>
+      <CorrGroup id="finished" title={t.corrFinished} count={finished.length} closed>
+        {finished.map((g) => (
+          <CorrRow key={g.id} g={g} onOpen={onOpen} />
+        ))}
+      </CorrGroup>
       {list !== null && games.length === 0 && seeks.length === 0 && (
         <Card className="flex flex-col gap-2">
           <p className="text-stone-300">{t.corrNone}</p>
@@ -323,17 +313,20 @@ export function CorrInvite({
   onClose,
   onSent,
   friendId,
+  config,
 }: {
   onClose: () => void;
   onSent: () => void;
   friendId?: string;
+  /** Settings already chosen (the setup screen): only the friend is picked here. */
+  config?: { variant: MatchVariantId; length: MatchLength; hours: CorrHours };
 }) {
   const t = useT();
   const [friends, setFriends] = useState<FriendView[] | null>(null);
   const [friend, setFriend] = useState<string | null>(null);
-  const [variant, setVariant] = useState<MatchVariantId>("backgammon");
-  const [length, setLength] = useState<MatchLength>(3);
-  const [hours, setHours] = useState<CorrHours>(72);
+  const [variant, setVariant] = useState<MatchVariantId>(config?.variant ?? "backgammon");
+  const [length, setLength] = useState<MatchLength>(config?.length ?? 3);
+  const [hours, setHours] = useState<CorrHours>(config?.hours ?? 72);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     fetchFriends()
@@ -365,14 +358,20 @@ export function CorrInvite({
               ))}
             </select>
           </label>
-          <CorrSettings
-            variant={variant}
-            setVariant={setVariant}
-            length={length}
-            setLength={setLength}
-            hours={hours}
-            setHours={setHours}
-          />
+          {config ? (
+            <p className="text-sm text-stone-300">
+              {variantLabel(variant, t.tavliMatch)} · {lengthText(t, length)} · {corrPace(t, hours)}
+            </p>
+          ) : (
+            <CorrSettings
+              variant={variant}
+              setVariant={setVariant}
+              length={length}
+              setLength={setLength}
+              hours={hours}
+              setHours={setHours}
+            />
+          )}
           {error && <p className="text-sm text-red-400">{error}</p>}
         </div>
       )}
@@ -394,6 +393,66 @@ export function CorrInvite({
         </Button>
       </div>
     </Modal>
+  );
+}
+
+const GROUPS_KEY = "tavli.corrGroups";
+
+/** A group of the list that can be folded; the choice is remembered on this device. */
+function CorrGroup({
+  id,
+  title,
+  count,
+  accent = false,
+  closed = false,
+  children,
+}: {
+  id: string;
+  title: string;
+  count: number;
+  accent?: boolean;
+  /** Folded unless the player opened it. */
+  closed?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(() => {
+    try {
+      const saved = (JSON.parse(localStorage.getItem(GROUPS_KEY) ?? "{}") as Record<string, boolean>)[id];
+      return saved ?? !closed;
+    } catch {
+      return !closed;
+    }
+  });
+  if (count === 0) return null;
+  const toggle = () => {
+    setOpen(!open);
+    try {
+      const all = JSON.parse(localStorage.getItem(GROUPS_KEY) ?? "{}") as Record<string, boolean>;
+      localStorage.setItem(GROUPS_KEY, JSON.stringify({ ...all, [id]: !open }));
+    } catch {
+      // storage blocked: folded for this visit only
+    }
+  };
+  return (
+    <section className="rounded-2xl border border-stone-800 bg-stone-900/80">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={toggle}
+        className="flex min-h-12 w-full items-center gap-2 px-4 text-left focus-visible:outline-2 focus-visible:outline-amber-400"
+      >
+        <h2 className={`flex-1 font-semibold ${accent ? "text-amber-200" : "text-stone-200"}`}>{title}</h2>
+        <span
+          className={`rounded-full px-2 text-xs font-bold tabular-nums ${accent ? "bg-amber-500 text-stone-950" : "bg-stone-700 text-stone-200"}`}
+        >
+          {count}
+        </span>
+        <span aria-hidden className={`text-stone-500 transition-transform ${open ? "rotate-90" : ""}`}>
+          ›
+        </span>
+      </button>
+      {open && <ul className="divide-y divide-stone-800 border-t border-stone-800 px-4">{children}</ul>}
+    </section>
   );
 }
 
@@ -431,10 +490,22 @@ function CorrRow({
           {g.league && ` · 🏟️ ${g.league.name}`}
         </span>
       </button>
+      <span
+        className="shrink-0 text-xs text-stone-500"
+        title={new Date(g.updatedAt).toLocaleString(t.locale)}
+      >
+        {changedAt(t, Date.parse(g.updatedAt))}
+      </span>
       {children}
     </li>
   );
 }
+
+/** When a game last changed: relative within a week, else the date. */
+const changedAt = (t: T, at: number): string =>
+  Date.now() - at < 7 * 24 * 3_600_000
+    ? ago(t, at)
+    : new Date(at).toLocaleDateString(t.locale, { day: "numeric", month: "short" });
 
 /** "vor 3 Std." / "3 hr. ago" in the app language. */
 const ago = (t: T, at: number): string => {

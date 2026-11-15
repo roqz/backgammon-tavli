@@ -15,6 +15,7 @@ import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Segmented } from "../components/ui";
 import { errorText } from "../errors";
 import { useT } from "../i18n";
+import { openSettings } from "../navigation";
 import {
   createTournament,
   fetchMatch,
@@ -123,7 +124,7 @@ export function TournamentPanel({
       {mine && (
         <Card className="flex flex-col gap-2">
           <p className="text-sm text-amber-200">{t.tKeepOpen}</p>
-          <PushToggle />
+          <PushHint />
         </Card>
       )}
       {list === null && !loadError && <p className="text-center text-stone-500">{t.loading}</p>}
@@ -442,7 +443,25 @@ function Standings({ tournament: x, me }: { tournament: TournamentView; me: stri
   );
 }
 
-/** Turns Web Push notifications for tournament matches on or off. */
+/** Shown where notifications matter while they are off: a hint and the way to the settings. */
+export function PushHint() {
+  const t = useT();
+  const [state] = usePushState();
+  if (state === "on" || state === "busy" || state === "unsupported") return null;
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-stone-800 bg-stone-900/60 px-4 py-3 text-sm text-stone-300">
+      <span aria-hidden>🔕</span>
+      <span className="min-w-0 flex-1">{state === "denied" ? t.pushDenied : t.pushOffNotice}</span>
+      {state !== "denied" && (
+        <Button variant="ghost" className="shrink-0 text-sm" onClick={() => openSettings("notify")}>
+          {t.pushOpenSettings} ›
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Turns Web Push notifications on or off (for this device). */
 export function PushToggle() {
   const t = useT();
   const [state, toggle, error] = usePushState();

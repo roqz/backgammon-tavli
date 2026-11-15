@@ -138,10 +138,11 @@ function PrivacyDe() {
       </p>
       <h2>Benachrichtigungen</h2>
       <p>
-        Wenn du Benachrichtigungen einschaltest (für Turniermatches und Herausforderungen von Freunden),
-        speichert der Server die Push-Adresse deines Browsers. Benachrichtigungen laufen verschlüsselt über
-        den Push-Dienst deines Browserherstellers (z. B. Google, Mozilla, Apple, Microsoft), der dabei Server
-        auch außerhalb der EU nutzen kann. Ausschalten jederzeit im Reiter „Freunde“ oder „Turniere“.
+        Wenn du Benachrichtigungen einschaltest (Fernpartien, Herausforderungen, Freundschaftsanfragen,
+        Turniermatches), speichert der Server die Push-Adresse deines Browsers und welche Arten von
+        Benachrichtigungen du abgeschaltet hast. Benachrichtigungen laufen verschlüsselt über den Push-Dienst
+        deines Browserherstellers (z. B. Google, Mozilla, Apple, Microsoft), der dabei Server auch außerhalb
+        der EU nutzen kann. Ausschalten jederzeit unter Einstellungen → Benachrichtigungen.
       </p>
       <h2>Hosting</h2>
       <p>
@@ -216,10 +217,11 @@ function PrivacyEn() {
       </p>
       <h2>Notifications</h2>
       <p>
-        If you turn on notifications (for tournament matches and challenges from friends), the server stores
-        your browser's push address. Notifications are sent encrypted through the push service of your browser
-        vendor (e.g. Google, Mozilla, Apple, Microsoft), which may use servers outside the EU. Turn them off
-        at any time in the friends or tournaments tab.
+        If you turn on notifications (correspondence games, challenges, friend requests, tournament
+        matches), the server stores your browser's push address and which kinds of notifications you switched
+        off. Notifications are sent encrypted through the push service of your browser vendor (e.g. Google,
+        Mozilla, Apple, Microsoft), which may use servers outside the EU. Turn them off at any time under
+        Settings → Notifications.
       </p>
       <h2>Hosting</h2>
       <p>

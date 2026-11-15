@@ -3,6 +3,7 @@ import { createServer, type IncomingHttpHeaders } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { RegisterResponse } from "@tavli/protocol";
 import { afterEach, describe, expect, it } from "vitest";
+import { Correspondence } from "../src/correspondence";
 import { encryptPayload, isPushServiceUrl } from "../src/push";
 import type { RunningServer } from "../src/server";
 import { api, register, start, TestClient } from "./helpers";
@@ -77,6 +78,16 @@ describe("web push crypto", () => {
     expect(isPushServiceUrl("https://fcm.googleapis.com.evil.example/x")).toBe(false);
     expect(isPushServiceUrl("https://127.0.0.1/x")).toBe(false);
     expect(isPushServiceUrl("not a url")).toBe(false);
+  });
+});
+
+describe("correspondence reminders", () => {
+  it("come a fifth of the time before the deadline, at least 2 hours, at most half the time", () => {
+    const h = (hours: number) => Correspondence.reminderLead(hours) / 3_600_000;
+    expect(h(12)).toBeCloseTo(2.4);
+    expect(h(24)).toBeCloseTo(4.8);
+    expect(h(168)).toBeCloseTo(33.6);
+    expect(h(1)).toBe(0.5);
   });
 });
 
@@ -166,4 +177,44 @@ describe("push notifications", () => {
     expect(msg.body).toMatch(/^Runde 1\/2: Dein Match gegen [ABC] ist bereit/);
     expect(msg.url).toBe(`./?tournament=${t.id}`);
   }, 20_000);
+
+  it("sends friend requests to offline players, except the kinds they switched off", async () => {
+    const got: string[] = [];
+    const ua = userAgent();
+    receiver = createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        got.push(ua.decrypt(Buffer.concat(chunks)));
+        res.statusCode = 201;
+        res.end();
+      });
+    });
+    await new Promise<void>((r) => receiver!.listen(0, "127.0.0.1", r));
+    const endpoint = `http://127.0.0.1:${(receiver!.address() as AddressInfo).port}/push/2`;
+    server = await start({}, {}, {}, undefined, {
+      push: { allowEndpoint: () => true, subject: "mailto:test@example.com" },
+    });
+    const [ann, ben, cid] = [
+      await register(server, "Ann"),
+      await register(server, "Ben"),
+      await register(server, "Cid"),
+    ];
+    const post = (who: RegisterResponse, path: string, body: unknown) =>
+      api(server, path, { method: "POST", headers: auth(who), body: JSON.stringify(body) });
+    await post(ann, "/api/push/subscribe", { endpoint, keys: ua.keys, lang: "de" });
+    expect(await api(server, "/api/push/prefs", { headers: auth(ann) })).toEqual({ off: [] });
+
+    await post(ben, "/api/friends", { playerId: ann.id });
+    await expect.poll(() => got.length).toBe(1);
+    expect(JSON.parse(got[0]!)).toMatchObject({ title: "👋 Ben", url: "./?online=friends" });
+
+    expect(await post(ann, "/api/push/prefs", { off: ["friendRequest"] })).toEqual({
+      off: ["friendRequest"],
+    });
+    await post(cid, "/api/friends", { playerId: ann.id });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(got).toHaveLength(1);
+    await expect(post(ann, "/api/push/prefs", { off: ["nonsense"] })).rejects.toThrow(/400/);
+  });
 });

@@ -368,11 +368,12 @@ export function OnlineScreen({
         </div>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-10">
-          <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-24">
+          <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-24 lg:gap-6">
             <section aria-labelledby="online-new" className="flex flex-col gap-3">
               <SectionTitle id="online-new">{t.newGameTitle}</SectionTitle>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-3">
                 <ActionCard
+                  compact
                   icon={<Glyph d={GLYPH.live} />}
                   title={t.liveMatch}
                   detail={lobby.kind === "queued" ? t.searching : t.modeOnlineSub}
@@ -380,6 +381,7 @@ export function OnlineScreen({
                   onClick={() => onSetup("online")}
                 />
                 <ActionCard
+                  compact
                   icon={<Glyph d={GLYPH.mail} />}
                   title={t.modeCorr}
                   detail={t.modeCorrSub}

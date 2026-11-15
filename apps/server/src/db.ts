@@ -560,6 +560,9 @@ export class Store {
       tournaments: this.tableExists("tournament_entries")
         ? all("SELECT tournament_id, seed, withdrawn, joined_at FROM tournament_entries WHERE player_id = ?")
         : [],
+      pushPreferences: this.tableExists("push_prefs")
+        ? all("SELECT off FROM push_prefs WHERE player_id = ?")
+        : [],
       pushSubscriptions: this.tableExists("push_subscriptions")
         ? all("SELECT created_at, lang FROM push_subscriptions WHERE player_id = ?")
         : [],
@@ -592,6 +595,7 @@ export class Store {
       run("DELETE FROM player_progress WHERE player_id = ?");
       run("UPDATE players SET frame = NULL WHERE id = ?");
       if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
+      if (this.tableExists("push_prefs")) run("DELETE FROM push_prefs WHERE player_id = ?");
       this.db.exec("COMMIT");
     } catch (e) {
       this.db.exec("ROLLBACK");
@@ -630,6 +634,8 @@ export class Store {
         this.db.prepare("DELETE FROM player_progress WHERE player_id = ?").run(id);
         if (this.tableExists("push_subscriptions"))
           this.db.prepare("DELETE FROM push_subscriptions WHERE player_id = ?").run(id);
+        if (this.tableExists("push_prefs"))
+          this.db.prepare("DELETE FROM push_prefs WHERE player_id = ?").run(id);
         this.db.prepare("DELETE FROM players WHERE id = ?").run(id);
       }
       const old = before(RETENTION.fairPlayDays);

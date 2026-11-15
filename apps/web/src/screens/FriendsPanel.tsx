@@ -25,7 +25,7 @@ import {
 } from "../online/client";
 import { useOnline } from "../online/store";
 import { CorrInvite } from "./CorrScreens";
-import { PushToggle, roundName } from "./TournamentPanel";
+import { PushHint, roundName } from "./TournamentPanel";
 
 const REFRESH_MS = 10_000;
 const variantLabel = (v: MatchVariantId, tavli: string) => (v === "tavli" ? tavli : getVariant(v).name);
@@ -172,10 +172,7 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
         )}
       </Card>
       {profile && <FriendLinkCard playerId={profile.id} />}
-      <Card className="flex flex-col gap-2">
-        <p className="text-xs text-stone-500">{t.friendsPushHint}</p>
-        <PushToggle />
-      </Card>
+      <PushHint />
       {corrWith && (
         <CorrInvite
           friendId={corrWith.id}

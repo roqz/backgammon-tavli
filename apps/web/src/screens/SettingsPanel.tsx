@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { PUSH_KINDS, type PushKind } from "@tavli/protocol";
+import { useEffect, useState } from "react";
 import { ACHIEVEMENTS, useAchievements } from "../achievements";
 import { BOARD_STYLES, type BoardStyle, THEMES } from "../board/themes";
 import { Drawer } from "../components/Drawer";
 import { Section, Segmented, Toggle } from "../components/ui";
 import { useT } from "../i18n";
 import { disconnect } from "../online/client";
-import { usePushState } from "../online/push";
+import { fetchPushPrefs, savePushPrefs, usePushState } from "../online/push";
 import { useOnline } from "../online/store";
 import { DICE_SKINS, type DiceSkin, isUnlocked, REWARDS } from "../rewards";
 import { useSettings } from "../store/settings";
@@ -409,14 +410,48 @@ function NotificationSettings() {
     typeof window !== "undefined" && window.matchMedia?.("(display-mode: standalone)").matches;
   return (
     <div className="flex flex-col gap-2 text-sm text-stone-300">
-      <p>{t.pushExplain}</p>
-      <ul className="list-disc pl-5 text-stone-400">
-        {t.pushReasons.map((r) => (
-          <li key={r}>{r}</li>
-        ))}
-      </ul>
       {ios && !standalone && <p className="text-xs text-amber-200/80">📱 {t.pushIphone}</p>}
-      {hasProfile ? <PushToggle /> : <p className="text-xs text-stone-500">{t.pushNeedProfile}</p>}
+      {hasProfile ? (
+        <>
+          <PushToggle />
+          <PushKinds />
+        </>
+      ) : (
+        <p className="text-xs text-stone-500">{t.pushNeedProfile}</p>
+      )}
+    </div>
+  );
+}
+
+/** Which kinds of notifications the player wants (stored with the profile). */
+function PushKinds() {
+  const t = useT();
+  const [off, setOff] = useState<readonly PushKind[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    fetchPushPrefs()
+      .then((p) => setOff(p.off))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+  }, []);
+  const set = (kind: PushKind, on: boolean) => {
+    if (!off) return;
+    const next = on ? off.filter((k) => k !== kind) : [...off, kind];
+    setOff(next);
+    savePushPrefs(next).catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : String(e));
+      setOff(off);
+    });
+  };
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      <p>{t.pushExplain}</p>
+      {off === null && !error && <p className="text-xs text-stone-500">{t.loading}</p>}
+      {off &&
+        PUSH_KINDS.map((k) => (
+          <Toggle key={k} checked={!off.includes(k)} onChange={(v) => set(k, v)} label={t.pushKinds[k]} />
+        ))}
+      <p className="text-xs text-stone-500">{t.pushKindsOnlyOffline}</p>
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }

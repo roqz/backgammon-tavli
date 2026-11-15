@@ -19,8 +19,10 @@ test("correspondence: invite a friend, accept, and the player to move makes a mo
   await befriend(ann, ben);
 
   await newGame(ann, "Fernpartie");
+  // the chosen settings are taken over by the invitation
+  await ann.getByRole("button", { name: "1", exact: true }).click();
   await ann.getByRole("button", { name: /Freund einladen/ }).click();
-  await ann.getByRole("dialog").getByRole("button", { name: "1", exact: true }).click();
+  await expect(ann.getByRole("dialog").getByText(/Backgammon · 1 Punkt/)).toBeVisible();
   await ann
     .getByRole("dialog")
     .getByRole("button", { name: /Anfrage senden/ })
@@ -62,12 +64,12 @@ test("correspondence: two strangers find each other with the same search", async
     await newGame(p, "Fernpartie");
     await p.getByRole("button", { name: /^Hypergammon/ }).click();
     await p.getByRole("button", { name: "1", exact: true }).click();
-    await p.getByRole("button", { name: "1 Std./Zug" }).click();
+    await p.getByRole("button", { name: "12 Std./Zug" }).click();
     await p.getByRole("button", { name: /Gegner suchen/ }).click();
   }
   // Kim waits, Lou's search matches and opens the game
   await expect(lou.getByText(/Hypergammon/).first()).toBeVisible({ timeout: 10_000 });
-  await expect(lou.getByText(/1 Std\.\/Zug/)).toBeVisible();
+  await expect(lou.getByText(/12 Std\.\/Zug/)).toBeVisible();
   await kim.reload();
   await nav(kim, "Online");
   await kim.getByRole("tab", { name: "Fernpartien" }).click();

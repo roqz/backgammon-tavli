@@ -1,3 +1,4 @@
+import type { PushKind, PushPrefs } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { useSettings } from "../store/settings";
 import { httpUrl, useOnline } from "./store";
@@ -108,3 +109,16 @@ export async function notifyIfHidden(title: string, body: string, tag: string): 
   const reg = await registration();
   await reg?.showNotification(title, { body, tag, icon: "icon-192.png", data: { url: location.href } });
 }
+
+/** The notification kinds the player switched off (kept with the profile, for all devices). */
+export async function fetchPushPrefs(): Promise<PushPrefs> {
+  const { serverUrl, profile } = useOnline.getState();
+  if (!profile) throw new Error("not registered");
+  const res = await fetch(httpUrl(serverUrl, "/api/push/prefs"), {
+    headers: { Authorization: `Bearer ${profile.id}.${profile.token}` },
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return (await res.json()) as PushPrefs;
+}
+
+export const savePushPrefs = (off: readonly PushKind[]): Promise<void> => authed("/api/push/prefs", { off });

@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { BoardPreview } from "../components/Setup";
 import { variantShortName } from "../components/VariantPicker";
 import { useT } from "../i18n";
+import { openSettings } from "../navigation";
 import { fetchProfile, unqueue } from "../online/client";
 import { useOnlinePlayers } from "../online/presence";
 import { useOnline } from "../online/store";
@@ -516,6 +517,11 @@ export function ProfileScreen({
               icon={<Glyph d={GLYPH.board} className="h-5 w-5" />}
               label={t.boardAndDice}
               onClick={onDesigns}
+            />
+            <ListRow
+              icon={<Glyph d={GLYPH.bell} className="h-5 w-5" />}
+              label={t.pushTitle}
+              onClick={() => openSettings("notify")}
             />
             <ListRow
               icon={<Glyph d={GLYPH.settings} className="h-5 w-5" />}
