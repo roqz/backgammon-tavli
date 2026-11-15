@@ -7,7 +7,7 @@
  * instead of src/nets. Games are played in pairs with the same dice and colours swapped.
  */
 import { readFileSync } from "node:fs";
-import { seededRng, type VariantId } from "@tavli/engine";
+import { isDraw, seededRng, type VariantId } from "@tavli/engine";
 import { type BotLevel, loadNet, NET_OF, setNet, unpackNet } from "../src";
 import { playGame } from "../test/selfplay";
 
@@ -31,6 +31,7 @@ if (source === "snapshot") {
 let points = 0;
 let maxCube = 1;
 let wins = 0;
+let draws = 0;
 const t0 = Date.now();
 for (let i = 0; i < games; i++) {
   const expertSeat = i % 2;
@@ -38,11 +39,15 @@ for (let i = 0; i < games; i++) {
   // pairs share the dice
   const r = playGame(variant, levels, seededRng(1 + Math.floor(i / 2)), undefined, cube);
   maxCube = Math.max(maxCube, r.cube);
+  if (isDraw(r)) {
+    draws++;
+    continue;
+  }
   const won = r.winner === expertSeat;
   if (won) wins++;
   points += won ? r.points : -r.points;
 }
 const secs = ((Date.now() - t0) / 1000).toFixed(0);
 console.log(
-  `${variant}: expert vs ${opponent}: ${wins}/${games} wins (${Math.round((100 * wins) / games)}%), ${(points / games).toFixed(3)} points/game, max cube ${maxCube}, ${secs}s`,
+  `${variant}: expert vs ${opponent}: ${wins}/${games - draws} wins (${Math.round((100 * wins) / Math.max(1, games - draws))}%)${draws ? `, ${draws} draws` : ""}, ${(points / games).toFixed(3)} points/game, max cube ${maxCube}, ${secs}s`,
 );

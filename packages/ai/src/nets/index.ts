@@ -7,4 +7,5 @@ import type { NetModel } from "../nn";
 export const NET_LOADERS: Partial<Record<NetModel, () => Promise<string>>> = {
   backgammon: () => import("./backgammon").then((m) => m.default),
   hypergammon: () => import("./hypergammon").then((m) => m.default),
+  portes: () => import("./portes").then((m) => m.default),
 };
