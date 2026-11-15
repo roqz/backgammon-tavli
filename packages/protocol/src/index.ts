@@ -113,7 +113,14 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
 
 /** Predefined quick messages; there is no free-text chat, so nothing needs moderating. */
 export const EMOTES = ["hi", "gl", "gg", "nice", "lucky", "oops", "think", "thanks"] as const;
-export type EmoteId = (typeof EMOTES)[number];
+/** Extra quick messages in packs, taken for weekly tokens (`emotes-<pack>` in the exchange). */
+export const EMOTE_PACKS = {
+  kafeneio: ["opa", "yassou", "bravo", "siga", "pame"],
+  sport: ["rematch", "respect", "wow", "close", "phew"],
+} as const;
+export type EmotePack = keyof typeof EMOTE_PACKS;
+export const ALL_EMOTES = [...EMOTES, ...EMOTE_PACKS.kafeneio, ...EMOTE_PACKS.sport] as const;
+export type EmoteId = (typeof ALL_EMOTES)[number];
 export type ClientAction = z.infer<typeof ClientActionSchema>;
 
 const matchSetup = {
@@ -150,7 +157,7 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
   z.object({ t: z.literal("seed"), value: z.string().regex(/^[0-9a-f]{16,64}$/) }),
   z.object({ t: z.literal("rematch-decline") }),
   /** Quick message to the opponent during a match. */
-  z.object({ t: z.literal("emote"), id: z.enum(EMOTES) }),
+  z.object({ t: z.literal("emote"), id: z.enum(ALL_EMOTES) }),
   z.object({
     t: z.literal("tournament-create"),
     name: z.string().trim().min(1).max(TOURNAMENT_NAME_MAX),
@@ -558,7 +565,7 @@ export const CorrCreateSchema = z.object({
 export const CorrSeekSchema = z.object({ ...matchSetup, hours: corrHours });
 export const CorrAnswerSchema = z.object({ accept: z.boolean() });
 export const CorrActionSchema = z.object({ action: ClientActionSchema });
-export const CorrEmoteSchema = z.object({ emote: z.enum(EMOTES) });
+export const CorrEmoteSchema = z.object({ emote: z.enum(ALL_EMOTES) });
 
 /** A running match that can be watched. */
 export interface LiveMatch {

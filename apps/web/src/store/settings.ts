@@ -5,6 +5,9 @@ import { persist } from "zustand/middleware";
 import type { BoardStyle } from "../board/themes";
 import type { CheckerSet, DiceSkin } from "../rewards";
 
+export const SOUND_SETS = ["classic", "wood", "stone", "bells"] as const;
+export type SoundSet = (typeof SOUND_SETS)[number];
+
 export interface Settings {
   style: BoardStyle;
   lang: "de" | "en";
@@ -42,6 +45,8 @@ export interface Settings {
   fireworks: boolean;
   /** Dice sound: plain or rattling in a cup (a reward). */
   diceSound: "classic" | "cup";
+  /** Checker, hit and game-end sounds (the others come from the exchange). */
+  soundSet: SoundSet;
   /** Last choice on the "Play" screen. */
   playMode: PlayMode;
   /** Last game against the computer, for the one-tap start on the home screen. */
@@ -83,6 +88,7 @@ export const useSettings = create<SettingsStore>()(
       checkerSet: "theme",
       fireworks: true,
       diceSound: "classic",
+      soundSet: "classic",
       playMode: "bot",
       lastBot: null,
       update: (patch) => set(patch),

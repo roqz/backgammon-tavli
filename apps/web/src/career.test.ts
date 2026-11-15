@@ -15,7 +15,7 @@ import {
   weekRange,
   winterSeason,
 } from "./career";
-import { hasLook } from "./rewards";
+import { hasLook, REWARDS, SHOP_ONLY } from "./rewards";
 import type { GameRecord } from "./store/archive";
 
 const game = (over: Partial<GameRecord> & { date: string }): GameRecord => ({
@@ -103,11 +103,25 @@ describe("career", () => {
     useCareer.getState().markTasks("2026-W46", [0, 1, 2]);
     useCareer.getState().markTasks("2026-W47", [1]);
     expect(tokens(useCareer.getState())).toBe(6);
-    const set = SHOP.find((o) => o.id === "set-pearl")!;
-    expect(useCareer.getState().take(set.id)).toBe(true);
-    expect(tokens(useCareer.getState())).toBe(6 - set.price);
-    expect(useCareer.getState().take(set.id)).toBe(false); // already taken
-    expect(useCareer.getState().take("style-night")).toBe(false); // not enough tokens
+    const item = SHOP.find((o) => o.id === "sound-wood")!;
+    expect(useCareer.getState().take(item.id)).toBe(true);
+    expect(tokens(useCareer.getState())).toBe(6 - item.price);
+    expect(useCareer.getState().take(item.id)).toBe(false); // already taken
+    expect(useCareer.getState().take("emotes-sport")).toBe(false); // not enough tokens
+  });
+
+  it("offers nothing an achievement unlocks; what was taken before stays", () => {
+    for (const o of SHOP.filter((x) => !x.retired)) {
+      if (o.kind === "sound" || o.kind === "emotes") continue;
+      expect((REWARDS[o.kind] as Record<string, string>)[o.look]).toBe(SHOP_ONLY);
+    }
+    useCareer.getState().markTasks("2026-W46", [0, 1, 2]);
+    useCareer.getState().markTasks("2026-W47", [0, 1, 2]);
+    expect(useCareer.getState().take("set-pearl")).toBe(false); // retired
+    // taken while it was offered: kept, and its tokens stay spent
+    useCareer.setState({ owned: ["set-pearl"] });
+    expect(hasLook("checkers", "pearl", {}, useCareer.getState().owned)).toBe(true);
+    expect(tokens(useCareer.getState())).toBe(10 - 6);
   });
 
   it("awards plaques per variant and the inlay board for all in gold", () => {

@@ -38,7 +38,7 @@ export const lockText = (t: Dict, achievement: string, shopId?: string): string 
         : a
           ? `${a.icon} ${a.title[lang]}`
           : achievement;
-  const price = shopId ? SHOP.find((o) => o.id === shopId)?.price : undefined;
+  const price = shopId ? SHOP.find((o) => o.id === shopId && !o.retired)?.price : undefined;
   const base = t.unlockBy.replace("{name}", name);
   return price ? `${base} ${t.orTokens.replace("{n}", String(price))}` : base;
 };

@@ -1,6 +1,7 @@
 import { PUSH_KINDS, type PushKind } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { useAchievements } from "../achievements";
+import { SHOP, useCareer } from "../career";
 import { Drawer } from "../components/Drawer";
 import { CheckerPicker, DicePicker, lockText, StylePicker } from "../components/Looks";
 import { Section, Segmented, Toggle } from "../components/ui";
@@ -9,7 +10,8 @@ import { disconnect } from "../online/client";
 import { fetchPushPrefs, savePushPrefs, usePushState } from "../online/push";
 import { useOnline } from "../online/store";
 import { isUnlocked, REWARDS } from "../rewards";
-import { useSettings } from "../store/settings";
+import { previewSoundSet } from "../sound";
+import { SOUND_SETS, useSettings } from "../store/settings";
 import { ListGroup, ListRow } from "./AppShell";
 import { PushToggle } from "./TournamentPanel";
 
@@ -224,6 +226,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
             checked={s.sound}
             onChange={(sound) => s.update({ sound })}
           />
+          <SoundSetPicker />
         </Section>
       )}
 
@@ -337,5 +340,48 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
     <Drawer open={open} onClose={onClose} title={`⚙ ${t.settings}`} closeLabel={t.close}>
       <SettingsPanel />
     </Drawer>
+  );
+}
+
+/** Sound sets: classic for everyone, the others from the token exchange. */
+function SoundSetPicker() {
+  const t = useT();
+  const chosen = useSettings((s) => s.soundSet);
+  const update = useSettings((s) => s.update);
+  const owned = useCareer((s) => s.owned);
+  return (
+    <div className="flex flex-col gap-2 py-3">
+      <div>
+        <div className="text-sm text-stone-200">{t.soundSet}</div>
+        <div className="text-xs text-stone-500">{t.soundSetDesc}</div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {SOUND_SETS.map((set) => {
+          const item = SHOP.find((o) => o.id === `sound-${set}`);
+          const open = set === "classic" || owned.includes(`sound-${set}`);
+          return (
+            <button
+              key={set}
+              type="button"
+              aria-pressed={chosen === set}
+              disabled={!open}
+              title={open ? undefined : t.soundSetLocked.replace("{n}", String(item?.price ?? "?"))}
+              onClick={() => {
+                update({ soundSet: set });
+                previewSoundSet(set);
+              }}
+              className={`min-h-11 rounded-lg border px-3 py-2 text-left text-sm transition-colors disabled:opacity-50 ${
+                chosen === set
+                  ? "border-amber-400 bg-amber-400/10 text-amber-200"
+                  : "border-stone-700 text-stone-300 hover:border-stone-500"
+              }`}
+            >
+              {open ? "" : "🔒 "}
+              {t.soundSets[set]}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

@@ -18,6 +18,7 @@ import { Button, Modal } from "../components/ui";
 import { useT } from "../i18n";
 import { reportPlayer, sendEmote } from "../online/client";
 import { useOnline } from "../online/store";
+import { useEmotes } from "../rewards";
 import { type PlayerInfo, useGame } from "../store/game";
 import { useSettings } from "../store/settings";
 
@@ -166,6 +167,7 @@ export function useResignRejected(g: GameState | undefined): boolean {
 /** Picks a quick message; live matches send it over the connection, others pass `onSend`. */
 export function EmoteButton({ onSend = sendEmote }: { onSend?: (id: EmoteId) => void } = {}) {
   const t = useT();
+  const emotes = useEmotes();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   // Closes on Escape and on a click outside.
@@ -195,8 +197,12 @@ export function EmoteButton({ onSend = sendEmote }: { onSend?: (id: EmoteId) => 
         💬
       </Button>
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-1 grid w-56 grid-cols-1 gap-1 rounded-xl border border-stone-700 bg-stone-900 p-2 shadow-2xl">
-          {EMOTES.map((id) => (
+        <div
+          className={`absolute right-0 top-full z-40 mt-1 grid gap-1 rounded-xl border border-stone-700 bg-stone-900 p-2 shadow-2xl ${
+            emotes.length > EMOTES.length ? "w-[min(26rem,calc(100vw-2rem))] grid-cols-2" : "w-56 grid-cols-1"
+          }`}
+        >
+          {emotes.map((id) => (
             <button
               key={id}
               type="button"

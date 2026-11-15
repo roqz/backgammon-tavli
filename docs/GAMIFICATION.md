@@ -14,11 +14,11 @@ Einstieg in der App: **Profil → Vitrine** (auch über die Zeile „Wochenaufga
 | Baustein          | Woraus berechnet                                                                | Belohnung                                                                                        |
 | ----------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Erfolge (35)      | lokales Spielarchiv, Karriere-Zähler, Rätsel, Tutorial, Online-Profil, Turniere | Bretter, Würfel, Steine, Rahmen, Extras                                                          |
-| Steinsätze        | Siege je Variante (Karriere) oder Spielmarken                                   | 5 Steindesigns                                                                                   |
+| Steinsätze        | Siege je Variante (Karriere)                                                    | 5 Steindesigns                                                                                   |
 | Clubrang          | Aktivitätspunkte (Karriere + Rätsel + Lektionen)                                | Abzeichen neben dem Namen (online sichtbar)                                                      |
 | Varianten-Meister | Siege je Variante (Karriere)                                                    | Plaketten Bronze/Silber/Gold, Intarsien-Brett                                                    |
 | Wochenaufgaben    | Spiele und Rätsel der laufenden Woche                                           | Spielmarken                                                                                      |
-| Eintauschen       | Spielmarken                                                                     | Steine, Würfel, Bretter (keine Prestige-Looks)                                                   |
+| Eintauschen       | Spielmarken                                                                     | Klangsets, Kurznachrichten-Pakete, Luxus-Looks (nichts, was ein Erfolg freischaltet)             |
 | Besondere Momente | einzelne Partien im Archiv                                                      | Erfolge                                                                                          |
 | Online-Rahmen     | Fernpartien, Herausforderungen, Ligen                                           | Rahmen Brief, Handschlag, Wappen; Messing-Würfel                                                 |
 | Saisons           | Partien in der laufenden Jahreszeit                                             | Bretter Frühling, Ägäis-Sommer, Herbst, Winter (bleiben)                                         |
@@ -113,19 +113,29 @@ Hinweis oben.
 
 ### Eintauschen (`SHOP`)
 
-| Look                                                                        | Preis |
+| Angebot                                                                     | Preis |
 | --------------------------------------------------------------------------- | ----- |
-| Steinsätze Perlmutt, Olivenholz, Onyx & Alabaster, Messing, Bein & Ebenholz | 6     |
-| Würfel Gold, Rubin                                                          | 4     |
-| Bretter Nacht, Marmor, Turnier, Olive                                       | 8     |
+| Klangsets Holz, Marmor                                                      | 5     |
+| Klangset Kafeneio-Glocke                                                    | 7     |
+| Kurznachrichten „Kafeneio“ (Opa!, Jassou!, Bravo!, Siga siga …, Pame!)      | 6     |
+| Kurznachrichten „Sportsgeist“ (Revanche?, Respekt!, Wahnsinn!, Knapp!, Puh) | 6     |
 | **Rarität:** Würfel Silber                                                  | 12    |
 | **Rarität:** Steinsatz Bernstein & Mokka                                    | 20    |
 | **Rarität:** Brett Salon                                                    | 30    |
 
-Prestige-Looks gibt es **nur** über Erfolge: Intarsien (alle Plaketten Gold), die Saison-Bretter,
-Messing-Würfel (Liga), die Raritäten-Belohnungen und alle Rahmen. Was bereits per Erfolg frei ist,
-wird nicht angeboten. Umgekehrt gibt es die drei Luxus-Looks (Silber, Bernstein, Salon) **nur** im
-Tausch (`REWARDS` → `SHOP_ONLY`, `rare: true` im `SHOP`).
+Im Tausch gibt es **nur**, was kein Erfolg freischaltet: Erfolge bleiben der einzige Weg zu ihren
+Belohnungen. Die Luxus-Looks (Silber, Bernstein, Salon) gibt es umgekehrt **nur** im Tausch
+(`REWARDS` → `SHOP_ONLY`, `rare: true` im `SHOP`).
+
+Früher ließen sich auch Steinsätze, Gold-/Rubin-Würfel und vier Bretter eintauschen. Diese Einträge
+stehen noch mit `retired: true` im `SHOP`: Wer sie getauscht hat, behält sie, und die Marken bleiben
+ausgegeben. Neu nehmen kann man sie nicht mehr (`SHOP_OFFERS`).
+
+- **Klangsets** (`soundSet` in den Einstellungen, `SETS` in `sound.ts`): andere Klänge für Steine,
+  Schlagen und Spielende; Würfel und Doppler klingen gleich. Anhören geht auch vor dem Tausch.
+- **Kurznachrichten-Pakete** (`EMOTE_PACKS` im Protokoll): zusätzliche Kurznachrichten für Online-
+  und Fernpartien. Der Server nimmt alle Kurznachrichten an; angeboten werden nur die eigenen Pakete
+  (`useEmotes`). Das ist nur Kosmetik, deshalb prüft der Server den Besitz nicht.
 
 ## Steinsätze
 
@@ -230,9 +240,9 @@ vollständige Erfolgsliste. Gesperrtes zeigt immer, wie man es bekommt (`lockTex
 
 - **Neuer Erfolg:** Eintrag in `ACHIEVEMENTS` (`achievements.ts`) mit `progress`, ggf. Belohnung in
   `REWARDS` (`rewards.tsx`). Ids: `[a-z0-9-]{1,40}`; der Fortschritt fasst bis zu 300 Freischaltungen.
-- **Neuer Look zum Eintauschen:** Eintrag in `SHOP` (`career.ts`); die Shop-ID folgt dem Muster
-  `style-…`, `dice-…`, `set-…`, damit `hasLook` sie findet. Nur im Tausch: `rare: true` und in
-  `REWARDS` den Wert `SHOP_ONLY` eintragen.
+- **Neues im Tausch:** Eintrag in `SHOP` (`career.ts`); nur, was kein Erfolg freischaltet. Looks
+  folgen dem Muster `style-…`, `dice-…`, `set-…` und tragen in `REWARDS` den Wert `SHOP_ONLY`,
+  damit `hasLook` sie findet. Klangsets heißen `sound-…`, Kurznachrichten-Pakete `emotes-…`.
 - **Neuer Rahmen:** `FRAMES` im Protokoll (Server prüft automatisch), Aussehen in `FRAME_LOOK`, Name in
   `frameNames` (i18n).
 - Tests: `apps/web/src/career.test.ts`, `apps/web/src/achievements.test.ts`,

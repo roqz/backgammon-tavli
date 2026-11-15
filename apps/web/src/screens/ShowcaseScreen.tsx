@@ -1,4 +1,4 @@
-import { CAREER_VARIANTS, FRAMES } from "@tavli/protocol";
+import { CAREER_VARIANTS, EMOTE_PACKS, type EmotePack, FRAMES } from "@tavli/protocol";
 import type { ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { ACHIEVEMENTS, seasonLabel, useAchievements } from "../achievements";
@@ -10,7 +10,8 @@ import {
   rankInfo,
   SEASON_GAMES,
   SEASONS,
-  SHOP,
+  SHOP_OFFERS,
+  type ShopKind,
   seasonGames,
   seasonOf,
   taskProgress,
@@ -41,8 +42,9 @@ import {
   useOfferedFrames,
   useUnlocked,
 } from "../rewards";
+import { previewSoundSet } from "../sound";
 import { useArchive } from "../store/archive";
-import { useSettings } from "../store/settings";
+import { type SoundSet, useSettings } from "../store/settings";
 import { AchievementsPanel, RareTag, rewardOf } from "./AchievementsPanel";
 import { Page, ScreenTitle } from "./AppShell";
 import { LESSONS } from "./TutorialScreen";
@@ -201,7 +203,17 @@ function WeeklyTasks() {
   );
 }
 
+const EMOTE_PACK_ICON: Record<EmotePack, string> = { kafeneio: "☕", sport: "🏅" };
+
 function ShopPreview({ kind, look }: { kind: string; look: string }) {
+  if (kind === "sound" || kind === "emotes") {
+    const icon = kind === "sound" ? "🔊" : EMOTE_PACK_ICON[look as EmotePack];
+    return (
+      <span aria-hidden className="inline-flex h-6 w-12 items-center justify-center text-lg">
+        {icon}
+      </span>
+    );
+  }
   if (kind === "checkers") return <CheckerSwatch set={look as CheckerSet} />;
   if (kind === "dice") {
     const d = DICE_SKINS[look as Exclude<DiceSkin, "theme">];
@@ -228,12 +240,19 @@ function Exchange() {
   const unlocked = useAchievements((s) => s.unlocked);
   const take = useCareer((s) => s.take);
   const balance = tokens(career);
-  const name = (kind: string, look: string) =>
-    kind === "checkers"
-      ? t.checkerSets[look as CheckerSet]
-      : kind === "dice"
-        ? t.diceSkins[look as DiceSkin]
-        : t.styleNames[look as BoardStyle];
+  const name = (kind: ShopKind, look: string) =>
+    kind === "sound"
+      ? t.soundSetItem.replace("{name}", t.soundSets[look as SoundSet])
+      : kind === "emotes"
+        ? t.emotePacks[look as EmotePack]
+        : kind === "checkers"
+          ? t.checkerSets[look as CheckerSet]
+          : kind === "dice"
+            ? t.diceSkins[look as DiceSkin]
+            : t.styleNames[look as BoardStyle];
+  /** A sample of what an item gives: the sound set, or the quick messages of the pack. */
+  const sample = (kind: ShopKind, look: string): string | null =>
+    kind === "emotes" ? EMOTE_PACKS[look as EmotePack].map((e) => t.emote[e]).join(" · ") : null;
   return (
     <Box
       title={t.exchangeTitle}
@@ -251,13 +270,28 @@ function Exchange() {
               <RareTag />
             </li>
           )}
-          {SHOP.filter((o) => !!o.rare === rare).map((item) => {
+          {SHOP_OFFERS.filter((o) => !!o.rare === rare).map((item) => {
             const taken = career.owned.includes(item.id);
-            const free = !taken && hasLook(item.kind, item.look, unlocked, []);
+            const look = item.kind === "checkers" || item.kind === "dice" || item.kind === "style";
+            const free = !taken && look && hasLook(item.kind, item.look, unlocked, []);
+            const more = sample(item.kind, item.look);
             return (
               <li key={item.id} className="flex min-h-12 items-center gap-3 py-2">
                 <ShopPreview kind={item.kind} look={item.look} />
-                <span className="flex-1 text-sm text-stone-200">{name(item.kind, item.look)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm text-stone-200">{name(item.kind, item.look)}</span>
+                  {more && <span className="block text-xs text-stone-500">{more}</span>}
+                </span>
+                {item.kind === "sound" && (
+                  <button
+                    type="button"
+                    aria-label={`${t.preview}: ${name(item.kind, item.look)}`}
+                    onClick={() => previewSoundSet(item.look as SoundSet)}
+                    className="min-h-9 rounded-lg px-2 text-sm text-stone-300 hover:text-amber-300"
+                  >
+                    ▶
+                  </button>
+                )}
                 {taken || free ? (
                   <span className="text-xs text-stone-500">{taken ? t.exchangeDone : t.exchangeHave}</span>
                 ) : (

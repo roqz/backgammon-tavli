@@ -102,7 +102,7 @@ export const useCareer = create<CareerStore>()(
         }),
       take: (item) => {
         const s = get();
-        const offer = SHOP.find((o) => o.id === item);
+        const offer = SHOP_OFFERS.find((o) => o.id === item);
         if (!offer || s.owned.includes(item) || tokens(careerOf(s)) < offer.price) return false;
         set({ owned: [...s.owned, item] });
         return true;
@@ -248,37 +248,54 @@ export const weekTokens = (done: number): number => done + (done >= 3 ? 2 : 0);
 
 // ---- tokens and the exchange -------------------------------------------------------------------
 
-export type ShopKind = "checkers" | "dice" | "style";
+export type ShopKind = "checkers" | "dice" | "style" | "sound" | "emotes";
 
 export interface ShopItem {
   /** Also the id in `owned` (and the achievement id that unlocks the same look). */
   readonly id: string;
   readonly kind: ShopKind;
-  /** The look: checker set, dice skin or board style. */
+  /** The look: checker set, dice skin or board style; or the sound set or emote pack. */
   readonly look: string;
   readonly price: number;
   /** Luxury looks: only in exchange, never by an achievement. */
   readonly rare?: boolean;
+  /**
+   * No longer offered (achievement looks are earned, not exchanged); kept so what was taken
+   * stays taken and its tokens stay spent.
+   */
+  readonly retired?: boolean;
 }
 
-/** Looks that can be taken for tokens; prestige looks (inlay, winter, frames) cannot. */
+/**
+ * The exchange: only what no achievement unlocks (sound sets, emote packs, luxury looks), so
+ * achievements stay the one way to their rewards.
+ */
 export const SHOP: readonly ShopItem[] = [
-  { id: "set-pearl", kind: "checkers", look: "pearl", price: 6 },
-  { id: "set-wood", kind: "checkers", look: "wood", price: 6 },
-  { id: "set-onyx", kind: "checkers", look: "onyx", price: 6 },
-  { id: "set-brass", kind: "checkers", look: "brass", price: 6 },
-  { id: "set-bone", kind: "checkers", look: "bone", price: 6 },
-  { id: "dice-gold", kind: "dice", look: "gold", price: 4 },
-  { id: "dice-ruby", kind: "dice", look: "ruby", price: 4 },
-  { id: "style-night", kind: "style", look: "night", price: 8 },
-  { id: "style-marble", kind: "style", look: "marble", price: 8 },
-  { id: "style-tournament", kind: "style", look: "tournament", price: 8 },
-  { id: "style-olive", kind: "style", look: "olive", price: 8 },
+  { id: "sound-wood", kind: "sound", look: "wood", price: 5 },
+  { id: "sound-stone", kind: "sound", look: "stone", price: 5 },
+  { id: "sound-bells", kind: "sound", look: "bells", price: 7 },
+  { id: "emotes-kafeneio", kind: "emotes", look: "kafeneio", price: 6 },
+  { id: "emotes-sport", kind: "emotes", look: "sport", price: 6 },
+  // once also for tokens; whoever took them keeps them
+  { id: "set-pearl", kind: "checkers", look: "pearl", price: 6, retired: true },
+  { id: "set-wood", kind: "checkers", look: "wood", price: 6, retired: true },
+  { id: "set-onyx", kind: "checkers", look: "onyx", price: 6, retired: true },
+  { id: "set-brass", kind: "checkers", look: "brass", price: 6, retired: true },
+  { id: "set-bone", kind: "checkers", look: "bone", price: 6, retired: true },
+  { id: "dice-gold", kind: "dice", look: "gold", price: 4, retired: true },
+  { id: "dice-ruby", kind: "dice", look: "ruby", price: 4, retired: true },
+  { id: "style-night", kind: "style", look: "night", price: 8, retired: true },
+  { id: "style-marble", kind: "style", look: "marble", price: 8, retired: true },
+  { id: "style-tournament", kind: "style", look: "tournament", price: 8, retired: true },
+  { id: "style-olive", kind: "style", look: "olive", price: 8, retired: true },
   // rarities: only here, and dear (a perfect week earns 5 tokens)
   { id: "dice-silver", kind: "dice", look: "silver", price: 12, rare: true },
   { id: "set-amber", kind: "checkers", look: "amber", price: 20, rare: true },
   { id: "style-salon", kind: "style", look: "salon", price: 30, rare: true },
 ];
+
+/** What the exchange offers now. */
+export const SHOP_OFFERS: readonly ShopItem[] = SHOP.filter((o) => !o.retired);
 
 export const tokensEarned = (c: Career): number =>
   Object.values(c.weeks).reduce((s, done) => s + weekTokens(done.length), 0);

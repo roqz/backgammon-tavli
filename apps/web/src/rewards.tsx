@@ -1,10 +1,18 @@
-import { FRAME_IDS, FRAMES, type Frame } from "@tavli/protocol";
+import {
+  EMOTE_PACKS,
+  EMOTES,
+  type EmoteId,
+  type EmotePack,
+  FRAME_IDS,
+  FRAMES,
+  type Frame,
+} from "@tavli/protocol";
 import { type ReactNode, useMemo } from "react";
 import { useAchievements } from "./achievements";
 import { BOARD_STYLES, type BoardStyle, type BoardTheme, THEMES } from "./board/themes";
 import { hasSeason, type SeasonKey, useCareer } from "./career";
 import { useOnline } from "./online/store";
-import { useSettings } from "./store/settings";
+import { type SoundSet, useSettings } from "./store/settings";
 
 /** Dice looks on top of the board style; "theme" uses the style's own dice. */
 export type DiceSkin = "theme" | "gold" | "ruby" | "brass" | "jade" | "obsidian" | "silver";
@@ -266,6 +274,29 @@ export function useFireworks(): boolean {
   const unlocked = useAchievements((s) => s.unlocked);
   return on && isUnlocked(REWARDS.fireworks, unlocked);
 }
+
+/** Whether an item of the exchange (sound set, emote pack) was taken. */
+export const ownsItem = (id: string): boolean => useCareer.getState().owned.includes(id);
+
+/** The chosen sound set, if it may be used (classic, or taken in the exchange). */
+export const soundSetOn = (): SoundSet => {
+  const s = useSettings.getState().soundSet;
+  return s === "classic" || ownsItem(`sound-${s}`) ? s : "classic";
+};
+
+/** The quick messages to offer: the basic ones and those of the packs taken in the exchange. */
+export const useEmotes = (): readonly EmoteId[] => {
+  const owned = useCareer((s) => s.owned);
+  return useMemo(
+    () => [
+      ...EMOTES,
+      ...(Object.keys(EMOTE_PACKS) as EmotePack[]).flatMap((p) =>
+        owned.includes(`emotes-${p}`) ? EMOTE_PACKS[p] : [],
+      ),
+    ],
+    [owned],
+  );
+};
 
 /** Whether the dice cup sound is chosen and unlocked. */
 export const diceCupOn = (): boolean =>

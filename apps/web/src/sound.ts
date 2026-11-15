@@ -1,8 +1,8 @@
 import { type GameState, isDraw } from "@tavli/engine";
 import { useEffect, useRef } from "react";
-import { diceCupOn } from "./rewards";
+import { diceCupOn, soundSetOn } from "./rewards";
 import { useGame } from "./store/game";
-import { useSettings } from "./store/settings";
+import { type SoundSet, useSettings } from "./store/settings";
 
 /**
  * Tiny synthesized sound effects (Web Audio, no asset files): dice, checker clicks, hits,
@@ -85,6 +85,68 @@ const dieImpact = (ac: AudioContext, at: number, amp: number) => {
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
+/** A struck bell or glass: a few inharmonic partials that ring out. */
+const bell = (ac: AudioContext, at: number, f: number, dur: number, gain: number) => {
+  for (const [ratio, g] of [
+    [1, 1],
+    [2.76, 0.45],
+    [5.4, 0.2],
+  ] as const)
+    tone(ac, at, f * ratio, dur / ratio ** 0.4, gain * g);
+};
+
+/**
+ * Sound sets from the exchange: checker, hit and game end in another material. The dice and
+ * the cube keep their sound, so the game still sounds like itself.
+ */
+const SETS = {
+  wood: {
+    checker(ac: AudioContext, t: number) {
+      knock(ac, t, rand(300, 360), 0.09, 0.5);
+      noiseBurst(ac, t, 0.015, 900, 0.3, "bandpass", 3);
+    },
+    hit(ac: AudioContext, t: number) {
+      knock(ac, t, 170, 0.22, 0.75);
+      knock(ac, t + 0.05, 240, 0.12, 0.35);
+      noiseBurst(ac, t, 0.04, 700, 0.5);
+    },
+    end(ac: AudioContext, t: number, won: boolean) {
+      const notes = won ? [392, 494, 587, 784] : [392, 330, 262];
+      for (const [i, f] of notes.entries()) knock(ac, t + i * 0.13, f, 0.3, 0.45);
+    },
+  },
+  stone: {
+    checker(ac: AudioContext, t: number) {
+      noiseBurst(ac, t, 0.006, 6500, 0.5, "highpass", 0.8);
+      tone(ac, t, rand(2000, 2300), 0.1, 0.05);
+      knock(ac, t, 520, 0.04, 0.25);
+    },
+    hit(ac: AudioContext, t: number) {
+      noiseBurst(ac, t, 0.01, 5200, 0.7, "highpass", 0.8);
+      tone(ac, t, 1500, 0.22, 0.07);
+      knock(ac, t, 380, 0.08, 0.4);
+    },
+    end(ac: AudioContext, t: number, won: boolean) {
+      const notes = won ? [1047, 1319, 1568, 2093] : [784, 659, 523];
+      for (const [i, f] of notes.entries()) tone(ac, t + i * 0.12, f, 0.5, 0.08);
+    },
+  },
+  bells: {
+    checker(ac: AudioContext, t: number) {
+      noiseBurst(ac, t, 0.02, 1800, 0.3);
+      bell(ac, t, rand(1180, 1260), 0.35, 0.05);
+    },
+    hit(ac: AudioContext, t: number) {
+      noiseBurst(ac, t, 0.04, 1200, 0.5);
+      bell(ac, t, 620, 0.7, 0.1);
+    },
+    end(ac: AudioContext, t: number, won: boolean) {
+      const notes = won ? [659, 784, 988, 1319] : [587, 494, 392];
+      for (const [i, f] of notes.entries()) bell(ac, t + i * 0.16, f, 1.1, 0.07);
+    },
+  },
+} as const;
+
 export const sounds = {
   /** Two dice landing: bounces with shrinking gaps and loudness, then a short roll-out. */
   dice() {
@@ -115,6 +177,8 @@ export const sounds = {
     const ac = audio();
     if (!ac) return;
     const t = ac.currentTime;
+    const set = soundSetOn();
+    if (set !== "classic") return SETS[set].checker(ac, t);
     noiseBurst(ac, t, 0.03, 1800, 0.5);
     tone(ac, t, 180, 0.08, 0.15, "triangle");
   },
@@ -122,6 +186,8 @@ export const sounds = {
     const ac = audio();
     if (!ac) return;
     const t = ac.currentTime;
+    const set = soundSetOn();
+    if (set !== "classic") return SETS[set].hit(ac, t);
     noiseBurst(ac, t, 0.05, 1200, 0.7);
     tone(ac, t, 110, 0.18, 0.35, "triangle");
   },
@@ -136,6 +202,8 @@ export const sounds = {
     const ac = audio();
     if (!ac) return;
     const t = ac.currentTime;
+    const set = soundSetOn();
+    if (set !== "classic") return SETS[set].end(ac, t, true);
     for (const [i, f] of [523, 659, 784, 1047].entries()) tone(ac, t + i * 0.11, f, 0.35, 0.14);
   },
   /** Soft two-note chime: it is your turn (app in the background). */
@@ -150,8 +218,28 @@ export const sounds = {
     const ac = audio();
     if (!ac) return;
     const t = ac.currentTime;
+    const set = soundSetOn();
+    if (set !== "classic") return SETS[set].end(ac, t, false);
     for (const [i, f] of [392, 330, 262].entries()) tone(ac, t + i * 0.16, f, 0.4, 0.12);
   },
+};
+
+/** A short sample of a sound set (also one not taken yet): two checkers, a hit and a win. */
+export const previewSoundSet = (set: SoundSet) => {
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime + 0.02;
+  if (set === "classic") {
+    sounds.checker();
+    setTimeout(() => sounds.hit(), 450);
+    setTimeout(() => sounds.win(), 900);
+    return;
+  }
+  const s = SETS[set];
+  s.checker(ac, t);
+  s.checker(ac, t + 0.22);
+  s.hit(ac, t + 0.5);
+  s.end(ac, t + 0.95, true);
 };
 
 /** Plays sounds for game events by watching the game state. */
