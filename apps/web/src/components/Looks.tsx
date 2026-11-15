@@ -1,6 +1,6 @@
 import { ACHIEVEMENTS, useAchievements } from "../achievements";
 import { BOARD_STYLES, type BoardStyle, THEMES } from "../board/themes";
-import { SEASON_GAMES, SHOP, useCareer } from "../career";
+import { SEASON_GAMES, SEASONS, type SeasonKey, SHOP, useCareer } from "../career";
 import { type Dict, useT } from "../i18n";
 import {
   CHECKER_LOOKS,
@@ -14,6 +14,12 @@ import {
 } from "../rewards";
 import { useSettings } from "../store/settings";
 
+/** "🍂 10 games in an autumn season" */
+export const seasonHow = (t: Dict, key: SeasonKey): string =>
+  `${SEASONS.find((s) => s.key === key)?.icon ?? ""} ${t.seasonHow
+    .replace("{n}", String(SEASON_GAMES))
+    .replace("{season}", t.seasonNames[key])}`;
+
 /** "Unlock: <achievement>" (plus "or N tokens" where the look can be exchanged). */
 export const lockText = (t: Dict, achievement: string, shopId?: string): string => {
   if (achievement === SHOP_ONLY)
@@ -23,8 +29,8 @@ export const lockText = (t: Dict, achievement: string, shopId?: string): string 
   const name =
     achievement === "master-all"
       ? `🏛️ ${t.masterAll}`
-      : achievement === "season-winter"
-        ? `❄️ ${t.seasonWinterHow.replace("{n}", String(SEASON_GAMES))}`
+      : /^season-[a-z]+$/.test(achievement)
+        ? seasonHow(t, achievement.slice(7) as SeasonKey)
         : a
           ? `${a.icon} ${a.title[lang]}`
           : achievement;

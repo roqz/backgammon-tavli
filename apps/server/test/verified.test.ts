@@ -1,8 +1,9 @@
+import type { GameResult } from "@tavli/engine";
 import { EMPTY_CAREER } from "@tavli/protocol";
 import { describe, expect, it } from "vitest";
 import { Store } from "../src/db";
 
-const result = (winner: 0 | 1) => ({ winner, level: 1, cube: 1, points: 1, reason: "bear-off" as const });
+const result = (winner: 0 | 1): GameResult => ({ winner, level: 1, cube: 1, points: 1, reason: "bear-off" });
 
 describe("progress the server counts itself", () => {
   it("online games and wins per variant are a floor for the career, whatever a device reports", () => {

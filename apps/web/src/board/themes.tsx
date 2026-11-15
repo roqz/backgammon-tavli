@@ -11,6 +11,12 @@ const INLAY_WOOD = woodTexture({ dark: "#2a1810", mid: "#4a2c1a", light: "#6d442
 const INLAY_FELT = woodTexture({ dark: "#5a3b22", mid: "#7a5232", light: "#94683f" }, 640, 220, 29);
 const WINTER_WOOD = woodTexture({ dark: "#2b3036", mid: "#454c55", light: "#626b76" }, 640, 220, 31);
 const WINTER_FELT = feltTexture("#1c2a3a", 384, 624, 13);
+const SPRING_WOOD = woodTexture({ dark: "#8a6a4a", mid: "#b08d66", light: "#d1b48c" }, 640, 220, 43);
+const SPRING_FELT = feltTexture("#5f8a5a", 384, 624, 25);
+const SUMMER_WOOD = woodTexture({ dark: "#b9b2a3", mid: "#d8d2c4", light: "#efeadf" }, 640, 220, 47);
+const SUMMER_FELT = feltTexture("#1f5f8b", 384, 624, 27);
+const AUTUMN_WOOD = woodTexture({ dark: "#3e2412", mid: "#6a3f1f", light: "#8f5a2f" }, 640, 220, 53);
+const AUTUMN_FELT = feltTexture("#6b4a1f", 384, 624, 33);
 const EBONY_WOOD = woodTexture({ dark: "#0d0907", mid: "#1f1510", light: "#352419" }, 640, 220, 37);
 const EBONY_FELT = feltTexture("#13261c", 384, 624, 17);
 const SALON_WOOD = woodTexture({ dark: "#3a140c", mid: "#5e2416", light: "#82402a" }, 640, 220, 41);
@@ -46,6 +52,9 @@ export type BoardStyle =
   | "contrast"
   | "inlay"
   | "winter"
+  | "spring"
+  | "summer"
+  | "autumn"
   | "ebony"
   | "salon";
 
@@ -58,6 +67,9 @@ export const BOARD_STYLES: readonly BoardStyle[] = [
   "tournament",
   "olive",
   "inlay",
+  "spring",
+  "summer",
+  "autumn",
   "winter",
   "ebony",
   "salon",
@@ -347,6 +359,84 @@ export const THEMES: Record<BoardStyle, BoardTheme> = {
     ],
     die: { fill: "#f7fafc", pip: "#24384d", edge: "#9fb3c6" },
     cube: { fill: "#e6eef5", text: "#24384d" },
+  },
+  /** Spring season: light oak, meadow green, almond blossom and cherry points. */
+  spring: {
+    id: "spring",
+    defs: (
+      <>
+        {woodPattern("sp-grain", SPRING_WOOD)}
+        {feltPattern("sp-felt", SPRING_FELT)}
+        {shadow(0.35)}
+      </>
+    ),
+    frame: "url(#sp-grain)",
+    felt: "url(#sp-felt)",
+    bar: "url(#sp-grain)",
+    tray: "#4a3a28",
+    pointA: "#f6e3e6",
+    pointB: "#b0485a",
+    label: "#fbf3e6",
+    highlight: "#ffd54a",
+    selected: "#7fd3ff",
+    checkers: [
+      { fill: "#fffaf2", edge: "#b8a58a", ring: "#e9dcc6" },
+      { fill: "#4a2d22", edge: "#22130c", ring: "#8a5e48" },
+    ],
+    die: { fill: "#fffaf2", pip: "#7a2a38", edge: "#b8a58a" },
+    cube: { fill: "#f6e3e6", text: "#7a2a38" },
+  },
+  /** Summer season: whitewashed frame, Aegean blue, sand and sea points. */
+  summer: {
+    id: "summer",
+    defs: (
+      <>
+        {woodPattern("su-grain", SUMMER_WOOD)}
+        {feltPattern("su-felt", SUMMER_FELT)}
+        {shadow(0.35)}
+      </>
+    ),
+    frame: "url(#su-grain)",
+    felt: "url(#su-felt)",
+    bar: "url(#su-grain)",
+    tray: "#9c9586",
+    pointA: "#f3e6c8",
+    pointB: "#0d3b5c",
+    label: "#1f2a33",
+    highlight: "#ffd54a",
+    selected: "#f472b6",
+    checkers: [
+      { fill: "#ffffff", edge: "#9aa6ae", ring: "#dfe6ea" },
+      { fill: "#c2562f", edge: "#6e2a12", ring: "#e3906c" },
+    ],
+    die: { fill: "#ffffff", pip: "#0d3b5c", edge: "#9aa6ae" },
+    cube: { fill: "#f3e6c8", text: "#0d3b5c" },
+  },
+  /** Autumn season: chestnut frame, olive-brown baize, maple and amber points. */
+  autumn: {
+    id: "autumn",
+    defs: (
+      <>
+        {woodPattern("au-grain", AUTUMN_WOOD)}
+        {feltPattern("au-felt", AUTUMN_FELT)}
+        {shadow(0.45)}
+      </>
+    ),
+    frame: "url(#au-grain)",
+    felt: "url(#au-felt)",
+    bar: "url(#au-grain)",
+    tray: "#2a1a0e",
+    pointA: "#e9c27a",
+    pointB: "#9c3418",
+    label: "#f3dfb5",
+    highlight: "#7fd3ff",
+    selected: "#f472b6",
+    checkers: [
+      { fill: "#f7ecd6", edge: "#ad9469", ring: "#e2cfa6" },
+      { fill: "#2f1d12", edge: "#120a05", ring: "#7a5236" },
+    ],
+    die: { fill: "#f7ecd6", pip: "#5a1f0e", edge: "#ad9469" },
+    cube: { fill: "#e9c27a", text: "#3e2412" },
   },
   /** Rarity (12 perfect weeks): ebony frame, dark green baize, gold and ivory points. */
   ebony: {

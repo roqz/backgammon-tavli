@@ -316,18 +316,50 @@ export const plaqueOf = (c: Career, v: CareerVariant): number =>
 /** Games to play within a season to keep its look. */
 export const SEASON_GAMES = 10;
 
-/** The winter season of a date (December to February), named after the year of its December. */
-export const winterSeason = (d = new Date()): { id: string; start: Date; end: Date } | null => {
-  const m = d.getMonth(); // 0 = January
-  if (m !== 11 && m > 1) return null;
-  const year = m === 11 ? d.getFullYear() : d.getFullYear() - 1;
-  return { id: `season-winter-${year}`, start: new Date(year, 11, 1), end: new Date(year + 1, 2, 1) };
+export type SeasonKey = "spring" | "summer" | "autumn" | "winter";
+
+/** The four seasons by their first month (0 = January); each lasts three months. */
+export const SEASONS: readonly { key: SeasonKey; first: number; icon: string }[] = [
+  { key: "spring", first: 2, icon: "🌸" },
+  { key: "summer", first: 5, icon: "☀️" },
+  { key: "autumn", first: 8, icon: "🍂" },
+  { key: "winter", first: 11, icon: "❄️" },
+];
+
+export interface Season {
+  readonly key: SeasonKey;
+  /** Achievement id, named after the year the season starts in: "season-winter-2026" = Dec 2026 – Feb 2027. */
+  readonly id: string;
+  readonly year: number;
+  readonly icon: string;
+  readonly start: Date;
+  readonly end: Date;
+}
+
+/** The season of a date (there always is one). */
+export const seasonOf = (d = new Date()): Season => {
+  const m = d.getMonth();
+  const s = [...SEASONS].reverse().find((x) => m >= x.first) ?? SEASONS[3]!; // January, February: winter
+  const year = m < s.first ? d.getFullYear() - 1 : d.getFullYear();
+  return {
+    key: s.key,
+    id: `season-${s.key}-${year}`,
+    year,
+    icon: s.icon,
+    start: new Date(year, s.first, 1),
+    end: new Date(year, s.first + 3, 1),
+  };
 };
 
-/** Games (against the computer or online) within the current winter season. */
+/** The winter season of a date (December to February), or null outside it. */
+export const winterSeason = (d = new Date()): Season | null => {
+  const s = seasonOf(d);
+  return s.key === "winter" ? s : null;
+};
+
+/** Games (against the computer or online) within the current season. */
 export const seasonGames = (records: readonly GameRecord[], d = new Date()): number => {
-  const s = winterSeason(d);
-  if (!s) return 0;
+  const s = seasonOf(d);
   return records.filter((r) => {
     const t = Date.parse(r.date);
     return t >= s.start.getTime() && t < s.end.getTime() && humanSeat(r.players) !== null;
@@ -335,13 +367,20 @@ export const seasonGames = (records: readonly GameRecord[], d = new Date()): num
 };
 
 /** Season achievements reached (kept for good once reached). */
-export const seasonIds = (records: readonly GameRecord[], d = new Date()): string[] => {
-  const s = winterSeason(d);
-  return s && seasonGames(records, d) >= SEASON_GAMES ? [s.id] : [];
-};
+export const seasonIds = (records: readonly GameRecord[], d = new Date()): string[] =>
+  seasonGames(records, d) >= SEASON_GAMES ? [seasonOf(d).id] : [];
 
-export const hasWinter = (unlocked: Record<string, string>): boolean =>
-  Object.keys(unlocked).some((id) => id.startsWith("season-winter-"));
+/** Whether any season of this kind was completed (its board stays). */
+export const hasSeason = (unlocked: Record<string, string>, key: SeasonKey): boolean =>
+  Object.keys(unlocked).some((id) => id.startsWith(`season-${key}-`));
+
+export const hasWinter = (unlocked: Record<string, string>): boolean => hasSeason(unlocked, "winter");
+
+/** "season-autumn-2026" → its season key and year. */
+export const parseSeasonId = (id: string): { key: SeasonKey; year: number } | null => {
+  const m = /^season-(spring|summer|autumn|winter)-(\d{4})$/.exec(id);
+  return m ? { key: m[1] as SeasonKey, year: Number(m[2]) } : null;
+};
 
 // ---- club rank -----------------------------------------------------------------------------------
 

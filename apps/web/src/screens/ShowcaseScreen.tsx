@@ -1,22 +1,24 @@
 import { CAREER_VARIANTS, FRAME_IDS, FRAMES } from "@tavli/protocol";
 import type { ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { ACHIEVEMENTS, useAchievements } from "../achievements";
+import { ACHIEVEMENTS, seasonLabel, useAchievements } from "../achievements";
 import type { BoardStyle } from "../board/themes";
 import {
+  hasSeason,
   PLAQUE_WINS,
   plaqueOf,
   rankInfo,
   SEASON_GAMES,
+  SEASONS,
   SHOP,
   seasonGames,
+  seasonOf,
   taskProgress,
   tasksFor,
   tokens,
   useCareer,
   weekId,
   weekRange,
-  winterSeason,
 } from "../career";
 import {
   CheckerPicker,
@@ -25,6 +27,7 @@ import {
   lockText,
   StylePicker,
   StylePreview,
+  seasonHow,
 } from "../components/Looks";
 import { variantShortName } from "../components/VariantPicker";
 import { type Dict, useT } from "../i18n";
@@ -377,35 +380,54 @@ function Season() {
   const t = useT();
   const records = useArchive((s) => s.records);
   const unlocked = useAchievements((s) => s.unlocked);
-  const owned = useCareer((s) => s.owned);
-  const season = winterSeason();
+  const season = seasonOf();
   const n = seasonGames(records);
-  const winter = hasLook("style", "winter", unlocked, owned);
+  const done = !!unlocked[season.id];
+  const name = t.seasonNames[season.key];
+  const left = Math.max(1, Math.ceil((season.end.getTime() - Date.now()) / 86_400_000));
   return (
-    <Box title={t.seasonTitle}>
-      <div className="flex items-center gap-4">
-        <span className="block w-24 shrink-0">
-          <span className={winter ? "" : "opacity-40 grayscale"}>
-            <StylePreview style="winter" />
-          </span>
-        </span>
-        <div className="flex flex-1 flex-col gap-1.5 text-sm">
-          {winter ? (
-            <p className="text-stone-100">❄️ {t.seasonDone}</p>
-          ) : season ? (
-            <>
-              <p className="text-stone-100">
-                {t.seasonNow
-                  .replace("{n}", String(Math.min(n, SEASON_GAMES)))
-                  .replace("{target}", String(SEASON_GAMES))}
-              </p>
-              <Bar n={n} of={SEASON_GAMES} label={t.seasonTitle} />
-            </>
-          ) : (
-            <p className="text-stone-400">{t.seasonOff}</p>
-          )}
-        </div>
+    <Box
+      title={t.seasonTitle}
+      aside={<span className="text-sm text-stone-400">{t.seasonLeft.replace("{d}", String(left))}</span>}
+    >
+      <div className="flex flex-col gap-1.5 text-sm" data-testid="season">
+        {done ? (
+          <p className="text-stone-100">
+            {season.icon} {t.seasonDone.replace("{season}", t.styleNames[season.key])}
+          </p>
+        ) : (
+          <>
+            <p className="text-stone-100">
+              {season.icon}{" "}
+              {t.seasonNow
+                .replace("{season}", seasonLabel(t, season))
+                .replace("{n}", String(Math.min(n, SEASON_GAMES)))
+                .replace("{target}", String(SEASON_GAMES))}
+            </p>
+            <Bar n={n} of={SEASON_GAMES} label={name} />
+          </>
+        )}
       </div>
+      <ul className="grid grid-cols-4 gap-2">
+        {SEASONS.map((s) => {
+          const open = hasSeason(unlocked, s.key);
+          const now = s.key === season.key;
+          return (
+            <li
+              key={s.key}
+              className={`flex flex-col gap-1 rounded-lg border p-1.5 text-center text-[11px] ${now ? "border-amber-400/60" : "border-stone-800"}`}
+              title={open ? undefined : seasonHow(t, s.key)}
+            >
+              <span className={open ? "" : "opacity-40 grayscale"}>
+                <StylePreview style={s.key} />
+              </span>
+              <span className={open ? "text-stone-100" : "text-stone-500"}>
+                {open ? s.icon : "🔒"} {t.seasonNames[s.key]}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
       <p className="text-xs leading-relaxed text-stone-500">
         {t.seasonHint.replace("{n}", String(SEASON_GAMES))}
       </p>

@@ -10,7 +10,7 @@ import {
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { humanSeat } from "./bot/useBotDriver";
-import { perfectWeeks } from "./career";
+import { parseSeasonId, perfectWeeks, SEASONS, type SeasonKey } from "./career";
 import { variantShortName } from "./components/VariantPicker";
 import type { Dict, Lang } from "./i18n";
 import { PUZZLE_VARIANTS, streak } from "./puzzle";
@@ -424,6 +424,15 @@ export const reached = (c: AchievementContext): string[] =>
     return target > 0 && n >= target;
   }).map((a) => a.id);
 
+/** "Wintersaison 2026/27", "Herbstsaison 2026". */
+export const seasonLabel = (t: Dict, s: { key: SeasonKey; year: number }): string =>
+  t.seasonLabel
+    .replace("{season}", t.seasonNames[s.key])
+    .replace(
+      "{year}",
+      s.key === "winter" ? `${s.year}/${String((s.year + 1) % 100).padStart(2, "0")}` : String(s.year),
+    );
+
 /** Icon and title of anything that can be unlocked (achievements, plaques, seasons), for the toast. */
 export const describeUnlock = (id: string, t: Dict, lang: Lang): { icon: string; title: string } | null => {
   const a = ACHIEVEMENTS.find((x) => x.id === id);
@@ -439,14 +448,7 @@ export const describeUnlock = (id: string, t: Dict, lang: Lang): { icon: string;
     };
   }
   if (id === "master-all") return { icon: "🏛️", title: t.masterAll };
-  const season = /^season-winter-(\d{4})$/.exec(id);
-  if (season)
-    return {
-      icon: "❄️",
-      title: t.seasonWinter.replace(
-        "{year}",
-        `${season[1]}/${String((Number(season[1]) + 1) % 100).padStart(2, "0")}`,
-      ),
-    };
+  const season = parseSeasonId(id);
+  if (season) return { icon: SEASONS.find((s) => s.key === season.key)!.icon, title: seasonLabel(t, season) };
   return null;
 };

@@ -1,6 +1,6 @@
 import { formatTurn, type TurnRecord, type VariantId } from "@tavli/engine";
 import type { PushKind } from "@tavli/protocol";
-import type { TaskKind } from "./career";
+import type { SeasonKey, TaskKind } from "./career";
 import { useSettings } from "./store/settings";
 
 const de = {
@@ -74,6 +74,9 @@ const de = {
     olive: "Olive",
     contrast: "Hoher Kontrast",
     inlay: "Intarsien",
+    spring: "Frühling",
+    summer: "Ägäis-Sommer",
+    autumn: "Herbst",
     winter: "Winter",
     ebony: "Ebenholz & Gold",
     salon: "Salon",
@@ -882,8 +885,12 @@ const de = {
     amber: "Bernstein & Mokka",
   },
   masterAll: "Meister aller Bretter (alle Varianten in Gold)",
-  seasonWinter: "Wintersaison {year}",
-  seasonWinterHow: "{n} Partien in einer Wintersaison",
+  seasonLabel: "{season} {year}",
+  seasonHow: "{n} Partien im {season}",
+  seasonNames: { spring: "Frühling", summer: "Sommer", autumn: "Herbst", winter: "Winter" } as Record<
+    SeasonKey,
+    string
+  >,
   orTokens: "– oder {n} Spielmarken",
   shopOnly: "Nur im Tausch: {n} Spielmarken",
   raritiesTitle: "Raritäten",
@@ -917,7 +924,7 @@ const de = {
   tokens: "{n} Spielmarken",
   exchangeTitle: "Spielmarken eintauschen",
   exchangeHint:
-    "Steine, Würfel und Bretter gibt es auch gegen Spielmarken. Die Raritäten unten gibt es nur hier. Intarsien, Winter, Ebenholz und die Rahmen bleiben Erfolgen vorbehalten.",
+    "Steine, Würfel und Bretter gibt es auch gegen Spielmarken. Die Raritäten unten gibt es nur hier. Intarsien, die Saison-Bretter, Ebenholz und die Rahmen bleiben Erfolgen vorbehalten.",
   exchangeTake: "{n} Marken",
   exchangeDone: "Eingetauscht",
   exchangeHave: "Schon frei",
@@ -927,10 +934,10 @@ const de = {
   winsCount: "{n} Siege",
   seasonTitle: "Saison",
   seasonHint:
-    "Wintersaison vom 1. Dezember bis Ende Februar: {n} Partien schalten das Winter-Brett frei, es bleibt dir danach. Eine zu Ende gespielte Ligapartie schaltet die Messing-Würfel frei.",
-  seasonNow: "Diese Saison: {n} von {target} Partien",
-  seasonOff: "Die nächste Wintersaison beginnt am 1. Dezember.",
-  seasonDone: "Winter-Brett freigeschaltet",
+    "Jede Jahreszeit hat ihr eigenes Brett: {n} Partien gegen den Computer oder online in den drei Monaten schalten es frei, und es bleibt dir. Verpasst? Nächstes Jahr kommt die Saison wieder.",
+  seasonNow: "{season}: {n} von {target} Partien",
+  seasonLeft: "noch {d} Tage",
+  seasonDone: "{season}-Brett freigeschaltet",
   looksTitle: "Bretter, Würfel und Steine",
   framesTitle: "Rahmen",
   framesHint: "Rahmen erscheinen online neben deinem Namen. Auswählen unter Profil → Konto & Daten.",
@@ -1054,6 +1061,9 @@ const en: Dict = {
     olive: "Olive",
     contrast: "High contrast",
     inlay: "Inlay",
+    spring: "Spring",
+    summer: "Aegean summer",
+    autumn: "Autumn",
     winter: "Winter",
     ebony: "Ebony & gold",
     salon: "Salon",
@@ -1854,8 +1864,9 @@ const en: Dict = {
     amber: "Amber & mocha",
   },
   masterAll: "Master of all boards (every variant in gold)",
-  seasonWinter: "Winter season {year}",
-  seasonWinterHow: "{n} games in a winter season",
+  seasonLabel: "Season: {season} {year}",
+  seasonHow: "{n} games in {season}",
+  seasonNames: { spring: "spring", summer: "summer", autumn: "autumn", winter: "winter" },
   orTokens: "– or {n} tokens",
   shopOnly: "Exchange only: {n} tokens",
   raritiesTitle: "Rarities",
@@ -1889,7 +1900,7 @@ const en: Dict = {
   tokens: "{n} tokens",
   exchangeTitle: "Exchange tokens",
   exchangeHint:
-    "Checkers, dice and boards can also be taken for tokens. The rarities below are only here. Inlay, winter, ebony and the frames are kept for achievements.",
+    "Checkers, dice and boards can also be taken for tokens. The rarities below are only here. Inlay, the season boards, ebony and the frames are kept for achievements.",
   exchangeTake: "{n} tokens",
   exchangeDone: "Taken",
   exchangeHave: "Already unlocked",
@@ -1899,10 +1910,10 @@ const en: Dict = {
   winsCount: "{n} wins",
   seasonTitle: "Season",
   seasonHint:
-    "Winter season from 1 December to the end of February: {n} games unlock the winter board, which you keep. A finished league game unlocks the brass dice.",
-  seasonNow: "This season: {n} of {target} games",
-  seasonOff: "The next winter season starts on 1 December.",
-  seasonDone: "Winter board unlocked",
+    "Every season has its own board: {n} games against the computer or online within its three months unlock it, and you keep it. Missed one? It comes back next year.",
+  seasonNow: "{season}: {n} of {target} games",
+  seasonLeft: "{d} days left",
+  seasonDone: "{season} board unlocked",
   looksTitle: "Boards, dice and checkers",
   framesTitle: "Frames",
   framesHint: "Frames show next to your name online. Choose one under Profile → Account & data.",

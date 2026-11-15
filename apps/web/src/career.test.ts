@@ -6,6 +6,7 @@ import {
   plaqueIds,
   SHOP,
   seasonIds,
+  seasonOf,
   taskProgress,
   tasksFor,
   tokens,
@@ -147,6 +148,9 @@ describe("career", () => {
   it("knows the winter season and unlocks it after ten games in it", () => {
     expect(winterSeason(new Date(2026, 5, 1))).toBeNull();
     expect(winterSeason(new Date(2027, 1, 10))?.id).toBe("season-winter-2026");
+    expect(seasonOf(new Date(2026, 10, 15)).id).toBe("season-autumn-2026");
+    expect(seasonOf(new Date(2027, 2, 1)).id).toBe("season-spring-2027");
+    expect(seasonOf(new Date(2026, 7, 31)).id).toBe("season-summer-2026");
     const d = new Date(2026, 11, 20);
     const games = Array.from({ length: 10 }, (_, i) =>
       game({ date: new Date(2026, 11, 1 + i, 12).toISOString() }),

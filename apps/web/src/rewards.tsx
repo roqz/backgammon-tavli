@@ -2,7 +2,7 @@ import type { Frame } from "@tavli/protocol";
 import type { ReactNode } from "react";
 import { useAchievements } from "./achievements";
 import { type BoardStyle, type BoardTheme, THEMES } from "./board/themes";
-import { hasWinter, useCareer } from "./career";
+import { hasSeason, type SeasonKey, useCareer } from "./career";
 import { useSettings } from "./store/settings";
 
 /** Dice looks on top of the board style; "theme" uses the style's own dice. */
@@ -157,7 +157,10 @@ export const REWARDS = {
     tournament: "online-win",
     olive: "ten-wins",
     inlay: "master-all",
-    // any winter season (season-winter-<year>), see hasLook
+    // any season of the kind (season-<kind>-<year>), see hasLook
+    spring: "season-spring",
+    summer: "season-summer",
+    autumn: "season-autumn",
     winter: "season-winter",
     ebony: "perfect-12",
     salon: SHOP_ONLY,
@@ -200,7 +203,8 @@ export const hasLook = (
 ): boolean => {
   const achievement = (REWARDS[kind] as Record<string, string | undefined>)[look];
   if (!achievement) return true;
-  if (achievement === "season-winter") return hasWinter(unlocked);
+  const season = /^season-(spring|summer|autumn|winter)$/.exec(achievement);
+  if (season) return hasSeason(unlocked, season[1] as SeasonKey);
   if (achievement === SHOP_ONLY) return owned.includes(`${SHOP_ID[kind]}${look}`);
   return !!unlocked[achievement] || owned.includes(`${SHOP_ID[kind]}${look}`);
 };
