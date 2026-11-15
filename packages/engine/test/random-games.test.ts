@@ -6,6 +6,7 @@ import {
   checkerTotal,
   createGame,
   type GameState,
+  isDraw,
   legalMoves,
   moveGenerator,
   type Player,
@@ -62,10 +63,10 @@ describe("random self-play (property based)", () => {
         fc.property(fc.integer(), (seed) => {
           const end = playRandomGame(variant, seededRng(seed));
           expect(end.phase).toBe("finished");
-          expect(end.result!.points).toBeGreaterThan(0);
+          if (!isDraw(end.result)) expect(end.result!.points).toBeGreaterThan(0);
           const { winner, reason } = end.result!;
           if (reason === "bear-off") expect(end.board.off[winner]).toBe(checkerTotal(end.board, winner));
-          else expect(reason).toBe("mana");
+          else expect(["mana", "mana-draw"]).toContain(reason);
         }),
         { numRuns: 25 },
       );

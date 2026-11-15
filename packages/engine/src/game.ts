@@ -202,14 +202,21 @@ export const bearOffLevel = (s: GameState, winner: Player): ResultLevel => {
   return 2;
 };
 
+/**
+ * A drawn game (Plakoto, both mothers pinned): `winner` is only who made the last move, nobody
+ * scores, and it counts as a win for neither side.
+ */
+export const isDraw = (r: GameResult | null | undefined): boolean => r?.reason === "mana-draw";
+
 const finish = (
   s: GameState,
   winner: Player,
   level: ResultLevel,
   reason: FinishReason,
   extraHistory: TurnRecord[] = [],
+  points = level * s.cube.value,
 ): GameState => {
-  const result: GameResult = { winner, level, cube: s.cube.value, points: level * s.cube.value, reason };
+  const result: GameResult = { winner, level, cube: s.cube.value, points, reason };
   return {
     ...s,
     phase: "finished",
@@ -289,6 +296,7 @@ export const applyAction = (s: GameState, action: GameAction): GameState => {
         return finish(next, s.turn, bearOffLevel(next, s.turn), "bear-off", [moveRecord(s, played)]);
       }
       if (end === "mana") return finish(next, s.turn, 2, "mana", [moveRecord(s, played)]);
+      if (end === "mana-draw") return finish(next, s.turn, 1, "mana-draw", [moveRecord(s, played)], 0);
       return next;
     }
 

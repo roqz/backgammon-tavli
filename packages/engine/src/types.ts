@@ -69,7 +69,8 @@ export interface Cube {
 /** Result multiplier before cube: 1 = single, 2 = gammon / mars, 3 = backgammon. */
 export type ResultLevel = 1 | 2 | 3;
 
-export type FinishReason = "bear-off" | "drop" | "resign" | "mana";
+/** "mana-draw": both mothers pinned in Plakoto – no winner, no points (see `isDraw`). */
+export type FinishReason = "bear-off" | "drop" | "resign" | "mana" | "mana-draw";
 
 export interface GameResult {
   readonly winner: Player;

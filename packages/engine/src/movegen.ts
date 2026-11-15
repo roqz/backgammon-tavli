@@ -38,29 +38,55 @@ export const applyMoveUnchecked = (
   return { board: b, hit };
 };
 
-export type GameEnd = "bear-off" | "mana" | null;
+/** "mana-draw": both mothers pinned (Plakoto), the game ends without points. */
+export type GameEnd = "bear-off" | "mana" | "mana-draw" | null;
 
 /**
- * Whether a just-applied move ends the game: the mover has no checkers left, or (Plakoto)
- * the opponent's last checker on its starting point got pinned.
+ * Plakoto: the "mother" of `owner` – its last checker on its starting point – is pinned by the
+ * other player.
+ */
+const motherPinned = (rules: VariantRules, b: Board, owner: Player): boolean => {
+  const start = rules.paths[owner][0]!;
+  return b.points[owner][start] === 1 && b.points[opponent(owner)][start]! > 0 && b.pinned[start] === owner;
+};
+
+/**
+ * Whether a just-applied move ends the game: the mover has no checkers left, or (Plakoto) the
+ * opponent's mother is pinned. The mother rule only applies while the mover has no checkers left
+ * on its own starting point (until then its own mother is at risk too); with both mothers
+ * pinned the game is a draw. Checked after every move, so a mother pinned earlier wins as soon
+ * as the pinning player's last checker has left its start.
  */
 export const gameEndAfterMove = (
   rules: VariantRules,
   after: Board,
   p: Player,
-  move: Move,
-  hit: boolean,
+  _move: Move,
+  _hit: boolean,
 ): GameEnd => {
   if (after.bar[p] === 0 && after.points[p].every((n) => n === 0)) return "bear-off";
+  if (!rules.manaRule) return null;
   const opp = opponent(p);
-  if (rules.manaRule && hit && move.to === rules.paths[opp][0] && after.points[opp][move.to] === 1) {
-    return "mana";
-  }
-  return null;
+  if (!motherPinned(rules, after, opp)) return null;
+  if (motherPinned(rules, after, p)) return "mana-draw";
+  return after.points[p][rules.paths[p][0]!] === 0 ? "mana" : null;
 };
 
-/** Fevga: would this position contain a forbidden six-point prime? */
-const violatesFevgaPrime = (rules: VariantRules, b: Board, p: Player): boolean => {
+/**
+ * Fevga: is this end-of-turn position forbidden for `p`? Two rules: no block over all six points
+ * of one's own starting quarter, and no six-point prime with every opposing checker behind it.
+ * Checked at the end of the turn: a prime may be passed through while moving.
+ */
+export const violatesFevgaPrime = (rules: VariantRules, b: Board, p: Player): boolean => {
+  const own = rules.paths[p];
+  let quarter = true;
+  for (let k = 0; k < 6; k++) {
+    if (b.points[p][own[k]!] === 0) {
+      quarter = false;
+      break;
+    }
+  }
+  if (quarter) return true;
   const opp = opponent(p);
   const q = rules.paths[opp];
   for (let j = 0; j + 6 <= POINTS; j++) {
@@ -81,7 +107,10 @@ const violatesFevgaPrime = (rules: VariantRules, b: Board, p: Player): boolean =
   return false;
 };
 
-/** Fevga: while the first checker has not passed the opponent's start, only it may move. */
+/**
+ * Fevga: while the first checker has not passed the opponent's start, only it may move. If it is
+ * blocked, no other checker may move instead (the roll is lost).
+ */
 const applyFevgaStartRule = (rules: VariantRules, b: Board, p: Player, moves: Move[]): Move[] => {
   const path = rules.paths[p];
   if (b.points[p][path[0]!] !== 14 || b.off[p] > 0) return moves;
@@ -89,9 +118,7 @@ const applyFevgaStartRule = (rules: VariantRules, b: Board, p: Player, moves: Mo
   let runner = -1;
   for (let k = 1; k < POINTS; k++) if (b.points[p][path[k]!]! > 0) runner = k;
   if (runner < 0 || runner > oppStartIdx) return moves;
-  const restricted = moves.filter((m) => m.from === path[runner]);
-  // If the runner is blocked, other checkers may move (house-rule friendly fallback).
-  return restricted.length > 0 ? restricted : moves;
+  return moves.filter((m) => m.from === path[runner]);
 };
 
 /**
@@ -191,9 +218,7 @@ export const singleMoves = (
   // no wasting pips: a die that can bear a checker off must do so
   if (rules.noWasteBearOff && moves.some((m) => m.to === "off")) moves = moves.filter((m) => m.to === "off");
   if (rules.fevgaStartRule) moves = applyFevgaStartRule(rules, b, p, moves);
-  if (rules.fevgaPrimeRule) {
-    moves = moves.filter((m) => !violatesFevgaPrime(rules, applyMoveUnchecked(rules, b, p, m).board, p));
-  }
+  // (the Fevga prime rules look at the end of the turn: MoveGenerator)
   return moves;
 };
 
@@ -231,13 +256,37 @@ export class MoveGenerator {
     return initialContext(this.rules, b, this.player, dice);
   }
 
-  /** Maximum number of dice playable from this position with the remaining dice. */
+  /**
+   * Fevga prime rules on: turns must end in an allowed position. Off when no allowed end exists
+   * at all (a prime the opponent's move left behind that cannot be opened): then any end goes.
+   */
+  private endCheck = false;
+
+  /** Whether the turn may end in this position. */
+  private endAllowed(b: Board): boolean {
+    return !this.endCheck || !violatesFevgaPrime(this.rules, b, this.player);
+  }
+
+  /**
+   * Maximum number of dice playable from this position with the remaining dice, among the ways
+   * that end the turn in an allowed position (-1: none does).
+   */
   maxPlayable(b: Board, dice: readonly number[], ctx: TurnContext = this.start(b, dice)): number {
-    if (dice.length === 0) return 0;
-    const key = `${boardKey(b)}#${dice.join("")}${contextKey(ctx)}`;
+    if (this.rules.fevgaPrimeRule && !this.endCheck && dice.length > 0) {
+      // decide once per turn start whether the end-of-turn check can be met at all
+      this.endCheck = true;
+      const depth = this.maxPlayable(b, dice, ctx);
+      if (depth >= 0) return depth;
+      this.endCheck = false;
+      this.depthCache.clear();
+      return this.maxPlayable(b, dice, ctx);
+    }
+    if (dice.length === 0) return this.endAllowed(b) ? 0 : -1;
+    const key = `${boardKey(b)}#${dice.join("")}${contextKey(ctx)}${this.endCheck ? "!" : ""}`;
     const cached = this.depthCache.get(key);
     if (cached !== undefined) return cached;
-    let best = 0;
+    // stopping here counts only if no die can be played (the deeper ways win otherwise)
+    let best = this.endAllowed(b) ? 0 : -1;
     for (const v of uniqueDice(dice)) {
       const rest = removeOne(dice, v);
       for (const m of singleMoves(this.rules, b, this.player, v, ctx)) {
@@ -255,7 +304,8 @@ export class MoveGenerator {
   private depthAfter(b: Board, m: Move, rest: readonly number[], ctx: TurnContext): number {
     const { board: next, hit } = applyMoveUnchecked(this.rules, b, this.player, m);
     if (gameEndAfterMove(this.rules, next, this.player, m, hit)) return 1 + rest.length;
-    return 1 + this.maxPlayable(next, rest, contextAfter(this.rules, ctx, this.player, m, hit));
+    const deeper = this.maxPlayable(next, rest, contextAfter(this.rules, ctx, this.player, m, hit));
+    return deeper < 0 ? -1 : 1 + deeper;
   }
 
   /**
@@ -264,8 +314,9 @@ export class MoveGenerator {
    * - if only one of two different dice can be played, the higher one must be played if possible.
    */
   legalMoves(b: Board, dice: readonly number[], ctx: TurnContext = this.start(b, dice)): Move[] {
+    this.endCheck = false;
     const total = this.maxPlayable(b, dice, ctx);
-    if (total === 0) return [];
+    if (total <= 0) return [];
     const values = uniqueDice(dice);
     let candidates: Move[] = [];
     for (const v of values) {

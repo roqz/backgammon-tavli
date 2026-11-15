@@ -1,3 +1,4 @@
+import { isDraw } from "@tavli/engine";
 /**
  * Lasting progress beyond single achievements (see docs/GAMIFICATION.md):
  * - career counters that outlive the local archive (which keeps only the latest games),
@@ -67,7 +68,7 @@ export const useCareer = create<CareerStore>()(
           const seat = humanSeat(r.players);
           if (seat === null) continue; // two players on one device: nobody's career
           games++;
-          if (r.result.winner === seat) {
+          if (!isDraw(r.result) && r.result.winner === seat) {
             wins++;
             const v = r.variant as CareerVariant;
             if (CAREER_VARIANTS.includes(v)) winsBy[v] = (winsBy[v] ?? 0) + 1;
@@ -215,7 +216,7 @@ export const taskProgress = (
     const t = Date.parse(r.date);
     return t >= start.getTime() && t < end.getTime() && humanSeat(r.players) !== null;
   });
-  const won = inWeek.filter((r) => r.result.winner === humanSeat(r.players));
+  const won = inWeek.filter((r) => !isDraw(r.result) && r.result.winner === humanSeat(r.players));
   const n = (() => {
     switch (task.kind) {
       case "win-variant":

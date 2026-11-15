@@ -10,6 +10,7 @@ import {
   type GameState,
   getVariant,
   isClosedOut,
+  isDraw,
   legalMoves,
   type Move,
   opponent,
@@ -77,6 +78,7 @@ type T = ReturnType<typeof useT>;
 
 const levelName = (t: T, g: GameState, r: GameResult): string => {
   if (r.reason === "mana") return t.mana;
+  if (r.reason === "mana-draw") return t.manaDraw;
   if (r.reason === "drop") return t.byDrop;
   if (r.level === 3) return t.backgammon;
   if (r.level === 2) return g.variant === "backgammon" ? t.gammon : t.mars;
@@ -329,7 +331,7 @@ export function GameScreen({
       status = `${name(g.turn)} ${t.offersDouble} ${g.cube.value * 2}`;
       break;
     case "finished":
-      status = g.result ? `${name(g.result.winner)} ${t.wins}` : "";
+      status = g.result ? (isDraw(g.result) ? t.draw : `${name(g.result.winner)} ${t.wins}`) : "";
       break;
   }
   if (thinking && actor !== null) status = `${name(actor)} ${t.thinking}`;
@@ -345,7 +347,12 @@ export function GameScreen({
   const frameOf = (p: Player) => (online && onlineInfo ? onlineInfo.players[p].frame : null);
   const rankOf = (p: Player) => (online && onlineInfo ? (onlineInfo.players[p].rank ?? 0) : 0);
   const supporterOf = (p: Player) => !!(online && onlineInfo?.players[p].supporter);
-  const won = g.phase === "finished" && g.result !== null && mine !== null && g.result.winner === mine;
+  const won =
+    g.phase === "finished" &&
+    g.result !== null &&
+    !isDraw(g.result) &&
+    mine !== null &&
+    g.result.winner === mine;
   const opponentSeat: Player | null = online && onlineInfo ? opponent(onlineInfo.seat) : null;
 
   const activeHint = hint?.game === g ? hint.moves : null;
@@ -1059,7 +1066,9 @@ export function GameScreen({
       {g.phase === "finished" && g.result && !(online && onlineInfo?.end) && !peekBoard && (
         <Modal>
           <p className="mb-1 text-2xl font-bold text-amber-200">
-            {name(g.result.winner)} {match.winner !== null ? t.winsMatch : t.wins}
+            {isDraw(g.result) && match.winner === null
+              ? t.draw
+              : `${name(match.winner ?? g.result.winner)} ${match.winner !== null ? t.winsMatch : t.wins}`}
           </p>
           <p className="mb-4 text-stone-300">
             {levelName(t, g, g.result)} · +{g.result.points} {g.result.points === 1 ? t.point : t.points}

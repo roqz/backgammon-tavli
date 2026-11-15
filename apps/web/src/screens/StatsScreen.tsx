@@ -1,4 +1,4 @@
-import { fromMat, getVariant } from "@tavli/engine";
+import { fromMat, getVariant, isDraw } from "@tavli/engine";
 import { useMemo, useState } from "react";
 import { humanSeat } from "../bot/useBotDriver";
 import { Button, Card, Modal } from "../components/ui";
@@ -41,7 +41,7 @@ export const computeStats = (records: readonly GameRecord[]) => {
       continue;
     }
     const bot = r.players[seat === 0 ? 1 : 0];
-    const won = r.result.winner === seat;
+    const won = !isDraw(r.result) && r.result.winner === seat;
     if (streakOpen) {
       if (won) streak++;
       else streakOpen = false;
@@ -183,7 +183,7 @@ export function StatsScreen({
                     </div>
                     <div className="text-xs text-stone-500">
                       {new Date(r.date).toLocaleString(t.locale)} · {getVariant(r.variant).name} ·{" "}
-                      {r.players[r.result.winner].name} +{r.result.points}
+                      {isDraw(r.result) ? t.draw : `${r.players[r.result.winner].name} +${r.result.points}`}
                     </div>
                   </div>
                   <Button className="px-3 py-1.5 text-sm" onClick={() => onReplay(r)}>

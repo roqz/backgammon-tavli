@@ -89,6 +89,7 @@ class Valuer {
 
   /** The game ended with `winner` bearing off (or by mana) after `option`. */
   end(option: TurnOption, winner: Player): number {
+    if (option.end === "mana-draw") return 0;
     const level = option.end === "mana" ? 2 : bearOffLevel({ ...this.s, board: option.board }, winner);
     const points = (this.gammons ? level : 1) * this.cube;
     return winner === this.p ? points : -points;
@@ -156,7 +157,9 @@ const chooseOption = (
     let best = options[0]!;
     let bestValue = Number.NEGATIVE_INFINITY;
     for (const o of options) {
-      const value = (o.end ? 10_000 : evaluate(s.variant, o.board, p, p, w)) + gaussian(rng) * 10;
+      const value =
+        (o.end && o.end !== "mana-draw" ? 10_000 : evaluate(s.variant, o.board, p, p, w)) +
+        gaussian(rng) * 10;
       if (value > bestValue) {
         bestValue = value;
         best = o;

@@ -58,6 +58,9 @@ const de = {
   mars: "Mars",
   backgammon: "Backgammon",
   mana: "Mana",
+  manaDraw: "Unentschieden – beide Mütter eingeklemmt",
+  draw: "Unentschieden",
+
   byDrop: "durch Aufgabe",
   crawford: "Crawford-Spiel",
   pips: "Pips",
@@ -1093,6 +1096,8 @@ const en: Dict = {
   mars: "Mars",
   backgammon: "Backgammon",
   mana: "Mana",
+  manaDraw: "Draw – both mothers pinned",
+  draw: "Draw",
   byDrop: "by pass",
   crawford: "Crawford game",
   pips: "Pips",

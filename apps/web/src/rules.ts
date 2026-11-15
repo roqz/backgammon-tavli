@@ -194,6 +194,8 @@ const de: Record<RulesTopic, RulesChapter> = {
         title: "Mana",
         bullets: [
           "Wer den letzten Stein des Gegners auf dessen Startfeld (die „Mutter“) einklemmt, gewinnt sofort mit 2 Punkten.",
+          "Ausnahme: Solange der Einklemmende selbst noch Steine auf seinem eigenen Startfeld hat, geht das Spiel weiter. Der Sieg zählt, sobald sein letzter Stein das Startfeld verlassen hat und die Mutter des Gegners noch eingeklemmt ist.",
+          "Sind beide Mütter eingeklemmt, endet das Spiel unentschieden – ohne Punkte.",
         ],
       },
       {
@@ -228,7 +230,7 @@ const de: Record<RulesTopic, RulesChapter> = {
         title: "Startregel",
         bullets: [
           "Bevor ein zweiter Stein das Startfeld verlassen darf, muss der erste Stein das Startfeld des Gegners passiert haben.",
-          "Auslegung in dieser App: Ist dieser erste Stein blockiert, dürfen ausnahmsweise andere Steine ziehen.",
+          "Ist dieser erste Stein blockiert, darf kein anderer Stein ziehen – der Wurf verfällt.",
         ],
       },
       {
@@ -236,7 +238,8 @@ const de: Record<RulesTopic, RulesChapter> = {
         diagram: "fevgaPrime",
         bullets: [
           "Eine Sperre aus sechs aufeinanderfolgenden Feldern ist verboten, solange kein gegnerischer Stein schon vor ihr steht.",
-          "Auslegung in dieser App: Die Regel wird nach jedem einzelnen Zug geprüft, nicht erst am Ende des Wurfs.",
+          "Die sechs Felder des eigenen Startviertels dürfen nie alle besetzt sein.",
+          "Geprüft wird am Ende des Wurfs: Während des Zugs darf eine Sperre kurz entstehen, wenn sie am Ende wieder offen ist.",
         ],
       },
       {
@@ -559,6 +562,8 @@ const en: Record<RulesTopic, RulesChapter> = {
         title: "Mana",
         bullets: [
           "Pinning the opponent's last checker on its starting point (the “mother”) wins at once with 2 points.",
+          "Exception: while the pinning player still has checkers on its own starting point, the game goes on. The win counts as soon as its last checker has left its start with the opponent's mother still pinned.",
+          "If both mothers are pinned, the game is a draw – no points.",
         ],
       },
       {
@@ -590,7 +595,7 @@ const en: Record<RulesTopic, RulesChapter> = {
         title: "Starting rule",
         bullets: [
           "Before a second checker may leave the starting point, the first checker must have passed the opponent's starting point.",
-          "Interpretation in this app: if that first checker is blocked, other checkers may move.",
+          "If that first checker is blocked, no other checker may move – the roll is lost.",
         ],
       },
       {
@@ -598,7 +603,8 @@ const en: Record<RulesTopic, RulesChapter> = {
         diagram: "fevgaPrime",
         bullets: [
           "A wall of six consecutive points is forbidden unless an opposing checker is already ahead of it.",
-          "Interpretation in this app: the rule is checked after every single move, not only at the end of the roll.",
+          "The six points of one's own starting quarter may never all be held.",
+          "Checked at the end of the roll: a wall may stand for a moment during the move if it is open again at the end.",
         ],
       },
       { title: "Scoring", bullets: ["Win: 1 point. Mars (none borne off): 2 points. No doubling cube."] },

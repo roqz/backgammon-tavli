@@ -232,6 +232,8 @@ function train(job: Job): void {
       let next: Board = board;
       let terminal = false;
       for (const opt of options) {
+        // a drawn Plakoto (both mothers pinned) is too rare to learn from
+        if (opt.end === "mana-draw") continue;
         if (opt.end) {
           const level = endLevel(opt.board, turn, opt.end);
           const eq = level;

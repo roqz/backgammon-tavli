@@ -1,4 +1,4 @@
-import type { GameState } from "@tavli/engine";
+import { type GameState, isDraw } from "@tavli/engine";
 import { useEffect, useRef } from "react";
 import { diceCupOn } from "./rewards";
 import { useGame } from "./store/game";
@@ -179,7 +179,7 @@ export function useGameSounds() {
     if (game.phase === "cube-offered" && b.phase !== "cube-offered") sounds.cube();
     if (game.result && !b.result) {
       const humans = players.filter((p) => p.kind === "human").length;
-      const humanWon = humans === 2 || players[game.result.winner].kind === "human";
+      const humanWon = humans === 2 || isDraw(game.result) || players[game.result.winner].kind === "human";
       if (humanWon) sounds.win();
       else sounds.lose();
     }

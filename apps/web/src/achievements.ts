@@ -1,4 +1,4 @@
-import type { MatchVariant } from "@tavli/engine";
+import { isDraw, type MatchVariant } from "@tavli/engine";
 import {
   type Career,
   type CareerVariant,
@@ -44,7 +44,7 @@ interface Achievement {
 const wins = (c: AchievementContext) =>
   c.records.filter((r) => {
     const seat = humanSeat(r.players);
-    return seat !== null && r.result.winner === seat;
+    return seat !== null && !isDraw(r.result) && r.result.winner === seat;
   });
 
 const vsBotWins = (c: AchievementContext, level?: string) =>

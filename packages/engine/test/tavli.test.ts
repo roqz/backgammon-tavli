@@ -3,10 +3,14 @@ import {
   applyAction,
   boardFromSpec,
   createGame,
+  formatMove,
   getVariant,
   initialBoard,
+  isDraw,
+  MoveGenerator,
   pipCount,
   singleMoves,
+  violatesFevgaPrime,
 } from "../src";
 import { absFromOwnPoint } from "../src/variants";
 import { legal, mv, play, position } from "./helpers";
@@ -85,9 +89,41 @@ describe("plakoto", () => {
 
   it("pinning the opponent's last checker on its starting point wins a double game (mana)", () => {
     // Black's starting point is white's own 1. White runner on own 3 pins the lone black checker there.
-    const s = position(P, { white: { 24: 14, 3: 1 }, black: { 24: 1, 12: 14 } }, 0, [2, 1]);
+    // (white has no checkers left on its own start, so the mother rule applies)
+    const s = position(P, { white: { 10: 14, 3: 1 }, black: { 24: 1, 12: 14 } }, 0, [2, 1]);
     const done = play(s, mv(P, 0, 3, 1, 2));
     expect(done.result).toMatchObject({ winner: 0, level: 2, points: 2, reason: "mana" });
+  });
+
+  it("no mana while the pinning player still has checkers on its own start; it wins once they left", () => {
+    // White still has 13 on its start: pinning black's mother does not end the game.
+    const s = position(P, { white: { 24: 13, 3: 1, 10: 1 }, black: { 24: 1, 12: 14 } }, 0, [2, 1]);
+    const pinned = play(s, mv(P, 0, 3, 1, 2));
+    expect(pinned.result).toBeNull();
+    expect(pinned.board.pinned[absFromOwnPoint(getVariant(P), 0, 1)]).toBe(1);
+
+    // Later white's last checker leaves its start while black's mother is still pinned: mana.
+    const late = position(
+      P,
+      { white: { 24: 1, 1: 1, 10: 13 }, black: { 24: 1, 12: 14 }, pinnedBlack: [24] },
+      0,
+      [6, 5],
+    );
+    const done = play(late, mv(P, 0, 24, 18, 6));
+    expect(done.result).toMatchObject({ winner: 0, points: 2, reason: "mana" });
+  });
+
+  it("both mothers pinned is a draw without points", () => {
+    // Black's mother is pinned by white (white still had start checkers); now black pins white's.
+    const s = position(
+      P,
+      { white: { 24: 1, 1: 1, 10: 13 }, black: { 24: 1, 3: 1, 12: 13 }, pinnedBlack: [24] },
+      1,
+      [2, 1],
+    );
+    const done = play(s, mv(P, 1, 3, 1, 2));
+    expect(done.result).toMatchObject({ reason: "mana-draw", points: 0 });
+    expect(isDraw(done.result)).toBe(true);
   });
 });
 
@@ -113,22 +149,58 @@ describe("fevga", () => {
     expect(legal(s)).toEqual(["20/17", "20/19"]);
   });
 
+  it("a blocked first checker means the roll is lost: no other checker moves instead", () => {
+    // White runner on own 15; black holds own 12 and 13 (white's 13 and 12 ... both landing points).
+    const s = position(F, { white: { 24: 14, 15: 1 }, black: { 24: 13, 1: 1, 2: 1 } }, 0, [3, 2]);
+    expect(legal(s)).toEqual([]);
+  });
+
   it("other checkers may leave the start once the runner has passed", () => {
     const s = position(F, { white: { 24: 14, 11: 1 }, black: { 24: 15 } }, 0, [3, 1]);
     expect(legal(s)).toContain("24/21");
   });
 
-  it("forbids a six-point prime when no opposing checker is ahead of it", () => {
+  it("forbids ending the turn with a six-point prime when no opposing checker is ahead of it", () => {
     const rules = getVariant(F);
-    // White holds own 11,10,9,8,7; 9/6 would complete a six-prime in front of all black checkers.
+    // White holds own 11,10,9,8,7 (two each); 24/21 with the 3 and 7/6 would leave a six-prime
+    // own 11–6 in front of all black checkers.
     const spec = { white: { 24: 5, 11: 2, 10: 2, 9: 2, 8: 2, 7: 2 } };
     const b = boardFromSpec(rules, { ...spec, black: { 24: 15 } });
-    const from = absFromOwnPoint(rules, 0, 9);
-    const to = absFromOwnPoint(rules, 0, 6);
-    expect(singleMoves(rules, b, 0, 3).some((m) => m.from === from && m.to === to)).toBe(false);
+    expect(violatesFevgaPrime(rules, b, 0)).toBe(false);
+    const s = position(F, { ...spec, black: { 24: 15 } }, 0, [3, 1]);
+    // 7/6 alone is fine (8/7 or 24/21 follow); every way to end the turn avoids the prime
+    for (const option of new MoveGenerator(rules, 0).turnOptions(s.board, [3, 1]))
+      expect(violatesFevgaPrime(rules, option.board, 0)).toBe(false);
 
     // With one black checker already past the block the prime is allowed.
-    const b2 = boardFromSpec(rules, { ...spec, black: { 24: 14, 10: 1 } });
-    expect(singleMoves(rules, b2, 0, 3).some((m) => m.from === from && m.to === to)).toBe(true);
+    const b2 = boardFromSpec(rules, {
+      ...spec,
+      white: { ...spec.white, 7: 1, 6: 1 },
+      black: { 24: 14, 10: 1 },
+    });
+    expect(violatesFevgaPrime(rules, b2, 0)).toBe(false);
+    const b3 = boardFromSpec(rules, { ...spec, white: { ...spec.white, 7: 1, 6: 1 }, black: { 24: 15 } });
+    expect(violatesFevgaPrime(rules, b3, 0)).toBe(true);
+  });
+
+  it("a prime may be passed through during the turn as long as it is open at the end", () => {
+    const rules = getVariant(F);
+    // 9/6 closes own 11–6 for a moment; 6/5 with the 1 opens it again – allowed.
+    const spec = { white: { 24: 5, 11: 2, 10: 2, 9: 2, 8: 2, 7: 2 }, black: { 24: 15 } };
+    const s = position(F, spec, 0, [3, 1]);
+    const ends = new MoveGenerator(rules, 0)
+      .turnOptions(s.board, [3, 1])
+      .map((o) => o.moves.map((m) => formatMove(F, 0, m)).join(" "));
+    expect(ends.some((e) => e.includes("9/6") && e.includes("6/5"))).toBe(true);
+  });
+
+  it("never blocks all six points of the own starting quarter", () => {
+    const rules = getVariant(F);
+    // White on own 24, 23, 22, 21, 20 and 19: the starting quarter is closed.
+    const closed = boardFromSpec(rules, {
+      white: { 24: 5, 23: 2, 22: 2, 21: 2, 20: 2, 19: 2 },
+      black: { 24: 14, 2: 1 },
+    });
+    expect(violatesFevgaPrime(rules, closed, 0)).toBe(true);
   });
 });

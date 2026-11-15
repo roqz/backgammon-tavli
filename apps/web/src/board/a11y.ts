@@ -3,6 +3,7 @@ import {
   formatMove,
   type GameState,
   getVariant,
+  isDraw,
   ownPoint,
   type Player,
   pipCount,
@@ -166,7 +167,7 @@ const turnPhrase = (t: Dict, s: GameState): string => {
     case "cube-offered":
       return `${colour(t, s.turn)} ${t.offersDouble} ${s.cube.value * 2}`;
     case "finished":
-      return s.result ? `${colour(t, s.result.winner)} ${t.wins}` : "";
+      return s.result ? (isDraw(s.result) ? t.draw : `${colour(t, s.result.winner)} ${t.wins}`) : "";
   }
 };
 

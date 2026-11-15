@@ -1239,7 +1239,8 @@ export class Store {
       const rows = this.db
         .prepare(
           `SELECT json_extract(g.value, '$.variant') AS v, COUNT(*) AS n,
-             SUM(json_extract(g.value, '$.result.winner') = (CASE WHEN t.p0 = ?1 THEN 0 ELSE 1 END)) AS w
+             SUM(json_extract(g.value, '$.result.winner') = (CASE WHEN t.p0 = ?1 THEN 0 ELSE 1 END)
+               AND json_extract(g.value, '$.result.reason') <> 'mana-draw') AS w
            FROM ${table} t, json_each(t.games) g
            WHERE (t.p0 = ?1 OR t.p1 = ?1) AND ${where} AND json_extract(g.value, '$.result') IS NOT NULL
            GROUP BY v`,
