@@ -126,7 +126,7 @@ describe("perspective", () => {
 describe("reconcileLayout", () => {
   const slotOf = (layout: ReturnType<typeof layoutFromBoard>) => {
     const m = new Map<string, string>();
-    for (const [slot, ids] of Object.entries(layout)) ids.forEach((id) => m.set(id, slot));
+    for (const [slot, ids] of Object.entries(layout)) for (const id of ids) m.set(id, slot);
     return m;
   };
   const variants: VariantId[] = ["backgammon", "plakoto", "fevga"];

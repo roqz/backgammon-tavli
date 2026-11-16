@@ -2,6 +2,7 @@ import { createGame, type MatchVariant } from "@tavli/engine";
 import { type ReactNode, useMemo } from "react";
 import { Board } from "../board/Board";
 import { layoutFromBoard } from "../board/layout";
+import { THEMES } from "../board/themes";
 import { useT } from "../i18n";
 import { useBoardTheme } from "../rewards";
 import { useSettings } from "../store/settings";
@@ -10,8 +11,18 @@ import { variantShortName } from "./VariantPicker";
 const noop = () => {};
 
 /** The starting position of a variant in the player's board style (decoration, not interactive). */
-export function BoardPreview({ variant, className = "" }: { variant: MatchVariant; className?: string }) {
-  const theme = useBoardTheme();
+/** The opening position of a variant; `classic` ignores the chosen look (start page title picture). */
+export function BoardPreview({
+  variant,
+  className = "",
+  classic = false,
+}: {
+  variant: MatchVariant;
+  className?: string;
+  classic?: boolean;
+}) {
+  const chosen = useBoardTheme();
+  const theme = classic ? THEMES.classic : chosen;
   const homeLeft = useSettings((s) => s.homeLeft);
   // a Tavli match opens with Portes
   const state = useMemo(() => createGame({ variant: variant === "tavli" ? "portes" : variant }), [variant]);

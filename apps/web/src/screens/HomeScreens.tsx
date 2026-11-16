@@ -215,11 +215,12 @@ export function HomeScreen({
         {!online && <p className="text-center text-xs text-stone-500">📴 {t.offlineHint}</p>}
       </nav>
 
-      {/* the board as the title picture (wide screens) */}
+      {/* the board as the title picture (wide screens), always in the classic look of the app */}
       <div className="hidden wide:col-start-2 wide:row-span-2 wide:row-start-1 wide:block">
         <BoardPreview
           variant={resume && match ? match.config.variant : (lastBot?.variant ?? "backgammon")}
           className="rounded-xl"
+          classic
         />
       </div>
     </div>
