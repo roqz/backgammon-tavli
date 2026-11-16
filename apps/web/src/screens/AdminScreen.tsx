@@ -431,7 +431,9 @@ function SignalsView({
         ))}
       </Card>
       <Card className="flex flex-col gap-2 text-sm">
-        <h2 className="font-semibold text-stone-100">🤝 {t.adminDumping}</h2>
+        <h2 className="font-semibold text-stone-100">
+          <Icon name="handshake" /> {t.adminDumping}
+        </h2>
         <p className="text-xs text-stone-500">
           {t.adminDumpingHint.replace("{n}", String(th.dumpingMatches))}
         </p>

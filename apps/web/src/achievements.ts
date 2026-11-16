@@ -10,7 +10,7 @@ import {
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { humanSeat } from "./bot/useBotDriver";
-import { parseSeasonId, perfectWeeks, SEASONS, type SeasonKey } from "./career";
+import { parseSeasonId, perfectWeeks, SEASON_TINT, type SeasonKey } from "./career";
 import type { IconName } from "./components/Icon";
 import { variantShortName } from "./components/VariantPicker";
 import type { Dict, Lang } from "./i18n";
@@ -32,8 +32,6 @@ export interface AchievementContext {
 
 export interface Achievement {
   readonly id: string;
-  /** Emoji for plain text (notifications, titles); the plaque draws `badge`. */
-  readonly icon: string;
   /** Motif of the plaque (components/Icon.tsx). */
   readonly badge: IconName;
   /** Colour of the motif (checker sets: their material); brass-white otherwise. */
@@ -76,7 +74,6 @@ const flag = (ok: boolean) => [ok ? 1 : 0, 1] as const;
 export const ACHIEVEMENTS: readonly Achievement[] = [
   {
     id: "first-win",
-    icon: "🎉",
     badge: "fireworks",
     title: { de: "Erster Sieg", en: "First win" },
     text: { de: "Gewinne ein Spiel.", en: "Win a game." },
@@ -84,7 +81,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "ten-wins",
-    icon: "🏅",
     badge: "medal",
     title: { de: "Zehn Siege", en: "Ten wins" },
     text: { de: "Gewinne 10 Spiele.", en: "Win 10 games." },
@@ -92,7 +88,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "fifty-wins",
-    icon: "🏆",
     badge: "trophy",
     title: { de: "Alter Hase", en: "Old hand" },
     text: { de: "Gewinne 50 Spiele.", en: "Win 50 games." },
@@ -100,7 +95,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "beat-hard",
-    icon: "🤖",
     badge: "robot",
     title: { de: "Maschine besiegt", en: "Beat the machine" },
     text: { de: "Gewinne gegen den starken Computer.", en: "Beat the strong computer." },
@@ -108,7 +102,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "beat-expert",
-    icon: "🧠",
     badge: "network",
     title: { de: "Netz zerrissen", en: "Net breaker" },
     text: { de: "Gewinne ein Spiel gegen den Experten (KI).", en: "Win a game against the expert (AI)." },
@@ -116,7 +109,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "gammon",
-    icon: "💥",
     badge: "burst",
     title: { de: "Gammon!", en: "Gammon!" },
     text: { de: "Gewinne ein Spiel doppelt (Gammon / Mars).", en: "Win a double game (gammon / mars)." },
@@ -124,7 +116,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "backgammon",
-    icon: "🌋",
     badge: "volcano",
     title: { de: "Backgammon!", en: "Backgammon!" },
     text: { de: "Gewinne ein Backgammon (dreifach).", en: "Win a backgammon (triple)." },
@@ -132,7 +123,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "all-variants",
-    icon: "🎲",
     badge: "dice",
     title: { de: "Tavli-Kenner", en: "Tavli connoisseur" },
     text: {
@@ -143,7 +133,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "tutorial",
-    icon: "🎓",
     badge: "school",
     title: { de: "Ausgelernt", en: "Graduate" },
     text: { de: "Löse alle Lektionen des Tutorials.", en: "Solve every tutorial lesson." },
@@ -151,7 +140,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "puzzle",
-    icon: "🧩",
     badge: "puzzle",
     title: { de: "Rätselfreund", en: "Puzzler" },
     text: { de: "Löse ein Tagesrätsel.", en: "Solve a daily puzzle." },
@@ -159,7 +147,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "puzzle-week",
-    icon: "🔥",
     badge: "flame",
     title: { de: "Eine Woche dran", en: "Week streak" },
     text: { de: "Löse das Tagesrätsel 7 Tage in Folge.", en: "Solve the daily puzzle 7 days in a row." },
@@ -167,7 +154,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "puzzle-month",
-    icon: "🌟",
     badge: "star",
     title: { de: "Ein Monat dran", en: "Month streak" },
     text: { de: "Löse das Tagesrätsel 30 Tage in Folge.", en: "Solve the daily puzzle 30 days in a row." },
@@ -175,7 +161,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "online-win",
-    icon: "🌐",
     badge: "globe",
     title: { de: "Online gewonnen", en: "Online winner" },
     text: { de: "Gewinne ein Online-Match.", en: "Win an online match." },
@@ -183,7 +168,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "rating-1600",
-    icon: "📈",
     badge: "trend-up",
     title: { de: "Aufsteiger", en: "Climber" },
     text: {
@@ -194,7 +178,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "tournament-win",
-    icon: "👑",
     badge: "crown",
     title: { de: "Turniersieger", en: "Champion" },
     text: { de: "Gewinne ein Turnier.", en: "Win a tournament." },
@@ -202,7 +185,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "league-win",
-    icon: "🏟️",
     badge: "shield",
     title: { de: "Meister", en: "League champion" },
     text: { de: "Gewinne eine Club-Liga.", en: "Win a club league." },
@@ -210,7 +192,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "month-winner",
-    icon: "🏆",
     badge: "trophy",
     title: { de: "Monatssieger", en: "Monthly champion" },
     text: {
@@ -221,7 +202,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "variant-master",
-    icon: "🏛️",
     badge: "points",
     title: { de: "Variantenmeister", en: "Variant master" },
     text: {
@@ -239,7 +219,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "tournament-three",
-    icon: "👑",
     badge: "crown",
     title: { de: "Turnierserie", en: "Tournament series" },
     text: { de: "Gewinne drei Turniere.", en: "Win three tournaments." },
@@ -249,7 +228,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "veteran",
-    icon: "⏳",
     badge: "hourglass",
     title: { de: "Veteran", en: "Veteran" },
     text: {
@@ -268,7 +246,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   // ---- checker sets: wins per variant (career counters, beyond the archive) ----
   {
     id: "set-pearl",
-    icon: "⚪",
     badge: "checker",
     tint: "#f3ede0",
     title: { de: "Perlmutt-Steine", en: "Mother-of-pearl checkers" },
@@ -277,7 +254,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "set-wood",
-    icon: "🪵",
     badge: "checker",
     tint: "#c08a55",
     title: { de: "Olivenholz-Steine", en: "Olive wood checkers" },
@@ -286,7 +262,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "set-onyx",
-    icon: "⚫",
     badge: "checker",
     tint: "#9aa0a6",
     title: { de: "Onyx & Alabaster", en: "Onyx & alabaster" },
@@ -295,7 +270,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "set-brass",
-    icon: "🟡",
     badge: "checker",
     tint: "#c9a14a",
     title: { de: "Messing-Steine", en: "Brass checkers" },
@@ -304,7 +278,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "set-bone",
-    icon: "🦴",
     badge: "checker",
     tint: "#e8dcc0",
     title: { de: "Bein & Ebenholz", en: "Bone & ebony" },
@@ -314,7 +287,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   // ---- special moments ----
   {
     id: "comeback",
-    icon: "🔄",
     badge: "rematch",
     title: { de: "Comeback", en: "Comeback" },
     text: {
@@ -331,7 +303,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "double-sixes",
-    icon: "🎲",
     badge: "dice",
     title: { de: "Sechser-Regen", en: "Raining sixes" },
     text: {
@@ -342,7 +313,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "mana",
-    icon: "📌",
     badge: "pin",
     title: { de: "Mutter eingeklemmt", en: "Mother pinned" },
     text: {
@@ -353,7 +323,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "cube-eight",
-    icon: "🎯",
     badge: "cube",
     title: { de: "Hoch gepokert", en: "High stakes" },
     text: {
@@ -365,7 +334,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   // ---- online (frames and the league dice) ----
   {
     id: "corr-ten",
-    icon: "✉️",
     badge: "corr",
     title: { de: "Briefpartner", en: "Pen pal" },
     text: { de: "Spiele 10 Fernpartien zu Ende.", en: "Finish 10 correspondence games." },
@@ -373,7 +341,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "friends-five",
-    icon: "🤝",
     badge: "handshake",
     title: { de: "Gesellig", en: "Sociable" },
     text: {
@@ -384,7 +351,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "league-player",
-    icon: "🏟️",
     badge: "club",
     title: { de: "Ligaspieler", en: "League player" },
     text: { de: "Spiele eine Ligapartie zu Ende.", en: "Finish a league game." },
@@ -392,7 +358,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "analyst",
-    icon: "🔍",
     badge: "search",
     title: { de: "Analytiker", en: "Analyst" },
     text: { de: "Lass eine Partie analysieren.", en: "Have a game analysed." },
@@ -402,7 +367,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   // ---- rarities: long-term goals with looks that cannot be exchanged ----
   {
     id: "puzzles-100",
-    icon: "🗝️",
     badge: "key",
     title: { de: "Rätselmeister", en: "Puzzle master" },
     text: { de: "Löse 100 Tagesrätsel.", en: "Solve 100 daily puzzles." },
@@ -411,7 +375,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "expert-25",
-    icon: "🦾",
     badge: "network",
     title: { de: "Netzbezwinger", en: "Net tamer" },
     text: { de: "Gewinne 25 Spiele gegen den Experten (KI).", en: "Win 25 games against the expert (AI)." },
@@ -420,7 +383,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "perfect-12",
-    icon: "📜",
     badge: "scroll",
     title: { de: "Pflichtbewusst", en: "Dutiful" },
     text: {
@@ -432,7 +394,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "wins-500",
-    icon: "💎",
     badge: "gem",
     title: { de: "Großmeister", en: "Grandmaster" },
     text: { de: "Gewinne 500 Spiele.", en: "Win 500 games." },
@@ -441,7 +402,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "honor-member",
-    icon: "🎖️",
     badge: "medal",
     title: { de: "Ehrenmitglied", en: "Honorary member" },
     text: {
@@ -461,7 +421,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   {
     id: "games-1000",
-    icon: "🏛️",
     badge: "rosette",
     title: { de: "Inventar", en: "Part of the furniture" },
     text: { de: "Spiele 1000 Partien.", en: "Play 1000 games." },
@@ -536,24 +495,21 @@ export const seasonLabel = (t: Dict, s: { key: SeasonKey; year: number }): strin
       s.key === "winter" ? `${s.year}/${String((s.year + 1) % 100).padStart(2, "0")}` : String(s.year),
     );
 
-/** Icon and title of anything that can be unlocked (achievements, plaques, seasons), for the toast. */
-/** What a fresh unlock shows: the plaque where there is one, else the emoji (seasons). */
+/** What a fresh unlock shows (achievements, plaques, seasons): title and plaque motif. */
 export interface UnlockView {
-  readonly icon: string;
   readonly title: string;
-  readonly badge?: IconName;
+  readonly badge: IconName;
   readonly tint?: string;
   readonly rare?: boolean;
 }
 
 export const describeUnlock = (id: string, t: Dict, lang: Lang): UnlockView | null => {
   const a = ACHIEVEMENTS.find((x) => x.id === id);
-  if (a) return { icon: a.icon, title: a.title[lang], badge: a.badge, tint: a.tint, rare: a.rare };
+  if (a) return { title: a.title[lang], badge: a.badge, tint: a.tint, rare: a.rare };
   const plaque = /^master-([a-z]+)-([123])$/.exec(id);
   if (plaque) {
     const tier = Number(plaque[2]) - 1;
     return {
-      icon: ["🥉", "🥈", "🥇"][tier]!,
       badge: "points",
       tint: ["#e0a473", "#e3e0d6", "#f0d58a"][tier],
       title: t.plaqueTitle
@@ -561,9 +517,8 @@ export const describeUnlock = (id: string, t: Dict, lang: Lang): UnlockView | nu
         .replace("{variant}", variantShortName(plaque[1] as MatchVariant)),
     };
   }
-  if (id === "master-all")
-    return { icon: "🏛️", title: t.masterAll, badge: "points", tint: "#f0d58a", rare: true };
+  if (id === "master-all") return { title: t.masterAll, badge: "points", tint: "#f0d58a", rare: true };
   const season = parseSeasonId(id);
-  if (season) return { icon: SEASONS.find((s) => s.key === season.key)!.icon, title: seasonLabel(t, season) };
+  if (season) return { badge: season.key, tint: SEASON_TINT[season.key], title: seasonLabel(t, season) };
   return null;
 };

@@ -85,6 +85,26 @@ export function RulesDrawer({
   );
 }
 
+/** "Rules of Plakoto" under a variant's description: opens that chapter in a drawer. */
+export function VariantRulesLink({ variant, className = "" }: { variant: RulesTopic; className?: string }) {
+  const t = useT();
+  const lang = useSettings((s) => s.lang);
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`inline-flex min-h-9 items-center gap-1.5 text-sm text-amber-300 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-amber-400 ${className}`}
+        data-testid="variant-rules"
+      >
+        <Icon name="rules" /> {t.rulesOf.replace("{variant}", RULES[lang][variant].label)}
+      </button>
+      <RulesDrawer open={open} onClose={() => setOpen(false)} initial={variant} />
+    </>
+  );
+}
+
 export function RulesScreen({ onBack }: { onBack: () => void }) {
   const t = useT();
   return (

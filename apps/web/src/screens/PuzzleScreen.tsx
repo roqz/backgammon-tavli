@@ -80,7 +80,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
           <Icon name="puzzle" /> {t.puzzle}
         </h1>
         <span className="text-sm text-stone-400" title={t.puzzleStreak}>
-          🔥 {streak(results)}
+          <Icon name="flame" className="text-amber-400" /> {streak(results)}
         </span>
       </div>
       <Card className={`flex flex-col gap-1 ${portrait ? "p-3" : "p-4"}`}>

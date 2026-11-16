@@ -15,6 +15,7 @@ import { EMOTES, type EmoteId, REPORT_REASONS, type ReportReason } from "@tavli/
 import { AnimatePresence, motion } from "motion/react";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { EMOTE_ICON } from "../components/emoteIcons";
 import { Icon } from "../components/Icon";
 import { Button, Modal } from "../components/ui";
 import { useT } from "../i18n";
@@ -230,12 +231,13 @@ export function EmoteButton({ onSend = sendEmote }: { onSend?: (id: EmoteId) => 
         <button
           key={id}
           type="button"
-          className="rounded-lg px-3 py-1.5 text-left text-sm text-stone-200 hover:bg-stone-800"
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-stone-200 hover:bg-stone-800"
           onClick={() => {
             onSend(id);
             setOpen(false);
           }}
         >
+          <Icon name={EMOTE_ICON[id]} className="h-[1.15em] w-[1.15em] text-amber-300" />
           {t.emote[id]}
         </button>
       ))}
@@ -300,7 +302,7 @@ export function EmoteBubbles() {
           role="status"
         >
           {!mine && <span className="mr-1 font-semibold">{info.players[visible.seat].name}:</span>}
-          {t.emote[visible.id]}
+          <Icon name={EMOTE_ICON[visible.id]} /> {t.emote[visible.id]}
         </motion.div>
       )}
     </AnimatePresence>

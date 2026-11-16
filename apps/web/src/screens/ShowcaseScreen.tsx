@@ -9,6 +9,7 @@ import {
   plaqueOf,
   rankInfo,
   SEASON_GAMES,
+  SEASON_TINT,
   SEASONS,
   SHOP_OFFERS,
   type ShopKind,
@@ -22,11 +23,12 @@ import {
   weekRange,
 } from "../career";
 import { AchievementBadge } from "../components/AchievementBadge";
-import { Icon } from "../components/Icon";
+import { Icon, type IconName } from "../components/Icon";
 import {
   CheckerPicker,
   CheckerSwatch,
   DicePicker,
+  DieSwatch,
   lockText,
   StylePicker,
   StylePreview,
@@ -44,7 +46,7 @@ import {
   useOfferedFrames,
   useUnlocked,
 } from "../rewards";
-import { previewSoundSet, sounds } from "../sound";
+import { previewDice, previewSoundSet } from "../sound";
 import { useArchive } from "../store/archive";
 import { type DiceSurface, type SoundSet, useSettings } from "../store/settings";
 import { AchievementsPanel, RareTag, rewardOf } from "./AchievementsPanel";
@@ -205,17 +207,16 @@ function WeeklyTasks() {
   );
 }
 
-const EMOTE_PACK_ICON: Record<EmotePack, string> = { kafeneio: "☕", sport: "🏅" };
+const EMOTE_PACK_ICON: Record<EmotePack, IconName> = { kafeneio: "relaxed", sport: "medal" };
 
 function ShopPreview({ kind, look }: { kind: string; look: string }) {
   if (kind === "sound" || kind === "roll" || kind === "emotes") {
     return (
-      <span aria-hidden className="inline-flex h-6 w-12 items-center justify-center text-lg">
-        {kind === "emotes" ? (
-          EMOTE_PACK_ICON[look as EmotePack]
-        ) : (
-          <Icon name={kind === "sound" ? "sound" : "dice"} className="h-5 w-5 text-amber-200" />
-        )}
+      <span aria-hidden className="inline-flex h-6 w-12 items-center justify-center">
+        <Icon
+          name={kind === "emotes" ? EMOTE_PACK_ICON[look as EmotePack] : kind === "sound" ? "sound" : "dice"}
+          className="h-5 w-5 text-amber-200"
+        />
       </span>
     );
   }
@@ -223,12 +224,8 @@ function ShopPreview({ kind, look }: { kind: string; look: string }) {
   if (kind === "dice") {
     const d = DICE_SKINS[look as Exclude<DiceSkin, "theme">];
     return (
-      <span
-        aria-hidden
-        className="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold"
-        style={{ background: d.fill, color: d.pip }}
-      >
-        ⚃
+      <span aria-hidden className="inline-flex h-6 w-12 items-center justify-center">
+        <DieSwatch fill={d.fill} pip={d.pip} edge={d.edge} />
       </span>
     );
   }
@@ -295,7 +292,7 @@ function Exchange() {
                     aria-label={`${t.preview}: ${name(item.kind, item.look)}`}
                     onClick={() =>
                       item.kind === "roll"
-                        ? sounds.dice(item.look as DiceSurface)
+                        ? previewDice(item.look as DiceSurface)
                         : previewSoundSet(item.look as SoundSet)
                     }
                     className="min-h-9 rounded-lg px-2 text-sm text-stone-300 hover:text-amber-300"
@@ -446,12 +443,13 @@ function Season() {
       <div className="flex flex-col gap-1.5 text-sm" data-testid="season">
         {done ? (
           <p className="text-stone-100">
-            {season.icon} {t.seasonDone.replace("{season}", t.styleNames[season.key])}
+            <Icon name={season.key} style={{ color: SEASON_TINT[season.key] }} />{" "}
+            {t.seasonDone.replace("{season}", t.styleNames[season.key])}
           </p>
         ) : (
           <>
             <p className="text-stone-100">
-              {season.icon}{" "}
+              <Icon name={season.key} style={{ color: SEASON_TINT[season.key] }} />{" "}
               {t.seasonNow
                 .replace("{season}", seasonLabel(t, season))
                 .replace("{n}", String(Math.min(n, SEASON_GAMES)))
@@ -475,7 +473,8 @@ function Season() {
                 <StylePreview style={s.key} />
               </span>
               <span className={open ? "text-stone-100" : "text-stone-500"}>
-                {open ? s.icon : <Icon name="lock" />} {t.seasonNames[s.key]}
+                {open ? <Icon name={s.key} style={{ color: SEASON_TINT[s.key] }} /> : <Icon name="lock" />}{" "}
+                {t.seasonNames[s.key]}
               </span>
             </li>
           );

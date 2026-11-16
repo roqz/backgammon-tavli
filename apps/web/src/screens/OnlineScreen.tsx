@@ -563,20 +563,14 @@ export function OnlineScreen({
   );
 }
 
-/** Account, privacy and own matches (from the profile screen). */
-export function AccountScreen({
-  onBack,
-  onReplay,
-}: {
-  onBack: () => void;
-  onReplay: (records: GameRecord[]) => void;
-}) {
+/** Account, security and privacy (from the profile screen). */
+export function AccountScreen({ onBack }: { onBack: () => void }) {
   const t = useT();
   const profile = useOnline((s) => s.profile);
   return (
     <Page narrow>
       <ScreenTitle title={t.accountAndData} onBack={onBack} />
-      {profile ? <ProfileTab onReplay={onReplay} /> : <AuthForm />}
+      {profile ? <ProfileTab /> : <AuthForm />}
     </Page>
   );
 }

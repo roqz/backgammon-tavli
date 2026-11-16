@@ -5,6 +5,7 @@ import { layoutFromBoard } from "../board/layout";
 import { THEMES } from "../board/themes";
 import { useT } from "../i18n";
 import { useBoardTheme } from "../rewards";
+import { VariantRulesLink } from "../screens/RulesPanel";
 import { useSettings } from "../store/settings";
 import { variantShortName } from "./VariantPicker";
 
@@ -94,6 +95,7 @@ export function SetupLayout({
         <div>
           <h2 className="font-display text-2xl font-semibold text-stone-50">{variantShortName(variant)}</h2>
           <p className="mt-1 text-sm leading-snug text-stone-400">{t.variantInfo[variant]}</p>
+          <VariantRulesLink variant={variant} className="mt-1" />
         </div>
         <StartButton action={action} summary={summary} />
         {secondary}

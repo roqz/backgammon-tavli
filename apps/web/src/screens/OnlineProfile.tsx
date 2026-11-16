@@ -15,7 +15,7 @@ import {
   type Trophy,
   USERNAME_PATTERN,
 } from "@tavli/protocol";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ACHIEVEMENTS } from "../achievements";
 import { AccuracyCard, percent } from "../components/Accuracy";
 import { AchievementBadge } from "../components/AchievementBadge";
@@ -271,24 +271,24 @@ export function AuthForm() {
   );
 }
 
-/** Account state: secure the guest profile with username/password, or log out. */
+/** What others see of oneself and one chooses on the profile: frame, title and shown achievements. */
+interface Look {
+  readonly frame: Frame | null;
+  readonly title: string | null;
+  readonly titles: readonly string[];
+  readonly showcase: readonly string[];
+}
+
 /** Avatar frame next to the name; frames need their achievement. */
-function FramePicker() {
+function FramePicker({ frame, onChange }: { frame: Frame | null; onChange: (f: Frame | null) => void }) {
   const t = useT();
   const unlocked = useUnlocked();
   const frames = useOfferedFrames();
-  const [frame, setFrame] = useState<Frame | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    fetchAccount()
-      .then((a) => setFrame(a.frame))
-      .catch(() => {});
-  }, []);
-  if (frame === undefined) return null;
   const choose = (f: Frame | null) => {
     setError(null);
     setFrameRemote(f)
-      .then((a) => setFrame(a.frame))
+      .then((a) => onChange(a.frame))
       .catch((e: unknown) => setError(errorOf(t, e)));
   };
   return (
@@ -319,7 +319,7 @@ function FramePicker() {
                     ? t.supporterOnly
                     : t.unlockBy.replace(
                         "{name}",
-                        a ? `${a.icon} ${a.title[t.locale.startsWith("de") ? "de" : "en"]}` : FRAMES[f],
+                        a ? a.title[t.locale.startsWith("de") ? "de" : "en"] : FRAMES[f],
                       )
               }
               onClick={() => choose(f)}
@@ -335,80 +335,82 @@ function FramePicker() {
 }
 
 /** The title under the name, from the earned ones. */
-function TitlePicker() {
+function TitlePicker({
+  title,
+  titles,
+  onChange,
+}: {
+  title: string | null;
+  titles: readonly string[];
+  onChange: (title: string | null, titles: readonly string[]) => void;
+}) {
   const t = useT();
-  const [state, setState] = useState<{ title: string | null; titles: readonly string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    fetchAccount()
-      .then((a) => setState({ title: a.title, titles: a.titles }))
-      .catch(() => {});
-  }, []);
-  if (!state || state.titles.length === 0) return null;
-  const choose = (title: string | null) => {
+  const choose = (id: string | null) => {
     setError(null);
-    setTitleRemote(title)
-      .then((a) => setState({ title: a.title, titles: a.titles }))
+    setTitleRemote(id)
+      .then((a) => onChange(a.title, a.titles))
       .catch((e: unknown) => setError(errorOf(t, e)));
   };
   return (
     <fieldset className="flex flex-col gap-2" data-testid="title-picker">
       <legend className="mb-1 text-stone-100">{t.titleLabel}</legend>
-      <p className="text-xs text-stone-500">{t.titleHint}</p>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant={state.title === null ? "primary" : "ghost"}
-          className="px-3 py-1.5 text-sm"
-          onClick={() => choose(null)}
-        >
-          {t.titleNone}
-        </Button>
-        {state.titles.map((id) => (
+      <p className="text-xs text-stone-500">{titles.length ? t.titleHint : t.titleNoneYet}</p>
+      {titles.length > 0 && (
+        <div className="flex flex-wrap gap-2">
           <Button
-            key={id}
-            variant={state.title === id ? "primary" : "ghost"}
+            variant={title === null ? "primary" : "ghost"}
             className="px-3 py-1.5 text-sm"
-            onClick={() => choose(id)}
+            onClick={() => choose(null)}
           >
-            {titleText(t, id)}
+            {t.titleNone}
           </Button>
-        ))}
-      </div>
+          {titles.map((id) => (
+            <Button
+              key={id}
+              variant={title === id ? "primary" : "ghost"}
+              className="px-3 py-1.5 text-sm"
+              onClick={() => choose(id)}
+            >
+              {titleText(t, id)}
+            </Button>
+          ))}
+        </div>
+      )}
       {error && <p className="text-xs text-red-400">{error}</p>}
     </fieldset>
   );
 }
 
 /** Up to three unlocked achievements on the public profile. */
-function ShowcasePicker() {
+function ShowcasePicker({
+  ids,
+  onChange,
+}: {
+  ids: readonly string[];
+  onChange: (ids: readonly string[]) => void;
+}) {
   const t = useT();
   const unlocked = useUnlocked();
   const lang = t.locale.startsWith("de") ? "de" : "en";
-  const [ids, setIds] = useState<readonly string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    fetchAccount()
-      .then((a) => setIds(a.showcase))
-      .catch(() => {});
-  }, []);
   const open = ACHIEVEMENTS.filter((a) => unlocked[a.id]);
-  if (ids === null || open.length === 0) return null;
   const toggle = (id: string) => {
     setError(null);
     if (!ids.includes(id) && ids.length >= SHOWCASE_MAX) return setError(t.showcaseFull);
     const next = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
-    setIds(next);
+    onChange(next);
     setShowcase(next)
-      .then((a) => setIds(a.showcase))
+      .then((a) => onChange(a.showcase))
       .catch((e: unknown) => {
-        setIds(ids);
+        onChange(ids);
         setError(errorOf(t, e));
       });
   };
   return (
     <fieldset className="flex flex-col gap-2" data-testid="showcase-picker">
       <legend className="mb-1 text-stone-100">{t.showcaseTitle}</legend>
-      <p className="text-xs text-stone-500">{t.showcaseHint}</p>
+      <p className="text-xs text-stone-500">{open.length ? t.showcaseHint : t.showcaseNoneYet}</p>
       <div className="flex flex-wrap gap-2">
         {open.map((a) => (
           <Button
@@ -429,6 +431,116 @@ function ShowcasePicker() {
     </fieldset>
   );
 }
+
+/**
+ * Head of the profile screen: oneself as other players see it (frame medallion, club rank,
+ * title, shown achievements) and, behind "Customise", the choice of all three with a live
+ * preview. Without an online profile only the name.
+ */
+export function ProfileHeader({
+  name,
+  subtitle,
+  data,
+  children,
+}: {
+  name: string;
+  subtitle: string;
+  /** The own public profile (club rank, supporter), once loaded. */
+  data: ProfileResponse | null;
+  /** More below the head (ratings). */
+  children?: ReactNode;
+}) {
+  const t = useT();
+  const lang = t.locale.startsWith("de") ? "de" : "en";
+  const profileId = useOnline((s) => s.profile?.id);
+  const [look, setLook] = useState<Look | null>(null);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (!profileId) return setLook(null);
+    fetchAccount()
+      .then((a) => setLook({ frame: a.frame, title: a.title, titles: a.titles, showcase: a.showcase }))
+      .catch(() => {});
+  }, [profileId]);
+  const frame = look ? look.frame : (data?.frame ?? null);
+  const title = look ? look.title : (data?.title ?? null);
+  const shown = (look?.showcase ?? data?.showcase ?? [])
+    .map((id) => ACHIEVEMENTS.find((a) => a.id === id))
+    .filter((a) => a !== undefined);
+  return (
+    <section
+      aria-label={name}
+      className="flex flex-col gap-4 rounded-xl border border-stone-800 bg-stone-900/80 p-5"
+      data-testid="profile-header"
+    >
+      <div className="flex items-center gap-4">
+        {profileId ? (
+          <FrameMedallion frame={frame} size={72} shine />
+        ) : (
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-amber-500 bg-stone-700 text-xl font-bold text-stone-50">
+            {initials(name)}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-2xl font-semibold text-stone-50">
+            <PlayerName name={name} rank={data?.rank} supporter={data?.supporter} />
+          </h2>
+          {title ? (
+            <p className="truncate text-sm text-brass" data-testid="header-title">
+              {titleText(t, title)}
+            </p>
+          ) : (
+            frame && <p className="text-sm text-brass">{t.frameNames[frame]}</p>
+          )}
+          <p className="truncate text-xs text-stone-400">{subtitle}</p>
+        </div>
+      </div>
+      {shown.length > 0 && (
+        <ul className="flex flex-col gap-1.5" aria-label={t.profileShowcase}>
+          {shown.map((a) => (
+            <li key={a.id} className="flex items-center gap-2 text-sm text-stone-200">
+              <AchievementBadge a={a} size={28} />
+              <span className="min-w-0 truncate">{a.title[lang]}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {children}
+      {look && (
+        <>
+          <Button
+            variant={editing ? "primary" : "secondary"}
+            className="text-sm"
+            aria-expanded={editing}
+            onClick={() => setEditing(!editing)}
+            data-testid="customise-profile"
+          >
+            <Icon name={editing ? "check" : "palette"} /> {editing ? t.customiseDone : t.customise}
+          </Button>
+          {editing && (
+            <div className="flex flex-col gap-4 border-t border-stone-800 pt-4">
+              <p className="text-xs text-stone-500">{t.customiseHint}</p>
+              <FramePicker frame={look.frame} onChange={(f) => setLook({ ...look, frame: f })} />
+              <TitlePicker
+                title={look.title}
+                titles={look.titles}
+                onChange={(title, titles) => setLook({ ...look, title, titles })}
+              />
+              <ShowcasePicker ids={look.showcase} onChange={(showcase) => setLook({ ...look, showcase })} />
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("") || "?";
 
 /** Whether one appears in the monthly and activity rankings. */
 function ListedToggle() {
@@ -503,9 +615,6 @@ function PrivacyCard() {
         <Icon name="shield" /> {t.privacyTitle}
       </summary>
       <div className="mt-3 flex flex-col gap-3">
-        <FramePicker />
-        <TitlePicker />
-        <ShowcasePicker />
         <FriendsCanWatchToggle />
         <ListedToggle />
         <div>
@@ -570,6 +679,7 @@ function PrivacyCard() {
   );
 }
 
+/** Account state: secure the guest profile with username/password, or log out. */
 function AccountCard() {
   const t = useT();
   const profile = useOnline((s) => s.profile)!;
@@ -840,7 +950,7 @@ export function MatchList({
             return (
               <li key={m.id} className="flex items-center gap-3 py-2 text-sm">
                 <span
-                  className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${
+                  className={`min-w-16 shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-center text-xs font-semibold ${
                     won ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"
                   }`}
                 >
@@ -860,19 +970,26 @@ export function MatchList({
                       m.length
                     )}{" "}
                     · {new Date(m.endedAt).toLocaleDateString(t.locale)}
-                    {acc && ` · ${t.accuracyMatch.replace("{n}", percent(acc.agreement))}`}
+                    {acc && (
+                      <>
+                        {" "}
+                        · <Icon name="target" label={t.accuracyTitle} />{" "}
+                        {t.accuracyMatch.replace("{n}", percent(acc.agreement))}
+                      </>
+                    )}
                   </div>
                 </div>
                 <Button
-                  className="px-3 py-1.5 text-sm"
+                  className="shrink-0 px-3 py-1.5 text-sm"
                   disabled={loading !== null}
+                  aria-label={t.watch}
                   onClick={() => void open(m)}
                 >
                   {loading === m.id ? (
                     "…"
                   ) : (
                     <>
-                      <Icon name="play" /> {t.watch}
+                      <Icon name="play" /> <span className="hidden sm:inline">{t.watch}</span>
                     </>
                   )}
                 </Button>
@@ -885,7 +1002,15 @@ export function MatchList({
   );
 }
 
-export function ProfileTab({ onReplay }: { onReplay: (records: GameRecord[]) => void }) {
+/** Account, security and privacy of the online profile ("Account & data"). */
+export function ProfileTab() {
+  const profile = useOnline((s) => s.profile);
+  if (!profile) return null;
+  return <AccountCard />;
+}
+
+/** The own online matches with the accuracy per match (on the statistics screen). */
+export function OnlineMatches({ onReplay }: { onReplay: (records: GameRecord[]) => void }) {
   const t = useT();
   const profile = useOnline((s) => s.profile);
   const [accuracy, setAccuracy] = useState<AccuracyReport | null>(null);
@@ -898,8 +1023,7 @@ export function ProfileTab({ onReplay }: { onReplay: (records: GameRecord[]) => 
   }, [id]);
   if (!profile) return null;
   return (
-    <div className="flex flex-col gap-4">
-      <AccountCard />
+    <div className="flex flex-col gap-4" data-testid="online-matches">
       <AccuracyCard report={accuracy} />
       <Card>
         <h2 className="mb-3 font-semibold text-stone-200">{t.myMatches}</h2>

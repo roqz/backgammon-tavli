@@ -340,19 +340,26 @@ export const SEASON_GAMES = 10;
 export type SeasonKey = "spring" | "summer" | "autumn" | "winter";
 
 /** The four seasons by their first month (0 = January); each lasts three months. */
-export const SEASONS: readonly { key: SeasonKey; first: number; icon: string }[] = [
-  { key: "spring", first: 2, icon: "🌸" },
-  { key: "summer", first: 5, icon: "☀️" },
-  { key: "autumn", first: 8, icon: "🍂" },
-  { key: "winter", first: 11, icon: "❄️" },
+export const SEASONS: readonly { key: SeasonKey; first: number }[] = [
+  { key: "spring", first: 2 },
+  { key: "summer", first: 5 },
+  { key: "autumn", first: 8 },
+  { key: "winter", first: 11 },
 ];
+
+/** Colour of the season motif (its icon is named like the season). */
+export const SEASON_TINT: Record<SeasonKey, string> = {
+  spring: "#f2b8c6",
+  summer: "#f0d58a",
+  autumn: "#e0a473",
+  winter: "#cfe3f0",
+};
 
 export interface Season {
   readonly key: SeasonKey;
   /** Achievement id, named after the year the season starts in: "season-winter-2026" = Dec 2026 – Feb 2027. */
   readonly id: string;
   readonly year: number;
-  readonly icon: string;
   readonly start: Date;
   readonly end: Date;
 }
@@ -366,7 +373,6 @@ export const seasonOf = (d = new Date()): Season => {
     key: s.key,
     id: `season-${s.key}-${year}`,
     year,
-    icon: s.icon,
     start: new Date(year, s.first, 1),
     end: new Date(year, s.first + 3, 1),
   };

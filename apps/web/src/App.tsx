@@ -4,13 +4,12 @@ import { AchievementLayer } from "./components/AchievementLayer";
 import { FirstStart, InviteFlow } from "./components/Onboarding";
 import { afterHistory, historySettling } from "./components/overlay";
 import { UpdatePrompt } from "./components/UpdatePrompt";
-import { useT } from "./i18n";
 import { OPEN_SETTINGS } from "./navigation";
 import { connect, fetchSupportInfo, joinInvite, watchMatch } from "./online/client";
 import { useOnline } from "./online/store";
 import { todoCount, useTodo } from "./online/todo";
 import { AdminScreen } from "./screens/AdminScreen";
-import { AppShell, type NavTarget, Page, ScreenTitle } from "./screens/AppShell";
+import { AppShell, type NavTarget, Page } from "./screens/AppShell";
 import { CorrGameScreen } from "./screens/CorrScreens";
 import { ChallengePrompt, FriendLinkPrompt } from "./screens/FriendsPanel";
 import { GameScreen } from "./screens/GameScreen";
@@ -96,7 +95,6 @@ const takeOnlineTab = (href: string): OnlineTab | null => {
 export function App() {
   const onlineMatchId = useOnline((s) => s.match?.matchId ?? null);
   const lang = useSettings((s) => s.lang);
-  const t = useT();
   /** Settings page to open (the profile's "board & dice" opens the looks directly). */
   const [settingsPage, setSettingsPage] = useState<SectionId | null>(null);
   /** The kind of game the "setup" screen prepares. */
@@ -332,9 +330,7 @@ export function App() {
       {screen === "support" && (
         <SupportScreen onBack={() => setScreen("profile")} onOnline={() => openOnline()} />
       )}
-      {screen === "account" && (
-        <AccountScreen onBack={() => setScreen("profile")} onReplay={(r) => openReplay(r, "account")} />
-      )}
+      {screen === "account" && <AccountScreen onBack={() => setScreen("profile")} />}
       {(screen === "imprint" || screen === "privacy") && (
         <LegalScreen page={screen} onBack={() => setScreen("profile")} />
       )}
@@ -344,8 +340,11 @@ export function App() {
       )}
       {screen === "settings" && (
         <Page narrow>
-          <ScreenTitle title={t.settings} onBack={() => setScreen("profile")} />
-          <SettingsPanel key={settingsPage ?? "index"} initial={settingsPage} />
+          <SettingsPanel
+            key={settingsPage ?? "index"}
+            initial={settingsPage}
+            onExit={() => setScreen("profile")}
+          />
         </Page>
       )}
       {screen === "online" && (

@@ -177,7 +177,8 @@ test("money play with beavers: beaver a double, then raccoon", async ({ page }) 
   for (let i = 0; i < 8 && !(await double.isVisible()); i++) {
     const end = page.getByRole("button", { name: "Zug beenden" });
     // the button may vanish between the check and the click (the turn ends by itself)
-    if ((await end.count()) > 0 && (await end.isEnabled())) await end.click({ timeout: 2_000 }).catch(() => {});
+    if ((await end.count()) > 0 && (await end.isEnabled()))
+      await end.click({ timeout: 2_000 }).catch(() => {});
     else await tapMove(page);
     await page.waitForTimeout(400);
   }
@@ -198,7 +199,9 @@ test("settings sections fold; keyboard plays the main buttons; the local name is
   await page.getByRole("switch", { name: /Automatisch würfeln/ }).click();
   // the turn must stay open after one move (a chained target can use both dice)
   await page.getByRole("switch", { name: /Zug automatisch beenden/ }).click();
-  await page.getByRole("button", { name: "Einstellungen", exact: true }).click();
+  // one way back: the title row names the page and leads back to the list
+  await expect(page.getByRole("heading", { name: "Spielablauf" })).toBeVisible();
+  await page.getByRole("button", { name: "Zurück" }).click();
   await expect(page.getByRole("button", { name: /^Spielablauf.*Automatisch würfeln: aus/ })).toBeVisible();
   await page.goBack();
 

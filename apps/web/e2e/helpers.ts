@@ -71,6 +71,12 @@ export const newGame = async (
   await page.getByRole("button", { name: card }).click();
 };
 
+/** The own matches and accuracy (profile → statistics & matches). */
+export const openMatches = async (page: Page) => {
+  await nav(page, "Profil");
+  await page.getByRole("button", { name: /Statistik & Partien/ }).click();
+};
+
 /** The online account page (profile → account & data). */
 export const openAccount = async (page: Page) => {
   await nav(page, "Profil");

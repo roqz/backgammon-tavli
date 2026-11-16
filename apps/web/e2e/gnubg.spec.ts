@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { closeContexts, nav, newGame, onlineGuest, openAccount, prepare } from "./helpers";
+import { closeContexts, nav, newGame, onlineGuest, prepare } from "./helpers";
 
 test.afterEach(closeContexts);
 
@@ -74,9 +74,9 @@ test("achievements sync with the profile; an unlocked frame can be chosen", asyn
     ),
   );
   await page.reload();
-  await nav(page, "Online");
-  await openAccount(page);
-  await page.getByText(/Daten & Konto/).click();
+  // frame, title and shown achievements are chosen at the top of the profile
+  await nav(page, "Profil");
+  await page.getByTestId("customise-profile").click();
   // the frame is accepted by the server only once the progress was synced
   await expect(async () => {
     await page.getByRole("button", { name: /Doktorhut/ }).click();

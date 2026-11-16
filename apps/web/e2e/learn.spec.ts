@@ -65,7 +65,7 @@ test("achievements: locked boards show their condition; solving a lesson counts"
   await expect(page.getByRole("button", { name: /Marmor/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Hoher Kontrast/ })).toBeEnabled();
   await page.getByRole("button", { name: "Zurück" }).click();
-  await page.getByRole("button", { name: /Statistik/ }).click();
+  await page.getByRole("button", { name: /Vitrine/ }).click();
   await expect(page.getByTestId("achievements")).toBeVisible();
   await expect(page.getByText(/Freischalten|Belohnung/).first()).toBeVisible();
 });

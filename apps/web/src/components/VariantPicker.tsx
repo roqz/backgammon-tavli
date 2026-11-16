@@ -1,6 +1,7 @@
 import type { MatchVariant } from "@tavli/engine";
 import type { ReactNode } from "react";
 import { useT } from "../i18n";
+import { VariantRulesLink } from "../screens/RulesPanel";
 
 const NAMES: Record<MatchVariant, string> = {
   backgammon: "Backgammon",
@@ -54,7 +55,10 @@ export function VariantPicker<V extends MatchVariant>({
           );
         })}
       </div>
-      <p className="mt-2 text-sm leading-snug text-stone-400 lg:hidden">{t.variantInfo[value]}</p>
+      <div className="mt-2 lg:hidden">
+        <p className="text-sm leading-snug text-stone-400">{t.variantInfo[value]}</p>
+        <VariantRulesLink variant={value} />
+      </div>
     </fieldset>
   );
 }

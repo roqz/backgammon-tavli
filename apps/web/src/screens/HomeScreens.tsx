@@ -28,16 +28,8 @@ import {
 } from "./AppShell";
 import { CorrSetup } from "./CorrScreens";
 import { LegalFooter, LocalSetup, levelName, startBotGame, useOnlineStatus } from "./MenuScreens";
-import { AuthForm } from "./OnlineProfile";
+import { AuthForm, ProfileHeader } from "./OnlineProfile";
 import { type OnlineTab, PlayPanel, StatusPill } from "./OnlineScreen";
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("") || "?";
 
 // ---- Start: the title screen ---------------------------------------------------------------------
 
@@ -556,25 +548,17 @@ export function ProfileScreen({
     <Page>
       <ScreenTitle title={t.navProfile} />
       <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
-        <section
-          aria-label={name}
-          className="flex flex-col gap-4 rounded-xl border border-stone-800 bg-stone-900/80 p-5"
+        <ProfileHeader
+          name={name}
+          data={data}
+          subtitle={
+            !profile
+              ? t.profileLocal
+              : profile.username
+                ? `${t.profileAccount} · ${profile.username}`
+                : t.profileGuest
+          }
         >
-          <div className="flex items-center gap-4">
-            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-amber-500 bg-stone-700 text-xl font-bold text-stone-50">
-              {initials(name)}
-            </span>
-            <div className="min-w-0">
-              <h2 className="truncate font-display text-2xl font-semibold text-stone-50">{name}</h2>
-              <p className="text-sm text-stone-400">
-                {!profile
-                  ? t.profileLocal
-                  : profile.username
-                    ? `${t.profileAccount} · ${profile.username}`
-                    : t.profileGuest}
-              </p>
-            </div>
-          </div>
           {ratings.length > 0 && (
             <div className="grid grid-cols-3 gap-2">
               {ratings.map((r) => (
@@ -591,7 +575,7 @@ export function ProfileScreen({
               ))}
             </div>
           )}
-        </section>
+        </ProfileHeader>
         <div className="flex flex-col gap-6">
           <ListGroup>
             <ListRow
@@ -602,7 +586,7 @@ export function ProfileScreen({
             />
             <ListRow
               icon={<Glyph d={GLYPH.stats} className="h-5 w-5" />}
-              label={t.statsAndAchievements}
+              label={t.statsAndMatches}
               onClick={onStats}
             />
             <ListRow

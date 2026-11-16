@@ -21,6 +21,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Board } from "../board/Board";
 import { HEIGHT, WIDTH } from "../board/geometry";
 import { useFollowingLayout } from "../board/layout";
+import { EMOTE_ICON } from "../components/emoteIcons";
 import { Icon } from "../components/Icon";
 import { SetupLayout } from "../components/Setup";
 import { Button, Card, Modal, Segmented } from "../components/ui";
@@ -697,6 +698,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
     shownEmote?.seat === p
       ? {
           text: t.emote[shownEmote.id],
+          icon: EMOTE_ICON[shownEmote.id],
           when: ago(t, shownEmote.at),
           onDismiss: () => {
             hideEmote(id, shownEmote.at);
@@ -928,7 +930,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
                 disabled={a.disabled}
                 onClick={a.onClick}
               >
-                {a.icon && `${a.icon} `}
+                {a.icon && <Icon name={a.icon} />}
                 {a.label}
               </Button>
             ))}

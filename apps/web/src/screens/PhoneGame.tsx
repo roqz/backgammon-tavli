@@ -133,6 +133,8 @@ export function FitBoard({ ratio, children }: { ratio: number; children: ReactNo
 /** A quick message shown with the player who sent it. */
 export interface PlayerEmote {
   readonly text: string;
+  /** Icon of the quick message (components/emoteIcons.ts). */
+  readonly icon?: IconName;
   /** "3 hr. ago" for correspondence games. */
   readonly when?: string;
   /** Hides it (correspondence games keep the last message until it is dismissed). */
@@ -218,7 +220,7 @@ function EmoteChip({ emote }: { emote: PlayerEmote }) {
     "flex min-w-0 max-w-[65%] items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-900";
   const body = (
     <>
-      <Icon name="chat" className="h-3.5 w-3.5" />
+      <Icon name={emote.icon ?? "chat"} className="h-3.5 w-3.5" />
       <span className="truncate" title={emote.when}>
         {emote.text}
       </span>
@@ -241,7 +243,8 @@ export function EmoteNote({ name, emote }: { name: string; emote: PlayerEmote })
   const t = useT();
   const inner = (
     <>
-      <span className="font-semibold">{name}:</span> {emote.text}
+      <span className="font-semibold">{name}:</span>{" "}
+      {emote.icon && <Icon name={emote.icon} className="h-3.5 w-3.5 align-[-0.2em]" />} {emote.text}
       {emote.when && <span className="block text-[11px] opacity-60">{emote.when}</span>}
     </>
   );

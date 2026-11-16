@@ -14,7 +14,7 @@ export const titleText = (t: Dict, id: string): string => {
     const [variant, pool] = key.split("@");
     const name =
       variant === "tavli" ? "Tavli" : variant ? variant.charAt(0).toUpperCase() + variant.slice(1) : "";
-    return `${t.titleMonth.replace("{month}", when)} · ${name}${pool === "blitz" ? " ⚡" : ""}`;
+    return `${t.titleMonth.replace("{month}", when)} · ${name}${pool === "blitz" ? ` · ${t.timeControls.blitz}` : ""}`;
   }
   return t.titles[id] ?? id;
 };

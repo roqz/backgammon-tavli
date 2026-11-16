@@ -28,6 +28,7 @@ import { askBot } from "../bot/client";
 import { humanSeat, useBotDriver } from "../bot/useBotDriver";
 import { Fireworks } from "../components/AchievementLayer";
 import { BLOCKED_VISIBLE_MS, EventBanner, noPlayDelay } from "../components/EventBanner";
+import { EMOTE_ICON } from "../components/emoteIcons";
 import { Icon } from "../components/Icon";
 import { PlayerName } from "../components/PlayerName";
 import { Button, Modal } from "../components/ui";
@@ -619,7 +620,7 @@ export function GameScreen({
       score: match.score[p],
       active: actor === p,
       checker: <Checker player={p} />,
-      emote: liveEmote?.seat === p ? { text: t.emote[liveEmote.id] } : null,
+      emote: liveEmote?.seat === p ? { text: t.emote[liveEmote.id], icon: EMOTE_ICON[liveEmote.id] } : null,
     });
     const statusLine = (
       <span className="inline-flex max-w-full items-center gap-2">
@@ -767,7 +768,12 @@ export function GameScreen({
             <section aria-label={t.game} className="flex w-32 shrink-0 flex-col gap-2">
               {lost}
               {onlineStatus}
-              {liveEmote && <EmoteNote name={name(liveEmote.seat)} emote={{ text: t.emote[liveEmote.id] }} />}
+              {liveEmote && (
+                <EmoteNote
+                  name={name(liveEmote.seat)}
+                  emote={{ text: t.emote[liveEmote.id], icon: EMOTE_ICON[liveEmote.id] }}
+                />
+              )}
               <ActionArea actions={phoneActions()} status={statusLine} vertical />
             </section>
           </div>

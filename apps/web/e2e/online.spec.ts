@@ -30,7 +30,7 @@ test("two players: invite link, play, resign, verified dice, leaderboard", async
   // quick messages
   await alice.getByRole("button", { name: "Kurznachricht" }).click();
   await alice.getByRole("button", { name: /Viel Glück/ }).click();
-  await expect(bob.getByRole("status").filter({ hasText: /Alice:\s*🍀 Viel Glück!/ })).toBeVisible();
+  await expect(bob.getByRole("status").filter({ hasText: /Alice:\s*Viel Glück!/ })).toBeVisible();
 
   await bob
     .getByRole("button", { name: /Aufgeben/ })

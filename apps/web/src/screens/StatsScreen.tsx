@@ -5,8 +5,8 @@ import { Icon, type IconName } from "../components/Icon";
 import { Button, Card, Modal } from "../components/ui";
 import { useT } from "../i18n";
 import { type GameRecord, useArchive } from "../store/archive";
-import { AchievementsPanel } from "./AchievementsPanel";
 import { Page, ScreenTitle } from "./AppShell";
+import { OnlineMatches } from "./OnlineProfile";
 
 interface Tally {
   played: number;
@@ -146,11 +146,10 @@ export function StatsScreen({
 
   return (
     <Page narrow>
-      <ScreenTitle title={t.stats} onBack={onBack}>
+      <ScreenTitle title={t.statsAndMatches} onBack={onBack}>
         <MatImport onImport={onImport} />
       </ScreenTitle>
 
-      <AchievementsPanel />
       {records.length === 0 ? (
         <Card className="flex flex-col items-start gap-3">
           <p className="text-stone-400">{t.noGames}</p>
@@ -220,6 +219,8 @@ export function StatsScreen({
           </Button>
         </>
       )}
+
+      <OnlineMatches onReplay={onImport} />
 
       {confirmClear && (
         <Modal onClose={() => setConfirmClear(false)}>

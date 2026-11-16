@@ -13,8 +13,48 @@ let ctx: AudioContext | null = null;
 const audio = (): AudioContext | null => {
   if (typeof window === "undefined" || !("AudioContext" in window)) return null;
   ctx ??= new AudioContext();
-  if (ctx.state === "suspended") void ctx.resume();
+  // "suspended" before the first gesture, "interrupted" on iOS after a call or the app was away
+  if (ctx.state !== "running") void ctx.resume().catch(() => {});
   return ctx;
+};
+
+/**
+ * Browsers (Safari above all) only let audio start inside a user gesture. The first touch or
+ * key anywhere wakes the context and plays a silent sample, so later sounds (also those caused
+ * by the opponent) are allowed; coming back to the app wakes it again.
+ */
+const unlock = () => {
+  const ac = audio();
+  if (!ac) return;
+  const src = ac.createBufferSource();
+  src.buffer = ac.createBuffer(1, 1, ac.sampleRate);
+  src.connect(ac.destination);
+  src.start(0);
+};
+if (typeof window !== "undefined") {
+  for (const type of ["pointerdown", "touchend", "keydown"] as const)
+    window.addEventListener(type, unlock, { capture: true, passive: true });
+}
+
+/**
+ * Plays once the context really runs: a preview pressed while it still wakes up would otherwise
+ * be scheduled at a stale time and swallowed. iOS mutes web audio with the ring/silent switch;
+ * a preview the player asked for plays through it ("playback" session) for a moment.
+ */
+const whenRunning = (play: (ac: AudioContext) => void) => {
+  const ac = audio();
+  if (!ac) return;
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+  if (session) {
+    session.type = "playback";
+    setTimeout(() => {
+      session.type = "auto";
+    }, 2500);
+  }
+  if (ac.state === "running") return play(ac);
+  ac.resume()
+    .then(() => play(ac))
+    .catch(() => {});
 };
 
 const noiseBurst = (
@@ -260,22 +300,29 @@ export const sounds = {
 };
 
 /** A short sample of a sound set (also one not taken yet): two checkers, a hit and a win. */
-export const previewSoundSet = (set: SoundSet) => {
-  const ac = audio();
-  if (!ac) return;
-  const t = ac.currentTime + 0.02;
-  if (set === "classic") {
-    sounds.checker();
-    setTimeout(() => sounds.hit(), 450);
-    setTimeout(() => sounds.win(), 900);
-    return;
-  }
-  const s = SETS[set];
-  s.checker(ac, t);
-  s.checker(ac, t + 0.22);
-  s.hit(ac, t + 0.5);
-  s.end(ac, t + 0.95, true);
-};
+export const previewSoundSet = (set: SoundSet) =>
+  whenRunning((ac) => {
+    const t = ac.currentTime + 0.05;
+    if (set === "classic") {
+      // the classic sounds themselves, not the set chosen in the settings
+      for (const at of [t, t + 0.22]) {
+        noiseBurst(ac, at, 0.03, 1800, 0.5);
+        tone(ac, at, 180, 0.08, 0.15, "triangle");
+      }
+      noiseBurst(ac, t + 0.5, 0.05, 1200, 0.7);
+      tone(ac, t + 0.5, 110, 0.18, 0.35, "triangle");
+      for (const [i, f] of [523, 659, 784, 1047].entries()) tone(ac, t + 0.95 + i * 0.11, f, 0.35, 0.14);
+      return;
+    }
+    const s = SETS[set];
+    s.checker(ac, t);
+    s.checker(ac, t + 0.22);
+    s.hit(ac, t + 0.5);
+    s.end(ac, t + 0.95, true);
+  });
+
+/** A throw on a dice surface (also one not taken yet), from a preview button. */
+export const previewDice = (surface: DiceSurface) => whenRunning(() => sounds.dice(surface));
 
 /** Plays sounds for game events by watching the game state. */
 export function useGameSounds() {

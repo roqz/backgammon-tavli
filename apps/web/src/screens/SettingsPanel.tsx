@@ -11,9 +11,9 @@ import { disconnect } from "../online/client";
 import { fetchPushPrefs, savePushPrefs, usePushState } from "../online/push";
 import { useOnline } from "../online/store";
 import { isUnlocked, REWARDS } from "../rewards";
-import { previewSoundSet, sounds } from "../sound";
+import { previewDice, previewSoundSet } from "../sound";
 import { DICE_SURFACES, SOUND_SETS, useSettings } from "../store/settings";
-import { ListGroup, ListRow } from "./AppShell";
+import { ListGroup, ListRow, ScreenTitle } from "./AppShell";
 import { PushToggle } from "./TournamentPanel";
 
 function ServerUrlField() {
@@ -63,14 +63,37 @@ export type SectionId = "play" | "display" | "looks" | "sound" | "language" | "n
  * All settings as a grouped list; each entry shows its current value and opens a page with the
  * options. Used as a screen (from the profile) and as a drawer during a game.
  */
-export function SettingsPanel({ initial = null }: { initial?: SectionId | null } = {}) {
+export function SettingsPanel({
+  initial = null,
+  onExit,
+}: {
+  initial?: SectionId | null;
+  /** As a screen: the title row shows where one is and leads back (to the list, or out of it). */
+  onExit?: () => void;
+} = {}) {
   const [page, setPage] = useState<SectionId | null>(initial);
   const t = useT();
   const s = useSettings();
   const unlocked = useAchievements((a) => a.unlocked);
   const countdown = (s.autoRoll && s.autoRollCountdown) || (s.autoConfirm && s.autoConfirmDelay);
+  const titles: Record<SectionId, string> = {
+    play: t.gameplay,
+    display: t.displaySection,
+    looks: initial === "looks" ? t.boardAndDice : t.appearance,
+    sound: t.soundSection,
+    language: t.language,
+    notify: t.pushTitle,
+    online: t.onlineSection,
+  };
   return (
     <div className="flex flex-col gap-4">
+      {onExit && (
+        <ScreenTitle
+          title={page ? titles[page] : t.settings}
+          // opened straight on a page (e.g. "Board & dice"): back leaves, else back to the list
+          onBack={page && page !== initial ? () => setPage(null) : onExit}
+        />
+      )}
       {page === null ? (
         <>
           <ListGroup title={t.settingsGroupGame}>
@@ -107,7 +130,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
             />
           </ListGroup>
         </>
-      ) : (
+      ) : onExit ? null : (
         <button
           type="button"
           onClick={() => setPage(null)}
@@ -118,7 +141,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "play" && (
-        <Section title={t.gameplay} icon="dice">
+        <Section bare={!!onExit} title={t.gameplay} icon="dice">
           <Toggle
             label={t.autoRoll}
             description={t.autoRollDesc}
@@ -157,7 +180,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "display" && (
-        <Section title={t.displaySection} icon="computer">
+        <Section bare={!!onExit} title={t.displaySection} icon="computer">
           <Toggle
             label={t.dice3d}
             description={t.dice3dDesc}
@@ -192,7 +215,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "looks" && (
-        <Section title={t.appearance} icon="palette">
+        <Section bare={!!onExit} title={t.appearance} icon="palette">
           <StylePicker />
           <DicePicker />
           <CheckerPicker />
@@ -220,7 +243,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "sound" && (
-        <Section title={t.soundSection} icon="sound">
+        <Section bare={!!onExit} title={t.soundSection} icon="sound">
           <Toggle
             label={t.sound}
             description={t.soundDesc}
@@ -248,14 +271,14 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
             chosen={s.diceSurface}
             onChoose={(diceSurface) => {
               s.update({ diceSurface });
-              sounds.dice(diceSurface);
+              previewDice(diceSurface);
             }}
           />
         </Section>
       )}
 
       {page === "language" && (
-        <Section title={t.language} icon="globe">
+        <Section bare={!!onExit} title={t.language} icon="globe">
           <div className="flex gap-2 py-3">
             {(
               [
@@ -282,13 +305,13 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "notify" && (
-        <Section title={t.pushTitle} icon="bell">
+        <Section bare={!!onExit} title={t.pushTitle} icon="bell">
           <NotificationSettings />
         </Section>
       )}
 
       {page === "online" && (
-        <Section title={t.onlineSection} icon="signal">
+        <Section bare={!!onExit} title={t.onlineSection} icon="signal">
           <Toggle
             label={t.showEmotes}
             description={t.showEmotesHint}

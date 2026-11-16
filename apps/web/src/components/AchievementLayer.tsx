@@ -131,13 +131,7 @@ function AchievementToast() {
           exit={{ y: -40, opacity: 0 }}
           className="fixed inset-x-3 top-3 z-50 mx-auto flex max-w-sm items-center gap-3 rounded-xl border border-amber-400/50 bg-stone-900 px-4 py-3 text-left shadow-2xl"
         >
-          {a.badge ? (
-            <AchievementBadge a={{ badge: a.badge, tint: a.tint, rare: a.rare }} size={44} />
-          ) : (
-            <span className="text-3xl" aria-hidden>
-              {a.icon}
-            </span>
-          )}
+          <AchievementBadge a={{ badge: a.badge, tint: a.tint, rare: a.rare }} size={44} />
           <span>
             <span className="block text-xs uppercase tracking-wider text-amber-300">
               {t.achievementUnlocked}

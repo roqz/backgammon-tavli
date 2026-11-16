@@ -36,7 +36,7 @@ export const rewardOf = (t: ReturnType<typeof useT>, id: string): ReactNode => {
       .filter(([, a]) => a === id)
       .map(([c]) => ({
         key: `checkers-${c}`,
-        icon: "⚪",
+        icon: <Icon name="checker" />,
         text: t.checkerSets[c as keyof typeof t.checkerSets],
       })),
     ...(REWARDS.fireworks === id

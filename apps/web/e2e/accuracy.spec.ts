@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { closeContexts, onlineGuest, openAccount } from "./helpers";
+import { closeContexts, onlineGuest, openMatches } from "./helpers";
 
 test.afterEach(closeContexts);
 
 test("a new player sees that the accuracy comes after the first online match", async ({ browser }) => {
   const page = await onlineGuest(browser, "Ada");
-  await openAccount(page);
+  await openMatches(page);
   await expect(page.getByRole("heading", { name: /Deine Genauigkeit/ })).toBeVisible();
   await expect(page.getByText(/Noch keine ausgewertete Partie/)).toBeVisible();
 });
@@ -30,7 +30,7 @@ test("the own accuracy shows level, trend and one bar per match", async ({ brows
       },
     }),
   );
-  await openAccount(page);
+  await openMatches(page);
   const card = page.getByTestId("accuracy");
   await expect(card).toContainText("74 %");
   await expect(card).toContainText("Stark");

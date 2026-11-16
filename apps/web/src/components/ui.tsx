@@ -186,6 +186,7 @@ export function Section({
   id,
   open = true,
   onToggle,
+  bare = false,
 }: {
   title: string;
   icon: IconName;
@@ -193,6 +194,8 @@ export function Section({
   id?: string;
   open?: boolean;
   onToggle?: () => void;
+  /** Without its own heading (the screen title already names it). */
+  bare?: boolean;
 }) {
   const heading = (
     <>
@@ -206,21 +209,27 @@ export function Section({
     </>
   );
   return (
-    <section id={id} className="scroll-mt-20 rounded-xl border border-stone-800 bg-stone-900/70 px-5 py-4">
-      <h2 className="text-sm font-semibold text-amber-100">
-        {onToggle ? (
-          <button
-            type="button"
-            aria-expanded={open}
-            onClick={onToggle}
-            className="flex w-full items-center gap-2 rounded py-1 hover:text-amber-200"
-          >
-            {heading}
-          </button>
-        ) : (
-          <span className="flex items-center gap-2 py-1">{heading}</span>
-        )}
-      </h2>
+    <section
+      id={id}
+      aria-label={bare ? title : undefined}
+      className="scroll-mt-20 rounded-xl border border-stone-800 bg-stone-900/70 px-5 py-4"
+    >
+      {!bare && (
+        <h2 className="text-sm font-semibold text-amber-100">
+          {onToggle ? (
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={onToggle}
+              className="flex w-full items-center gap-2 rounded py-1 hover:text-amber-200"
+            >
+              {heading}
+            </button>
+          ) : (
+            <span className="flex items-center gap-2 py-1">{heading}</span>
+          )}
+        </h2>
+      )}
       {open && <div className="mt-1 divide-y divide-stone-800/80">{children}</div>}
     </section>
   );

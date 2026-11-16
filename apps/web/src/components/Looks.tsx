@@ -1,6 +1,6 @@
 import { ACHIEVEMENTS } from "../achievements";
 import { type BoardStyle, THEMES } from "../board/themes";
-import { SEASON_GAMES, SEASONS, type SeasonKey, SHOP, useCareer } from "../career";
+import { SEASON_GAMES, type SeasonKey, SHOP, useCareer } from "../career";
 import { type Dict, useT } from "../i18n";
 import {
   CHECKER_LOOKS,
@@ -18,11 +18,46 @@ import {
 import { useSettings } from "../store/settings";
 import { Icon } from "./Icon";
 
-/** "🍂 10 games in an autumn season" */
+/** "10 games in an autumn season" */
 export const seasonHow = (t: Dict, key: SeasonKey): string =>
-  `${SEASONS.find((s) => s.key === key)?.icon ?? ""} ${t.seasonHow
-    .replace("{n}", String(SEASON_GAMES))
-    .replace("{season}", t.seasonNames[key])}`;
+  t.seasonHow.replace("{n}", String(SEASON_GAMES)).replace("{season}", t.seasonNames[key]);
+
+/** A die in the colours of a skin, drawn like the dice icon of the set (rounded square, five pips). */
+export function DieSwatch({
+  fill,
+  pip,
+  edge,
+  className = "h-6 w-6",
+}: {
+  fill: string;
+  pip: string;
+  edge?: string;
+  className?: string;
+}) {
+  return (
+    <svg viewBox="0 0 24 24" className={`inline-block shrink-0 ${className}`} aria-hidden="true">
+      <rect
+        x="3.5"
+        y="3.5"
+        width="17"
+        height="17"
+        rx="3.5"
+        fill={fill}
+        stroke={edge ?? "rgba(0,0,0,0.35)"}
+        strokeWidth="1.5"
+      />
+      {[
+        [8.5, 8.5],
+        [15.5, 8.5],
+        [12, 12],
+        [8.5, 15.5],
+        [15.5, 15.5],
+      ].map(([x, y]) => (
+        <circle key={`${x}${y}`} cx={x} cy={y} r="1.6" fill={pip} />
+      ))}
+    </svg>
+  );
+}
 
 /** "Unlock: <achievement>" (plus "or N tokens" where the look can be exchanged). */
 export const lockText = (t: Dict, achievement: string, shopId?: string): string => {
@@ -33,11 +68,11 @@ export const lockText = (t: Dict, achievement: string, shopId?: string): string 
   const lang = t.locale.startsWith("de") ? "de" : "en";
   const name =
     achievement === "master-all"
-      ? `🏛️ ${t.masterAll}`
+      ? t.masterAll
       : /^season-[a-z]+$/.test(achievement)
         ? seasonHow(t, achievement.slice(7) as SeasonKey)
         : a
-          ? `${a.icon} ${a.title[lang]}`
+          ? a.title[lang]
           : achievement;
   const price = shopId ? SHOP.find((o) => o.id === shopId && !o.retired)?.price : undefined;
   const base = t.unlockBy.replace("{name}", name);
@@ -129,12 +164,14 @@ export function DicePicker() {
   const { diceSkin, update } = useSettings();
   const unlocked = useUnlocked();
   const owned = useCareer((c) => c.owned);
-  const skins: { id: DiceSkin; color: string; pip: string }[] = [
-    { id: "theme", color: "#fbf7ec", pip: "#2a1a10" },
+  const style = useSettings((s) => s.style);
+  const skins: { id: DiceSkin; color: string; pip: string; edge?: string }[] = [
+    { id: "theme", color: THEMES[style].die.fill, pip: THEMES[style].die.pip, edge: THEMES[style].die.edge },
     ...(Object.keys(DICE_SKINS) as Exclude<DiceSkin, "theme">[]).map((id) => ({
       id,
       color: DICE_SKINS[id].fill,
       pip: DICE_SKINS[id].pip,
+      edge: DICE_SKINS[id].edge,
     })),
   ];
   return (
@@ -154,13 +191,7 @@ export function DicePicker() {
               onClick={() => update({ diceSkin: d.id })}
               className={pill(diceSkin === d.id)}
             >
-              <span
-                aria-hidden
-                className="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold"
-                style={{ background: d.color, color: d.pip }}
-              >
-                ⚃
-              </span>
+              <DieSwatch fill={d.color} pip={d.pip} edge={d.edge} />
               {!open && <Icon name="lock" />}
               {t.diceSkins[d.id]}
             </button>
