@@ -1,4 +1,5 @@
 import type { GameResult, Player, TurnRecord, VariantId } from "@tavli/engine";
+import { ARCHIVE_MAX } from "@tavli/protocol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { PlayerInfo } from "./game";
@@ -18,11 +19,14 @@ export interface GameRecord {
   readonly matchEnd?: { readonly winner: Player; readonly maxDeficit: readonly [number, number] };
 }
 
-const MAX_RECORDS = 200;
+/** Like the server (ARCHIVE_MAX), so both keep the same games. */
+const MAX_RECORDS = ARCHIVE_MAX;
 
 interface ArchiveStore {
   records: readonly GameRecord[];
   add: (r: Omit<GameRecord, "id" | "date">) => void;
+  /** Games from the profile (played on other devices): merged in by id, newest first. */
+  absorb: (games: readonly GameRecord[]) => void;
   clear: () => void;
 }
 
@@ -41,6 +45,17 @@ export const useArchive = create<ArchiveStore>()(
             ...s.records,
           ].slice(0, MAX_RECORDS),
         })),
+      absorb: (games) =>
+        set((s) => {
+          const ids = new Set(s.records.map((r) => r.id));
+          const fresh = games.filter((g) => !ids.has(g.id));
+          if (!fresh.length) return s;
+          return {
+            records: [...s.records, ...fresh]
+              .sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : 0))
+              .slice(0, MAX_RECORDS),
+          };
+        }),
       clear: () => set({ records: [] }),
     }),
     { name: "tavli.archive", version: 1 },

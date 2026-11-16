@@ -300,6 +300,7 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 - Freischaltbares: Bretter Marmor, Nacht, Turnier, Olive, goldene und Rubin-Würfel, Würfelbecher-Sound, Siegesfeuerwerk, Avatar-Rahmen (Gold, Lorbeer, Flamme, Stern, Doktorhut – für alle sichtbar neben dem Namen); Klassisch, Modern und Hoher Kontrast sind immer frei (Kontrast ist Barrierefreiheit, keine Belohnung)
 
 - Erfolge, Tutorial-Fortschritt und Rätsel-Ergebnisse werden mit dem Profil synchronisiert und geräteübergreifend zusammengeführt (früheste Freischaltung, erste Rätsel-Antwort zählt); der Server erlaubt einen Rahmen nur, wenn der Erfolg im gespeicherten Fortschritt steht. Erfolge sind kosmetisch und werden vom Gerät gemeldet, nicht serverseitig nachgerechnet
+- Das Partien-Archiv (die letzten 200 beendeten Partien, auch offline, mit allen Zügen für Statistik und Wiederholung) wird mit dem Profil abgeglichen: das Gerät meldet Id und Datum seiner Partien, beide Seiten behalten die neuesten 200 der Vereinigung, fehlende Partien gehen hoch bzw. runter. „Archiv löschen“ löscht auch auf dem Server. Die Looks (Brett, Würfel, Steine, Klänge, Sprache) folgen dem Profil, die zuletzt gewählte gewinnt; Geräte-Einstellungen (3D-Würfel, Ausrichtung, Ton an/aus, Countdowns) bleiben lokal
 
 ### Vitrine, Clubrang, Wochenaufgaben ✅
 

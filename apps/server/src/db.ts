@@ -27,6 +27,9 @@ import type {
   Trophy,
 } from "@tavli/protocol";
 import {
+  ARCHIVE_MAX,
+  type ArchivedGame,
+  type ArchiveSyncResponse,
   CAREER_VARIANTS,
   type Career,
   type CareerVariant,
@@ -134,6 +137,13 @@ CREATE TABLE IF NOT EXISTS player_progress (
   player_id TEXT PRIMARY KEY REFERENCES players(id),
   data TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS player_games (
+  player_id TEXT NOT NULL REFERENCES players(id),
+  id TEXT NOT NULL,
+  played_at TEXT NOT NULL,
+  data TEXT NOT NULL,
+  PRIMARY KEY (player_id, id)
 );
 CREATE TABLE IF NOT EXISTS timings (
   match_id TEXT NOT NULL,
@@ -612,7 +622,9 @@ export class Store {
     const verified = this.verifiedAchievements(id);
     const out: string[] = TITLE_ACHIEVEMENTS.filter((a) => unlocked[a] || verified.includes(a));
     const months = this.db
-      .prepare("SELECT month, variant FROM month_winners WHERE player_id = ? AND place = 1 ORDER BY month DESC")
+      .prepare(
+        "SELECT month, variant FROM month_winners WHERE player_id = ? AND place = 1 ORDER BY month DESC",
+      )
       .all(id) as { month: string; variant: string }[];
     for (const m of months) out.push(`month-winner:${m.month}:${m.variant}`);
     return out;
@@ -922,6 +934,10 @@ export class Store {
         trophies: all("SELECT month, variant, place, gain, matches FROM month_winners WHERE player_id = ?"),
       },
       matches,
+      progress: this.progress(id),
+      gameArchive: all("SELECT data FROM player_games WHERE player_id = ? ORDER BY played_at").map((r) =>
+        JSON.parse(String(r.data)),
+      ),
       reportsFiled: all(
         "SELECT reported, match_id, reason, note, created_at FROM reports WHERE reporter = ?",
       ),
@@ -966,6 +982,7 @@ export class Store {
       run("DELETE FROM reports WHERE reporter = ?1 OR reported = ?1");
       run("DELETE FROM friends WHERE requester = ?1 OR addressee = ?1");
       run("DELETE FROM player_progress WHERE player_id = ?");
+      run("DELETE FROM player_games WHERE player_id = ?");
       run("DELETE FROM recovery_codes WHERE player_id = ?");
       run("DELETE FROM friend_invites WHERE player_id = ?");
       run("UPDATE players SET totp_secret = NULL, totp_on = 0 WHERE id = ?");
@@ -1015,6 +1032,7 @@ export class Store {
           this.db.prepare(`DELETE FROM ${table} WHERE player_id = ?`).run(id);
         this.db.prepare("DELETE FROM friends WHERE requester = ?1 OR addressee = ?1").run(id);
         this.db.prepare("DELETE FROM player_progress WHERE player_id = ?").run(id);
+        this.db.prepare("DELETE FROM player_games WHERE player_id = ?").run(id);
         if (this.tableExists("push_subscriptions"))
           this.db.prepare("DELETE FROM push_subscriptions WHERE player_id = ?").run(id);
         if (this.tableExists("push_prefs"))
@@ -1334,11 +1352,16 @@ export class Store {
     );
     const now = new Date().toISOString();
     for (const id of this.verifiedAchievements(playerId)) unlocked[id] ??= now;
+    // the looks chosen last on any device
+    const looks = [current.looks, incoming.looks]
+      .filter((l) => l !== undefined)
+      .sort((a, b) => (a.at < b.at ? 1 : -1))[0];
     const merged: Progress = {
       unlocked,
       lessons: [...new Set([...current.lessons, ...incoming.lessons])].sort((a, b) => a - b),
       puzzles,
       ...(career ? { career } : {}),
+      ...(looks ? { looks } : {}),
     };
     // the club rank shown next to the name follows the activity points
     this.db
@@ -1351,6 +1374,59 @@ export class Store {
       )
       .run(playerId, JSON.stringify(merged), new Date().toISOString());
     return merged;
+  }
+
+  // ---- game archive (local games and their replays, on all devices) -----------------------
+
+  /**
+   * Compares a device's archive with the stored one. Both sides keep the newest ARCHIVE_MAX games
+   * of all they know together: the device uploads what the server lacks of those and gets what it
+   * lacks itself; older games drop out on both sides alike, so nothing goes back and forth.
+   */
+  syncArchive(playerId: string, have: readonly { id: string; date: string }[]): ArchiveSyncResponse {
+    const stored = this.db
+      .prepare("SELECT id, played_at AS date FROM player_games WHERE player_id = ?")
+      .all(playerId) as { id: string; date: string }[];
+    const known = new Map<string, string>();
+    for (const g of [...stored, ...have]) known.set(g.id, g.date);
+    const kept = new Set(
+      [...known]
+        .sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0))
+        .slice(0, ARCHIVE_MAX)
+        .map(([id]) => id),
+    );
+    const onServer = new Set(stored.map((g) => g.id));
+    const onDevice = new Set(have.map((g) => g.id));
+    const send = stored.filter((g) => kept.has(g.id) && !onDevice.has(g.id)).map((g) => g.id);
+    const games = send.length
+      ? (
+          this.db
+            .prepare(
+              `SELECT data FROM player_games WHERE player_id = ? AND id IN (${send.map(() => "?").join(",")})`,
+            )
+            .all(playerId, ...send) as { data: string }[]
+        ).map((r) => JSON.parse(r.data) as ArchivedGame)
+      : [];
+    return { missing: have.filter((g) => kept.has(g.id) && !onServer.has(g.id)).map((g) => g.id), games };
+  }
+
+  /** Stores uploaded games and keeps the newest ARCHIVE_MAX. */
+  addArchive(playerId: string, games: readonly ArchivedGame[]): void {
+    const insert = this.db.prepare(
+      "INSERT OR IGNORE INTO player_games (player_id, id, played_at, data) VALUES (?, ?, ?, ?)",
+    );
+    for (const g of games) insert.run(playerId, g.id, g.date, JSON.stringify(g));
+    this.db
+      .prepare(
+        `DELETE FROM player_games WHERE player_id = ?1 AND id NOT IN
+           (SELECT id FROM player_games WHERE player_id = ?1 ORDER BY played_at DESC LIMIT ?2)`,
+      )
+      .run(playerId, ARCHIVE_MAX);
+  }
+
+  /** "Clear archive" on a device clears it on all of them. */
+  clearArchive(playerId: string): void {
+    this.db.prepare("DELETE FROM player_games WHERE player_id = ?").run(playerId);
   }
 
   /**
@@ -1450,14 +1526,20 @@ export class Store {
     if (masters.n === 3) out.push("variant-master");
     if (
       this.tableExists("tournaments") &&
-      (this.db.prepare("SELECT COUNT(*) AS n FROM tournaments WHERE winner = ?").get(playerId) as { n: number }).n >= 3
+      (
+        this.db.prepare("SELECT COUNT(*) AS n FROM tournaments WHERE winner = ?").get(playerId) as {
+          n: number;
+        }
+      ).n >= 3
     )
       out.push("tournament-three");
     const veteran = this.db
       .prepare(
         "SELECT p.created_at <= ?2 AS old, (SELECT COUNT(*) FROM matches WHERE p0 = ?1 OR p1 = ?1) AS n FROM players p WHERE p.id = ?1",
       )
-      .get(playerId, new Date(Date.now() - VETERAN.days * DAY).toISOString()) as { old: number; n: number } | undefined;
+      .get(playerId, new Date(Date.now() - VETERAN.days * DAY).toISOString()) as
+      | { old: number; n: number }
+      | undefined;
     if (veteran?.old && veteran.n >= VETERAN.matches) out.push("veteran");
     return out;
   }

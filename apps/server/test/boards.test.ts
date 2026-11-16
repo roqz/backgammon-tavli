@@ -126,7 +126,8 @@ describe("titles and the new frames", () => {
     expect(store.account(a)?.titles).toContain("rating-1600");
     expect(store.setTitle(a, "rating-1600")).toBe(true);
     expect(store.publicPlayer(a, "backgammon").title).toBe("rating-1600");
-    for (let i = 0; i < BOARDS.monthMinMatches; i++) play(store, a, b, `2026-11-${10 + (i % 9)}T10:00:00.000Z`);
+    for (let i = 0; i < BOARDS.monthMinMatches; i++)
+      play(store, a, b, `2026-11-${10 + (i % 9)}T10:00:00.000Z`);
     store.archiveMonths(DEC);
     expect(store.account(a)?.titles).toContain("month-winner:2026-11:backgammon");
     expect(store.setTitle(a, "month-winner:2026-11:backgammon")).toBe(true);

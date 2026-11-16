@@ -120,7 +120,8 @@ const de = {
   recentGames: "Letzte Partien",
   noGames: "Noch keine Partien gespielt.",
   clearArchive: "Archiv löschen",
-  clearArchiveConfirm: "Alle gespeicherten Partien und Statistiken löschen?",
+  clearArchiveConfirm:
+    "Alle gespeicherten Partien und Statistiken löschen? Mit Online-Profil auf allen deinen Geräten.",
   hotseatGames: "Partien Mensch gegen Mensch (nicht in der Statistik)",
   hint: "Tipp",
   suggestion: "Vorschlag",
@@ -1242,7 +1243,7 @@ const en: Dict = {
   recentGames: "Recent games",
   noGames: "No games played yet.",
   clearArchive: "Clear archive",
-  clearArchiveConfirm: "Delete all saved games and statistics?",
+  clearArchiveConfirm: "Delete all saved games and statistics? With an online profile on all your devices.",
   hotseatGames: "human vs human games (not in statistics)",
   hint: "Hint",
   suggestion: "Suggestion",

@@ -1,9 +1,10 @@
 import type { BotLevel } from "@tavli/ai";
 import type { MatchVariant } from "@tavli/engine";
+import type { Looks } from "@tavli/protocol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { BoardStyle } from "../board/themes";
-import type { CheckerSet, DiceSkin } from "../rewards";
+import { type BoardStyle, THEMES } from "../board/themes";
+import { CHECKER_SETS, type CheckerSet, DICE_SKINS, type DiceSkin } from "../rewards";
 
 export const SOUND_SETS = ["classic", "wood", "stone", "bells"] as const;
 export type SoundSet = (typeof SOUND_SETS)[number];
@@ -56,12 +57,33 @@ export interface Settings {
   playMode: PlayMode;
   /** Last game against the computer, for the one-tap start on the home screen. */
   lastBot: { variant: MatchVariant; length: number; level: BotLevel } | null;
+  /** When the looks (LOOK_KEYS) were last chosen here: the newest choice of all devices wins. */
+  looksAt?: string;
 }
+
+/** Settings that follow the profile to every device; the others belong to the device. */
+export const LOOK_KEYS = ["style", "diceSkin", "checkerSet", "soundSet", "diceSurface", "lang"] as const;
+
+/** The looks to keep with the profile (none before the player chose any on this device). */
+export const looksOf = (s: Settings): Looks | undefined =>
+  s.looksAt
+    ? {
+        at: s.looksAt,
+        style: s.style,
+        diceSkin: s.diceSkin,
+        checkerSet: s.checkerSet,
+        soundSet: s.soundSet,
+        diceSurface: s.diceSurface,
+        lang: s.lang,
+      }
+    : undefined;
 
 export type PlayMode = "bot" | "human" | "online" | "corr";
 
 interface SettingsStore extends Settings {
   update: (patch: Partial<Settings>) => void;
+  /** Looks chosen later on another device; unknown values (an older app) are left out. */
+  absorbLooks: (looks: Looks) => void;
 }
 
 const browserLang = (): "de" | "en" =>
@@ -97,7 +119,21 @@ export const useSettings = create<SettingsStore>()(
       diceSurface: "classic",
       playMode: "bot",
       lastBot: null,
-      update: (patch) => set(patch),
+      update: (patch) =>
+        set(LOOK_KEYS.some((k) => k in patch) ? { ...patch, looksAt: new Date().toISOString() } : patch),
+      absorbLooks: (l) =>
+        set((s) => {
+          if (s.looksAt && s.looksAt >= l.at) return s;
+          const patch: Partial<Settings> = { looksAt: l.at, lang: l.lang };
+          if (l.style in THEMES) patch.style = l.style as BoardStyle;
+          if (l.diceSkin === "theme" || l.diceSkin in DICE_SKINS) patch.diceSkin = l.diceSkin as DiceSkin;
+          if (l.checkerSet === "theme" || (CHECKER_SETS as readonly string[]).includes(l.checkerSet))
+            patch.checkerSet = l.checkerSet as CheckerSet;
+          if ((SOUND_SETS as readonly string[]).includes(l.soundSet)) patch.soundSet = l.soundSet as SoundSet;
+          if ((DICE_SURFACES as readonly string[]).includes(l.diceSurface))
+            patch.diceSurface = l.diceSurface as DiceSurface;
+          return patch;
+        }),
     }),
     { name: "tavli.settings", version: 1 },
   ),

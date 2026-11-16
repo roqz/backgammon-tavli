@@ -3,6 +3,7 @@ import type {
   AccountResponse,
   AccuracyReport,
   ActiveBoard,
+  ArchiveSyncResponse,
   ClientAction,
   ClientMessage,
   ClubSummary,
@@ -44,6 +45,7 @@ import type {
 } from "@tavli/protocol";
 import { useCareer } from "../career";
 import { DICTS } from "../i18n";
+import { type GameRecord, useArchive } from "../store/archive";
 import { type PlayerInfo, setRemoteSender, useGame } from "../store/game";
 import { useSettings } from "../store/settings";
 import { newClientSeed, verifyDice } from "./fairness";
@@ -796,6 +798,42 @@ export const setFrame = (frame: Frame | null) =>
 /** Sends this device's achievements, lessons and puzzle results; returns the merged state. */
 export const syncProgress = (progress: Progress) =>
   rest<Progress>("/api/account/progress", { method: "POST", body: JSON.stringify(progress) });
+/**
+ * Brings this device's game archive and the profile's together: games played on other devices
+ * (with their replays) come in, games played here go up. Runs again when asked during a run.
+ */
+let archiveRun: Promise<void> | null = null;
+let archiveAgain = false;
+export const syncArchive = (): Promise<void> => {
+  if (archiveRun) {
+    archiveAgain = true;
+    return archiveRun;
+  }
+  archiveRun = (async () => {
+    const have = useArchive.getState().records.map((r) => ({ id: r.id, date: r.date }));
+    const r = await rest<ArchiveSyncResponse>("/api/account/games/sync", {
+      method: "POST",
+      body: JSON.stringify({ have }),
+    });
+    if (r.games.length) useArchive.getState().absorb(r.games as unknown as GameRecord[]);
+    const missing = new Set(r.missing);
+    const up = useArchive.getState().records.filter((g) => missing.has(g.id));
+    for (let i = 0; i < up.length; i += 20)
+      await rest("/api/account/games", {
+        method: "POST",
+        body: JSON.stringify({ games: up.slice(i, i + 20) }),
+      });
+  })().finally(() => {
+    archiveRun = null;
+    if (archiveAgain) {
+      archiveAgain = false;
+      void syncArchive().catch(() => {});
+    }
+  });
+  return archiveRun;
+};
+/** "Clear archive" also clears it on the profile (else other devices would bring it back). */
+export const clearRemoteArchive = () => rest("/api/account/games", { method: "DELETE" });
 export const setFriendsCanWatch = (friendsCanWatch: boolean) =>
   rest<AccountResponse>("/api/account/settings", {
     method: "POST",

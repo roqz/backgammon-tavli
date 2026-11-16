@@ -8,6 +8,8 @@ import {
   AdminCodesSchema,
   AdminGrantSchema,
   AdminRevokeSchema,
+  ArchiveSyncSchema,
+  ArchiveUploadSchema,
   BanSchema,
   ClaimSchema,
   ClientMessageSchema,
@@ -41,9 +43,9 @@ import {
   ResolveSchema,
   type ServerMessage,
   ShowcaseSchema,
-  TitleSchema,
   SupporterCodeSchema,
   SupporterPublicSchema,
+  TitleSchema,
   TwoFactorOffSchema,
 } from "@tavli/protocol";
 import { WebSocket, WebSocketServer } from "ws";
@@ -278,6 +280,8 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
   /** Looking up invitation codes (per network): enough for people, too slow for guessing. */
   const allowInviteLookup = rateLimiter(30, 60 * 60_000);
   const allowProgress = rateLimiter(60, 60 * 60_000);
+  // a sync after every finished game, plus uploads in batches of 20
+  const allowArchive = rateLimiter(300, 60 * 60_000);
   /** Failed logins per username: after 10 in 15 minutes the account waits (against password guessing). */
   const failedLogins = rateLimiter(10, 15 * 60_000);
   const cors = opts.corsOrigin ?? "*";
@@ -413,6 +417,23 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         const body = ProgressSchema.safeParse(await readJson(req, 64 * 1024));
         if (!body.success) throw new HttpError(400, "invalid progress");
         return store.mergeProgress(player.id, body.data);
+      }
+      if (path === "/api/account/games/sync" && req.method === "POST") {
+        if (!allowArchive(player.id)) throw new HttpError(429, "too many requests");
+        const body = ArchiveSyncSchema.safeParse(await readJson(req, 32 * 1024));
+        if (!body.success) throw new HttpError(400, "invalid archive");
+        return store.syncArchive(player.id, body.data.have);
+      }
+      if (path === "/api/account/games" && req.method === "POST") {
+        if (!allowArchive(player.id)) throw new HttpError(429, "too many requests");
+        const body = ArchiveUploadSchema.safeParse(await readJson(req, 1024 * 1024));
+        if (!body.success) throw new HttpError(400, "invalid archive");
+        store.addArchive(player.id, body.data.games);
+        return { ok: true };
+      }
+      if (path === "/api/account/games" && req.method === "DELETE") {
+        store.clearArchive(player.id);
+        return { ok: true };
       }
       if (path === "/api/account/frame" && req.method === "POST") {
         const body = FrameSchema.safeParse(await readJson(req));

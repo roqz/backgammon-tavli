@@ -5,12 +5,12 @@ import { useShallow } from "zustand/react/shallow";
 import { describeUnlock, reached, useAchievements } from "../achievements";
 import { plaqueIds, seasonIds, taskProgress, tasksFor, useCareer, weekId, weekRange } from "../career";
 import { useT } from "../i18n";
-import { fetchAccount, fetchProfile, syncProgress } from "../online/client";
+import { fetchAccount, fetchProfile, syncArchive, syncProgress } from "../online/client";
 import { useOnline } from "../online/store";
 import { usePuzzles } from "../puzzle";
 import { LESSONS } from "../screens/TutorialScreen";
 import { useArchive } from "../store/archive";
-import { useSettings } from "../store/settings";
+import { looksOf, useSettings } from "../store/settings";
 import { AchievementBadge } from "./AchievementBadge";
 
 /**
@@ -80,8 +80,10 @@ export function AchievementLayer() {
     if (done.length) useCareer.getState().markTasks(week, done);
   }, [records, puzzles, lessons, profile, tournaments, profileId, career]);
 
-  // keep achievements, lessons and puzzle results with the profile (all devices)
+  // keep achievements, lessons, puzzle results and the chosen looks with the profile (all devices)
   const unlocked = useAchievements((s) => s.unlocked);
+  const looksAt = useSettings((s) => s.looksAt);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: looksAt sends a new choice of looks up too
   useEffect(() => {
     if (!profileId || status !== "ready") return;
     const id = setTimeout(() => {
@@ -91,16 +93,28 @@ export function AchievementLayer() {
           { solved: r.solved, loss: Number.isFinite(r.loss) ? r.loss : null },
         ]),
       );
-      syncProgress({ unlocked, lessons, puzzles: puzzleResults, career })
+      const looks = looksOf(useSettings.getState());
+      syncProgress({ unlocked, lessons, puzzles: puzzleResults, career, ...(looks ? { looks } : {}) })
         .then((merged) => {
           useAchievements.getState().absorb(merged.unlocked, merged.lessons);
           usePuzzles.getState().absorb(merged.puzzles);
           if (merged.career) useCareer.getState().absorb(merged.career);
+          if (merged.looks) useSettings.getState().absorbLooks(merged.looks);
         })
         .catch(() => {});
     }, 1500);
     return () => clearTimeout(id);
-  }, [profileId, status, unlocked, lessons, puzzles, career]);
+  }, [profileId, status, unlocked, lessons, puzzles, career, looksAt]);
+
+  // the game archive with its replays on every device: after connecting and after each game
+  const newest = records[0]?.id ?? "";
+  const count = records.length;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: newest and count mark a changed archive
+  useEffect(() => {
+    if (!profileId || status !== "ready") return;
+    const id = setTimeout(() => void syncArchive().catch(() => {}), 2500);
+    return () => clearTimeout(id);
+  }, [profileId, status, newest, count]);
 
   return <AchievementToast />;
 }

@@ -359,8 +359,61 @@ export const ProgressSchema = z.object({
     )
     .refine((r) => Object.keys(r).length <= 800),
   career: CareerSchema.optional(),
+  looks: z.lazy(() => LooksSchema).optional(),
 });
 export type Progress = z.infer<typeof ProgressSchema>;
+
+const lookId = z.string().regex(/^[a-z-]{1,24}$/);
+/**
+ * The looks chosen in the settings (board, dice, checkers, sounds, language), kept with the
+ * profile so every device shows the same; the newest choice of any device wins. Settings that
+ * belong to a device (3D dice, orientation, sound on/off, countdowns) stay on it.
+ */
+export const LooksSchema = z.object({
+  /** When they were last chosen (ISO). */
+  at: z.string().max(40),
+  style: lookId,
+  diceSkin: lookId,
+  checkerSet: lookId,
+  soundSet: lookId,
+  diceSurface: lookId,
+  lang: z.enum(["de", "en"]),
+});
+export type Looks = z.infer<typeof LooksSchema>;
+
+// ---- game archive (local games with their replays, on every device) ---------------------------
+
+/** Games kept per player, like on the device: the newest ones. */
+export const ARCHIVE_MAX = 200;
+const archiveId = z.string().regex(/^[a-z0-9-]{4,60}$/);
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
+
+/**
+ * A finished game of the device archive (offline and online games, with the moves for the
+ * replay). Only its owner ever gets it back, so beyond the outline the record is kept as sent.
+ */
+export const ArchivedGameSchema = z.looseObject({
+  id: archiveId,
+  date: isoDate,
+  variant: z.string().regex(/^[a-z]{1,20}$/),
+  players: z.array(z.looseObject({ name: z.string().max(60), kind: z.string().max(20) })).length(2),
+  matchLength: z.number().int().min(0).max(99),
+  result: z.looseObject({}),
+  history: z.array(z.unknown()).max(2000),
+});
+export type ArchivedGame = z.infer<typeof ArchivedGameSchema>;
+
+/** What a device has (id and date of each game): the server answers with what each side lacks. */
+export const ArchiveSyncSchema = z.object({
+  have: z.array(z.object({ id: archiveId, date: isoDate })).max(ARCHIVE_MAX),
+});
+export interface ArchiveSyncResponse {
+  /** Games the server lacks: the device uploads them. */
+  readonly missing: readonly string[];
+  /** Games the device lacks (from other devices). */
+  readonly games: readonly ArchivedGame[];
+}
+export const ArchiveUploadSchema = z.object({ games: z.array(ArchivedGameSchema).max(20) });
 
 export const FrameSchema = z.object({ frame: z.enum(FRAME_IDS as [Frame, ...Frame[]]).nullable() });
 

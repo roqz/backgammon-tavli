@@ -92,7 +92,9 @@ function PrivacyDe() {
       <h2>Kurz gesagt</h2>
       <p>
         Keine Werbung, kein Tracking, keine Analyse-Dienste, keine Cookies. Spiele gegen den Computer und am
-        selben Gerät laufen komplett in deinem Browser – dabei wird nichts an einen Server geschickt.
+        selben Gerät laufen komplett in deinem Browser. Ohne Online-Profil wird dabei nichts an einen Server
+        geschickt; mit Profil werden die beendeten Partien mit ihm abgeglichen, damit du sie auf allen Geräten
+        hast (siehe unten).
       </p>
       <h2>Daten im Browser</h2>
       <p>
@@ -130,6 +132,15 @@ function PrivacyDe() {
           deinen Spielfortschritt: Erfolge, Tutorial, Tagesrätsel, Zähler (Spiele, Siege je Variante, beendete
           Fernpartien), erledigte Wochenaufgaben, eingetauschte Looks und die IDs der Freunde, die du
           herausgefordert hast – damit er auf allen Geräten gleich ist. Dein Clubrang ist für andere sichtbar;
+        </li>
+        <li>
+          dein Partien-Archiv: die letzten 200 beendeten Partien deiner Geräte, auch gegen den Computer und zu
+          zweit, mit Namen, Ergebnis und allen Zügen für Statistik und Wiederholungen – nur für dich sichtbar.
+          „Archiv löschen“ in der Statistik löscht es auch auf dem Server;
+        </li>
+        <li>
+          die gewählten Looks (Brett, Würfel, Steine, Klänge) und die Sprache, damit sie auf allen Geräten
+          gleich sind;
         </li>
         <li>Meldungen, die du abgibst oder die über dich abgegeben werden, und Moderationsentscheidungen.</li>
       </ul>
@@ -197,7 +208,8 @@ function PrivacyEn() {
       <h2>In short</h2>
       <p>
         No ads, no tracking, no analytics, no cookies. Games against the computer and on one device run
-        entirely in your browser – nothing is sent to a server.
+        entirely in your browser. Without an online profile nothing is sent to a server; with one, finished
+        games are kept with it so you have them on all devices (see below).
       </p>
       <h2>Data in your browser</h2>
       <p>
@@ -231,6 +243,14 @@ function PrivacyEn() {
           your progress: achievements, tutorial, daily puzzles, counters (games, wins per variant, finished
           correspondence games), weekly tasks done, looks taken for tokens and the ids of friends you
           challenged – so it is the same on all devices. Your club rank is visible to others;
+        </li>
+        <li>
+          your game archive: the last 200 finished games of your devices, also against the computer and on one
+          device, with names, result and all moves for statistics and replays – visible only to you. "Clear
+          archive" in the statistics deletes it on the server too;
+        </li>
+        <li>
+          the chosen looks (board, dice, checkers, sounds) and the language, so they match on all devices;
         </li>
         <li>reports you file or that are filed about you, and moderation decisions.</li>
       </ul>

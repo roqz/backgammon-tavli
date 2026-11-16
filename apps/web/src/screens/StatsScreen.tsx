@@ -4,6 +4,8 @@ import { humanSeat } from "../bot/useBotDriver";
 import { Icon, type IconName } from "../components/Icon";
 import { Button, Card, Modal } from "../components/ui";
 import { useT } from "../i18n";
+import { clearRemoteArchive } from "../online/client";
+import { useOnline } from "../online/store";
 import { type GameRecord, useArchive } from "../store/archive";
 import { Page, ScreenTitle } from "./AppShell";
 import { OnlineMatches } from "./OnlineProfile";
@@ -234,6 +236,8 @@ export function StatsScreen({
               className="flex-1"
               onClick={() => {
                 clear();
+                // with a profile the archive lives there too: else other devices bring it back
+                if (useOnline.getState().profile) void clearRemoteArchive().catch(() => {});
                 setConfirmClear(false);
               }}
             >
