@@ -90,40 +90,7 @@ export function AppShell({
   const badge = (id: NavTarget) => (id === "online" ? onlineBadge : 0);
   return (
     <div className="min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] short:pr-[env(safe-area-inset-right)] short:pb-0 short:pl-[calc(5.5rem+env(safe-area-inset-left))] wide:pb-0">
-      <header className="sticky top-0 z-20 hidden border-b border-stone-800/80 bg-stone-950/95 backdrop-blur wide:block">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-8">
-          <button
-            type="button"
-            onClick={() => onNav("menu")}
-            className="flex items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-amber-400"
-          >
-            <Logo className="h-9 w-9" />
-            <span className="font-display text-xl font-semibold text-amber-100">{t.appTitle}</span>
-          </button>
-          <nav aria-label={t.mainNav} className="ml-auto flex items-center gap-1">
-            {items.map(([id, label]) => {
-              const current = active === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-current={current ? "page" : undefined}
-                  onClick={() => onNav(id)}
-                  className={`relative flex h-10 items-center gap-2 rounded-xl px-4 text-sm focus-visible:outline-2 focus-visible:outline-amber-400 ${
-                    current
-                      ? "bg-amber-400/15 font-semibold text-amber-200"
-                      : "text-stone-300 hover:bg-stone-800/70 hover:text-stone-100"
-                  }`}
-                >
-                  <NavIcon target={id} className="h-5 w-5" />
-                  {label}
-                  <CountBadge n={badge(id)} />
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </header>
+      <AppHeader active={active} onNav={onNav} onlineBadge={onlineBadge} />
       {children}
       <nav
         aria-label={t.mainNav}
@@ -152,6 +119,65 @@ export function AppShell({
         })}
       </nav>
     </div>
+  );
+}
+
+/**
+ * The bar at the top on tablets and desktops (hidden on phones): logo and main navigation. Also
+ * above the board during a game, so the app keeps its frame on a big screen.
+ */
+export function AppHeader({
+  active,
+  onNav,
+  onlineBadge = 0,
+}: {
+  active: NavTarget | null;
+  onNav: (target: NavTarget) => void;
+  onlineBadge?: number;
+}) {
+  const t = useT();
+  const items: [NavTarget, string][] = [
+    ["menu", t.navHome],
+    ["play", t.navPlay],
+    ["online", t.navOnline],
+    ["profile", t.navProfile],
+  ];
+  const badge = (id: NavTarget) => (id === "online" ? onlineBadge : 0);
+  return (
+    <header className="sticky top-0 z-20 hidden border-b border-stone-800/80 bg-stone-950/95 backdrop-blur wide:block">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-8">
+        <button
+          type="button"
+          onClick={() => onNav("menu")}
+          className="flex items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-amber-400"
+        >
+          <Logo className="h-9 w-9" />
+          <span className="font-display text-xl font-semibold text-amber-100">{t.appTitle}</span>
+        </button>
+        <nav aria-label={t.mainNav} className="ml-auto flex items-center gap-1">
+          {items.map(([id, label]) => {
+            const current = active === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-current={current ? "page" : undefined}
+                onClick={() => onNav(id)}
+                className={`relative flex h-10 items-center gap-2 rounded-xl px-4 text-sm focus-visible:outline-2 focus-visible:outline-amber-400 ${
+                  current
+                    ? "bg-amber-400/15 font-semibold text-amber-200"
+                    : "text-stone-300 hover:bg-stone-800/70 hover:text-stone-100"
+                }`}
+              >
+                <NavIcon target={id} className="h-5 w-5" />
+                {label}
+                <CountBadge n={badge(id)} />
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    </header>
   );
 }
 

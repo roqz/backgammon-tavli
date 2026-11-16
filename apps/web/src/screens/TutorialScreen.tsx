@@ -313,7 +313,7 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-2 sm:p-4">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-2 sm:p-4 wide:max-w-[min(56rem,max(30rem,calc((100dvh-19rem)*1.45)))]">
       <div className="flex items-center gap-2 px-1">
         <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
           <Icon name="back" />

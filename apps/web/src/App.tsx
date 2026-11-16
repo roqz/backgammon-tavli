@@ -9,7 +9,7 @@ import { connect, fetchSupportInfo, joinInvite, watchMatch } from "./online/clie
 import { useOnline } from "./online/store";
 import { todoCount, useTodo } from "./online/todo";
 import { AdminScreen } from "./screens/AdminScreen";
-import { AppShell, type NavTarget, Page } from "./screens/AppShell";
+import { AppHeader, AppShell, type NavTarget, Page } from "./screens/AppShell";
 import { CorrGameScreen } from "./screens/CorrScreens";
 import { ChallengePrompt, FriendLinkPrompt } from "./screens/FriendsPanel";
 import { GameScreen } from "./screens/GameScreen";
@@ -48,6 +48,8 @@ type Screen =
   | "corr";
 
 const NAV_SCREENS: readonly NavTarget[] = ["menu", "play", "online", "profile"];
+/** Screens around a board: full screen on phones, below the top bar on bigger screens. */
+const BOARD_SCREENS: readonly Screen[] = ["game", "replay", "watch", "tutorial", "puzzle", "corr"];
 /** Screens shown inside the navigation shell, with the destination they belong to. */
 const SUB_SCREENS: Partial<Record<Screen, NavTarget>> = {
   settings: "profile",
@@ -276,6 +278,7 @@ export function App() {
       ? setupHome
       : (SUB_SCREENS[screen] ?? null);
   const inShell = navActive !== null;
+  const onlineBadge = todoCount(todo) + (challengeWaiting ? 1 : 0);
 
   const content = (
     <>
@@ -377,11 +380,17 @@ export function App() {
     <MotionConfig reducedMotion="user">
       <main className="min-h-dvh bg-stone-950 text-stone-100">
         {inShell ? (
-          <AppShell active={navActive} onNav={nav} onlineBadge={todoCount(todo) + (challengeWaiting ? 1 : 0)}>
+          <AppShell active={navActive} onNav={nav} onlineBadge={onlineBadge}>
             {content}
           </AppShell>
         ) : (
-          content
+          <>
+            {/* tablets and desktops keep the top bar above the board (phones use the whole screen) */}
+            {BOARD_SCREENS.includes(screen) && (
+              <AppHeader active={lastNav.current} onNav={nav} onlineBadge={onlineBadge} />
+            )}
+            {content}
+          </>
         )}
         {screen === "game" && (
           <GameScreen

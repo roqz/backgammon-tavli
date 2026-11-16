@@ -46,7 +46,7 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
   const rules = getVariant(g.variant);
   const name = (p: Player) => watch.players[p].name;
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 p-2 sm:p-4">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 p-2 sm:p-4 wide:max-w-[min(64rem,max(30rem,calc((100dvh-14rem)*1.45)))]">
       <div className="flex items-center justify-between gap-2 px-1">
         <Button variant="ghost" onClick={leave} className="px-3 py-1.5 text-sm" aria-label={t.back}>
           <Icon name="back" /> <span className="hidden sm:inline">{t.back}</span>

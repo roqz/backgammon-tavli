@@ -87,7 +87,7 @@ test("imports an XGID position; the computer rejects a single but accepts a gamm
   // No backgammon is possible any more (race, nothing in the computer's home board):
   // resigning without consent concedes a gammon.
   await page.getByRole("button", { name: /Aufgeben/ }).click();
-  await expect(page.getByRole("button", { name: /Backgammon/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /(aufgeben|anbieten): Backgammon/ })).toHaveCount(0);
   await page.getByRole("button", { name: /Sofort aufgeben: Gammon/ }).click();
   await expect(page.getByText(/Gammon · \+2 Punkte/)).toBeVisible();
 });

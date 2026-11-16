@@ -69,7 +69,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-4xl flex-col p-2 sm:p-4 ${portrait ? "h-dvh gap-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "gap-3"}`}
+      className={`mx-auto flex w-full max-w-4xl flex-col p-2 sm:p-4 wide:max-w-[min(56rem,max(30rem,calc((100dvh-19rem)*1.45)))] ${portrait ? "h-dvh gap-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "gap-3"}`}
       data-testid="puzzle-screen"
     >
       <div className="flex items-center gap-2 px-1">

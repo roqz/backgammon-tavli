@@ -1179,8 +1179,9 @@ export function GameScreen({
   if (phone) return renderPhone();
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-2 sm:p-4 lg:flex-row lg:items-start">
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-2 sm:p-4 lg:flex-row lg:items-start lg:justify-center">
+      {/* on big screens the board keeps to the window height (below the top bar), never taller */}
+      <div className="mx-auto flex w-full min-w-0 flex-1 flex-col gap-3 wide:max-w-[max(30rem,calc((100dvh-14rem)*1.45))] lg:mx-0">
         {/* header */}
         <div className="flex items-center justify-between gap-2 px-1">
           <Button
