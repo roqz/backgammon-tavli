@@ -33,7 +33,9 @@ test("daily puzzle: a move is checked and the result recorded", async ({ page })
     .getByRole("dialog")
     .getByRole("button", { name: /Schließen/ })
     .click();
-  for (let i = 0; i < 4 && (await page.getByRole("button", { name: /Prüfen/ }).isDisabled()); i++)
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // a double needs four moves; a tap can miss while the board settles, so allow a few more tries
+  for (let i = 0; i < 8 && (await page.getByRole("button", { name: /Prüfen/ }).isDisabled()); i++)
     await tapMove(page);
   await page.getByRole("button", { name: /Prüfen/ }).click();
   await expect(page.getByText(/Richtig|Nicht der beste Zug/)).toBeVisible();
