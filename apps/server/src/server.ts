@@ -40,6 +40,7 @@ import {
   ReportSchema,
   ResolveSchema,
   type ServerMessage,
+  ShowcaseSchema,
   SupporterCodeSchema,
   SupporterPublicSchema,
   TwoFactorOffSchema,
@@ -114,6 +115,8 @@ export const DEFAULT_TIMINGS: RoomTimings = {
 };
 
 const MAX_BODY = 4_096;
+/** Daily backup files (`tavli-YYYY-MM-DD.db`); older ones beyond `backupKeep` are removed. */
+export const BACKUP_FILE = /^tavli-\d{4}-\d{2}-\d{2}\.db$/;
 const HEARTBEAT_MS = 30_000;
 const MSG_PER_SECOND = 10;
 const MSG_BURST = 40;
@@ -419,7 +422,16 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       if (req.method === "POST" && path === "/api/account/settings") {
         const body = AccountSettingsSchema.safeParse(await readJson(req));
         if (!body.success) throw new HttpError(400, "invalid request");
-        store.setFriendsCanWatch(player.id, body.data.friendsCanWatch);
+        if (body.data.friendsCanWatch !== undefined)
+          store.setFriendsCanWatch(player.id, body.data.friendsCanWatch);
+        if (body.data.listed !== undefined) store.setListed(player.id, body.data.listed);
+        return store.account(player.id);
+      }
+      if (req.method === "POST" && path === "/api/account/showcase") {
+        const body = ShowcaseSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        if (!store.setShowcase(player.id, body.data.ids))
+          throw new HttpError(403, "achievement not unlocked");
         return store.account(player.id);
       }
       if (req.method === "POST" && path === "/api/account/logout-all") {
@@ -573,6 +585,9 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
       if (!(MATCH_VARIANTS as readonly string[]).includes(variant))
         throw new HttpError(400, "unknown variant");
       const pool = url.searchParams.get("pool") === "blitz" ? "blitz" : "normal";
+      const board = url.searchParams.get("board");
+      if (board === "month") return store.monthBoard(variant as MatchVariantId, pool);
+      if (board === "active") return store.activeBoard();
       return store.leaderboard(variant as MatchVariantId, 50, pool);
     }
     if (req.method === "GET" && path === "/api/tournaments") {
@@ -924,6 +939,8 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
   /** Retention periods and backups, once a day (first run one minute after the start). */
   const maintain = () => {
     try {
+      const archived = store.archiveMonths();
+      if (archived.length) log(`monthly rankings archived: ${archived.join(", ")}`);
       const pruned = store.prune();
       if (pruned.guests + pruned.fairPlay + pruned.reports > 0)
         log(
@@ -936,7 +953,7 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         store.backup(file);
         const keep = opts.backupKeep ?? 14;
         const old = readdirSync(opts.backupDir)
-          .filter((f) => /^tavli-d{4}-d{2}-d{2}.db$/.test(f))
+          .filter((f) => BACKUP_FILE.test(f))
           .sort()
           .reverse()
           .slice(keep);

@@ -11,11 +11,14 @@ import {
   PASSWORD_MIN,
   type ProfileResponse,
   ratingKey,
+  SHOWCASE_MAX,
+  type Trophy,
   USERNAME_PATTERN,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
 import { ACHIEVEMENTS } from "../achievements";
 import { AccuracyCard, percent } from "../components/Accuracy";
+import { FrameMedallion, PlayerName } from "../components/PlayerName";
 import { OtpInput, RecoveryCodesModal, SecurityCard } from "../components/Security";
 import { Sparkline } from "../components/Sparkline";
 import { Button, Card, Modal, Toggle } from "../components/ui";
@@ -38,6 +41,8 @@ import {
   register,
   setFrame as setFrameRemote,
   setFriendsCanWatch,
+  setListed,
+  setShowcase,
 } from "../online/client";
 import { useOnline } from "../online/store";
 import { FRAME_LOOK, useOfferedFrames, useUnlocked } from "../rewards";
@@ -319,6 +324,77 @@ function FramePicker() {
   );
 }
 
+/** Up to three unlocked achievements on the public profile. */
+function ShowcasePicker() {
+  const t = useT();
+  const unlocked = useUnlocked();
+  const lang = t.locale.startsWith("de") ? "de" : "en";
+  const [ids, setIds] = useState<readonly string[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    fetchAccount()
+      .then((a) => setIds(a.showcase))
+      .catch(() => {});
+  }, []);
+  const open = ACHIEVEMENTS.filter((a) => unlocked[a.id]);
+  if (ids === null || open.length === 0) return null;
+  const toggle = (id: string) => {
+    setError(null);
+    if (!ids.includes(id) && ids.length >= SHOWCASE_MAX) return setError(t.showcaseFull);
+    const next = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+    setIds(next);
+    setShowcase(next)
+      .then((a) => setIds(a.showcase))
+      .catch((e: unknown) => {
+        setIds(ids);
+        setError(errorOf(t, e));
+      });
+  };
+  return (
+    <fieldset className="flex flex-col gap-2" data-testid="showcase-picker">
+      <legend className="mb-1 text-stone-100">{t.showcaseTitle}</legend>
+      <p className="text-xs text-stone-500">{t.showcaseHint}</p>
+      <div className="flex flex-wrap gap-2">
+        {open.map((a) => (
+          <Button
+            key={a.id}
+            variant={ids.includes(a.id) ? "primary" : "ghost"}
+            className="px-3 py-1.5 text-sm"
+            aria-pressed={ids.includes(a.id)}
+            onClick={() => toggle(a.id)}
+          >
+            {a.icon} {a.title[lang]}
+          </Button>
+        ))}
+      </div>
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </fieldset>
+  );
+}
+
+/** Whether one appears in the monthly and activity rankings. */
+function ListedToggle() {
+  const t = useT();
+  const [value, setValue] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetchAccount()
+      .then((a) => setValue(a.listed))
+      .catch(() => {});
+  }, []);
+  if (value === null) return null;
+  return (
+    <Toggle
+      checked={value}
+      label={t.listedLabel}
+      description={t.listedHint}
+      onChange={(v) => {
+        setValue(v);
+        setListed(v).catch(() => setValue(!v));
+      }}
+    />
+  );
+}
+
 /** Whether friends may watch one's private matches (invites, challenges). */
 function FriendsCanWatchToggle() {
   const t = useT();
@@ -368,7 +444,9 @@ function PrivacyCard() {
       <summary className="cursor-pointer text-stone-300">🛡 {t.privacyTitle}</summary>
       <div className="mt-3 flex flex-col gap-3">
         <FramePicker />
+        <ShowcasePicker />
         <FriendsCanWatchToggle />
+        <ListedToggle />
         <div>
           <Button disabled={busy} onClick={() => void run(exportData)}>
             ⬇ {t.exportData}
@@ -754,18 +832,107 @@ export function PlayerSheet({
   onReplay: (records: GameRecord[]) => void;
 }) {
   const t = useT();
+  const lang = t.locale.startsWith("de") ? "de" : "en";
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  useEffect(() => {
+    fetchProfile(playerId)
+      .then(setProfile)
+      .catch(() => {});
+  }, [playerId]);
+  const month = (m: string) =>
+    new Date(`${m}-15T12:00:00Z`).toLocaleDateString(t.locale, { month: "short", year: "numeric" });
+  const shown = (profile?.showcase ?? [])
+    .map((id) => ACHIEVEMENTS.find((a) => a.id === id))
+    .filter((a) => a !== undefined);
+  const ratings = (profile?.ratings ?? []).filter((r) => r.matches > 0);
   return (
     <Modal onClose={onClose}>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-stone-100">👤 {name}</h2>
-        <button type="button" className="text-stone-400" onClick={onClose} aria-label={t.close}>
-          ✕
-        </button>
-      </div>
-      <AddFriendButton playerId={playerId} className="mb-2" />
-      <div className="max-h-[70vh] overflow-y-auto">
+      <div className="max-h-[80vh] overflow-y-auto" data-testid="player-profile">
+        <div className="mb-3 flex items-start gap-3">
+          <FrameMedallion frame={profile?.frame ?? null} />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-semibold text-stone-100">
+              <PlayerName name={profile?.name ?? name} rank={profile?.rank} supporter={profile?.supporter} />
+            </h2>
+            {profile?.frame && <p className="text-xs text-brass">{t.frameNames[profile.frame]}</p>}
+            {profile?.since && (
+              <p className="text-xs text-stone-500">
+                {t.profileSince.replace("{month}", month(profile.since))}
+              </p>
+            )}
+          </div>
+          <button type="button" className="text-stone-400" onClick={onClose} aria-label={t.close}>
+            ✕
+          </button>
+        </div>
+        <AddFriendButton playerId={playerId} className="mb-3" />
+        {profile?.trophies && profile.trophies.length > 0 && (
+          <section className="mb-3" aria-label={t.profileTrophies}>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-400">
+              {t.profileTrophies}
+            </h3>
+            <ul className="flex flex-wrap gap-1.5" data-testid="trophies">
+              {profile.trophies.map((x) => (
+                <li
+                  key={`${x.month}${x.variant}${x.pool ?? ""}`}
+                  className="rounded-full border border-brass/40 bg-stone-900 px-2.5 py-0.5 text-xs text-stone-200"
+                >
+                  {TROPHY_MARK[x.place]} {trophyText(t, x)} · {month(x.month)}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {shown.length > 0 && (
+          <section className="mb-3" aria-label={t.profileShowcase}>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-400">
+              {t.profileShowcase}
+            </h3>
+            <ul className="grid gap-1.5 sm:grid-cols-3" data-testid="profile-showcase">
+              {shown.map((a) => (
+                <li
+                  key={a.id}
+                  className="rounded-lg border border-stone-800 bg-stone-900/70 px-3 py-2 text-sm"
+                >
+                  <span aria-hidden className="mr-1">
+                    {a.icon}
+                  </span>
+                  <span className="text-stone-100">{a.title[lang]}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {ratings.length > 0 && (
+          <section className="mb-3" aria-label={t.profileRatings}>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-400">
+              {t.profileRatings}
+            </h3>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {ratings.map((r) => (
+                <div
+                  key={`${r.variant}${r.pool ?? ""}`}
+                  className="rounded-lg border border-stone-800 bg-stone-900/70 px-3 py-2 text-center"
+                >
+                  <div className="text-xl font-bold text-amber-100 tabular-nums">{r.rating}</div>
+                  <div className="text-xs text-stone-400">
+                    {variantName(r.variant, t.tavliMatch)}
+                    {r.pool === "blitz" && " · ⚡"} · {r.wins}/{r.matches}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-400">
+          {t.profileMatches}
+        </h3>
         <MatchList playerId={playerId} onReplay={onReplay} />
       </div>
     </Modal>
   );
 }
+
+const TROPHY_MARK = { 1: "🥇", 2: "🥈", 3: "🥉" } as const;
+const trophyText = (t: ReturnType<typeof useT>, x: Trophy) =>
+  `${t.trophyPlace.replace("{place}", String(x.place))} ${variantName(x.variant, t.tavliMatch)}${x.pool === "blitz" ? " ⚡" : ""}`;

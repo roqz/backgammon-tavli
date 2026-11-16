@@ -3,6 +3,8 @@ import { DatabaseSync } from "node:sqlite";
 import type { GameResult, TurnRecord } from "@tavli/engine";
 import type {
   AccuracyReport,
+  ActiveBoard,
+  ActiveEntry,
   AdminReport,
   AnalysisSummary,
   FairnessReveal,
@@ -12,6 +14,8 @@ import type {
   MatchVariantId,
   ModerationInfo,
   ModerationSignals,
+  MonthBoard,
+  MonthEntry,
   PeriodCounts,
   PlayerStats,
   ProfileResponse,
@@ -20,6 +24,7 @@ import type {
   RatingEntry,
   RatingPoint,
   TimingSummary,
+  Trophy,
 } from "@tavli/protocol";
 import {
   CAREER_VARIANTS,
@@ -37,6 +42,7 @@ import {
   type Progress,
   type RatingPool,
   ratingKey,
+  SHOWCASE_MAX,
   type SupporterStatus,
 } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
@@ -144,6 +150,20 @@ CREATE TABLE IF NOT EXISTS friend_invites (
   player_id TEXT NOT NULL UNIQUE REFERENCES players(id),
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS month_winners (
+  month TEXT NOT NULL,
+  variant TEXT NOT NULL,
+  place INTEGER NOT NULL,
+  player_id TEXT NOT NULL REFERENCES players(id),
+  gain REAL NOT NULL,
+  matches INTEGER NOT NULL,
+  PRIMARY KEY (month, variant, place)
+);
+CREATE INDEX IF NOT EXISTS month_winners_player ON month_winners(player_id);
+CREATE TABLE IF NOT EXISTS month_archive (
+  month TEXT PRIMARY KEY,
+  archived_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS recovery_codes (
   player_id TEXT NOT NULL REFERENCES players(id),
   code_hash TEXT NOT NULL,
@@ -175,12 +195,32 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["players", "totp_on", "ALTER TABLE players ADD COLUMN totp_on INTEGER NOT NULL DEFAULT 0"],
   ["players", "totp_step", "ALTER TABLE players ADD COLUMN totp_step INTEGER NOT NULL DEFAULT -1"],
   ["matches", "pool", "ALTER TABLE matches ADD COLUMN pool TEXT NOT NULL DEFAULT 'normal'"],
+  ["players", "listed", "ALTER TABLE players ADD COLUMN listed INTEGER NOT NULL DEFAULT 1"],
+  ["players", "showcase", "ALTER TABLE players ADD COLUMN showcase TEXT"],
   [
     "players",
     "friends_can_watch",
     "ALTER TABLE players ADD COLUMN friends_can_watch INTEGER NOT NULL DEFAULT 1",
   ],
 ];
+
+/**
+ * Monthly and activity rankings: rated matches needed in a month; the activity window and how
+ * many matches against the same opponent on one day count (no farming with a friend).
+ */
+export const BOARDS = { monthMinMatches: 10, activeDays: 30, perOpponentDay: 3, activeMin: 3 } as const;
+
+/** YYYY-MM of a time (UTC). */
+export const monthOf = (t: number | Date = Date.now()): string => new Date(t).toISOString().slice(0, 7);
+/** Start of a month and of the next one, as ISO strings. */
+const monthRange = (month: string): [string, string] => {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return [new Date(Date.UTC(y, m - 1, 1)).toISOString(), new Date(Date.UTC(y, m, 1)).toISOString()];
+};
+const previousMonth = (month: string): string => {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
+};
 
 /** How many reports one player may file per day. */
 export const REPORTS_PER_DAY = 10;
@@ -320,6 +360,8 @@ export interface AccountRow {
   readonly email: string | null;
   readonly friendsCanWatch: boolean;
   readonly frame: Frame | null;
+  readonly listed: boolean;
+  readonly showcase: readonly string[];
   readonly twoFactor: boolean;
   readonly recoveryCodesLeft: number;
   readonly supporter: SupporterStatus | null;
@@ -333,6 +375,7 @@ export const SERVER_ACHIEVEMENTS: readonly string[] = [
   "league-win",
   "corr-ten",
   "league-player",
+  "month-winner",
 ];
 
 /** SQL: whether the player row `p` supports the project right now (dates are ISO strings). */
@@ -467,11 +510,13 @@ export class Store {
   account(id: string): AccountRow | null {
     const row = this.db
       .prepare(
-        "SELECT id, name, username, email, friends_can_watch, frame, totp_on, supporter_since, supporter_until, supporter_public FROM players WHERE id = ?",
+        `SELECT id, name, username, email, friends_can_watch, listed, showcase, ${this.frameSql} AS frame, totp_on, supporter_since, supporter_until, supporter_public FROM players p WHERE id = ?`,
       )
       .get(id) as
       | (Pick<AccountRow, "id" | "name" | "username" | "email"> & {
           friends_can_watch: number;
+          listed: number;
+          showcase: string | null;
           frame: string | null;
           totp_on: number;
           supporter_since: string | null;
@@ -480,11 +525,22 @@ export class Store {
         })
       | undefined;
     if (!row) return null;
-    const { friends_can_watch, frame, totp_on, supporter_since, supporter_until, supporter_public, ...rest } =
-      row;
+    const {
+      friends_can_watch,
+      listed,
+      showcase,
+      frame,
+      totp_on,
+      supporter_since,
+      supporter_until,
+      supporter_public,
+      ...rest
+    } = row;
     return {
       ...rest,
       friendsCanWatch: friends_can_watch !== 0,
+      listed: listed !== 0,
+      showcase: this.parseShowcase(showcase),
       frame: (frame as Frame | null) ?? null,
       twoFactor: totp_on === 1,
       recoveryCodesLeft: this.recoveryCodesLeft(id),
@@ -506,6 +562,32 @@ export class Store {
       | { friends_can_watch: number }
       | undefined;
     return row?.friends_can_watch !== 0;
+  }
+
+  /** Whether the player appears in the monthly and activity rankings. */
+  setListed(id: string, listed: boolean): void {
+    this.db.prepare("UPDATE players SET listed = ? WHERE id = ?").run(listed ? 1 : 0, id);
+  }
+
+  private parseShowcase(raw: string | null): string[] {
+    try {
+      const ids = raw ? (JSON.parse(raw) as unknown) : [];
+      return Array.isArray(ids)
+        ? ids.filter((x): x is string => typeof x === "string").slice(0, SHOWCASE_MAX)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** Pins up to SHOWCASE_MAX unlocked achievements to the public profile; false if one is locked. */
+  setShowcase(id: string, ids: readonly string[]): boolean {
+    const unique = [...new Set(ids)].slice(0, SHOWCASE_MAX);
+    const unlocked = this.progress(id).unlocked;
+    const verified = this.verifiedAchievements(id);
+    if (!unique.every((a) => unlocked[a] || verified.includes(a))) return false;
+    this.db.prepare("UPDATE players SET showcase = ? WHERE id = ?").run(JSON.stringify(unique), id);
+    return true;
   }
 
   setFriendsCanWatch(id: string, allowed: boolean): void {
@@ -792,6 +874,11 @@ export class Store {
         ? all("SELECT months, source, created_at FROM supporter_grants WHERE player_id = ?")
         : [],
       ratings: all("SELECT variant, rating, experience, matches, wins FROM ratings WHERE player_id = ?"),
+      rankings: {
+        listed: this.account(id)?.listed ?? true,
+        showcase: this.account(id)?.showcase ?? [],
+        trophies: all("SELECT month, variant, place, gain, matches FROM month_winners WHERE player_id = ?"),
+      },
       matches,
       reportsFiled: all(
         "SELECT reported, match_id, reason, note, created_at FROM reports WHERE reporter = ?",
@@ -846,7 +933,8 @@ export class Store {
       );
       if (this.tableExists("supporter_grants"))
         run("UPDATE supporter_grants SET note = '' WHERE player_id = ?");
-      run("UPDATE players SET frame = NULL, club_rank = 0 WHERE id = ?");
+      run("UPDATE players SET frame = NULL, club_rank = 0, showcase = NULL WHERE id = ?");
+      run("DELETE FROM month_winners WHERE player_id = ?");
       if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
       if (this.tableExists("push_prefs")) run("DELETE FROM push_prefs WHERE player_id = ?");
       this.db.exec("COMMIT");
@@ -1061,7 +1149,7 @@ export class Store {
   }[] {
     const rows = this.db
       .prepare(
-        `SELECT f.requester, f.addressee, f.status, p.id, p.name, p.frame, p.club_rank, ${this.supporterSql} AS supporter FROM friends f
+        `SELECT f.requester, f.addressee, f.status, p.id, p.name, ${this.frameSql} AS frame, p.club_rank, ${this.supporterSql} AS supporter FROM friends f
          JOIN players p ON p.id = CASE WHEN f.requester = ?1 THEN f.addressee ELSE f.requester END
          WHERE (f.requester = ?1 OR f.addressee = ?1) AND p.deleted_at IS NULL
          ORDER BY lower(p.name)`,
@@ -1149,6 +1237,11 @@ export class Store {
     return this.supportEnabled ? SUPPORTER_ACTIVE : "0";
   }
 
+  /** SQL: the frame of player row `p` as others see it (the patron frame only while supporting). */
+  get frameSql(): string {
+    return `CASE WHEN p.frame = 'patron' AND NOT ${this.supporterSql} THEN NULL ELSE p.frame END`;
+  }
+
   /** Whether a player supports the project right now. */
   isSupporter(playerId: string): boolean {
     return !!this.db.prepare(`SELECT 1 FROM players p WHERE p.id = ? AND ${this.supporterSql}`).get(playerId);
@@ -1162,9 +1255,9 @@ export class Store {
   }
 
   private frameOf(playerId: string): Frame | null {
-    const row = this.db.prepare("SELECT frame FROM players WHERE id = ?").get(playerId) as
-      | { frame: string | null }
-      | undefined;
+    const row = this.db
+      .prepare(`SELECT ${this.frameSql} AS frame FROM players p WHERE p.id = ?`)
+      .get(playerId) as { frame: string | null } | undefined;
     return (row?.frame as Frame | null) ?? null;
   }
 
@@ -1304,6 +1397,8 @@ export class Store {
     const c = this.verifiedCareer(playerId);
     if (c.corrFinished >= 10) out.push("corr-ten");
     if (c.leagueGames >= 1) out.push("league-player");
+    if (one("SELECT 1 FROM month_winners WHERE player_id = ? AND place = 1 LIMIT 1"))
+      out.push("month-winner");
     return out;
   }
 
@@ -1406,7 +1501,7 @@ export class Store {
   leaderboard(variant: MatchVariantId, limit = 50, pool: RatingPool = "normal"): LeaderboardEntry[] {
     const rows = this.db
       .prepare(
-        `SELECT r.player_id, p.name, p.frame, p.club_rank, ${this.supporterSql} AS supporter, r.rating, r.matches, r.wins FROM ratings r
+        `SELECT r.player_id, p.name, ${this.frameSql} AS frame, p.club_rank, ${this.supporterSql} AS supporter, r.rating, r.matches, r.wins FROM ratings r
          JOIN players p ON p.id = r.player_id
          WHERE r.variant = ? AND r.matches > 0 AND p.banned_at IS NULL ORDER BY r.rating DESC LIMIT ?`,
       )
@@ -1434,6 +1529,173 @@ export class Store {
     }));
   }
 
+  /** Name, frame, club rank and supporter badge of the players of a ranking. */
+  private boardPlayers(ids: readonly string[]): Map<string, Omit<MonthEntry, "gain" | "matches" | "rating">> {
+    const out = new Map<string, Omit<MonthEntry, "gain" | "matches" | "rating">>();
+    if (ids.length === 0) return out;
+    const rows = this.db
+      .prepare(
+        `SELECT p.id, p.name, ${this.frameSql} AS frame, p.club_rank, ${this.supporterSql} AS supporter FROM players p
+         WHERE p.id IN (${ids.map(() => "?").join(",")})`,
+      )
+      .all(...ids) as {
+      id: string;
+      name: string;
+      frame: Frame | null;
+      club_rank: number;
+      supporter: number;
+    }[];
+    for (const r of rows)
+      out.set(r.id, {
+        playerId: r.id,
+        name: r.name,
+        frame: r.frame,
+        rank: r.club_rank,
+        ...(r.supporter ? { supporter: true } : {}),
+      });
+    return out;
+  }
+
+  /**
+   * Rating gained in a month per player for one rating (rated matches only), best first. Banned,
+   * deleted and unlisted players are left out; so are those below the minimum of matches.
+   */
+  private monthGains(month: string, key: string, limit: number): { pid: string; gain: number; n: number }[] {
+    const [variant, pool = "normal"] = key.split("@");
+    const [from, to] = monthRange(month);
+    return this.db
+      .prepare(
+        `WITH m AS (
+           SELECT p0 AS pid, rating_delta0 AS d FROM matches
+             WHERE variant = ?1 AND pool = ?2 AND ended_at >= ?3 AND ended_at < ?4 AND (rating_delta0 != 0 OR rating_delta1 != 0)
+           UNION ALL
+           SELECT p1, rating_delta1 FROM matches
+             WHERE variant = ?1 AND pool = ?2 AND ended_at >= ?3 AND ended_at < ?4 AND (rating_delta0 != 0 OR rating_delta1 != 0)
+         )
+         SELECT m.pid, SUM(m.d) AS gain, COUNT(*) AS n FROM m JOIN players p ON p.id = m.pid
+         WHERE p.banned_at IS NULL AND p.deleted_at IS NULL AND p.listed = 1
+         GROUP BY m.pid HAVING n >= ?5 ORDER BY gain DESC LIMIT ?6`,
+      )
+      .all(variant, pool, from, to, BOARDS.monthMinMatches, limit) as {
+      pid: string;
+      gain: number;
+      n: number;
+    }[];
+  }
+
+  /** The monthly ranking of one rating, with the archived podium of the month before. */
+  monthBoard(variant: MatchVariantId, pool: RatingPool = "normal", now = Date.now(), limit = 50): MonthBoard {
+    const key = ratingKey(variant, pool);
+    const month = monthOf(now);
+    const rows = this.monthGains(month, key, limit);
+    const podium = this.db
+      .prepare(
+        "SELECT player_id AS pid, gain, matches AS n FROM month_winners WHERE month = ? AND variant = ? ORDER BY place",
+      )
+      .all(previousMonth(month), key) as { pid: string; gain: number; n: number }[];
+    const players = this.boardPlayers([...rows, ...podium].map((r) => r.pid));
+    const entry = (r: { pid: string; gain: number; n: number }): MonthEntry | null => {
+      const p = players.get(r.pid);
+      return p
+        ? {
+            ...p,
+            gain: Math.round(r.gain),
+            matches: r.n,
+            rating: Math.round(this.rating(r.pid, variant, pool).rating),
+          }
+        : null;
+    };
+    return {
+      month,
+      minMatches: BOARDS.monthMinMatches,
+      entries: rows.map(entry).filter((e): e is MonthEntry => e !== null),
+      previous: podium.map(entry).filter((e): e is MonthEntry => e !== null),
+    };
+  }
+
+  /**
+   * Activity: finished matches of every kind in the last days, at most a few against the same
+   * opponent per day; banned, deleted and unlisted players are left out.
+   */
+  activeBoard(now = Date.now(), limit = 50): ActiveBoard {
+    const since = new Date(now - BOARDS.activeDays * DAY).toISOString();
+    const rows = this.db
+      .prepare(
+        `WITH m AS (
+           SELECT p0 AS pid, p1 AS opp, substr(ended_at, 1, 10) AS day FROM matches WHERE ended_at >= ?1
+           UNION ALL
+           SELECT p1, p0, substr(ended_at, 1, 10) FROM matches WHERE ended_at >= ?1
+         ),
+         c AS (SELECT pid, MIN(COUNT(*), ?2) AS n FROM m GROUP BY pid, opp, day)
+         SELECT c.pid, SUM(c.n) AS n FROM c JOIN players p ON p.id = c.pid
+         WHERE p.banned_at IS NULL AND p.deleted_at IS NULL AND p.listed = 1
+         GROUP BY c.pid HAVING SUM(c.n) >= ?3 ORDER BY n DESC, c.pid LIMIT ?4`,
+      )
+      .all(since, BOARDS.perOpponentDay, BOARDS.activeMin, limit) as { pid: string; n: number }[];
+    const players = this.boardPlayers(rows.map((r) => r.pid));
+    const entries: ActiveEntry[] = [];
+    for (const r of rows) {
+      const p = players.get(r.pid);
+      if (p) entries.push({ ...p, matches: r.n });
+    }
+    return { days: BOARDS.activeDays, perOpponentDay: BOARDS.perOpponentDay, entries };
+  }
+
+  /**
+   * Keeps the podium (top 3) of every finished month that is not archived yet, for each rating
+   * with rated matches in it. Runs with the daily maintenance; returns the newly archived months.
+   */
+  archiveMonths(now = Date.now()): string[] {
+    const current = monthOf(now);
+    const first = this.db.prepare("SELECT MIN(ended_at) AS t FROM matches").get() as { t: string | null };
+    if (!first.t) return [];
+    const done: string[] = [];
+    for (let month = previousMonth(current); month >= first.t.slice(0, 7); month = previousMonth(month)) {
+      if (this.db.prepare("SELECT 1 FROM month_archive WHERE month = ?").get(month)) break;
+      const [from, to] = monthRange(month);
+      const keys = this.db
+        .prepare(
+          "SELECT DISTINCT variant, pool FROM matches WHERE ended_at >= ? AND ended_at < ? AND (rating_delta0 != 0 OR rating_delta1 != 0)",
+        )
+        .all(from, to) as { variant: MatchVariantId; pool: RatingPool }[];
+      this.db.exec("BEGIN");
+      try {
+        for (const k of keys) {
+          const key = ratingKey(k.variant, k.pool);
+          this.monthGains(month, key, 3).forEach((g, i) => {
+            this.db
+              .prepare(
+                "INSERT OR REPLACE INTO month_winners (month, variant, place, player_id, gain, matches) VALUES (?, ?, ?, ?, ?, ?)",
+              )
+              .run(month, key, i + 1, g.pid, g.gain, g.n);
+          });
+        }
+        this.db
+          .prepare("INSERT INTO month_archive (month, archived_at) VALUES (?, ?)")
+          .run(month, new Date(now).toISOString());
+        this.db.exec("COMMIT");
+      } catch (e) {
+        this.db.exec("ROLLBACK");
+        throw e;
+      }
+      done.push(month);
+    }
+    return done;
+  }
+
+  /** Podium places of a player in monthly rankings, newest first. */
+  trophies(playerId: string): Trophy[] {
+    const rows = this.db
+      .prepare(
+        "SELECT month, variant, place FROM month_winners WHERE player_id = ? ORDER BY month DESC, place",
+      )
+      .all(playerId) as { month: string; variant: string; place: 1 | 2 | 3 }[];
+    return rows.map((r) => {
+      const [variant, pool] = r.variant.split("@") as [MatchVariantId, RatingPool?];
+      return { month: r.month, variant, ...(pool ? { pool } : {}), place: r.place };
+    });
+  }
+
   profile(playerId: string): ProfileResponse | null {
     const p = this.getPlayer(playerId);
     if (!p) return null;
@@ -1448,9 +1710,19 @@ export class Store {
     const recent = this.db
       .prepare(`SELECT id FROM matches WHERE p0 = ? OR p1 = ? ORDER BY ended_at DESC LIMIT 20`)
       .all(playerId, playerId) as { id: string }[];
+    const pub = this.boardPlayers([playerId]).get(playerId);
+    const since = this.db.prepare("SELECT created_at, showcase FROM players WHERE id = ?").get(playerId) as
+      | { created_at: string; showcase: string | null }
+      | undefined;
     return {
       id: p.id,
       name: p.name,
+      frame: pub?.frame ?? null,
+      rank: pub?.rank ?? 0,
+      ...(pub?.supporter ? { supporter: true } : {}),
+      since: since?.created_at.slice(0, 7),
+      trophies: this.trophies(playerId),
+      showcase: this.parseShowcase(since?.showcase ?? null),
       ratings,
       recent: recent.map((r) => this.matchSummary(r.id)).filter((x): x is MatchSummary => x !== null),
       history: this.ratingHistory(playerId),

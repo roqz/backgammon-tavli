@@ -320,6 +320,8 @@ export const FRAME_LOOK: Record<Frame, { icon: string; ring: string }> = {
   post: { icon: "✉️", ring: "ring-[#b9a27a]" },
   handshake: { icon: "🤝", ring: "ring-[#8fb39a]" },
   shield: { icon: "🛡️", ring: "ring-[#a3836a]" },
+  // first place of a monthly ranking: a brass trophy, double ring like the rarities
+  champion: { icon: "🏆", ring: "ring-[#e3c574] outline outline-1 outline-offset-2 outline-[#c9a14a]/70" },
   // rarities: double rings in brass
   rosette: { icon: "🏵️", ring: "ring-[#c9a14a] outline outline-1 outline-offset-2 outline-[#c9a14a]/60" },
   medal: { icon: "🎖️", ring: "ring-[#e3c574] outline outline-1 outline-offset-2 outline-[#d1603d]/70" },

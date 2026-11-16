@@ -2,6 +2,7 @@ import { createMatch } from "@tavli/engine";
 import type {
   AccountResponse,
   AccuracyReport,
+  ActiveBoard,
   ClientAction,
   ClientMessage,
   ClubSummary,
@@ -23,6 +24,7 @@ import type {
   LiveMatch,
   MatchDetailResponse,
   MatchVariantId,
+  MonthBoard,
   OnlineStats,
   ProfileResponse,
   Progress,
@@ -808,6 +810,19 @@ export const syncAccount = async () => {
 };
 /** Players connected right now (public, no profile needed). */
 export const fetchOnlineStats = () => rest<OnlineStats>("/api/online");
+
+export const fetchMonthBoard = (variant: MatchVariantId, pool: RatingPool = "normal") =>
+  rest<MonthBoard>(
+    `/api/leaderboard?board=month&variant=${variant}${pool === "normal" ? "" : `&pool=${pool}`}`,
+  );
+export const fetchActiveBoard = () => rest<ActiveBoard>("/api/leaderboard?board=active");
+
+/** Appear in (or leave) the monthly and activity rankings. */
+export const setListed = (listed: boolean) =>
+  rest<AccountResponse>("/api/account/settings", { method: "POST", body: JSON.stringify({ listed }) });
+/** Achievements shown on the public profile (at most three). */
+export const setShowcase = (ids: readonly string[]) =>
+  rest<AccountResponse>("/api/account/showcase", { method: "POST", body: JSON.stringify({ ids }) });
 
 export const fetchLeaderboard = (variant: MatchVariantId, pool: RatingPool = "normal") =>
   rest<LeaderboardEntry[]>(`/api/leaderboard?variant=${variant}${pool === "normal" ? "" : `&pool=${pool}`}`);

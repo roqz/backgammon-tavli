@@ -176,6 +176,7 @@ Rückstand je Seite über den Matchverlauf.
 | Rahmen ✉️ Brief      | `corr-ten`      | 10 Fernpartien zu Ende gespielt                               |
 | Rahmen 🤝 Handschlag | `friends-five`  | 5 verschiedene Freunde herausgefordert (live oder Fernpartie) |
 | Rahmen 🛡️ Wappen     | `league-win`    | eine Club-Liga gewonnen                                       |
+| Rahmen 🏆 Monatssieger | `month-winner` | Platz 1 einer Monatswertung (Rating-Gewinn im Monat, ab 10 Matches) |
 | Messing-Würfel       | `league-player` | eine Ligapartie zu Ende gespielt                              |
 
 Die Rahmen-Zuordnung steht in `FRAMES` (Protokoll); der Server prüft sie beim Wählen. Der Rahmen
@@ -193,6 +194,7 @@ Was online passiert, zählt der Server aus seinen eigenen Daten (`Store.verified
 | beendete Fernpartien, Ligapartien      | `corr_games`, `league_matches`              |
 | Erfolge `online-win`, `rating-1600`    | Matches, Ratings                            |
 | `tournament-win`, `league-win`         | Turniere, Ligen                             |
+| `month-winner`                         | archivierte Monatswertungen (`month_winners`) |
 | `corr-ten`, `league-player`            | Fernpartien, Ligapartien                    |
 
 Beim Zusammenführen des Fortschritts sind diese Zahlen die **Untergrenze**: Ein Gerät, das weniger

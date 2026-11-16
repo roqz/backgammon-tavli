@@ -1,8 +1,10 @@
 import { getVariant } from "@tavli/engine";
 import {
-  type LeaderboardEntry,
+  type ActiveBoard,
+  type Frame,
   MATCH_VARIANTS,
   type MatchVariantId,
+  type MonthBoard,
   RATING_POOLS,
   type RatingEntry,
   type RatingPool,
@@ -19,7 +21,9 @@ import { lengthText, useT } from "../i18n";
 import {
   connect,
   createInvite,
+  fetchActiveBoard,
   fetchLeaderboard,
+  fetchMonthBoard,
   fetchProfile,
   joinInvite,
   type MatchLength,
@@ -192,23 +196,66 @@ export function PlayPanel() {
   );
 }
 
+type BoardKind = "rating" | "month" | "active";
+const BOARD_KINDS: readonly BoardKind[] = ["rating", "month", "active"];
+
+/** One row of a ranking: place, player (opens the profile) and the value on the right. */
+interface BoardRow {
+  readonly playerId: string;
+  readonly name: string;
+  readonly frame?: Frame | null;
+  readonly rank?: number;
+  readonly supporter?: boolean;
+  readonly value: string;
+  readonly detail?: string;
+  readonly tone?: "up" | "down";
+}
+
 function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => void }) {
   const t = useT();
   const profile = useOnline((s) => s.profile);
+  const [board, setBoard] = useState<BoardKind>("rating");
   const [variant, setVariant] = useState<MatchVariantId>("backgammon");
   const [pool, setPool] = useState<RatingPool>("normal");
-  const [rows, setRows] = useState<LeaderboardEntry[] | null>(null);
+  const [rows, setRows] = useState<BoardRow[] | null>(null);
+  const [month, setMonth] = useState<MonthBoard | null>(null);
+  const [active, setActive] = useState<ActiveBoard | null>(null);
   const [mine, setMine] = useState<RatingEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
+  const [selected, setSelected] = useState<{ playerId: string; name: string } | null>(null);
 
   useEffect(() => {
     setRows(null);
     setError(null);
-    fetchLeaderboard(variant, pool)
-      .then(setRows)
-      .catch((e: unknown) => setError(errorOf(t, e)));
-  }, [variant, pool, t]);
+    const fail = (e: unknown) => setError(errorOf(t, e));
+    if (board === "rating")
+      fetchLeaderboard(variant, pool)
+        .then((list) =>
+          setRows(list.map((r) => ({ ...r, value: String(r.rating), detail: `${r.wins}/${r.matches}` }))),
+        )
+        .catch(fail);
+    else if (board === "month")
+      fetchMonthBoard(variant, pool)
+        .then((b) => {
+          setMonth(b);
+          setRows(
+            b.entries.map((r) => ({
+              ...r,
+              value: signed(r.gain),
+              detail: t.boardMatches.replace("{n}", String(r.matches)),
+              tone: r.gain >= 0 ? "up" : "down",
+            })),
+          );
+        })
+        .catch(fail);
+    else
+      fetchActiveBoard()
+        .then((b) => {
+          setActive(b);
+          setRows(b.entries.map((r) => ({ ...r, value: String(r.matches) })));
+        })
+        .catch(fail);
+  }, [board, variant, pool, t]);
   useEffect(() => {
     if (profile)
       fetchProfile(profile.id)
@@ -216,9 +263,16 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
         .catch(() => {});
   }, [profile]);
 
+  const monthName = (m: string) =>
+    new Date(`${m}-15T12:00:00Z`).toLocaleDateString(t.locale, { month: "long", year: "numeric" });
+  const previousMonth = (m: string) => {
+    const [y, mo] = m.split("-").map(Number) as [number, number];
+    return new Date(Date.UTC(y, mo - 2, 15)).toISOString().slice(0, 7);
+  };
+
   return (
     <div className="flex flex-col gap-4">
-      {mine.length > 0 && (
+      {mine.length > 0 && board === "rating" && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {mine.map((r) => (
             <Card key={`${r.variant}${r.pool ?? ""}`} className="!p-3 text-center">
@@ -233,26 +287,78 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
       )}
       <Card>
         <Segmented
-          label={t.leaderboard}
-          value={variant}
-          onChange={setVariant}
-          options={MATCH_VARIANTS.map((v) => ({ value: v, label: variantName(v, t.tavliMatch) }))}
+          label={t.boardKind}
+          value={board}
+          onChange={setBoard}
+          options={BOARD_KINDS.map((k) => ({ value: k, label: t.boardKinds[k] }))}
         />
-        <div className="mt-3">
-          <Segmented
-            label={t.ratingPool}
-            value={pool}
-            onChange={setPool}
-            options={RATING_POOLS.map((p) => ({
-              value: p,
-              label: p === "blitz" ? `⚡ ${t.timeControls.blitz}` : t.ratingPools.normal,
-            }))}
-          />
-        </div>
+        {board !== "active" && (
+          <>
+            <div className="mt-3">
+              <Segmented
+                label={t.leaderboard}
+                value={variant}
+                onChange={setVariant}
+                options={MATCH_VARIANTS.map((v) => ({ value: v, label: variantName(v, t.tavliMatch) }))}
+              />
+            </div>
+            <div className="mt-3">
+              <Segmented
+                label={t.ratingPool}
+                value={pool}
+                onChange={setPool}
+                options={RATING_POOLS.map((p) => ({
+                  value: p,
+                  label: p === "blitz" ? `⚡ ${t.timeControls.blitz}` : t.ratingPools.normal,
+                }))}
+              />
+            </div>
+          </>
+        )}
+        {board === "month" && month && (
+          <p className="mt-3 text-xs text-stone-400" data-testid="board-note">
+            {t.boardMonthNote
+              .replace("{month}", monthName(month.month))
+              .replace("{n}", String(month.minMatches))}
+          </p>
+        )}
+        {board === "active" && active && (
+          <p className="mt-3 text-xs text-stone-400" data-testid="board-note">
+            {t.boardActiveNote
+              .replace("{days}", String(active.days))
+              .replace("{n}", String(active.perOpponentDay))}
+          </p>
+        )}
+        {board === "month" && month && month.previous.length > 0 && (
+          <section
+            aria-label={t.boardPodium.replace("{month}", monthName(previousMonth(month.month)))}
+            className="mt-3 rounded-lg border border-brass/30 bg-stone-900/60 px-3 py-2"
+            data-testid="month-podium"
+          >
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-brass">
+              {t.boardPodium.replace("{month}", monthName(previousMonth(month.month)))}
+            </h3>
+            <ol className="flex flex-col gap-1 text-sm">
+              {month.previous.map((p, i) => (
+                <li key={p.playerId} className="flex items-center gap-2">
+                  <span aria-hidden>{PODIUM[i]}</span>
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 truncate text-left hover:text-amber-200"
+                    onClick={() => setSelected(p)}
+                  >
+                    <PlayerName name={p.name} frame={p.frame} rank={p.rank} supporter={p.supporter} />
+                  </button>
+                  <span className="tabular-nums text-stone-400">{signed(p.gain)}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
         {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
         {rows && rows.length === 0 && <p className="mt-3 text-sm text-stone-500">{t.noRanking}</p>}
         {rows && rows.length > 0 && (
-          <ol className="mt-3 divide-y divide-stone-800 text-sm">
+          <ol className="mt-3 divide-y divide-stone-800 text-sm" data-testid="ranking">
             {rows.map((r, i) => (
               <li key={r.playerId}>
                 <button
@@ -265,10 +371,14 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
                     <PlayerName name={r.name} frame={r.frame} rank={r.rank} supporter={r.supporter} />{" "}
                     {r.playerId === profile?.id && t.you2}
                   </span>
-                  <span className="text-xs text-stone-500 tabular-nums">
-                    {r.wins}/{r.matches}
+                  {r.detail && <span className="text-xs text-stone-500 tabular-nums">{r.detail}</span>}
+                  <span
+                    className={`w-12 text-right font-semibold tabular-nums ${
+                      r.tone === "up" ? "text-emerald-300" : r.tone === "down" ? "text-red-300" : ""
+                    }`}
+                  >
+                    {r.value}
                   </span>
-                  <span className="w-12 text-right font-semibold tabular-nums">{r.rating}</span>
                 </button>
               </li>
             ))}
@@ -286,6 +396,9 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
     </div>
   );
 }
+
+const PODIUM = ["🥇", "🥈", "🥉"];
+const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
 export type OnlineTab = "corr" | "friends" | "tournaments" | "clubs" | "live" | "ranking";
 

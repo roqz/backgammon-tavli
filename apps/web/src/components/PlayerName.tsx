@@ -67,3 +67,24 @@ export function PlayerName({
 
 /** Marks of the club ranks (0 = guest has none). */
 const RANK_MARK = ["", "I", "II", "III", "★"];
+
+/** The chosen frame large (public profile); an empty ring without one. */
+export function FrameMedallion({ frame }: { frame: Frame | null }) {
+  const t = useT();
+  if (!frame)
+    return (
+      <span aria-hidden className="h-14 w-14 shrink-0 rounded-full border border-stone-700 bg-stone-900" />
+    );
+  const look = FRAME_LOOK[frame];
+  return (
+    <span
+      className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-stone-900 text-3xl ring-4 ${look.ring}`}
+      title={t.frameNames[frame]}
+      role="img"
+      aria-label={t.frameNames[frame]}
+      data-testid="frame-medallion"
+    >
+      {look.icon}
+    </span>
+  );
+}

@@ -83,6 +83,30 @@ describe("supporters", () => {
   });
 });
 
+describe("the patron frame", () => {
+  it("shows only while the support lasts", () => {
+    const store = new Store(":memory:");
+    const sup = new Supporters(store, { url: "https://ko-fi.com/example", monthlyCost: 8 });
+    const a = store.createPlayer("Ann").id;
+    const b = store.createPlayer("Ben").id;
+    store.befriend(a, b);
+    store.befriend(b, a);
+    sup.grant(a, 1, "admin");
+    expect(store.setFrame(a, "patron")).toBe(true);
+    expect(store.publicPlayer(a, "backgammon").frame).toBe("patron");
+    // the month is over
+    (store as unknown as { db: { prepare(q: string): { run(...a: unknown[]): void } } }).db
+      .prepare("UPDATE players SET supporter_until = ? WHERE id = ?")
+      .run("2000-01-01T00:00:00.000Z", a);
+    expect(store.publicPlayer(a, "backgammon").frame).toBeNull();
+    expect(store.friendsOf(b)[0]?.frame).toBeNull();
+    expect(store.account(a)?.frame).toBeNull();
+    // supporting again brings it back
+    sup.grant(a, 1, "admin");
+    expect(store.publicPlayer(a, "backgammon").frame).toBe("patron");
+  });
+});
+
 describe("supporters without configuration", () => {
   it("are off: nobody counts as supporter and the API says nothing", async () => {
     const store = new Store(":memory:");

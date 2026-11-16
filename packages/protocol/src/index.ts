@@ -216,6 +216,8 @@ export const FRAMES = {
   post: "corr-ten",
   handshake: "friends-five",
   shield: "league-win",
+  // first place of a monthly ranking (server records)
+  champion: "month-winner",
   // rarities (docs/GAMIFICATION.md)
   rosette: "games-1000",
   medal: "honor-member",
@@ -722,6 +724,55 @@ export interface LeaderboardEntry extends RatingEntry {
   readonly rank?: number;
 }
 
+/** Monthly ranking: rating gained in the month (rated matches of one rating). */
+export interface MonthEntry {
+  readonly playerId: string;
+  readonly name: string;
+  readonly frame?: Frame | null;
+  readonly rank?: number;
+  readonly supporter?: boolean;
+  /** Rating points won (or lost) this month. */
+  readonly gain: number;
+  readonly matches: number;
+  /** Current rating. */
+  readonly rating: number;
+}
+
+export interface MonthBoard {
+  /** YYYY-MM (UTC). */
+  readonly month: string;
+  /** Rated matches needed to appear. */
+  readonly minMatches: number;
+  readonly entries: readonly MonthEntry[];
+  /** The podium of the month before (archived), best first. */
+  readonly previous: readonly MonthEntry[];
+}
+
+/** Activity ranking: finished matches in the last days (all kinds, a few per opponent and day). */
+export interface ActiveEntry {
+  readonly playerId: string;
+  readonly name: string;
+  readonly frame?: Frame | null;
+  readonly rank?: number;
+  readonly supporter?: boolean;
+  readonly matches: number;
+}
+
+export interface ActiveBoard {
+  readonly days: number;
+  /** Matches against the same opponent on one day that count. */
+  readonly perOpponentDay: number;
+  readonly entries: readonly ActiveEntry[];
+}
+
+/** A podium place of a monthly ranking. */
+export interface Trophy {
+  readonly month: string;
+  readonly variant: MatchVariantId;
+  readonly pool?: RatingPool;
+  readonly place: 1 | 2 | 3;
+}
+
 export interface MatchSummary {
   readonly id: string;
   readonly variant: MatchVariantId;
@@ -742,7 +793,20 @@ export interface ProfileResponse {
   readonly leaguesWon?: number;
   /** Rating after each of the last rated matches per rating (key: ratingKey), oldest first. */
   readonly history?: Readonly<Record<string, readonly RatingPoint[]>>;
+  readonly frame?: Frame | null;
+  readonly rank?: number;
+  readonly supporter?: boolean;
+  /** Month of joining (YYYY-MM). */
+  readonly since?: string;
+  /** Podium places in monthly rankings, newest first. */
+  readonly trophies?: readonly Trophy[];
+  /** Achievements the player shows on the profile (at most SHOWCASE_MAX). */
+  readonly showcase?: readonly string[];
 }
+
+/** Achievements a player can pin to the public profile. */
+export const SHOWCASE_MAX = 3;
+export const ShowcaseSchema = z.object({ ids: z.array(z.string().min(1).max(40)).max(SHOWCASE_MAX) });
 
 /** Key of a rating: the variant, with "@blitz" for the blitz rating. */
 export const ratingKey = (variant: MatchVariantId, pool: RatingPool = "normal"): string =>
@@ -1113,6 +1177,10 @@ export interface AccountResponse {
   /** Friends may watch this player's private matches (invites, challenges). */
   readonly friendsCanWatch: boolean;
   readonly frame: Frame | null;
+  /** Appears in the monthly and activity rankings. */
+  readonly listed: boolean;
+  /** Achievements shown on the public profile. */
+  readonly showcase: readonly string[];
   /** Login asks for an authenticator app code. */
   readonly twoFactor: boolean;
   /** Unused recovery codes (accounts only). */
@@ -1192,7 +1260,11 @@ export interface AdminSupportOverview {
   }[];
 }
 
-export const AccountSettingsSchema = z.object({ friendsCanWatch: z.boolean() });
+export const AccountSettingsSchema = z.object({
+  friendsCanWatch: z.boolean().optional(),
+  /** Appears in the monthly and activity rankings. */
+  listed: z.boolean().optional(),
+});
 
 export interface StoredGameResponse {
   readonly variant: VariantId;

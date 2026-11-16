@@ -333,6 +333,14 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 - Tagesrätsel auf der Startseite mit Stand: Punkt = offen, grauer Kreis = versucht, grüner Haken = gelöst
 - Ausprobiert und wieder entfernt: geneigtes Brett mit Perspektive („Brett mit Tiefe“) – brachte nicht den erhofften Effekt
 
+### Monatswertung, Aktivitätsrangliste, öffentliches Profil ✅
+
+- Rangliste mit drei Reitern: Rating (wie bisher), Monat (Summe der Rating-Änderungen aus gewerteten Matches im laufenden UTC-Monat je Rating, ab 10 Matches) und Aktiv (beendete Matches aller Art der letzten 30 Tage, je Gegner und Tag höchstens 3 – gegen Hochspielen mit Freunden); alles direkt aus der Match-Tabelle, ohne neue Zähler
+- Die tägliche Wartung archiviert das Podium (Top 3) jedes abgeschlossenen Monats je Rating (`month_winners`, `month_archive`); Platz 1 schaltet den Erfolg und Rahmen „Monatssieger“ frei (vom Server geprüft). Die Monatsliste zeigt das Podium des Vormonats
+- Einstellung „In Monats- und Aktivitätsrangliste zeigen“ (Standard an); gesperrte, gelöschte und abgemeldete Spieler fehlen
+- Öffentliches Profil (Tipp auf einen Namen): große Rahmen-Medaille, Clubrang, Unterstützer, Monat der Anmeldung, Podestplätze, bis zu drei selbst gewählte Erfolge (nur freigeschaltete), Ratings und letzte Partien; die Genauigkeit bleibt privat
+- Der Unterstützer-Rahmen „Mäzen“ wird nur angezeigt, solange die Unterstützung läuft
+
 ### Clubs und Ligen ✅
 
 - Clubs: gründen mit Konto oder nach 3 Matches (wie Turniere), Name eindeutig, Beschreibung, offen (direkt beitreten) oder geschlossen (Anfrage, ein Admin bestätigt); Rollen Gründer, Admin, Mitglied; höchstens 100 Mitglieder, höchstens 10 Clubs je Spieler; Suche nach Namen; Mitglieder sehen sich mit Online-Status; verlässt der Gründer den Club, übernimmt der dienstälteste Admin bzw. das dienstälteste Mitglied

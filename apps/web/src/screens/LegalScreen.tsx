@@ -137,7 +137,11 @@ function PrivacyDe() {
         Zweck ist die Bereitstellung des Online-Spiels, das du nutzen möchtest (Art. 6 Abs. 1 lit. b DSGVO).
         Dein Anzeigename, deine Ratings und deine Matches sind für andere Spieler sichtbar. Laufende
         öffentliche Matches können andere Spieler live ansehen, private Spiele nur Freunde – das kannst du im
-        Profil abschalten. Freunde sehen, ob du online bist.
+        Profil abschalten. Freunde sehen, ob du online bist. Aus deinen Matches entstehen außerdem die
+        Monatswertung (Rating-Gewinn im Monat, Podestplätze bleiben im Profil) und die Aktivitätsrangliste
+        (Matches der letzten 30 Tage); dort erscheinst du nur, solange du das im Profil nicht ausschaltest.
+        Dein öffentliches Profil zeigt Rahmen, Clubrang, den Monat deiner Anmeldung, Podestplätze und die
+        Erfolge, die du selbst auswählst.
       </p>
       <h2>IP-Adresse</h2>
       <p>
@@ -234,7 +238,10 @@ function PrivacyEn() {
         The purpose is providing the online game you want to use (Art. 6(1)(b) GDPR). Your display name,
         ratings and matches are visible to other players. Running public matches can be watched live by other
         players, private games only by friends – you can turn that off in your profile. Friends see whether
-        you are online.
+        you are online. Your matches also make up the monthly ranking (rating gained in the month; podium
+        places stay on your profile) and the activity ranking (matches of the last 30 days); you appear there
+        unless you switch it off in your profile. Your public profile shows your frame, club rank, the month
+        you joined, podium places and the achievements you choose yourself.
       </p>
       <h2>IP address</h2>
       <p>

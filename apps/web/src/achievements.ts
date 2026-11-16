@@ -186,6 +186,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     text: { de: "Gewinne eine Club-Liga.", en: "Win a club league." },
     progress: (c) => count(c.profile?.leaguesWon ?? 0, 1),
   },
+  {
+    id: "month-winner",
+    icon: "🏆",
+    title: { de: "Monatssieger", en: "Monthly champion" },
+    text: {
+      de: "Werde Erster einer Monatswertung (Rating-Gewinn im Monat).",
+      en: "Top a monthly ranking (rating gained in a month).",
+    },
+    progress: (c) => flag(!!c.profile?.trophies?.some((x) => x.place === 1)),
+  },
   // ---- checker sets: wins per variant (career counters, beyond the archive) ----
   {
     id: "set-pearl",
