@@ -1,5 +1,7 @@
 # Review November 2026: Vollständigkeit, Sicherheit, UI/UX, Wettbewerb, Plan
 
+> Historisches Review vom November 2026; der aktuelle Stand steht in Abschnitt 8, die laufende Liste offener Punkte in `docs/KONZEPT.md` („Offene Punkte“).
+
 Stand: Branch `rewrite/foundation`, Commit `778557c`. Unit-Tests grün (Engine 67, KI 21, Web 21, Server 46), E2E 10/10.
 Die mit ✔ markierten Befunde wurden zusätzlich direkt im Code nachgeprüft.
 
@@ -267,7 +269,7 @@ S = bis 1 Tag, M = einige Tage, L = mehrere Wochen
 
 ---
 
-## 8. Stand der Umsetzung (13.11.2026)
+## 8. Stand der Umsetzung (16.11.2026)
 
 **Erledigt:**
 
@@ -277,18 +279,6 @@ S = bis 1 Tag, M = einige Tage, L = mehrere Wochen
   - Hinweise, Lade- und Fehlerzustände, Update-Hinweis.
   - Tests: protocol, rng, Turniere; CI mit Audit, Docker, CodeQL, Dependabot.
 - **Phase C:** Matchanalyse für Spieler, `.mat`-Export, Rating-Verlauf, Variantenbeschreibungen, Freunde mit Herausforderung, Zuschauen (mit Verzögerung, private Spiele für Freunde), Tutorial, Regeln mit Diagrammen, Tagesrätsel.
-- **Phase D (teilweise):** Geldspiel online, GNUbg-ID und `.mat`-Import, Fernpartien, Erfolge mit Freischaltungen, Clubs mit Ligen (live oder als Fernpartien, Divisionen mit Auf- und Abstieg) und Club-Turnieren. Club-Chat bewusst nicht.
+- **Phase D:** neuronales Netz für alle Varianten (Stufe „Experte“), Regel-Feinheiten (Mana, Fevga), Beaver/Raccoon offline, Tavla, Narde, Hypergammon, Unterstützerstatus und Cosmetics, Geldspiel online, GNUbg-ID und `.mat`-Import, Fernpartien, Erfolge mit Freischaltungen, Clubs mit Ligen (live oder als Fernpartien, Divisionen mit Auf- und Abstieg) und Club-Turnieren. Club-Chat bewusst nicht.
 
-**Offen ohne Eingaben von dir:**
-
-- Play Store per TWA, Beaver/Raccoon im Geldspiel
-- Neuronales Netz: für alle Varianten trainiert und aktiv (Stufe „Experte“, Ergebnisse in KONZEPT.md)
-- Fair-Play-Analyse auf das Netz umstellen (vertagt)
-
-**Offen mit Eingaben von dir:**
-
-- Betreiberangaben für Impressum und Datenschutz
-- SMTP, OAuth
-- Kalibrierung der Fair-Play-Schwellen mit echten Daten
-- Push im echten Betrieb
-- Regel-Feinheiten (Mana-Ausnahmen, Fevga)
+**Offen:** siehe `docs/KONZEPT.md`, Abschnitt „Offene Punkte“.

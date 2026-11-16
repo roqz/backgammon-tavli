@@ -1,16 +1,19 @@
 # Backgammon/Tavli – Neuaufbau: Konzept & Plan
 
-Stand: 2026-11-12
+Stand: 2026-11-16
+
+Aufbau: Die ersten Abschnitte (Entscheidungen bis Phasen) sind der ursprüngliche Plan. Was tatsächlich umgesetzt ist,
+steht unter „Stand der Umsetzung“, was noch fehlt, unter „Offene Punkte“.
 
 ## Entscheidungen
 
 | Thema             | Entscheidung                                                                                                                  |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Varianten         | Alle: Backgammon, Portes, Plakoto, Fevga (= Tavli), jeweils als Einzelspiel und Match bis N Punkte, auch offline              |
+| Varianten         | Backgammon, Portes, Plakoto, Fevga (= Tavli), später auch Tavla, Narde, Hypergammon; Einzelspiel, Match bis N, Geldspiel    |
 | Plattform         | Nur Web, als PWA (installierbar, offline spielbar)                                                                            |
 | Vorgehen          | Neubau; Legacy-Code (Angular 6) nur als Referenz und Quelle für Testfälle                                                     |
 | Lizenz            | Open Source, **AGPL-3.0** (GPL-kompatibel, erlaubt GNUbg-Komponenten, schützt den gehosteten Server)                          |
-| Optik             | Zwei wählbare Stile: _Klassisch_ (Holz, Filz, 3D-Würfel) und _Modern_ (flach). Der Renderer ist austauschbar.                 |
+| Optik             | Wählbare Brett-Stile, Standard _Klassisch_ (Holz, Filz); weitere über Erfolge und Tausch. Der Renderer ist austauschbar.     |
 | Hosting Testphase | Frontend kostenlos (Cloudflare Pages oder GitHub Pages), Backend per Docker Compose auf dem eigenen Linux-VPS                 |
 | Monetarisierung   | Das Basisspiel bleibt vollständig frei. Optional Cosmetics, Supporter-Status und Features, die echte Serverkosten verursachen |
 
@@ -60,11 +63,14 @@ bauen auf diesem Protokoll auf.
 | Experte (BG/Portes)     | Open-Source-Netz: **wildbg** (Rust → WASM) evaluieren, Fallback GNUbg-Gewichte (GPL, dank AGPL zulässig)      | Backgammon, Portes |
 | Experte (Plakoto/Fevga) | eigenes kleines Netz, per Self-Play (TD(λ)) trainiert, im Browser über ONNX Runtime Web                       | Plakoto, Fevga     |
 
-- Für Plakoto und Fevga gibt es keine fertigen starken Engines. Hier ist eigenes Training nötig, als späteres Arbeitspaket.
+- **Umgesetzt** wurde statt wildbg/GNUbg/ONNX ein eigenes kleines Netz je Variante (TD-Selbstspiel, reines TS im Web Worker) für alle Varianten – siehe „Neuronales Netz“.
 - Verdopplungsentscheidungen: Heuristik + Match Equity Table (frei verfügbare MET, z. B. Kazaross-XG2).
 - Hinweise und Analyse (Fehler, Equity) offline über dieselben Bots.
 
-## Online (später)
+## Online (ursprünglicher Plan)
+
+Umgesetzt mit eigenem WebSocket-Server, SQLite und eigenen Konten statt Colyseus, Postgres und Better Auth (siehe Architektur).
+
 
 - **Colyseus** als autoritativer Spielserver, mit Würfeln vom Server (Commit-Reveal → nachweislich fair), Zeitlimit, Neuverbindung.
 - **Better Auth** (selbst gehostet, Postgres): Gastspiel ohne Konto, E-Mail/Magic-Link, GitHub/Google OAuth.
@@ -81,7 +87,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - **Supporter-Status** nach dem Lichess-Modell (Badge, Unterstützung des Projekts)
 - **Dienste mit Serverkosten:** Rollouts und Analyse ganzer Partien in der Cloud, unbegrenztes Online-Archiv, private Clubs und Turniere
 
-## Phasen
+## Phasen (ursprünglicher Plan)
 
 | Phase         | Inhalt                                                                                                                                                          | Ergebnis                  |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
@@ -96,9 +102,25 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 ## Offene Punkte
 
-- Lizenz und WASM-Tauglichkeit von wildbg prüfen, ebenso den Umfang der Unterstützung für Verdoppeln und Match-Play.
-- Grafiken für das klassische Theme (Holz-, Filz-Texturen): selbst erstellen oder CC0-Quellen.
-- Domain/Name für das Hosting.
+Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hierher.
+
+**Ohne Eingaben machbar:**
+
+- Fair-Play-Analyse (und damit die eigene Genauigkeit) auf die neuronalen Netze umstellen; sie bewertet noch mit der kalibrierten Heuristik. Die Schwellen müssen danach neu kalibriert werden (rechenintensiv)
+- Beaver/Raccoon im Online-Geldspiel (offline vorhanden; Protokoll und Server fehlen)
+- Play Store per TWA (die Veröffentlichung braucht ein Google-Entwicklerkonto)
+- Optional: wildbg als zweite Backgammon-Engine, volles 3D-Brett
+
+**Braucht Eingaben oder den echten Betrieb:**
+
+- Betreiberangaben für Impressum und Datenschutz in der Server-Konfiguration
+- SMTP für E-Mail-Bestätigung und Passwort-Reset; Client-IDs für OAuth (Google/GitHub)
+- Push im echten Betrieb prüfen (HTTPS auf dem VPS; iPhone nur mit der App vom Home-Bildschirm)
+- Fair-Play-Schwellen (Übereinstimmung, Zugzeiten) mit echten Spielerdaten kalibrieren
+
+**Bewusst nicht geplant:** Freitext- und Club-Chat, Narde-Sonderwertungen (Koks/Haus-Mars, Turnier-Unentschieden), Züge nach Matchgewinnchance gewichten (im Selbstspiel schwächer).
+
+**Erledigt aus der ursprünglichen Liste:** Holz- und Filz-Texturen (selbst erzeugt), Domain; die wildbg-Prüfung entfiel durch die eigenen Netze.
 
 ## Stand der Umsetzung
 
@@ -119,9 +141,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 ### Offen in Phase 1
 
-- ~~XGID Import/Export~~ (erledigt), GNUbg-ID
-- Regel-Feinheiten prüfen: Fevga-Startregel bei blockiertem Läufer (aktuell: andere Steine dürfen dann ziehen), Prime-Prüfung pro Einzelzug statt am Zugende, Plakoto-Mana-Ausnahmen
-- ~~Aufgabe mit Annahme/Ablehnung~~ (erledigt)
+- alles erledigt: XGID und GNUbg-ID, Aufgabe mit Annahme/Ablehnung, Regel-Feinheiten (Fevga: ein blockierter erster Läufer verliert den Wurf, Prime-Prüfung am Zugende, das eigene Startviertel darf nie geschlossen werden; Plakoto: Mana erst, wenn der eigene Start des Festsetzenden leer ist, beide Mütter festgesetzt = Unentschieden ohne Punkte)
 
 ### Phase 2 – Offline-MVP (`apps/web`) ✅
 
@@ -156,8 +176,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 ### Offen in Phase 3 / Ausblick Experten-KI
 
-- ~~Gewichte per Selbstspiel~~, ~~Gammons, Match-Equity-Table~~, ~~Hinweis-Funktion~~ (erledigt)
-- ~~Neuronales Netz für alle Varianten~~ (erledigt, Stufe „Experte“); wildbg per WASM als Alternative für Backgammon
+- alles erledigt: Gewichte per Selbstspiel, Gammons, Match-Equity-Table, Hinweise, neuronales Netz für alle Varianten (Stufe „Experte“); Rest siehe „Offene Punkte“
 
 ### Phase 4 – Feinschliff ✅
 
@@ -271,7 +290,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 
 ### Geldspiel online, GNU-Backgammon-Formate ✅
 
-- Geldspiel online (Länge „Geld“ in Warteschlange, Einladung, Herausforderung): Spiel um Spiel mit Verdopplungswürfel und Jacoby-Regel, nie gewertet; die Session läuft, bis ein Spieler sie beendet – zwischen zwei Spielen regulär, während eines Spiels gibt er dieses zum höchstmöglichen Ergebnis ab; dann entscheidet der Punktestand (bei Gleichstand gewinnt, wer bleibt); keine Geldspiele in Turnieren; Beaver/Raccoon nicht umgesetzt
+- Geldspiel online (Länge „Geld“ in Warteschlange, Einladung, Herausforderung): Spiel um Spiel mit Verdopplungswürfel und Jacoby-Regel, nie gewertet; die Session läuft, bis ein Spieler sie beendet – zwischen zwei Spielen regulär, während eines Spiels gibt er dieses zum höchstmöglichen Ergebnis ab; dann entscheidet der Punktestand (bei Gleichstand gewinnt, wer bleibt); keine Geldspiele in Turnieren; Beaver/Raccoon nur offline
 - GNU-Backgammon-ID (Position-ID:Match-ID) als Export neben der XGID und als Import beim neuen Spiel (XGID oder GNUbg-ID); geprüft an der Startstellung (`4HPwATDgc/ABMA`) und der Match-ID eines neuen Geldspiels (`cAkAAAAAAAAA`), Rundlauf für Würfel, Würfelbesitz, Stand und Crawford
 - .mat-Import (GNU Backgammon, eXtreme Gammon, Jellyfish) in der Statistik: Partien werden in der Wiederholung geöffnet und können analysiert werden; jeder Zug wird über die Engine gegen die Endstellung geprüft (Ketten und Mehrfachzüge in beliebiger Schreibweise), Fehler nennen Spiel und Zug
 
@@ -378,9 +397,9 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - Tastatur: Leertaste/Enter/R = Hauptknopf, D = Verdoppeln, U/Rücktaste = Rückgängig, H = Tipp, Esc = Countdown stoppen; im Doppler-Dialog T/A = Annehmen, P = Passen, B = Beaver. Hinweis in der Seitenleiste (große Bildschirme)
 - Der eigene Name für lokale Partien wird gemerkt (ohne Online-Profil)
 
-### Offen / nächste Schritte Online
+### Offen Online
 
-- E-Mail-Bestätigung/Passwort-Reset (braucht SMTP), OAuth-Login (Google/GitHub, braucht Client-IDs)
+- siehe „Offene Punkte“
 
 ### Gammons und Matchstand im Bot ✅
 
