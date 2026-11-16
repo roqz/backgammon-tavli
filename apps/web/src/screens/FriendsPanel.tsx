@@ -306,7 +306,7 @@ function ChallengeDialog({
           onChange={setLength}
           options={([0, 1, 3, 5, 7] as const).map((l) => ({
             value: l,
-            label: l === 0 ? `💰 ${t.money}` : String(l),
+            label: l === 0 ? `∞ ${t.money}` : String(l),
           }))}
         />
         <TimeControlPicker value={clock} onChange={setClock} />

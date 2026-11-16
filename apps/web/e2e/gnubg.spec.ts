@@ -43,11 +43,11 @@ test("money session: games go on until a player ends the session", async ({ brow
   const ben = await onlineGuest(browser, "Ben");
   for (const p of [ann, ben]) {
     await newGame(p, "Online-Gegner");
-    await p.getByRole("button", { name: /Geld/ }).click();
+    await p.getByRole("button", { name: "Unbegrenzt", exact: true }).click();
     await expect(p.getByText(/Spiel um Spiel/)).toBeVisible();
     await p.getByRole("button", { name: /Gegner suchen/ }).click();
   }
-  await expect(ann.getByText(/Geldspiel/).first()).toBeVisible({ timeout: 15_000 });
+  await expect(ann.getByText(/Unbegrenzt/).first()).toBeVisible({ timeout: 15_000 });
   await ben
     .getByRole("button", { name: /Aufgeben/ })
     .first()

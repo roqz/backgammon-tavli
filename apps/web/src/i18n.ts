@@ -139,7 +139,7 @@ const de = {
     "same-device": "gleiches Gerät",
     "same-network": "gleiches Netzwerk",
     "repeat-opponent": "heute schon genug gewertete Partien gegen diesen Gegner",
-    money: "Geldspiel",
+    money: "unbegrenzte Partie",
   },
   rules: "Regeln",
   guestStart: "Neu als Gast",
@@ -348,10 +348,10 @@ const de = {
   clockYou: "Du",
   clockFree: "Zug ohne Wahl – kostet keine Reserve",
   reasonEnded: "Session beendet – es zählt der Punktestand",
-  money: "Geld",
-  moneySession: "Geldspiel",
+  money: "Unbegrenzt",
+  moneySession: "Unbegrenzt",
   moneyHint:
-    "Geldspiel: Spiel um Spiel mit Verdopplungswürfel und Jacoby-Regel, ohne Wertung. Die Session läuft, bis einer sie beendet; es zählt der Punktestand.",
+    "Unbegrenzt (im Backgammon auch „Geldspiel“ genannt – ohne echtes Geld): Spiel um Spiel mit Verdopplungswürfel und Jacoby-Regel, ohne Wertung. Die Partie läuft, bis einer sie beendet; es zählt der Punktestand.",
   endSession: "Session beenden",
   endSessionConfirm:
     "Session beenden? Läuft gerade ein Spiel, gibst du es zum höchstmöglichen Ergebnis ab. Danach zählt der Punktestand.",
@@ -1215,7 +1215,7 @@ const en: Dict = {
     "same-device": "same device",
     "same-network": "same network",
     "repeat-opponent": "enough rated matches against this opponent today",
-    money: "money game",
+    money: "unlimited session",
   },
   rules: "Rules",
   guestStart: "New as guest",
@@ -1422,10 +1422,10 @@ const en: Dict = {
   clockYou: "You",
   clockFree: "No choice this turn – costs no reserve",
   reasonEnded: "session ended – the score decides",
-  money: "Money",
-  moneySession: "Money game",
+  money: "Unlimited",
+  moneySession: "Unlimited",
   moneyHint:
-    "Money game: game by game with the doubling cube and the Jacoby rule, unrated. The session runs until a player ends it; the score decides.",
+    "Unlimited (in backgammon also called a “money game” – no real money involved): game by game with the doubling cube and the Jacoby rule, unrated. The session runs until a player ends it; the score decides.",
   endSession: "End session",
   endSessionConfirm:
     "End the session? If a game is running, you concede it at the highest possible result. Then the score decides.",
@@ -2171,6 +2171,6 @@ export const turnText = (t: Dict, variant: VariantId, rec: TurnRecord): string =
   }
 };
 
-/** "3 Punkte", "1 Punkt" or "Geldspiel" for online lengths. */
+/** "3 Punkte", "1 Punkt" or "Unbegrenzt" for online lengths. */
 export const lengthText = (t: Dict, length: number): string =>
   length === 0 ? t.moneySession : `${length} ${length === 1 ? t.point : t.points}`;

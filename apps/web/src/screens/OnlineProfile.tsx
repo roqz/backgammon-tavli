@@ -696,7 +696,7 @@ export function MatchList({
                     {t.vs} {opp.name} · {m.score[seat]}:{m.score[seat === 0 ? 1 : 0]}
                   </div>
                   <div className="text-xs text-stone-500">
-                    {variantName(m.variant, t.tavliMatch)} · {m.length === 0 ? `💰 ${t.money}` : m.length} ·{" "}
+                    {variantName(m.variant, t.tavliMatch)} · {m.length === 0 ? `∞ ${t.money}` : m.length} ·{" "}
                     {new Date(m.endedAt).toLocaleDateString(t.locale)}
                     {acc && ` · ${t.accuracyMatch.replace("{n}", percent(acc.agreement))}`}
                   </div>

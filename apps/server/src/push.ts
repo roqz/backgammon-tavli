@@ -134,8 +134,8 @@ const variantName = (variant: string): string =>
 const pointsText = (lang: PushLang, length: number): string =>
   length === 0
     ? lang === "de"
-      ? "Geldspiel"
-      : "money game"
+      ? "unbegrenzt"
+      : "unlimited"
     : `${length} ${lang === "de" ? (length === 1 ? "Punkt" : "Punkte") : length === 1 ? "point" : "points"}`;
 
 /** Little time left for a move in a correspondence game. */

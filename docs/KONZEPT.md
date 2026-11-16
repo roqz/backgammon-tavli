@@ -115,7 +115,7 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 
 - Betreiberangaben für Impressum und Datenschutz in der Server-Konfiguration
 - SMTP für E-Mail-Bestätigung und Passwort-Reset; Client-IDs für OAuth (Google/GitHub)
-- Push im echten Betrieb prüfen (HTTPS auf dem VPS; iPhone nur mit der App vom Home-Bildschirm)
+- Push unter Android und in Desktop-Browsern prüfen (iOS mit der App vom Home-Bildschirm getestet ✅)
 - Fair-Play-Schwellen (Übereinstimmung, Zugzeiten) mit echten Spielerdaten kalibrieren
 
 **Bewusst nicht geplant:** Freitext- und Club-Chat, Narde-Sonderwertungen (Koks/Haus-Mars, Turnier-Unentschieden), Züge nach Matchgewinnchance gewichten (im Selbstspiel schwächer).
@@ -290,7 +290,7 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 
 ### Geldspiel online, GNU-Backgammon-Formate ✅
 
-- Geldspiel online (Länge „Geld“ in Warteschlange, Einladung, Herausforderung): Spiel um Spiel mit Verdopplungswürfel und Jacoby-Regel, nie gewertet; die Session läuft, bis ein Spieler sie beendet – zwischen zwei Spielen regulär, während eines Spiels gibt er dieses zum höchstmöglichen Ergebnis ab; dann entscheidet der Punktestand (bei Gleichstand gewinnt, wer bleibt); keine Geldspiele in Turnieren; Beaver/Raccoon nur offline
+- Geldspiel online (in der Oberfläche „Unbegrenzt“/„Unlimited“ wie offline, mit dem Hinweis auf den Fachbegriff; Länge 0 in Warteschlange, Einladung, Herausforderung): Spiel um Spiel mit Verdopplungswürfel und Jacoby-Regel, nie gewertet; die Session läuft, bis ein Spieler sie beendet – zwischen zwei Spielen regulär, während eines Spiels gibt er dieses zum höchstmöglichen Ergebnis ab; dann entscheidet der Punktestand (bei Gleichstand gewinnt, wer bleibt); keine Geldspiele in Turnieren; Beaver/Raccoon nur offline
 - GNU-Backgammon-ID (Position-ID:Match-ID) als Export neben der XGID und als Import beim neuen Spiel (XGID oder GNUbg-ID); geprüft an der Startstellung (`4HPwATDgc/ABMA`) und der Match-ID eines neuen Geldspiels (`cAkAAAAAAAAA`), Rundlauf für Würfel, Würfelbesitz, Stand und Crawford
 - .mat-Import (GNU Backgammon, eXtreme Gammon, Jellyfish) in der Statistik: Partien werden in der Wiederholung geöffnet und können analysiert werden; jeder Zug wird über die Engine gegen die Endstellung geprüft (Ketten und Mehrfachzüge in beliebiger Schreibweise), Fehler nennen Spiel und Zug
 
