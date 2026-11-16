@@ -261,6 +261,11 @@ export const netFor = (variant: VariantId): Net | null => nets[NET_OF[variant]] 
 export const hasNet = (variant: VariantId): boolean => !!loaders[NET_OF[variant]] || !!nets[NET_OF[variant]];
 
 /** Loads the variant's network if there is one; resolves to it (or null). */
+/** Loads every trained network (server analysis, scripts); browsers load them on demand. */
+export const loadAllNets = async (): Promise<void> => {
+  await Promise.all((Object.keys(NET_OF) as VariantId[]).map((v) => loadNet(v)));
+};
+
 export const loadNet = async (variant: VariantId): Promise<Net | null> => {
   const model = NET_OF[variant];
   if (nets[model]) return nets[model]!;

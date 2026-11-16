@@ -27,8 +27,13 @@ const DEC = Date.parse("2026-12-02T12:00:00Z");
 describe("monthly ranking", () => {
   it("ranks the rating gained this month, from the minimum of rated matches on", () => {
     const store = new Store(":memory:");
-    const [a, b, c] = ["Ann", "Ben", "Cem"].map((name) => store.createPlayer(name).id) as [string, string, string];
-    for (let i = 0; i < BOARDS.monthMinMatches; i++) play(store, a, b, `2026-11-${10 + (i % 9)}T10:00:00.000Z`);
+    const [a, b, c] = ["Ann", "Ben", "Cem"].map((name) => store.createPlayer(name).id) as [
+      string,
+      string,
+      string,
+    ];
+    for (let i = 0; i < BOARDS.monthMinMatches; i++)
+      play(store, a, b, `2026-11-${10 + (i % 9)}T10:00:00.000Z`);
     play(store, c, a, "2026-11-19T10:00:00.000Z");
     // last month and unrated matches do not count
     play(store, b, a, "2026-10-30T10:00:00.000Z");
@@ -48,7 +53,8 @@ describe("monthly ranking", () => {
   it("archives the podium of a finished month once; first place unlocks the champion frame", () => {
     const store = new Store(":memory:");
     const [a, b] = ["Ann", "Ben"].map((name) => store.createPlayer(name).id) as [string, string];
-    for (let i = 0; i < BOARDS.monthMinMatches; i++) play(store, a, b, `2026-11-${10 + (i % 9)}T10:00:00.000Z`);
+    for (let i = 0; i < BOARDS.monthMinMatches; i++)
+      play(store, a, b, `2026-11-${10 + (i % 9)}T10:00:00.000Z`);
     expect(store.setFrame(a, "champion")).toBe(false);
     expect(store.archiveMonths(NOV)).toEqual([]);
     expect(store.archiveMonths(DEC)).toEqual(["2026-11"]);
@@ -67,7 +73,11 @@ describe("monthly ranking", () => {
 describe("activity ranking", () => {
   it("counts finished matches of the last days, at most a few per opponent and day", () => {
     const store = new Store(":memory:");
-    const [a, b, c] = ["Ann", "Ben", "Cem"].map((name) => store.createPlayer(name).id) as [string, string, string];
+    const [a, b, c] = ["Ann", "Ben", "Cem"].map((name) => store.createPlayer(name).id) as [
+      string,
+      string,
+      string,
+    ];
     // ten matches against Ben on one day: only three count
     for (let i = 0; i < 10; i++) play(store, a, b, "2026-11-19T10:00:00.000Z", false);
     play(store, a, c, "2026-11-18T10:00:00.000Z");

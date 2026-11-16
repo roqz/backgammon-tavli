@@ -4,6 +4,7 @@ export { evaluate, gammonChances, isContact, type Outcomes, outcomes, winProbabi
 export * from "./met";
 export {
   hasNet,
+  loadAllNets,
   loadNet,
   NET_OF,
   type Net,

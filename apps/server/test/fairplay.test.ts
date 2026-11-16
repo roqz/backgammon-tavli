@@ -143,7 +143,7 @@ describe("fair-play analysis", () => {
       // think times of turns with a real choice were recorded with the match
       expect(info?.timing?.decisions).toBeGreaterThan(0);
       const signals = await api<ModerationSignals>(server, "/api/admin/signals", { headers: admin });
-      expect(signals.thresholds.botLikeAgreement).toBe(0.92);
+      expect(signals.thresholds.botLikeAgreement).toBe(0.88);
     }, 60_000);
   });
 });

@@ -1,22 +1,27 @@
 /**
- * The player's own accuracy: how often their checker play matched the strong computer in online
+ * The player's own accuracy: how often their checker play matched the expert computer in online
  * matches (from the server's fair-play analysis). Only the player sees it.
  */
 import type { AccuracyReport, MatchAccuracy } from "@tavli/protocol";
 import { type Dict, useT } from "../i18n";
 import { Card } from "./ui";
 
-/** Levels by agreement with the strong computer (the easy bot agrees about 30 %, the medium 70–88 %). */
+/**
+ * Levels by the average equity lost per decision against the expert (neural network). The loss
+ * depends less on the variant than the agreement does (Fevga has many near-equal moves). In
+ * self-play the expert loses 0.004–0.010, the strong bot 0.033 (Backgammon, Portes) to
+ * 0.063–0.077 (Fevga, Plakoto), the easy bot 0.10–0.13 points per decision.
+ */
 const LEVELS = [
-  [0.85, "accuracyLevel5"],
-  [0.72, "accuracyLevel4"],
-  [0.58, "accuracyLevel3"],
-  [0.42, "accuracyLevel2"],
-  [0, "accuracyLevel1"],
+  [0.02, "accuracyLevel5"],
+  [0.035, "accuracyLevel4"],
+  [0.055, "accuracyLevel3"],
+  [0.085, "accuracyLevel2"],
+  [Number.POSITIVE_INFINITY, "accuracyLevel1"],
 ] as const;
 
-export const accuracyLevel = (t: Dict, agreement: number): string =>
-  t[LEVELS.find(([min]) => agreement >= min)![1]];
+export const accuracyLevel = (t: Dict, averageLoss: number): string =>
+  t[LEVELS.find(([max]) => averageLoss <= max)![1]];
 
 export const percent = (x: number) => `${Math.round(x * 100)} %`;
 
@@ -45,7 +50,7 @@ export function AccuracyCard({ report }: { report: AccuracyReport | null }) {
               <div className="text-xs text-stone-400">{t.accuracyAgreement}</div>
             </div>
             <div className="pb-1">
-              <div className="text-sm font-semibold text-stone-200">{accuracyLevel(t, s.agreement)}</div>
+              <div className="text-sm font-semibold text-stone-200">{accuracyLevel(t, s.averageLoss)}</div>
               <div className="text-xs text-stone-400">
                 {t.accuracyLoss.replace("{n}", loss(t, s.averageLoss))} ·{" "}
                 {t.accuracyDecisions.replace("{n}", String(s.decisions))}

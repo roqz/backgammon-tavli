@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import { analyseTurn } from "@tavli/ai";
+import { analyseTurn, loadAllNets } from "@tavli/ai";
 import {
   applyAction,
   canConfirm,
@@ -15,9 +15,9 @@ import type { StoredGame } from "./db";
 
 /**
  * Fair-play analysis of a finished match: every non-forced checker decision of each player is
- * compared with the strong bot (agreement) and valued at 1 ply (error in points). Someone who
- * lets the bot play for them agrees almost always; in self-play the medium bot agrees 70–88 %,
- * the easy bot 24–34 %.
+ * compared with the expert (neural network + 2-ply search; agreement) and valued with the network
+ * at 1 ply (error in points). Someone who lets a bot play for them agrees almost always; the
+ * self-play figures of the other bot levels are in SIGNALS (db.ts).
  */
 export interface PlayerAnalysis {
   /** Non-forced checker decisions (at least two different resulting positions). */
@@ -110,6 +110,8 @@ export class Analyzer {
   private nextId = 1;
   private readonly pending = new Map<number, (r: MatchAnalysis | null) => void>();
   private chain: Promise<unknown> = Promise.resolve();
+  /** The networks, loaded once before the first inline analysis. */
+  private nets: Promise<void> | null = null;
 
   constructor(
     private mode: AnalysisMode,
@@ -164,7 +166,9 @@ export class Analyzer {
         };
         step();
       });
-    const next = this.chain.then(run);
+    this.nets ??= loadAllNets().catch((e) => this.log(`loading networks failed: ${String(e)}`));
+    const nets = this.nets;
+    const next = this.chain.then(() => nets).then(run);
     this.chain = next;
     return next;
   }

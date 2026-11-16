@@ -106,7 +106,6 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 
 **Ohne Eingaben machbar:**
 
-- Fair-Play-Analyse (und damit die eigene Genauigkeit) auf die neuronalen Netze umstellen; sie bewertet noch mit der kalibrierten Heuristik. Die Schwellen müssen danach neu kalibriert werden (rechenintensiv)
 - Beaver/Raccoon im Online-Geldspiel (offline vorhanden; Protokoll und Server fehlen)
 - Play Store per TWA (die Veröffentlichung braucht ein Google-Entwicklerkonto)
 - Optional: wildbg als zweite Backgammon-Engine, volles 3D-Brett
@@ -254,7 +253,7 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 
 ### Fair-Play-Signale und Turniere ✅
 
-- Zuganalyse nach jedem Online-Match (Worker-Thread, `dist/analysis-worker.js`; ohne die Datei inline in kleinen Schritten): jede nicht erzwungene Zugentscheidung wird mit dem starken Bot verglichen (Übereinstimmung) und 1-Zug-bewertet (Fehler in Punkten); gespeichert je Match und Spieler
+- Zuganalyse nach jedem Online-Match (Worker-Thread, `dist/analysis-worker.js`; ohne die Datei inline in kleinen Schritten): jede nicht erzwungene Zugentscheidung wird mit dem Experten (Netz + 2-Zug-Suche) verglichen (Übereinstimmung) und mit dem Netz 1-Zug-bewertet (Fehler in Punkten); gespeichert je Match und Spieler. Kalibrierung (`scripts/fairplay-calibrate.ts`, je 60 Partien pro Variante): Übereinstimmung mit dem Experten bei Stark 59/57/42/29 %, Mittel 53/52/50/33 %, Einsteiger 18/18/29/23 % (Backgammon/Portes/Plakoto/Fevga), höchstens 70 % in 50er-Blöcken; Ø Verlust Stark 0,033–0,077, Einsteiger 0,10–0,13 Punkte je Entscheidung. Bot-Verdacht ab 88 % über 150 Entscheidungen; Stufen der eigenen Genauigkeit nach Ø Verlust (≤ 0,02 / 0,035 / 0,055 / 0,085), weil die Übereinstimmung stark von der Variante abhängt
 - Referenzwerte aus Selbstspiel: Einsteiger-Bot 24–34 %, Mittel 70–88 %, Stark 100 % Übereinstimmung; Signal „spielt wie der Bot“ ab 92 % über mindestens 150 Entscheidungen (90 Tage)
 - Weitere Signale: häufige Abbrüche/Aufgaben (≥ 30 % von ≥ 8 Matches), „Dumping“ (≥ 3 gewertete Matches in 30 Tagen an denselben Gegner verloren durch Abbruch oder Aufgabe in den ersten Zügen)
 - Moderation: Reiter „Signale“ mit Kennzahlen und Sperren-Knopf; Spielerinfo zeigt Übereinstimmung und Ø-Fehler. Nur Hinweise, keine automatischen Strafen
@@ -329,7 +328,7 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 ### Tausch, Klänge, eigene Genauigkeit ✅
 
 - Spielmarken-Tausch nur noch für das, was kein Erfolg freischaltet: Klangsets (Holz, Marmor, Kafeneio-Glocke), Würfelklänge (Filz, Bein, Marmortisch), Kurznachrichten-Pakete („Kafeneio“, „Sportsgeist“) und die Luxus-Looks; früher Getauschtes bleibt (`retired` im `SHOP`)
-- Eigene Genauigkeit unter Profil → Konto & Daten: Übereinstimmung mit dem starken Computer und Ø Verlust je Entscheidung (90 Tage, aus der Fair-Play-Analyse), Stufe, Trend gegenüber den 90 Tagen davor, ein Balken je Partie und der Wert in der eigenen Partienliste; nur für einen selbst (`GET /api/account/accuracy`)
+- Eigene Genauigkeit unter Profil → Konto & Daten: Übereinstimmung mit dem Experten-Computer und Ø Verlust je Entscheidung (90 Tage, aus der Fair-Play-Analyse), Stufe nach Ø Verlust, Trend gegenüber den 90 Tagen davor, ein Balken je Partie und der Wert in der eigenen Partienliste; nur für einen selbst (`GET /api/account/accuracy`)
 - Tagesrätsel auf der Startseite mit Stand: Punkt = offen, grauer Kreis = versucht, grüner Haken = gelöst
 - Ausprobiert und wieder entfernt: geneigtes Brett mit Perspektive („Brett mit Tiefe“) – brachte nicht den erhofften Effekt
 

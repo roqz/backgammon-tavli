@@ -198,18 +198,21 @@ export interface TurnAnalysis {
 /**
  * Compares a played turn with the bot (fair-play analysis): `s` is the state after the roll,
  * `played` the board after the player's moves. Returns null for forced turns (one option).
+ * Agreement is measured against the expert (network + 2-ply search) and the loss with the
+ * network at 1 ply, like the players' own reviews; without a loaded network both fall back to the
+ * heuristic (the expert then plays like the strong bot).
  */
 export const analyseTurn = (
   s: GameState,
   played: Board,
-  reference: BotLevel = "hard",
+  reference: BotLevel = "expert",
 ): TurnAnalysis | null => {
   if (s.phase !== "moving") return null;
   const options = turnOptions(s);
   if (options.length < 2) return null;
   const key = boardKey(played);
   const w = weightsFor(s.variant);
-  const v = new Valuer(s, s.turn, w, {});
+  const v = new Valuer(s, s.turn, w, {}, netFor(s.variant));
   const opp = opponent(s.turn);
   let best = Number.NEGATIVE_INFINITY;
   let chosen: number | null = null;

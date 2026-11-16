@@ -229,13 +229,15 @@ export const REPORTS_PER_DAY = 10;
 export const DELETED_NAME = "—";
 
 /**
- * Fair-play signal thresholds. Bot agreement: the medium bot reaches 70–88 % in self-play, the
- * strong bot itself 100 %; 92 % over 150+ decisions is very unusual for a person.
+ * Fair-play signal thresholds. Bot agreement is measured against the expert (neural network +
+ * 2-ply): in self-play the heuristic bots reach 29–59 % (strong) and 33–53 % (medium) depending on
+ * the variant, at most 70 % over 50 decisions; the expert itself 100 %. 88 % over 150+ decisions
+ * is far beyond any of them (scripts/fairplay-calibrate.ts, tuning/fairplay-*.log).
  */
 export const SIGNALS = {
   days: 90,
   botLikeDecisions: 150,
-  botLikeAgreement: 0.92,
+  botLikeAgreement: 0.88,
   forfeitMatches: 8,
   forfeitRate: 0.3,
   dumpingMatches: 3,
