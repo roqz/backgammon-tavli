@@ -11,6 +11,8 @@ import {
   type TimeControl,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { Icon } from "../components/Icon";
+import { Plaque } from "../components/Medallion";
 import { PlayerName } from "../components/PlayerName";
 import { SetupLayout } from "../components/Setup";
 import { TimeControlPicker } from "../components/TimeControlPicker";
@@ -121,7 +123,7 @@ export function PlayPanel() {
               }
             }}
           >
-            🔗 {copied ? t.linkCopied : t.copyLink}
+            <Icon name="link" /> {copied ? t.linkCopied : t.copyLink}
           </Button>
           <Button onClick={() => unqueue()}>{t.cancel}</Button>
         </div>
@@ -142,13 +144,13 @@ export function PlayPanel() {
       variant={variant}
       summary={`${variantName(variant, t.tavliMatch)} · ${lengthText(t, length)}`}
       action={{
-        label: `⚔ ${t.findOpponent}`,
+        label: t.findOpponent,
         disabled: !ready,
         onClick: () => queue(variant, length, clock),
       }}
       secondary={
         <Button disabled={!ready} onClick={() => createInvite(variant, length, clock)}>
-          ✉ {t.inviteFriend}
+          <Icon name="mail" /> {t.inviteFriend}
         </Button>
       }
     >
@@ -279,7 +281,13 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
               <div className="text-2xl font-bold text-amber-100 tabular-nums">{r.rating}</div>
               <div className="text-xs text-stone-400">
                 {variantName(r.variant, t.tavliMatch)}
-                {r.pool === "blitz" && ` · ⚡ ${t.timeControls.blitz}`} · {r.wins}/{r.matches}
+                {r.pool === "blitz" && (
+                  <>
+                    {" "}
+                    · <Icon name="blitz" /> {t.timeControls.blitz}
+                  </>
+                )}{" "}
+                · {r.wins}/{r.matches}
               </div>
             </Card>
           ))}
@@ -309,7 +317,14 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
                 onChange={setPool}
                 options={RATING_POOLS.map((p) => ({
                   value: p,
-                  label: p === "blitz" ? `⚡ ${t.timeControls.blitz}` : t.ratingPools.normal,
+                  label:
+                    p === "blitz" ? (
+                      <>
+                        <Icon name="blitz" /> {t.timeControls.blitz}
+                      </>
+                    ) : (
+                      t.ratingPools.normal
+                    ),
                 }))}
               />
             </div>
@@ -341,7 +356,7 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
             <ol className="flex flex-col gap-1 text-sm">
               {month.previous.map((p, i) => (
                 <li key={p.playerId} className="flex items-center gap-2">
-                  <span aria-hidden>{PODIUM[i]}</span>
+                  <Plaque place={(i + 1) as 1 | 2 | 3} size={18} />
                   <button
                     type="button"
                     className="min-w-0 flex-1 truncate text-left hover:text-amber-200"
@@ -397,7 +412,6 @@ function LeaderboardPanel({ onReplay }: { onReplay: (records: GameRecord[]) => v
   );
 }
 
-const PODIUM = ["🥇", "🥈", "🥉"];
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
 export type OnlineTab = "corr" | "friends" | "tournaments" | "clubs" | "live" | "ranking";

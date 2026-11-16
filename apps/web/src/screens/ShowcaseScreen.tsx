@@ -21,6 +21,7 @@ import {
   weekId,
   weekRange,
 } from "../career";
+import { Icon } from "../components/Icon";
 import {
   CheckerPicker,
   CheckerSwatch,
@@ -30,6 +31,7 @@ import {
   StylePreview,
   seasonHow,
 } from "../components/Looks";
+import { Medallion } from "../components/Medallion";
 import { variantShortName } from "../components/VariantPicker";
 import { type Dict, useT } from "../i18n";
 import { usePuzzles } from "../puzzle";
@@ -37,7 +39,6 @@ import {
   type CheckerSet,
   DICE_SKINS,
   type DiceSkin,
-  FRAME_LOOK,
   hasLook,
   useOfferedFrames,
   useUnlocked,
@@ -184,7 +185,7 @@ function WeeklyTasks() {
                   aria-hidden
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${ok ? "bg-felt-400 text-stone-50" : "border border-stone-600 text-transparent"}`}
                 >
-                  ✓
+                  <Icon name="check" className="h-3.5 w-3.5" />
                 </span>
                 <span className={`flex-1 ${ok ? "text-stone-400 line-through" : "text-stone-100"}`}>
                   {taskText(t, task)}
@@ -207,10 +208,13 @@ const EMOTE_PACK_ICON: Record<EmotePack, string> = { kafeneio: "☕", sport: "�
 
 function ShopPreview({ kind, look }: { kind: string; look: string }) {
   if (kind === "sound" || kind === "roll" || kind === "emotes") {
-    const icon = kind === "sound" ? "🔊" : kind === "roll" ? "🎲" : EMOTE_PACK_ICON[look as EmotePack];
     return (
       <span aria-hidden className="inline-flex h-6 w-12 items-center justify-center text-lg">
-        {icon}
+        {kind === "emotes" ? (
+          EMOTE_PACK_ICON[look as EmotePack]
+        ) : (
+          <Icon name={kind === "sound" ? "sound" : "dice"} className="h-5 w-5 text-amber-200" />
+        )}
       </span>
     );
   }
@@ -295,7 +299,7 @@ function Exchange() {
                     }
                     className="min-h-9 rounded-lg px-2 text-sm text-stone-300 hover:text-amber-300"
                   >
-                    ▶
+                    <Icon name="play" />
                   </button>
                 )}
                 {taken || free ? (
@@ -362,7 +366,9 @@ function Rarities() {
                 </div>
               </div>
               {open ? (
-                <p className="text-xs text-stone-300">✓ {unlocked[a.id]?.slice(0, 10)}</p>
+                <p className="text-xs text-stone-300">
+                  <Icon name="check" /> {unlocked[a.id]?.slice(0, 10)}
+                </p>
               ) : (
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
@@ -470,7 +476,7 @@ function Season() {
                 <StylePreview style={s.key} />
               </span>
               <span className={open ? "text-stone-100" : "text-stone-500"}>
-                {open ? s.icon : "🔒"} {t.seasonNames[s.key]}
+                {open ? s.icon : <Icon name="lock" />} {t.seasonNames[s.key]}
               </span>
             </li>
           );
@@ -498,14 +504,13 @@ function Frames() {
               title={open ? undefined : FRAMES[f] === "supporter" ? t.supporterOnly : lockText(t, FRAMES[f])}
               className={`flex items-center gap-2 rounded-lg border px-2 py-2 text-sm ${open ? "border-stone-700 text-stone-100" : "border-stone-800 text-stone-500"}`}
             >
-              <span
-                aria-hidden
-                className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-900 text-xs ring-2 ${FRAME_LOOK[f].ring} ${open ? "" : "opacity-40 grayscale"}`}
-              >
-                {FRAME_LOOK[f].icon}
-              </span>
+              <Medallion frame={f} size={24} className={open ? "" : "opacity-40 grayscale"} />
               <span className="min-w-0 truncate">
-                {open ? "" : "🔒 "}
+                {!open && (
+                  <>
+                    <Icon name="lock" />{" "}
+                  </>
+                )}
                 {t.frameNames[f]}
               </span>
             </li>

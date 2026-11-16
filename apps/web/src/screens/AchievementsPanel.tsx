@@ -1,36 +1,60 @@
 import { FRAME_IDS, FRAMES } from "@tavli/protocol";
+import type { ReactNode } from "react";
 import { ACHIEVEMENTS, useAchievements } from "../achievements";
 import type { THEMES } from "../board/themes";
 import { currentCareer } from "../career";
+import { Icon } from "../components/Icon";
+import { Medallion } from "../components/Medallion";
 import { Card } from "../components/ui";
 import { useT } from "../i18n";
 import { useOnline } from "../online/store";
 import { usePuzzles } from "../puzzle";
-import { FRAME_LOOK, REWARDS } from "../rewards";
+import { REWARDS } from "../rewards";
 import { useArchive } from "../store/archive";
 import { useSettings } from "../store/settings";
 import { LESSONS } from "./TutorialScreen";
 
-/** What an achievement unlocks, as text. */
-export const rewardOf = (t: ReturnType<typeof useT>, id: string): string | null => {
-  const styles = Object.entries(REWARDS.style)
-    .filter(([, a]) => a === id)
-    .map(([s]) => `🎨 ${t.styleNames[s as keyof typeof THEMES]}`);
-  const dice = Object.entries(REWARDS.dice)
-    .filter(([, a]) => a === id)
-    .map(([d]) => `🎲 ${t.diceSkins[d as keyof typeof t.diceSkins]}`);
-  const checkers = Object.entries(REWARDS.checkers)
-    .filter(([, a]) => a === id)
-    .map(([c]) => `⚪ ${t.checkerSets[c as keyof typeof t.checkerSets]}`);
-  const extra = [
-    ...(REWARDS.fireworks === id ? [`🎆 ${t.fireworks}`] : []),
-    ...(REWARDS.diceCup === id ? [`🔊 ${t.diceCup}`] : []),
-    ...FRAME_IDS.filter((f) => FRAMES[f] === id).map(
-      (f) => `${FRAME_LOOK[f].icon} ${t.frame}: ${t.frameNames[f]}`,
-    ),
+/** What an achievement unlocks: the looks and extras, each with its icon. */
+export const rewardOf = (t: ReturnType<typeof useT>, id: string): ReactNode => {
+  const items: { key: string; icon: ReactNode; text: string }[] = [
+    ...Object.entries(REWARDS.style)
+      .filter(([, a]) => a === id)
+      .map(([s]) => ({
+        key: `style-${s}`,
+        icon: <Icon name="palette" />,
+        text: t.styleNames[s as keyof typeof THEMES],
+      })),
+    ...Object.entries(REWARDS.dice)
+      .filter(([, a]) => a === id)
+      .map(([d]) => ({
+        key: `dice-${d}`,
+        icon: <Icon name="dice" />,
+        text: t.diceSkins[d as keyof typeof t.diceSkins],
+      })),
+    ...Object.entries(REWARDS.checkers)
+      .filter(([, a]) => a === id)
+      .map(([c]) => ({
+        key: `checkers-${c}`,
+        icon: "⚪",
+        text: t.checkerSets[c as keyof typeof t.checkerSets],
+      })),
+    ...(REWARDS.fireworks === id
+      ? [{ key: "fireworks", icon: <Icon name="fireworks" />, text: t.fireworks }]
+      : []),
+    ...(REWARDS.diceCup === id ? [{ key: "dice-cup", icon: <Icon name="sound" />, text: t.diceCup }] : []),
+    ...FRAME_IDS.filter((f) => FRAMES[f] === id).map((f) => ({
+      key: `frame-${f}`,
+      icon: <Medallion frame={f} size={14} className="align-[-0.15em]" />,
+      text: `${t.frame}: ${t.frameNames[f]}`,
+    })),
   ];
-  const all = [...styles, ...dice, ...checkers, ...extra];
-  return all.length ? all.join(", ") : null;
+  if (!items.length) return null;
+  return items.map((item, i) => (
+    <span key={item.key}>
+      {i > 0 && ", "}
+      {item.icon} {item.text}
+    </span>
+  ));
 };
 
 /** All achievements with progress and rewards. */
@@ -57,7 +81,9 @@ export function AchievementsPanel() {
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-stone-100">🏅 {t.achievements}</h2>
+        <h2 className="text-lg font-semibold text-stone-100">
+          <Icon name="trophy" /> {t.achievements}
+        </h2>
         <span className="text-sm tabular-nums text-stone-400">
           {done} / {ACHIEVEMENTS.length}
         </span>
@@ -100,7 +126,7 @@ export function AchievementsPanel() {
                 )}
                 {reward && (
                   <div className={`mt-1 text-xs ${open ? "text-emerald-300" : "text-stone-400"}`}>
-                    {open ? "✓" : "🔒"} {t.reward}: {reward}
+                    <Icon name={open ? "check" : "lock"} /> {t.reward}: {reward}
                   </div>
                 )}
               </div>

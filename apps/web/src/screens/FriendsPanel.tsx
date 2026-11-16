@@ -7,6 +7,7 @@ import {
   type TimeControl,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { Icon } from "../components/Icon";
 import { PlayerName } from "../components/PlayerName";
 import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Modal, Segmented } from "../components/ui";
@@ -118,7 +119,9 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
         </Card>
       )}
       <Card className="flex flex-col gap-2">
-        <h2 className="font-semibold text-stone-200">👥 {t.friends}</h2>
+        <h2 className="font-semibold text-stone-200">
+          <Icon name="friends" /> {t.friends}
+        </h2>
         {list === null && !error && <p className="text-sm text-stone-500">{t.loading}</p>}
         {list !== null && friends.length === 0 && <p className="text-sm text-stone-500">{t.noFriends}</p>}
         <ul className="divide-y divide-stone-800">
@@ -137,7 +140,7 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
                 <span className="text-xs text-stone-500">{t.presence[f.presence ?? "offline"]}</span>
                 {f.presence === "playing" && f.matchId && (
                   <Button variant="ghost" className="px-2 py-1 text-sm" onClick={() => onWatch(f.matchId!)}>
-                    👁 {t.watch}
+                    <Icon name="watch" /> {t.watch}
                   </Button>
                 )}
                 {f.presence === "online" && (
@@ -146,7 +149,7 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
                     disabled={status !== "ready"}
                     onClick={() => setChallenging(f)}
                   >
-                    ⚔ {t.challenge}
+                    <Icon name="challenge" /> {t.challenge}
                   </Button>
                 )}
                 <Button
@@ -159,7 +162,7 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
                     setCorrWith(f);
                   }}
                 >
-                  ♟ <span className="max-sm:sr-only">{t.friendCorr}</span>
+                  <Icon name="corr" /> <span className="max-sm:sr-only">{t.friendCorr}</span>
                 </Button>
                 <Button
                   variant="ghost"
@@ -168,7 +171,7 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
                   title={t.removeFriend}
                   onClick={() => void act(() => removeFriend(f.id))}
                 >
-                  ✕
+                  <Icon name="close" />
                 </Button>
               </li>
             ))}
@@ -186,7 +189,7 @@ export function FriendsPanel({ onWatch }: { onWatch: (matchId: string) => void }
           friendId={corrWith.id}
           onClose={() => setCorrWith(null)}
           onSent={() => {
-            setNotice(`♟ ${t.corrInviteSent.replace("{name}", corrWith.name)}`);
+            setNotice(`${t.corrInviteSent.replace("{name}", corrWith.name)}`);
             setCorrWith(null);
           }}
         />
@@ -226,7 +229,9 @@ function FriendLinkCard({ playerId }: { playerId: string }) {
   const link = code ? inviteLink(code) : friendLink(playerId);
   return (
     <Card className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold text-stone-300">🤝 {t.friendLink}</h2>
+      <h2 className="flex items-center gap-1.5 text-sm font-semibold text-stone-300">
+        <Icon name="handshake" /> {t.friendLink}
+      </h2>
       <p className="text-xs text-stone-500">{t.friendLinkHint}</p>
       {code && (
         <p className="text-sm text-stone-300">
@@ -249,7 +254,7 @@ function FriendLinkCard({ playerId }: { playerId: string }) {
               }
           }}
         >
-          🔗 {copied ? t.copied : t.copyLink}
+          <Icon name="link" /> {copied ? t.copied : t.copyLink}
         </Button>
         {code && (
           <Button
@@ -266,7 +271,7 @@ function FriendLinkCard({ playerId }: { playerId: string }) {
                 .finally(() => setRenewing(false));
             }}
           >
-            ↻ {t.inviteRenew}
+            <Icon name="rematch" /> {t.inviteRenew}
           </Button>
         )}
         <span className="select-all break-all font-mono text-xs text-stone-500">{link}</span>
@@ -291,7 +296,7 @@ function ChallengeDialog({
   return (
     <Modal onClose={onClose}>
       <h2 className="mb-3 text-lg font-semibold text-stone-100">
-        ⚔ {t.challenge}: {friend.name}
+        <Icon name="challenge" /> {t.challenge}: {friend.name}
       </h2>
       <div className="flex flex-col gap-4">
         <Segmented
@@ -306,7 +311,14 @@ function ChallengeDialog({
           onChange={setLength}
           options={([0, 1, 3, 5, 7] as const).map((l) => ({
             value: l,
-            label: l === 0 ? `∞ ${t.money}` : String(l),
+            label:
+              l === 0 ? (
+                <>
+                  <Icon name="infinity" /> {t.money}
+                </>
+              ) : (
+                String(l)
+              ),
           }))}
         />
         <TimeControlPicker value={clock} onChange={setClock} />
@@ -336,7 +348,7 @@ export function OutgoingChallenge() {
     >
       <span>{t.challengeStatus[outgoing.status].replace("{name}", outgoing.to.name)}</span>
       <Button variant="ghost" className="px-2 py-1 text-sm" onClick={cancelChallenge}>
-        {waiting ? t.cancel : "✕"}
+        {waiting ? t.cancel : <Icon name="close" label={t.close} />}
       </Button>
     </p>
   );
@@ -351,7 +363,7 @@ export function ChallengePrompt() {
   return (
     <Modal onClose={() => answerChallenge(incoming.id, false)}>
       <h2 className="mb-2 text-lg font-semibold text-amber-200">
-        ⚔ {t.challengeFrom.replace("{name}", incoming.from.name)}
+        <Icon name="challenge" /> {t.challengeFrom.replace("{name}", incoming.from.name)}
       </h2>
       <p className="mb-4 text-stone-300">
         {variantLabel(incoming.variant, t.tavliMatch)} · {lengthText(t, incoming.length)} ·{" "}
@@ -386,7 +398,9 @@ export function FriendLinkPrompt() {
   };
   return (
     <Modal onClose={close}>
-      <h2 className="mb-3 text-lg font-semibold text-stone-100">👥 {t.addFriend}</h2>
+      <h2 className="mb-3 text-lg font-semibold text-stone-100">
+        <Icon name="friends" /> {t.addFriend}
+      </h2>
       {result ? (
         <>
           <p className="mb-4 text-stone-300">{result}</p>
@@ -436,7 +450,11 @@ export function AddFriendButton({ playerId, className = "" }: { playerId: string
           .catch((e: unknown) => setState(errorOf(t, e)))
       }
     >
-      {state ?? `👥 ${t.addFriend}`}
+      {state ?? (
+        <>
+          <Icon name="friends" /> {t.addFriend}
+        </>
+      )}
     </Button>
   );
 }
@@ -465,7 +483,9 @@ export function LivePanel({ onWatch }: { onWatch: (matchId: string) => void }) {
   }, [t]);
   return (
     <Card className="flex flex-col gap-2">
-      <h2 className="font-semibold text-stone-200">📺 {t.liveTitle}</h2>
+      <h2 className="font-semibold text-stone-200">
+        <Icon name="live" /> {t.liveTitle}
+      </h2>
       <p className="text-xs text-stone-500">{t.liveHint}</p>
       {error && <p className="text-sm text-red-400">{error}</p>}
       {list === null && !error && <p className="text-sm text-stone-500">{t.loading}</p>}
@@ -479,14 +499,28 @@ export function LivePanel({ onWatch }: { onWatch: (matchId: string) => void }) {
               onClick={() => onWatch(m.matchId)}
             >
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-stone-100">
-                  {m.players[0].name} ({m.players[0].rating}) – {m.players[1].name} ({m.players[1].rating})
+                <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-stone-100">
+                  <PlayerName name={m.players[0].name} frame={m.players[0].frame} rank={m.players[0].rank} />
+                  <span className="text-stone-400 tabular-nums">({m.players[0].rating})</span>
+                  <span className="text-stone-500">–</span>
+                  <PlayerName name={m.players[1].name} frame={m.players[1].frame} rank={m.players[1].rank} />
+                  <span className="text-stone-400 tabular-nums">({m.players[1].rating})</span>
                 </span>
                 <span className="block text-xs text-stone-500">
                   {variantLabel(m.variant, t.tavliMatch)} · {lengthText(t, m.length)}
-                  {m.tournament &&
-                    ` · 🏆 ${m.tournament.name} · ${roundName(t, m.tournament.round, m.tournament.rounds, m.tournament.format)}`}
-                  {m.spectators > 0 && ` · 👁 ${m.spectators}`}
+                  {m.tournament && (
+                    <>
+                      {" "}
+                      · <Icon name="trophy" /> {m.tournament.name} ·{" "}
+                      {roundName(t, m.tournament.round, m.tournament.rounds, m.tournament.format)}
+                    </>
+                  )}
+                  {m.spectators > 0 && (
+                    <>
+                      {" "}
+                      · <Icon name="watch" /> {m.spectators}
+                    </>
+                  )}
                 </span>
               </span>
               <span className="font-bold tabular-nums text-stone-200">

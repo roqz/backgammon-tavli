@@ -12,6 +12,7 @@ import {
   XGID_VARIANTS,
 } from "@tavli/engine";
 import { useEffect, useState } from "react";
+import { Icon } from "../components/Icon";
 import { SetupLayout } from "../components/Setup";
 import { Toggle } from "../components/ui";
 import { Choice, VariantPicker, variantShortName } from "../components/VariantPicker";
@@ -221,7 +222,7 @@ export function LocalSetup({ opponent, onStarted }: { opponent: "bot" | "human";
           { value: 3, label: "3" },
           { value: 5, label: "5" },
           { value: 7, label: "7" },
-          { value: 0, label: "∞", title: t.unlimited },
+          { value: 0, label: <Icon name="infinity" label={t.unlimited} />, title: t.unlimited },
         ]}
       />
       {length === 1 && variant !== "tavli" && getVariant(variant as VariantId).cube && (

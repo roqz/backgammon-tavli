@@ -41,6 +41,7 @@ import {
   ResolveSchema,
   type ServerMessage,
   ShowcaseSchema,
+  TitleSchema,
   SupporterCodeSchema,
   SupporterPublicSchema,
   TwoFactorOffSchema,
@@ -425,6 +426,12 @@ export const startServer = async (opts: ServerOptions): Promise<RunningServer> =
         if (body.data.friendsCanWatch !== undefined)
           store.setFriendsCanWatch(player.id, body.data.friendsCanWatch);
         if (body.data.listed !== undefined) store.setListed(player.id, body.data.listed);
+        return store.account(player.id);
+      }
+      if (req.method === "POST" && path === "/api/account/title") {
+        const body = TitleSchema.safeParse(await readJson(req));
+        if (!body.success) throw new HttpError(400, "invalid request");
+        if (!store.setTitle(player.id, body.data.title)) throw new HttpError(403, "title not earned");
         return store.account(player.id);
       }
       if (req.method === "POST" && path === "/api/account/showcase") {

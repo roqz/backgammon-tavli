@@ -21,6 +21,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Board } from "../board/Board";
 import { HEIGHT, WIDTH } from "../board/geometry";
 import { useFollowingLayout } from "../board/layout";
+import { Icon } from "../components/Icon";
 import { SetupLayout } from "../components/Setup";
 import { Button, Card, Modal, Segmented } from "../components/ui";
 import { Choice, VariantPicker } from "../components/VariantPicker";
@@ -141,8 +142,12 @@ export function CorrSetup({ onOpen }: { onOpen: (id: string) => void }) {
     <SetupLayout
       variant={variant}
       summary={`${variantLabel(variant, t.tavliMatch)} · ${lengthText(t, length)} · ${corrPace(t, hours)}`}
-      action={{ label: `🔍 ${t.corrSeek}`, onClick: seek }}
-      secondary={<Button onClick={() => setInviting(true)}>♟ {t.corrInviteFriend}</Button>}
+      action={{ label: t.corrSeek, onClick: seek }}
+      secondary={
+        <Button onClick={() => setInviting(true)}>
+          <Icon name="corr" /> {t.corrInviteFriend}
+        </Button>
+      }
     >
       <p className="text-sm text-stone-400">{t.corrSeekHint}</p>
       <CorrSettings
@@ -265,7 +270,9 @@ export function CorrPanel({ onOpen }: { onOpen: (id: string) => void }) {
         {seeks.map((sk) => (
           <li key={sk.id} className="flex items-center gap-2 py-2 text-sm">
             <span className="min-w-0 flex-1">
-              <span className="block text-stone-200">🔍 {t.corrSeeks}</span>
+              <span className="block text-stone-200">
+                <Icon name="search" /> {t.corrSeeks}
+              </span>
               <span className="block text-xs text-stone-500">
                 {variantLabel(sk.variant, t.tavliMatch)} · {lengthText(t, sk.length)} ·{" "}
                 {corrPace(t, sk.hours)}
@@ -339,7 +346,9 @@ export function CorrInvite({
   }, [friendId]);
   return (
     <Modal onClose={onClose}>
-      <h2 className="mb-3 text-lg font-semibold text-stone-100">♟ {t.corrNew}</h2>
+      <h2 className="mb-3 text-lg font-semibold text-stone-100">
+        <Icon name="corr" /> {t.corrNew}
+      </h2>
       {friends?.length === 0 ? (
         <p className="mb-4 text-sm text-stone-400">{t.corrNeedFriends}</p>
       ) : (
@@ -488,10 +497,32 @@ function CorrRow({
         </span>
         <span className="block text-xs text-stone-500">
           {variantLabel(g.variant, t.tavliMatch)} · {lengthText(t, g.length)} · {corrPace(t, g.hours)}
-          {g.status === "active" && ` · ⏳ ${timeLeft(t, g.deadline)}`}
-          {g.status === "finished" &&
-            ` · ${g.winner === null ? t.corrEnded : g.winner === g.seat ? `🏆 ${t.corrWon}` : t.corrLost}`}
-          {g.league && ` · 🏟️ ${g.league.name}`}
+          {g.status === "active" && (
+            <>
+              {" · "}
+              <Icon name="hourglass" /> {timeLeft(t, g.deadline)}
+            </>
+          )}
+          {g.status === "finished" && (
+            <>
+              {" · "}
+              {g.winner === null ? (
+                t.corrEnded
+              ) : g.winner === g.seat ? (
+                <>
+                  <Icon name="trophy" /> {t.corrWon}
+                </>
+              ) : (
+                t.corrLost
+              )}
+            </>
+          )}
+          {g.league && (
+            <>
+              {" · "}
+              <Icon name="trophy" /> {g.league.name}
+            </>
+          )}
         </span>
       </button>
       <span
@@ -572,7 +603,9 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
     return (
       <div className="mx-auto flex max-w-lg flex-col items-center gap-4 p-6 text-center">
         <p className="text-stone-400">{error ?? t.loading}</p>
-        <Button onClick={onBack}>← {t.back}</Button>
+        <Button onClick={onBack}>
+          <Icon name="back" /> {t.back}
+        </Button>
       </div>
     );
 
@@ -592,14 +625,19 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
     />
   );
   const title = `${rules.name} · ${lengthText(t, view.length)} · ${corrPace(t, view.hours)}`;
-  const status =
-    view.status === "finished"
-      ? view.winner === null
-        ? `🏁 ${t.corrEnded}`
-        : `🏁 ${view.players[view.winner].name} ${t.winsMatch}`
-      : mine
-        ? `${t.yourTurn} · ⏳ ${timeLeft(t, view.deadline)}`
-        : `${t.corrWaitingFor.replace("{name}", view.players[view.toAct ?? 0].name)} · ⏳ ${timeLeft(t, view.deadline)}`;
+  const status: ReactNode =
+    view.status === "finished" ? (
+      <>
+        <Icon name="finish" />{" "}
+        {view.winner === null ? t.corrEnded : `${view.players[view.winner].name} ${t.winsMatch}`}
+      </>
+    ) : (
+      <>
+        {mine ? t.yourTurn : t.corrWaitingFor.replace("{name}", view.players[view.toAct ?? 0].name)}
+        {" · "}
+        <Icon name="hourglass" /> {timeLeft(t, view.deadline)}
+      </>
+    );
 
   const actions: PhoneAction[] = [];
   if (mine && g.phase === "rolling") {
@@ -622,7 +660,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
     actions.push({
       id: "undo",
       label: t.undo,
-      icon: "↶",
+      icon: "undo",
       onClick: () => void send([{ type: "undo" }]),
       disabled: busy || !canUndo(g),
       variant: "secondary",
@@ -679,7 +717,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
       role="alert"
       className="pointer-events-none absolute inset-x-2 bottom-2 z-10 mx-auto w-fit rounded-full bg-stone-900/90 px-3 py-1 text-xs text-red-300 shadow-lg"
     >
-      ⚠ {error}
+      <Icon name="warning" /> {error}
     </p>
   );
   const board = (rotated: boolean) => (
@@ -715,7 +753,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
             void abandonCorr(id).then(setView);
           }}
         >
-          🏳 {t.resign}
+          <Icon name="flag" /> {t.resign}
         </Button>
       </div>
     </Modal>
@@ -736,39 +774,44 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
       fn();
     };
     const items: SheetItem[] = [
-      { id: "rules", label: t.rules, icon: "📖", onClick: closeThen(() => setRulesOpen(true)) },
-      { id: "settings", label: t.settings, icon: "⚙", onClick: closeThen(() => setSettingsOpen(true)) },
+      { id: "rules", label: t.rules, icon: "rules", onClick: closeThen(() => setRulesOpen(true)) },
+      {
+        id: "settings",
+        label: t.settings,
+        icon: "settings",
+        onClick: closeThen(() => setSettingsOpen(true)),
+      },
     ];
     if (phone.turned || phone.kind === "portrait")
       items.push({
         id: "turn",
         label: phone.turned ? t.turnAuto : t.turnLandscape,
-        icon: "⟳",
+        icon: "rotate",
         onClick: closeThen(() => settings.update({ gameOrientation: phone.turned ? "auto" : "landscape" })),
       });
     if (fullscreenSupported())
       items.push({
         id: "fullscreen",
         label: fullscreen ? t.exitFullscreen : t.fullscreen,
-        icon: "⛶",
+        icon: "fullscreen",
         onClick: closeThen(() => void toggleFullscreen(sideways)),
       });
     if (view.status === "active")
       items.push({
         id: "resign",
         label: t.resign,
-        icon: "🏳",
+        icon: "flag",
         danger: true,
         onClick: closeThen(() => setResigning(true)),
       });
     const back = (
       <IconButton label={t.back} onClick={onBack}>
-        ←
+        <Icon name="back" />
       </IconButton>
     );
     const more = (
       <IconButton label={t.more} onClick={() => setMoreOpen(true)}>
-        ⋯
+        <Icon name="more" className="h-6 w-6" strokeWidth={3} />
       </IconButton>
     );
     const statusLine = <span className={sideways ? "" : "truncate"}>{status}</span>;
@@ -796,7 +839,9 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
             <header className="flex shrink-0 items-center gap-2">
               {back}
               <div className="min-w-0 flex-1 text-center leading-tight">
-                <div className="truncate text-sm font-semibold text-stone-100">♟ {rules.name}</div>
+                <div className="truncate text-sm font-semibold text-stone-100">
+                  <Icon name="corr" /> {rules.name}
+                </div>
                 <div className="truncate text-xs text-stone-400">
                   {lengthText(t, view.length)} · {corrPace(t, view.hours)}
                 </div>
@@ -834,10 +879,10 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
             className="shrink-0 px-3 py-1.5 text-sm"
             aria-label={t.back}
           >
-            ← <span className="hidden sm:inline">{t.back}</span>
+            <Icon name="back" /> <span className="hidden sm:inline">{t.back}</span>
           </Button>
           <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
-            ♟ <span className="font-semibold text-stone-200">{rules.name}</span> ·{" "}
+            <Icon name="corr" /> <span className="font-semibold text-stone-200">{rules.name}</span> ·{" "}
             {lengthText(t, view.length)} · {corrPace(t, view.hours)}
           </div>
           <div className="flex items-center gap-2">
@@ -849,7 +894,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
               aria-label={t.rules}
               title={t.rules}
             >
-              📖
+              <Icon name="rules" />
             </Button>
             <Button
               variant="ghost"
@@ -858,7 +903,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
               aria-label={t.settings}
               title={t.settings}
             >
-              ⚙
+              <Icon name="settings" />
             </Button>
           </div>
         </div>
@@ -901,7 +946,7 @@ export function CorrGameScreen({ id, onBack }: { id: string; onBack: () => void 
         )}
         {view.status === "active" && (
           <Button variant="ghost" className="text-sm" onClick={() => setResigning(true)}>
-            🏳 {t.resign}
+            <Icon name="flag" /> {t.resign}
           </Button>
         )}
       </aside>

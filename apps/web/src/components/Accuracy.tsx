@@ -4,6 +4,7 @@
  */
 import type { AccuracyReport, MatchAccuracy } from "@tavli/protocol";
 import { type Dict, useT } from "../i18n";
+import { Icon } from "./Icon";
 import { Card } from "./ui";
 
 /**
@@ -35,7 +36,9 @@ export function AccuracyCard({ report }: { report: AccuracyReport | null }) {
   const trend = s && report?.before ? Math.round((s.agreement - report.before.agreement) * 100) : null;
   return (
     <Card>
-      <h2 className="mb-1 font-semibold text-stone-200">🎯 {t.accuracyTitle}</h2>
+      <h2 className="mb-1 flex items-center gap-1.5 font-semibold text-stone-200">
+        <Icon name="target" /> {t.accuracyTitle}
+      </h2>
       {!report ? (
         <p className="text-sm text-stone-500">{t.loading}</p>
       ) : !s ? (

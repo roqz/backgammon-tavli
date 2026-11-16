@@ -820,6 +820,9 @@ export const fetchActiveBoard = () => rest<ActiveBoard>("/api/leaderboard?board=
 /** Appear in (or leave) the monthly and activity rankings. */
 export const setListed = (listed: boolean) =>
   rest<AccountResponse>("/api/account/settings", { method: "POST", body: JSON.stringify({ listed }) });
+/** The title under the name (null = none). */
+export const setTitle = (title: string | null) =>
+  rest<AccountResponse>("/api/account/title", { method: "POST", body: JSON.stringify({ title }) });
 /** Achievements shown on the public profile (at most three). */
 export const setShowcase = (ids: readonly string[]) =>
   rest<AccountResponse>("/api/account/showcase", { method: "POST", body: JSON.stringify({ ids }) });

@@ -309,22 +309,4 @@ export const diceCupOn = (): boolean =>
   useSettings.getState().diceSound === "cup" &&
   isUnlocked(REWARDS.diceCup, useAchievements.getState().unlocked);
 
-/** Avatar frames: icon and ring colour; the achievement comes from the protocol (FRAMES). */
-export const FRAME_LOOK: Record<Frame, { icon: string; ring: string }> = {
-  // the "Clubraum" materials: brass, olive, terracotta, bone, slate
-  gold: { icon: "👑", ring: "ring-[#c9a14a]" },
-  laurel: { icon: "🌿", ring: "ring-[#7d9a5a]" },
-  flame: { icon: "🔥", ring: "ring-[#d1603d]" },
-  star: { icon: "🌟", ring: "ring-[#e6d6a3]" },
-  scholar: { icon: "🎓", ring: "ring-[#7c9cbb]" },
-  post: { icon: "✉️", ring: "ring-[#b9a27a]" },
-  handshake: { icon: "🤝", ring: "ring-[#8fb39a]" },
-  shield: { icon: "🛡️", ring: "ring-[#a3836a]" },
-  // first place of a monthly ranking: a brass trophy, double ring like the rarities
-  champion: { icon: "🏆", ring: "ring-[#e3c574] outline outline-1 outline-offset-2 outline-[#c9a14a]/70" },
-  // rarities: double rings in brass
-  rosette: { icon: "🏵️", ring: "ring-[#c9a14a] outline outline-1 outline-offset-2 outline-[#c9a14a]/60" },
-  medal: { icon: "🎖️", ring: "ring-[#e3c574] outline outline-1 outline-offset-2 outline-[#d1603d]/70" },
-  // supporters: a brass heart, double ring like the rarities
-  patron: { icon: "💛", ring: "ring-[#c9a14a] outline outline-1 outline-offset-2 outline-[#e3c574]/70" },
-};
+/** Avatar frames are drawn as medallions (components/Medallion.tsx); the achievement comes from FRAMES. */

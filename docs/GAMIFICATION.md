@@ -177,6 +177,9 @@ Rückstand je Seite über den Matchverlauf.
 | Rahmen 🤝 Handschlag | `friends-five`  | 5 verschiedene Freunde herausgefordert (live oder Fernpartie) |
 | Rahmen 🛡️ Wappen     | `league-win`    | eine Club-Liga gewonnen                                       |
 | Rahmen 🏆 Monatssieger | `month-winner` | Platz 1 einer Monatswertung (Rating-Gewinn im Monat, ab 10 Matches) |
+| Rahmen Variantenmeister | `variant-master` | Rating 1600 in Portes, Plakoto und Fevga (Rarität) |
+| Rahmen Turnierserie | `tournament-three` | drei Turniersiege (Rarität) |
+| Rahmen Veteran | `veteran` | zwei Jahre dabei und 300 Online-Matches (Rarität) |
 | Messing-Würfel       | `league-player` | eine Ligapartie zu Ende gespielt                              |
 
 Die Rahmen-Zuordnung steht in `FRAMES` (Protokoll); der Server prüft sie beim Wählen. Der Rahmen

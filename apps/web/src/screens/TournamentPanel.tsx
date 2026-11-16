@@ -10,6 +10,8 @@ import {
   type TournamentView,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { Icon } from "../components/Icon";
+import { Plaque } from "../components/Medallion";
 import { formatStart, StartTimePicker, validStart } from "../components/StartTimePicker";
 import { TimeControlPicker } from "../components/TimeControlPicker";
 import { Button, Card, Segmented } from "../components/ui";
@@ -116,7 +118,7 @@ export function TournamentPanel({
             <CreateForm onDone={() => setCreating(false)} disabled={status !== "ready"} />
           ) : (
             <Button variant="primary" disabled={status !== "ready"} onClick={() => setCreating(true)}>
-              🏆 {t.tCreate}
+              <Icon name="trophy" /> {t.tCreate}
             </Button>
           )}
         </Card>
@@ -225,7 +227,7 @@ export function CreateForm({
             onDone();
           }}
         >
-          🏆 {t.tCreate}
+          <Icon name="trophy" /> {t.tCreate}
         </Button>
       </div>
     </div>
@@ -263,10 +265,16 @@ function TournamentCard({
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-lg font-semibold text-stone-100">🏆 {x.name}</h3>
+        <h3 className="text-lg font-semibold text-stone-100">
+          <Icon name="trophy" /> {x.name}
+        </h3>
         <span className={`rounded-full px-2 py-0.5 text-xs ${badge}`}>{t.tStatus[x.status]}</span>
       </div>
-      {x.club && <p className="-mt-2 text-xs text-stone-500">🏛 {x.club.name}</p>}
+      {x.club && (
+        <p className="-mt-2 text-xs text-stone-500">
+          <Icon name="club" /> {x.club.name}
+        </p>
+      )}
       <p className="text-sm text-stone-400">
         {t.tFormats[x.format]} · {variantLabel(x.variant, t.tavliMatch)}
         {x.clock !== "relaxed" && ` · ${t.timeControls[x.clock]}`} · {x.length}{" "}
@@ -275,12 +283,12 @@ function TournamentCard({
       </p>
       {x.startsAt && x.status === "open" && (
         <p className="-mt-2 text-sm text-amber-200">
-          🗓 {t.startsAt} {formatStart(x.startsAt, t.locale)}
+          <Icon name="calendar" /> {t.startsAt} {formatStart(x.startsAt, t.locale)}
         </p>
       )}
       {winner && (
         <p className="text-amber-200">
-          🥇 {t.tWinner}: <b>{winner.name}</b>
+          <Plaque place={1} size={18} /> {t.tWinner}: <b>{winner.name}</b>
         </p>
       )}
       {x.status === "open" && (
@@ -450,7 +458,7 @@ export function PushHint() {
   if (state === "on" || state === "busy" || state === "unsupported") return null;
   return (
     <div className="flex items-center gap-3 rounded-xl border border-stone-800 bg-stone-900/60 px-4 py-3 text-sm text-stone-300">
-      <span aria-hidden>🔕</span>
+      <Icon name="bell-off" className="h-5 w-5 shrink-0" />
       <span className="min-w-0 flex-1">{state === "denied" ? t.pushDenied : t.pushOffNotice}</span>
       {state !== "denied" && (
         <Button variant="ghost" className="shrink-0 text-sm" onClick={() => openSettings("notify")}>
@@ -472,14 +480,16 @@ export function PushToggle() {
       <div className="flex flex-wrap items-center gap-2">
         {state === "on" ? (
           <>
-            <span className="text-sm text-emerald-300">🔔 {t.pushOn}</span>
+            <span className="text-sm text-emerald-300">
+              <Icon name="bell" /> {t.pushOn}
+            </span>
             <Button variant="ghost" onClick={() => toggle(false)}>
               {t.pushDisable}
             </Button>
           </>
         ) : (
           <Button disabled={state === "busy"} onClick={() => toggle(true)}>
-            🔔 {t.pushOff}
+            <Icon name="bell" /> {t.pushOff}
           </Button>
         )}
       </div>

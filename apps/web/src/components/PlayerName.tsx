@@ -1,13 +1,36 @@
 import type { Frame } from "@tavli/protocol";
-import { useT } from "../i18n";
-import { FRAME_LOOK } from "../rewards";
+import { type Dict, useT } from "../i18n";
+import { Icon } from "./Icon";
+import { Medallion, RankMark } from "./Medallion";
 
-/** A player's name with the avatar frame they chose (an unlocked reward). */
+/** Text of a title id: an achievement title or "month-winner:YYYY-MM:<rating key>". */
+export const titleText = (t: Dict, id: string): string => {
+  if (id.startsWith("month-winner:")) {
+    const [, month = "", key = ""] = id.split(":");
+    const when = new Date(`${month}-15T12:00:00Z`).toLocaleDateString(t.locale, {
+      month: "short",
+      year: "numeric",
+    });
+    const [variant, pool] = key.split("@");
+    const name =
+      variant === "tavli" ? "Tavli" : variant ? variant.charAt(0).toUpperCase() + variant.slice(1) : "";
+    return `${t.titleMonth.replace("{month}", when)} · ${name}${pool === "blitz" ? " ⚡" : ""}`;
+  }
+  return t.titles[id] ?? id;
+};
+
+/**
+ * A player's name with the medallion of the chosen frame (an unlocked reward), the club rank mark,
+ * the supporter heart and, in the player bars, the chosen title in brass below.
+ */
 export function PlayerName({
   name,
   frame,
   rank = 0,
   supporter = false,
+  title = null,
+  size = 20,
+  shine = false,
   className = "",
 }: {
   name: string;
@@ -16,75 +39,68 @@ export function PlayerName({
   rank?: number;
   /** Supports the project: a small brass heart. */
   supporter?: boolean;
+  /** Title id shown below the name (player bars, profile). */
+  title?: string | null;
+  /** Medallion size in px: 20 in lists, 26 in the player bars. */
+  size?: number;
+  /** One gleam across a rare medallion (match start). */
+  shine?: boolean;
   className?: string;
 }) {
   const t = useT();
-  const heart = supporter && (
-    <span
-      className="ml-1 shrink-0 text-[11px] leading-none text-brass"
-      title={t.supporterBadge}
-      role="img"
-      aria-label={t.supporterBadge}
-    >
-      ♥
-    </span>
-  );
-  const badge = rank > 0 && (
-    <span
-      className="ml-1 inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-sm border border-brass/60 px-0.5 font-display text-[10px] leading-none text-brass"
-      title={t.clubRanks[rank]}
-      role="img"
-      aria-label={`${t.clubRankTitle}: ${t.clubRanks[rank]}`}
-    >
-      {RANK_MARK[rank]}
-    </span>
-  );
-  if (!frame)
-    return (
-      <span className={`inline-flex min-w-0 items-center ${className}`}>
-        <span className="truncate">{name}</span>
-        {heart}
-        {badge}
-      </span>
-    );
-  const look = FRAME_LOOK[frame];
-  return (
-    <span className={`inline-flex min-w-0 items-center gap-1 ${className}`}>
-      <span
-        className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-900 text-[11px] ring-2 ${look.ring}`}
-        title={t.frameNames[frame]}
-        role="img"
-        aria-label={t.frameNames[frame]}
-      >
-        {look.icon}
-      </span>
+  const line = (
+    <span className="inline-flex min-w-0 items-center gap-1">
       <span className="truncate">{name}</span>
-      {heart}
-      {badge}
+      {supporter && (
+        <Icon name="heart" className="h-3 w-3 shrink-0 fill-current text-brass" label={t.supporterBadge} />
+      )}
+      {rank > 0 && <RankMark rank={rank} label={`${t.clubRankTitle}: ${t.clubRanks[rank]}`} />}
+    </span>
+  );
+  return (
+    <span className={`inline-flex min-w-0 items-center gap-1.5 ${className}`}>
+      {frame && <Medallion frame={frame} size={size} label={t.frameNames[frame]} shine={shine} />}
+      {title ? (
+        <span className="flex min-w-0 flex-col leading-tight">
+          {line}
+          <span className="truncate text-[11px] font-normal text-brass" data-testid="player-title">
+            {titleText(t, title)}
+          </span>
+        </span>
+      ) : (
+        line
+      )}
     </span>
   );
 }
 
-/** Marks of the club ranks (0 = guest has none). */
-const RANK_MARK = ["", "I", "II", "III", "★"];
-
-/** The chosen frame large (public profile); an empty ring without one. */
-export function FrameMedallion({ frame }: { frame: Frame | null }) {
+/** The chosen frame large (public profile, match introduction); an empty ring without one. */
+export function FrameMedallion({
+  frame,
+  size = 56,
+  shine = false,
+}: {
+  frame: Frame | null;
+  size?: number;
+  shine?: boolean;
+}) {
   const t = useT();
   if (!frame)
     return (
-      <span aria-hidden className="h-14 w-14 shrink-0 rounded-full border border-stone-700 bg-stone-900" />
+      <span
+        aria-hidden
+        className="shrink-0 rounded-full border border-stone-700 bg-stone-900"
+        style={{ width: size, height: size }}
+      />
     );
-  const look = FRAME_LOOK[frame];
   return (
     <span
-      className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-stone-900 text-3xl ring-4 ${look.ring}`}
-      title={t.frameNames[frame]}
+      data-testid="frame-medallion"
       role="img"
       aria-label={t.frameNames[frame]}
-      data-testid="frame-medallion"
+      className="inline-flex shrink-0"
     >
-      {look.icon}
+      <Medallion frame={frame} size={size} shine={shine} />
     </span>
   );
 }

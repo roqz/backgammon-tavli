@@ -17,6 +17,8 @@ import {
   type TournamentView,
 } from "@tavli/protocol";
 import { useEffect, useState } from "react";
+import { Icon } from "../components/Icon";
+import { Plaque } from "../components/Medallion";
 import { PlayerName } from "../components/PlayerName";
 import { formatStart, StartTimePicker, validStart } from "../components/StartTimePicker";
 import { TimeControlPicker } from "../components/TimeControlPicker";
@@ -89,7 +91,9 @@ function PublicLeagueCard({ onLeague }: { onLeague: (id: string) => void }) {
   const { current, next } = data ?? { current: null, next: null };
   return (
     <Card className="flex flex-col gap-3" data-testid="public-league">
-      <h2 className="font-semibold text-amber-100">🏅 {t.publicLeague}</h2>
+      <h2 className="font-semibold text-amber-100">
+        <Icon name="trophy" /> {t.publicLeague}
+      </h2>
       <p className="text-xs text-stone-400">
         {t.publicLeagueHint.replace("{n}", String(data?.noShowLimit ?? 2))}
       </p>
@@ -101,7 +105,7 @@ function PublicLeagueCard({ onLeague }: { onLeague: (id: string) => void }) {
             {current.myDivision !== null &&
               ` · ${t.publicLeagueDivision.replace("{d}", String(current.myDivision))}`}
             <span className="block text-xs text-stone-500">
-              👥 {current.players}
+              <Icon name="friends" /> {current.players}
               {current.divisions > 1 && ` · ${current.divisions} ${t.leagueDivisions}`}
             </span>
           </span>
@@ -115,8 +119,18 @@ function PublicLeagueCard({ onLeague }: { onLeague: (id: string) => void }) {
           <span className="min-w-0 flex-1 text-sm text-stone-200">
             {t.publicLeagueNext} <b>{next.name}</b>
             <span className="block text-xs text-stone-500">
-              {next.startsAt && `🗓 ${t.startsAt} ${formatStart(next.startsAt, t.locale)} · `}👥 {next.players}
-              {next.entered && ` · ✓ ${t.publicLeagueEntered}`}
+              {next.startsAt && (
+                <>
+                  <Icon name="calendar" /> {t.startsAt} {formatStart(next.startsAt, t.locale)} ·{" "}
+                </>
+              )}
+              <Icon name="friends" /> {next.players}
+              {next.entered && (
+                <>
+                  {" "}
+                  · <Icon name="check" /> {t.publicLeagueEntered}
+                </>
+              )}
             </span>
           </span>
           <Button
@@ -168,7 +182,7 @@ function ClubList({ onOpen, onLeague }: { onOpen: (id: string) => void; onLeague
             onChange={(e) => setQuery(e.target.value)}
           />
           <Button variant="primary" onClick={() => setCreating(true)}>
-            ＋ {t.clubCreate}
+            <Icon name="plus" /> {t.clubCreate}
           </Button>
         </div>
       </Card>
@@ -193,12 +207,12 @@ function ClubList({ onOpen, onLeague }: { onOpen: (id: string) => void; onLeague
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-stone-100">
-                    {c.open ? "🏛" : "🔒"} {c.name}
+                    <Icon name={c.open ? "club" : "lock"} /> {c.name}
                   </span>
                   <span className="block truncate text-xs text-stone-500">{c.description || "–"}</span>
                 </span>
                 <span className="text-xs text-stone-400">
-                  👥 {c.members}
+                  <Icon name="friends" /> {c.members}
                   {c.myRole && ` · ${t.clubRoles[c.myRole]}`}
                 </span>
               </button>
@@ -227,7 +241,9 @@ function CreateClub({ onClose, onCreated }: { onClose: () => void; onCreated: (c
   const [error, setError] = useState<string | null>(null);
   return (
     <Modal onClose={onClose}>
-      <h2 className="mb-3 text-lg font-semibold text-stone-100">🏛 {t.clubCreate}</h2>
+      <h2 className="mb-3 text-lg font-semibold text-stone-100">
+        <Icon name="club" /> {t.clubCreate}
+      </h2>
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm text-stone-400">
           {t.tName}
@@ -312,15 +328,15 @@ function ClubPage({
   return (
     <div className="flex flex-col gap-4">
       <Button variant="ghost" className="self-start px-3 py-1.5 text-sm" onClick={onBack}>
-        ← {t.back}
+        <Icon name="back" /> {t.back}
       </Button>
       <Card className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold text-amber-100">
-          {club.open ? "🏛" : "🔒"} {club.name}
+          <Icon name={club.open ? "club" : "lock"} /> {club.name}
         </h2>
         {club.description && <p className="whitespace-pre-line text-sm text-stone-300">{club.description}</p>}
         <p className="text-xs text-stone-500">
-          👥 {club.members} · {club.open ? t.clubOpen : t.clubClosed}
+          <Icon name="friends" /> {club.members} · {club.open ? t.clubOpen : t.clubClosed}
           {club.myRole && ` · ${t.clubRoles[club.myRole]}`}
         </p>
         {error && <p className="text-sm text-red-400">{error}</p>}
@@ -343,10 +359,12 @@ function ClubPage({
       {member && (
         <Card className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-stone-200">🏟️ {t.leagues}</h3>
+            <h3 className="font-semibold text-stone-200">
+              <Icon name="trophy" /> {t.leagues}
+            </h3>
             {admin && (
               <Button className="px-3 py-1.5 text-sm" onClick={() => setCreating(true)}>
-                ＋ {t.leagueCreate}
+                <Icon name="plus" /> {t.leagueCreate}
               </Button>
             )}
           </div>
@@ -363,10 +381,20 @@ function ClubPage({
                     <span className="block truncate text-stone-100">{l.name}</span>
                     <span className="block text-xs text-stone-500">
                       {variantLabel(l.variant, t.tavliMatch)} · {lengthText(t, l.length)} ·{" "}
-                      {t.leagueModes[l.mode]} · 👥 {l.players}
+                      {t.leagueModes[l.mode]} · <Icon name="friends" /> {l.players}
                       {l.divisions > 1 && ` · ${l.divisions} ${t.leagueDivisions}`}
-                      {l.winner && ` · 🥇 ${l.winner.name}`}
-                      {l.startsAt && ` · 🗓 ${formatStart(l.startsAt, t.locale)}`}
+                      {l.winner && (
+                        <>
+                          {" "}
+                          · <Plaque place={1} size={16} /> {l.winner.name}
+                        </>
+                      )}
+                      {l.startsAt && (
+                        <>
+                          {" "}
+                          · <Icon name="calendar" /> {formatStart(l.startsAt, t.locale)}
+                        </>
+                      )}
                     </span>
                   </span>
                   <span className="text-xs text-stone-400">{t.leagueStatus[l.status]}</span>
@@ -386,7 +414,9 @@ function ClubPage({
       )}
 
       <Card className="flex flex-col gap-1">
-        <h3 className="mb-1 font-semibold text-stone-200">👥 {t.clubMembers}</h3>
+        <h3 className="mb-1 font-semibold text-stone-200">
+          <Icon name="friends" /> {t.clubMembers}
+        </h3>
         <ul className="divide-y divide-stone-800">
           {[...club.memberList]
             .sort((a, b) => order[a.role] - order[b.role])
@@ -430,7 +460,9 @@ function ClubPage({
       )}
       {creatingTournament && (
         <Modal onClose={() => setCreatingTournament(false)}>
-          <h2 className="mb-3 text-lg font-semibold text-stone-100">🏆 {t.clubTournamentCreate}</h2>
+          <h2 className="mb-3 text-lg font-semibold text-stone-100">
+            <Icon name="trophy" /> {t.clubTournamentCreate}
+          </h2>
           <CreateForm clubId={id} onDone={() => setCreatingTournament(false)} disabled={status !== "ready"} />
         </Modal>
       )}
@@ -445,15 +477,35 @@ function ClubSchedule({ club, onLeague }: { club: ClubView; onLeague: (id: strin
   const dates = [
     ...club.leagues
       .filter((l) => l.startsAt && l.status === "open")
-      .map((l) => ({ id: l.id, at: l.startsAt!, label: `🏟️ ${l.name}`, league: true })),
+      .map((l) => ({
+        id: l.id,
+        at: l.startsAt!,
+        label: (
+          <>
+            <Icon name="trophy" /> {l.name}
+          </>
+        ),
+        league: true,
+      })),
     ...club.tournaments
       .filter((x) => x.startsAt && x.status === "open")
-      .map((x) => ({ id: x.id, at: x.startsAt!, label: `🏆 ${x.name}`, league: false })),
+      .map((x) => ({
+        id: x.id,
+        at: x.startsAt!,
+        label: (
+          <>
+            <Icon name="trophy" /> {x.name}
+          </>
+        ),
+        league: false,
+      })),
   ].sort((a, b) => a.at - b.at);
   if (dates.length === 0) return null;
   return (
     <Card className="flex flex-col gap-2" data-testid="club-schedule">
-      <h3 className="font-semibold text-stone-200">🗓 {t.schedule}</h3>
+      <h3 className="font-semibold text-stone-200">
+        <Icon name="calendar" /> {t.schedule}
+      </h3>
       <ul className="divide-y divide-stone-800 text-sm">
         {dates.map((d) => (
           <li key={d.id} className="flex items-center gap-3 py-2">
@@ -491,10 +543,12 @@ function ClubTournaments({
   return (
     <Card className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-stone-200">🏆 {t.clubTournaments}</h3>
+        <h3 className="font-semibold text-stone-200">
+          <Icon name="trophy" /> {t.clubTournaments}
+        </h3>
         {admin && (
           <Button className="px-3 py-1.5 text-sm" disabled={status !== "ready"} onClick={onCreate}>
-            ＋ {t.clubTournamentCreate}
+            <Icon name="plus" /> {t.clubTournamentCreate}
           </Button>
         )}
       </div>
@@ -511,7 +565,12 @@ function ClubTournaments({
                 <span className="block text-xs text-stone-500">
                   {t.tFormats[x.format]} · {variantLabel(x.variant, t.tavliMatch)} · {lengthText(t, x.length)}{" "}
                   · {t.tPlayers.replace("{n}", String(x.players.length)).replace("{size}", String(x.size))}
-                  {winner && ` · 🥇 ${winner.name}`}
+                  {winner && (
+                    <>
+                      {" "}
+                      · <Plaque place={1} size={16} /> {winner.name}
+                    </>
+                  )}
                 </span>
               </span>
               {x.status === "open" && !entered ? (
@@ -553,12 +612,12 @@ function MemberActions({
       )}
       {owner && role === "member" && (
         <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => onAction("promote")}>
-          ⬆ {t.clubRoles.admin}
+          <Icon name="upload" /> {t.clubRoles.admin}
         </Button>
       )}
       {owner && role === "admin" && (
         <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => onAction("demote")}>
-          ⬇ {t.clubRoles.member}
+          <Icon name="download" /> {t.clubRoles.member}
         </Button>
       )}
       <Button
@@ -568,7 +627,7 @@ function MemberActions({
         title={t.clubRemove}
         onClick={() => onAction("remove")}
       >
-        ✕
+        <Icon name="close" />
       </Button>
     </span>
   );
@@ -596,7 +655,9 @@ function CreateLeague({
   const [error, setError] = useState<string | null>(null);
   return (
     <Modal onClose={onClose}>
-      <h2 className="mb-3 text-lg font-semibold text-stone-100">🏟️ {t.leagueCreate}</h2>
+      <h2 className="mb-3 text-lg font-semibold text-stone-100">
+        <Icon name="trophy" /> {t.leagueCreate}
+      </h2>
       <div className="flex flex-col gap-4">
         <p className="text-xs text-stone-500">{t.leagueHint}</p>
         <Segmented
@@ -736,11 +797,13 @@ function LeaguePage({
   return (
     <div className="flex flex-col gap-4">
       <Button variant="ghost" className="self-start px-3 py-1.5 text-sm" onClick={onBack}>
-        ← {t.back}
+        <Icon name="back" /> {t.back}
       </Button>
       {league.mode === "live" && <OutgoingChallenge />}
       <Card className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold text-amber-100">🏟️ {league.name}</h2>
+        <h2 className="text-xl font-semibold text-amber-100">
+          <Icon name="trophy" /> {league.name}
+        </h2>
         <p className="text-sm text-stone-400">
           {variantLabel(league.variant, t.tavliMatch)} · {lengthText(t, league.length)} ·{" "}
           {t.leagueModes[league.mode]}
@@ -752,11 +815,16 @@ function LeaguePage({
           {league.endsAt &&
             league.status === "running" &&
             ` · ${t.leagueEnds} ${new Date(league.endsAt).toLocaleDateString(t.locale)}`}
-          {league.startsAt && ` · 🗓 ${t.startsAt} ${formatStart(league.startsAt, t.locale)}`}
+          {league.startsAt && (
+            <>
+              {" "}
+              · <Icon name="calendar" /> {t.startsAt} {formatStart(league.startsAt, t.locale)}
+            </>
+          )}
         </p>
         {league.winner && (
           <p className="text-amber-200">
-            🥇 {t.leagueChampion}: <b>{league.winner.name}</b>
+            <Plaque place={1} size={18} /> {t.leagueChampion}: <b>{league.winner.name}</b>
           </p>
         )}
         {error && <p className="text-sm text-red-400">{error}</p>}
@@ -789,7 +857,7 @@ function LeaguePage({
                   disabled={league.entries.length < minPlayers}
                   onClick={() => act(() => leagueAction(id, "start"))}
                 >
-                  ▶ {t.leagueStart}
+                  <Icon name="play" /> {t.leagueStart}
                 </Button>
               )}
             </div>
@@ -802,12 +870,12 @@ function LeaguePage({
               className="px-3 py-1 text-sm"
               onClick={() => onLeague(league.previousId!)}
             >
-              ← {t.leaguePrevious}
+              <Icon name="back" /> {t.leaguePrevious}
             </Button>
           )}
           {league.nextId && (
             <Button variant="ghost" className="px-3 py-1 text-sm" onClick={() => onLeague(league.nextId!)}>
-              {t.leagueNextLink} →
+              {t.leagueNextLink} <Icon name="forward" />
             </Button>
           )}
           {admin && league.status === "finished" && !league.nextId && (
@@ -818,7 +886,7 @@ function LeaguePage({
                   .catch((e: unknown) => setError(errorOf(t, e)))
               }
             >
-              ＋ {t.leagueNext}
+              <Icon name="plus" /> {t.leagueNext}
             </Button>
           )}
         </div>
@@ -856,7 +924,10 @@ function LeaguePage({
                           title={r.move === "up" ? t.leagueUp : t.leagueDown}
                           aria-label={r.move === "up" ? t.leagueUp : t.leagueDown}
                         >
-                          {r.move === "up" ? "▲" : "▼"}
+                          <Icon
+                            name={r.move === "up" ? "trend-up" : "trend-down"}
+                            className="ml-0.5 h-3.5 w-3.5"
+                          />
                         </span>
                       )}
                     </td>
@@ -894,11 +965,18 @@ function LeaguePage({
                   <PlayerName className="min-w-0 flex-1 text-stone-100" name={opp.name} frame={opp.frame} />
                   {m.status === "done" ? (
                     <span className={m.winner === me ? "text-emerald-300" : "text-stone-400"}>
-                      {m.winner === me ? `✓ ${t.corrWon}` : t.corrLost} {score}
+                      {m.winner === me ? (
+                        <>
+                          <Icon name="check" /> {t.corrWon}
+                        </>
+                      ) : (
+                        t.corrLost
+                      )}{" "}
+                      {score}
                     </span>
                   ) : league.mode === "corr" && m.matchId ? (
                     <Button className="px-3 py-1 text-sm" onClick={() => onCorr(m.matchId!)}>
-                      ✉ {t.leagueOpenGame}
+                      <Icon name="mail" /> {t.leagueOpenGame}
                     </Button>
                   ) : m.status === "playing" ? (
                     <span className="text-amber-300">{t.tPlaying}</span>
@@ -912,7 +990,7 @@ function LeaguePage({
                         })
                       }
                     >
-                      ⚔ {t.challenge}
+                      <Icon name="challenge" /> {t.challenge}
                     </Button>
                   ) : (
                     <span className="text-stone-500">–</span>
@@ -932,7 +1010,9 @@ function Back({ onBack, text }: { onBack: () => void; text: string }) {
   return (
     <div className="flex flex-col items-center gap-4 p-6 text-center">
       <p className="text-stone-400">{text}</p>
-      <Button onClick={onBack}>← {t.back}</Button>
+      <Button onClick={onBack}>
+        <Icon name="back" /> {t.back}
+      </Button>
     </div>
   );
 }

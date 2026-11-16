@@ -15,6 +15,7 @@ import { EMOTES, type EmoteId, REPORT_REASONS, type ReportReason } from "@tavli/
 import { AnimatePresence, motion } from "motion/react";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Icon } from "../components/Icon";
 import { Button, Modal } from "../components/ui";
 import { useT } from "../i18n";
 import { reportPlayer, sendEmote } from "../online/client";
@@ -81,7 +82,7 @@ export function ResignDialog({
                     .filter((l) => l < max)
                     .map((l) => (
                       <Button key={l} onClick={() => act("offer-resign", l)}>
-                        🤝 {t.offerResign}: {label(l)}
+                        <Icon name="handshake" /> {t.offerResign}: {label(l)}
                       </Button>
                     ))}
                 </>
@@ -90,7 +91,7 @@ export function ResignDialog({
               ))}
             <p className="mt-2 text-xs text-stone-400">{t.resignNowHint}</p>
             <Button variant="danger" onClick={() => act("resign", max)}>
-              🏳 {t.resignNow}: {label(max)}
+              <Icon name="flag" /> {t.resignNow}: {label(max)}
             </Button>
           </>
         )}
@@ -103,7 +104,7 @@ export function ResignDialog({
               onForfeit();
             }}
           >
-            🏳 {money ? t.endSession : t.forfeitMatch}
+            <Icon name="flag" /> {money ? t.endSession : t.forfeitMatch}
           </Button>
         )}
         <Button variant="ghost" onClick={onClose}>
@@ -250,7 +251,7 @@ export function EmoteButton({ onSend = sendEmote }: { onSend?: (id: EmoteId) => 
         aria-expanded={open}
         title={t.emotes}
       >
-        💬
+        <Icon name="chat" />
       </Button>
       {picker && (place ? createPortal(picker, document.body) : picker)}
     </div>
@@ -335,7 +336,9 @@ export function ReportDialog({
   };
   return (
     <Modal onClose={onClose}>
-      <p className="mb-1 text-lg text-stone-100">⚑ {t.reportTitle}</p>
+      <p className="mb-1 text-lg text-stone-100">
+        <Icon name="flag" /> {t.reportTitle}
+      </p>
       <p className="mb-4 text-sm text-stone-400">{playerName}</p>
       {state === "sent" || state === "duplicate" ? (
         <>

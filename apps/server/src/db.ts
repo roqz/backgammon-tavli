@@ -44,6 +44,7 @@ import {
   ratingKey,
   SHOWCASE_MAX,
   type SupporterStatus,
+  TITLE_ACHIEVEMENTS,
 } from "@tavli/protocol";
 import { ratingChange, STARTING_RATING } from "./rating";
 import {
@@ -197,6 +198,7 @@ const MIGRATIONS: readonly [table: string, column: string, ddl: string][] = [
   ["matches", "pool", "ALTER TABLE matches ADD COLUMN pool TEXT NOT NULL DEFAULT 'normal'"],
   ["players", "listed", "ALTER TABLE players ADD COLUMN listed INTEGER NOT NULL DEFAULT 1"],
   ["players", "showcase", "ALTER TABLE players ADD COLUMN showcase TEXT"],
+  ["players", "title", "ALTER TABLE players ADD COLUMN title TEXT"],
   [
     "players",
     "friends_can_watch",
@@ -221,6 +223,9 @@ const previousMonth = (month: string): string => {
   const [y, m] = month.split("-").map(Number) as [number, number];
   return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
 };
+
+/** The veteran frame: this long with the game and this many online matches. */
+export const VETERAN = { days: 730, matches: 300 } as const;
 
 /** How many reports one player may file per day. */
 export const REPORTS_PER_DAY = 10;
@@ -364,6 +369,8 @@ export interface AccountRow {
   readonly frame: Frame | null;
   readonly listed: boolean;
   readonly showcase: readonly string[];
+  readonly title: string | null;
+  readonly titles: readonly string[];
   readonly twoFactor: boolean;
   readonly recoveryCodesLeft: number;
   readonly supporter: SupporterStatus | null;
@@ -378,6 +385,9 @@ export const SERVER_ACHIEVEMENTS: readonly string[] = [
   "corr-ten",
   "league-player",
   "month-winner",
+  "variant-master",
+  "tournament-three",
+  "veteran",
 ];
 
 /** SQL: whether the player row `p` supports the project right now (dates are ISO strings). */
@@ -512,13 +522,14 @@ export class Store {
   account(id: string): AccountRow | null {
     const row = this.db
       .prepare(
-        `SELECT id, name, username, email, friends_can_watch, listed, showcase, ${this.frameSql} AS frame, totp_on, supporter_since, supporter_until, supporter_public FROM players p WHERE id = ?`,
+        `SELECT id, name, username, email, friends_can_watch, listed, showcase, title, ${this.frameSql} AS frame, totp_on, supporter_since, supporter_until, supporter_public FROM players p WHERE id = ?`,
       )
       .get(id) as
       | (Pick<AccountRow, "id" | "name" | "username" | "email"> & {
           friends_can_watch: number;
           listed: number;
           showcase: string | null;
+          title: string | null;
           frame: string | null;
           totp_on: number;
           supporter_since: string | null;
@@ -531,6 +542,7 @@ export class Store {
       friends_can_watch,
       listed,
       showcase,
+      title,
       frame,
       totp_on,
       supporter_since,
@@ -543,6 +555,8 @@ export class Store {
       friendsCanWatch: friends_can_watch !== 0,
       listed: listed !== 0,
       showcase: this.parseShowcase(showcase),
+      title,
+      titles: this.titlesOf(id),
       frame: (frame as Frame | null) ?? null,
       twoFactor: totp_on === 1,
       recoveryCodesLeft: this.recoveryCodesLeft(id),
@@ -590,6 +604,32 @@ export class Store {
     if (!unique.every((a) => unlocked[a] || verified.includes(a))) return false;
     this.db.prepare("UPDATE players SET showcase = ? WHERE id = ?").run(JSON.stringify(unique), id);
     return true;
+  }
+
+  /** Titles a player has earned: title achievements and first places of monthly rankings. */
+  titlesOf(id: string): string[] {
+    const unlocked = this.progress(id).unlocked;
+    const verified = this.verifiedAchievements(id);
+    const out: string[] = TITLE_ACHIEVEMENTS.filter((a) => unlocked[a] || verified.includes(a));
+    const months = this.db
+      .prepare("SELECT month, variant FROM month_winners WHERE player_id = ? AND place = 1 ORDER BY month DESC")
+      .all(id) as { month: string; variant: string }[];
+    for (const m of months) out.push(`month-winner:${m.month}:${m.variant}`);
+    return out;
+  }
+
+  /** Chooses the title under the name (null = none); false if it is not earned. */
+  setTitle(id: string, title: string | null): boolean {
+    if (title !== null && !this.titlesOf(id).includes(title)) return false;
+    this.db.prepare("UPDATE players SET title = ? WHERE id = ?").run(title, id);
+    return true;
+  }
+
+  private titleOf(id: string): string | null {
+    const row = this.db.prepare("SELECT title FROM players WHERE id = ?").get(id) as
+      | { title: string | null }
+      | undefined;
+    return row?.title ?? null;
   }
 
   setFriendsCanWatch(id: string, allowed: boolean): void {
@@ -935,7 +975,7 @@ export class Store {
       );
       if (this.tableExists("supporter_grants"))
         run("UPDATE supporter_grants SET note = '' WHERE player_id = ?");
-      run("UPDATE players SET frame = NULL, club_rank = 0, showcase = NULL WHERE id = ?");
+      run("UPDATE players SET frame = NULL, club_rank = 0, showcase = NULL, title = NULL WHERE id = ?");
       run("DELETE FROM month_winners WHERE player_id = ?");
       if (this.tableExists("push_subscriptions")) run("DELETE FROM push_subscriptions WHERE player_id = ?");
       if (this.tableExists("push_prefs")) run("DELETE FROM push_prefs WHERE player_id = ?");
@@ -1225,6 +1265,7 @@ export class Store {
       frame: this.frameOf(playerId),
       rank: this.rankOf(playerId),
       ...(this.isSupporter(playerId) ? { supporter: true } : {}),
+      title: this.titleOf(playerId),
     };
   }
 
@@ -1401,6 +1442,23 @@ export class Store {
     if (c.leagueGames >= 1) out.push("league-player");
     if (one("SELECT 1 FROM month_winners WHERE player_id = ? AND place = 1 LIMIT 1"))
       out.push("month-winner");
+    const masters = this.db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM ratings WHERE player_id = ? AND variant IN ('portes', 'plakoto', 'fevga') AND rating >= 1600 AND matches > 0",
+      )
+      .get(playerId) as { n: number };
+    if (masters.n === 3) out.push("variant-master");
+    if (
+      this.tableExists("tournaments") &&
+      (this.db.prepare("SELECT COUNT(*) AS n FROM tournaments WHERE winner = ?").get(playerId) as { n: number }).n >= 3
+    )
+      out.push("tournament-three");
+    const veteran = this.db
+      .prepare(
+        "SELECT p.created_at <= ?2 AS old, (SELECT COUNT(*) FROM matches WHERE p0 = ?1 OR p1 = ?1) AS n FROM players p WHERE p.id = ?1",
+      )
+      .get(playerId, new Date(Date.now() - VETERAN.days * DAY).toISOString()) as { old: number; n: number } | undefined;
+    if (veteran?.old && veteran.n >= VETERAN.matches) out.push("veteran");
     return out;
   }
 
@@ -1725,6 +1783,7 @@ export class Store {
       since: since?.created_at.slice(0, 7),
       trophies: this.trophies(playerId),
       showcase: this.parseShowcase(since?.showcase ?? null),
+      title: this.titleOf(playerId),
       ratings,
       recent: recent.map((r) => this.matchSummary(r.id)).filter((x): x is MatchSummary => x !== null),
       history: this.ratingHistory(playerId),

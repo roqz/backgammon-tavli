@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAchievements } from "../achievements";
 import { SHOP, useCareer } from "../career";
 import { Drawer } from "../components/Drawer";
+import { Icon } from "../components/Icon";
 import { CheckerPicker, DicePicker, lockText, StylePicker } from "../components/Looks";
 import { Section, Segmented, Toggle } from "../components/ui";
 import { useT } from "../i18n";
@@ -40,7 +41,7 @@ function ServerUrlField() {
       </label>
       {profile && (
         <p className="mt-2 text-xs text-stone-500">
-          👤 {profile.name} · {t.profileHint}
+          <Icon name="user" /> {profile.name} · {t.profileHint}
         </p>
       )}
     </div>
@@ -112,12 +113,12 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
           onClick={() => setPage(null)}
           className="flex min-h-11 w-fit items-center gap-1 rounded-lg pr-3 text-sm text-stone-300 hover:text-amber-200"
         >
-          <span aria-hidden>‹</span> {t.settings}
+          <Icon name="back" /> {t.settings}
         </button>
       )}
 
       {page === "play" && (
-        <Section title={t.gameplay} icon="🎲">
+        <Section title={t.gameplay} icon="dice">
           <Toggle
             label={t.autoRoll}
             description={t.autoRollDesc}
@@ -156,7 +157,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "display" && (
-        <Section title={t.displaySection} icon="🖥">
+        <Section title={t.displaySection} icon="computer">
           <Toggle
             label={t.dice3d}
             description={t.dice3dDesc}
@@ -191,7 +192,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "looks" && (
-        <Section title={t.appearance} icon="🎨">
+        <Section title={t.appearance} icon="palette">
           <StylePicker />
           <DicePicker />
           <CheckerPicker />
@@ -204,7 +205,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
             />
           ) : (
             <p className="py-2 text-xs text-stone-500">
-              🔒 {t.diceCup} – {lockText(t, REWARDS.diceCup)}
+              <Icon name="lock" /> {t.diceCup} – {lockText(t, REWARDS.diceCup)}
             </p>
           )}
           {isUnlocked(REWARDS.fireworks, unlocked) && (
@@ -219,7 +220,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "sound" && (
-        <Section title={t.soundSection} icon="🔊">
+        <Section title={t.soundSection} icon="sound">
           <Toggle
             label={t.sound}
             description={t.soundDesc}
@@ -254,7 +255,7 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "language" && (
-        <Section title={t.language} icon="🌐">
+        <Section title={t.language} icon="globe">
           <div className="flex gap-2 py-3">
             {(
               [
@@ -281,13 +282,13 @@ export function SettingsPanel({ initial = null }: { initial?: SectionId | null }
       )}
 
       {page === "notify" && (
-        <Section title={t.pushTitle} icon="🔔">
+        <Section title={t.pushTitle} icon="bell">
           <NotificationSettings />
         </Section>
       )}
 
       {page === "online" && (
-        <Section title={t.onlineSection} icon="📡">
+        <Section title={t.onlineSection} icon="signal">
           <Toggle
             label={t.showEmotes}
             description={t.showEmotesHint}
@@ -310,7 +311,11 @@ function NotificationSettings() {
     typeof window !== "undefined" && window.matchMedia?.("(display-mode: standalone)").matches;
   return (
     <div className="flex flex-col gap-2 text-sm text-stone-300">
-      {ios && !standalone && <p className="text-xs text-amber-200/80">📱 {t.pushIphone}</p>}
+      {ios && !standalone && (
+        <p className="text-xs text-amber-200/80">
+          <Icon name="phone" /> {t.pushIphone}
+        </p>
+      )}
       {hasProfile ? (
         <>
           <PushToggle />
@@ -360,7 +365,16 @@ function PushKinds() {
 export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT();
   return (
-    <Drawer open={open} onClose={onClose} title={`⚙ ${t.settings}`} closeLabel={t.close}>
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title={
+        <>
+          <Icon name="settings" /> {t.settings}
+        </>
+      }
+      closeLabel={t.close}
+    >
       <SettingsPanel />
     </Drawer>
   );
@@ -411,7 +425,11 @@ function SoundPicker<T extends string>({
                   : "border-stone-700 text-stone-300 hover:border-stone-500"
               }`}
             >
-              {open ? "" : "🔒 "}
+              {!open && (
+                <>
+                  <Icon name="lock" />{" "}
+                </>
+              )}
               {names[set]}
             </button>
           );

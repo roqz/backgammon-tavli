@@ -11,6 +11,7 @@ import { claimAccount, connect, fetchInviteInfo, redeemInvite, register } from "
 import { useOnline } from "../online/store";
 import { Logo, PointStrip } from "../screens/AppShell";
 import { useSettings } from "../store/settings";
+import { Icon, type IconName } from "./Icon";
 import { fieldClass, RecoveryCodesModal } from "./Security";
 import { Button, Modal } from "./ui";
 
@@ -72,7 +73,7 @@ function Choice({
   sub,
   onClick,
 }: {
-  icon: string;
+  icon: IconName;
   title: string;
   sub: string;
   onClick: () => void;
@@ -83,9 +84,7 @@ function Choice({
       onClick={onClick}
       className="flex items-center gap-4 rounded-xl border border-stone-700 bg-stone-900 p-4 text-left transition-colors hover:border-amber-400 focus-visible:border-amber-400"
     >
-      <span aria-hidden className="text-3xl">
-        {icon}
-      </span>
+      <Icon name={icon} className="h-8 w-8 text-amber-200" />
       <span className="flex min-w-0 flex-col">
         <span className="font-semibold text-stone-50">{title}</span>
         <span className="text-sm text-stone-400">{sub}</span>
@@ -152,9 +151,14 @@ export function FirstStart({
                 {t.onbLevelTitle}
               </h1>
               <div className="flex flex-col gap-3">
-                <Choice icon="🎓" title={t.onbNew} sub={t.onbNewSub} onClick={() => finish(onTutorial)} />
-                <Choice icon="🎲" title={t.onbKnow} sub={t.onbKnowSub} onClick={() => finish(onBot)} />
-                <Choice icon="🌐" title={t.onbOnline} sub={t.onbOnlineSub} onClick={() => finish(onOnline)} />
+                <Choice icon="school" title={t.onbNew} sub={t.onbNewSub} onClick={() => finish(onTutorial)} />
+                <Choice icon="dice" title={t.onbKnow} sub={t.onbKnowSub} onClick={() => finish(onBot)} />
+                <Choice
+                  icon="globe"
+                  title={t.onbOnline}
+                  sub={t.onbOnlineSub}
+                  onClick={() => finish(onOnline)}
+                />
               </div>
               <button
                 type="button"
@@ -260,7 +264,13 @@ function InviteWelcome({
         <Brand />
         <div className="text-center">
           <h1 className="mb-2 font-display text-3xl font-semibold text-amber-100">
-            {valid ? `🤝 ${t.inviteWelcomeTitle.replace("{name}", inviter)}` : t.onbWelcome}
+            {valid ? (
+              <>
+                <Icon name="friends" /> {t.inviteWelcomeTitle.replace("{name}", inviter)}
+              </>
+            ) : (
+              t.onbWelcome
+            )}
           </h1>
           <p className="leading-relaxed text-stone-300">
             {valid ? t.inviteWelcomeText.replace(/\{name\}/g, inviter) : t.inviteInvalid}
@@ -376,7 +386,9 @@ function InvitePrompt({
   };
   return (
     <Modal onClose={clearInvite}>
-      <h2 className="mb-3 font-display text-xl font-semibold text-amber-100">🤝 {t.friendLink}</h2>
+      <h2 className="mb-3 font-display text-xl font-semibold text-amber-100">
+        <Icon name="friends" /> {t.friendLink}
+      </h2>
       {result ? (
         <>
           <p className="mb-4 text-stone-300">{result}</p>

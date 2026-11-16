@@ -5,14 +5,15 @@
  */
 import { type AccountResponse, SUPPORTER_LIFETIME, type SupportInfo } from "@tavli/protocol";
 import { type ReactNode, useEffect, useState } from "react";
+import { Icon } from "../components/Icon";
 import { StylePreview } from "../components/Looks";
+import { Medallion } from "../components/Medallion";
 import { fieldClass } from "../components/Security";
 import { Button, Toggle } from "../components/ui";
 import { errorOf } from "../errors";
 import { type Dict, useT } from "../i18n";
 import { fetchAccount, fetchSupportInfo, redeemSupporterCode, setSupporterPublic } from "../online/client";
 import { useOnline } from "../online/store";
-import { FRAME_LOOK } from "../rewards";
 import { Page, ScreenTitle } from "./AppShell";
 
 const day = (t: Dict, iso: string) =>
@@ -80,7 +81,7 @@ export function SupportScreen({ onBack, onOnline }: { onBack: () => void; onOnli
                 className="mt-1 inline-flex min-h-12 items-center justify-center gap-2 self-start rounded-xl bg-felt-500 px-6 text-lg font-semibold text-stone-50 hover:bg-felt-400"
                 data-testid="support-link"
               >
-                ♥ {t.supportButton} ↗
+                <Icon name="heart" /> {t.supportButton} <Icon name="external" />
               </a>
             ) : (
               info && <p className="text-sm text-stone-500">{t.supportNoUrl}</p>
@@ -95,26 +96,26 @@ export function SupportScreen({ onBack, onOnline }: { onBack: () => void; onOnli
               </span>
               <ul className="flex flex-col gap-2 text-sm text-stone-200">
                 <li className="flex gap-2">
-                  <span aria-hidden className="w-5 text-center text-brass">
-                    ♥
+                  <span aria-hidden className="flex w-5 shrink-0 justify-center text-brass">
+                    <Icon name="heart" />
                   </span>
                   {t.supportPerkBadge}
                 </li>
                 <li className="flex gap-2">
-                  <span aria-hidden className="w-5 text-center">
-                    {FRAME_LOOK.patron.icon}
+                  <span aria-hidden className="flex w-5 shrink-0 justify-center">
+                    <Medallion frame="patron" size={20} />
                   </span>
                   {t.supportPerkFrame}
                 </li>
                 <li className="flex gap-2">
-                  <span aria-hidden className="w-5 text-center">
-                    🎨
+                  <span aria-hidden className="flex w-5 shrink-0 justify-center text-amber-200">
+                    <Icon name="palette" />
                   </span>
                   {t.supportPerkBoard}
                 </li>
                 <li className="flex gap-2">
-                  <span aria-hidden className="w-5 text-center">
-                    📜
+                  <span aria-hidden className="flex w-5 shrink-0 justify-center text-amber-200">
+                    <Icon name="rules" />
                   </span>
                   {t.supportPerkThanks}
                 </li>
@@ -135,7 +136,7 @@ export function SupportScreen({ onBack, onOnline }: { onBack: () => void; onOnli
                   // names can repeat: the position keeps them apart
                   // biome-ignore lint/suspicious/noArrayIndexKey: names are not unique
                   <li key={`${n}-${i}`}>
-                    <span className="text-brass">♥</span> {n}
+                    <Icon name="heart" className="h-[1.15em] w-[1.15em] text-brass" /> {n}
                   </li>
                 ))}
               </ul>
@@ -159,7 +160,9 @@ function StatusCard({
     <Box className="border-brass/50 bg-brass/5">
       {status.active ? (
         <>
-          <h2 className="font-display text-lg font-semibold text-brass">💛 {t.supportStatusTitle}</h2>
+          <h2 className="font-display text-lg font-semibold text-brass">
+            <Icon name="heart" /> {t.supportStatusTitle}
+          </h2>
           <p className="text-sm text-stone-200">
             {t.supportSince.replace("{date}", day(t, status.since))} ·{" "}
             {status.until === SUPPORTER_LIFETIME
@@ -243,7 +246,11 @@ function RedeemCard({
       )}
       {message && (
         <p className={`text-sm ${message.ok ? "text-emerald-300" : "text-red-400"}`}>
-          {message.ok ? "✓ " : ""}
+          {message.ok && (
+            <>
+              <Icon name="check" />{" "}
+            </>
+          )}
           {message.text}
         </p>
       )}

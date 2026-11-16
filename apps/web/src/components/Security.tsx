@@ -15,6 +15,7 @@ import {
   setupTwoFactor,
 } from "../online/client";
 import { useOnline } from "../online/store";
+import { Icon } from "./Icon";
 import { Button, Modal } from "./ui";
 
 export const fieldClass =
@@ -71,7 +72,9 @@ export function RecoveryCodesModal({ codes, onClose }: { codes: readonly string[
   };
   return (
     <Modal onClose={() => saved && onClose()}>
-      <h2 className="mb-2 font-display text-xl font-semibold text-amber-100">🔑 {t.recoveryShowTitle}</h2>
+      <h2 className="mb-2 font-display text-xl font-semibold text-amber-100">
+        <Icon name="key" /> {t.recoveryShowTitle}
+      </h2>
       <p className="mb-4 text-sm leading-relaxed text-stone-400">{t.recoveryShowHint}</p>
       <ol
         className="mb-4 grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-xl border border-stone-700 bg-stone-950 p-4 font-mono text-[15px] tracking-wide text-stone-100"
@@ -85,10 +88,16 @@ export function RecoveryCodesModal({ codes, onClose }: { codes: readonly string[
       </ol>
       <div className="mb-4 flex gap-2">
         <Button className="flex-1 text-sm" onClick={copy}>
-          {copied ? t.recoveryCopied : `📋 ${t.recoveryCopy}`}
+          {copied ? (
+            t.recoveryCopied
+          ) : (
+            <>
+              <Icon name="copy" /> {t.recoveryCopy}
+            </>
+          )}
         </Button>
         <Button className="flex-1 text-sm" onClick={download}>
-          ⬇ {t.recoveryDownload}
+          <Icon name="download" /> {t.recoveryDownload}
         </Button>
       </div>
       <label htmlFor={checkId} className="mb-4 flex items-start gap-3 text-sm text-stone-200">
@@ -238,7 +247,9 @@ export function SecurityCard() {
   };
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-stone-800 p-4" data-testid="security">
-      <h3 className="font-display text-lg font-semibold text-amber-100">🔐 {t.securityTitle}</h3>
+      <h3 className="font-display text-lg font-semibold text-amber-100">
+        <Icon name="key" /> {t.securityTitle}
+      </h3>
 
       {/* two-factor login */}
       <div className="flex flex-col gap-2">
@@ -247,7 +258,13 @@ export function SecurityCard() {
           <span
             className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${account.twoFactor ? "bg-felt-500 text-stone-50" : "border border-stone-600 text-stone-400"}`}
           >
-            {account.twoFactor ? `✓ ${t.stateOn}` : t.stateOff}
+            {account.twoFactor ? (
+              <>
+                <Icon name="check" /> {t.stateOn}
+              </>
+            ) : (
+              t.stateOff
+            )}
           </span>
         </div>
         <p className="text-sm leading-relaxed text-stone-400">
@@ -284,7 +301,7 @@ export function SecurityCard() {
                   href={step.setup.uri}
                   className="self-start rounded-lg border border-stone-700 px-3 py-2 text-sm text-stone-100 hover:border-amber-400"
                 >
-                  📱 {t.twoFactorOpenApp}
+                  <Icon name="phone" /> {t.twoFactorOpenApp}
                 </a>
                 <div className="text-xs text-stone-500">{t.twoFactorManual}</div>
                 <code className="select-all break-all font-mono text-sm tracking-wider text-stone-200">
@@ -339,9 +356,13 @@ export function SecurityCard() {
           </span>
         </div>
         {left === 0 ? (
-          <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-200">⚠ {t.recoveryNone}</p>
+          <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            <Icon name="warning" /> {t.recoveryNone}
+          </p>
         ) : left <= 3 ? (
-          <p className="text-sm text-amber-200">⚠ {t.recoveryLow}</p>
+          <p className="text-sm text-amber-200">
+            <Icon name="warning" /> {t.recoveryLow}
+          </p>
         ) : null}
         {step.kind === "renew" ? (
           <PasswordStep
@@ -369,7 +390,11 @@ export function SecurityCard() {
           )
         )}
       </div>
-      {info && <p className="text-sm text-emerald-300">✓ {info}</p>}
+      {info && (
+        <p className="text-sm text-emerald-300">
+          <Icon name="check" /> {info}
+        </p>
+      )}
       {codes && (
         <RecoveryCodesModal
           codes={codes}

@@ -213,7 +213,15 @@ describe("special moments", () => {
     expect(rare("honor-member", { ...base, career: { ...EMPTY_CAREER, games: 300, wins: 300, weeks } })).toBe(
       true,
     );
-    expect(ACHIEVEMENTS.filter((a) => a.rare)).toHaveLength(6);
+    expect(ACHIEVEMENTS.filter((a) => a.rare)).toHaveLength(9);
+    // the new prestige frames: three variants at 1600, three tournament wins
+    const rated = (variant: string, rating: number) => ({ variant, rating, matches: 5, wins: 3 });
+    const withRatings = (ratings: ReturnType<typeof rated>[]) =>
+      ({ ...base, profile: { id: "me", name: "Me", recent: [], ratings } }) as unknown as AchievementContext;
+    expect(rare("variant-master", withRatings([rated("portes", 1610), rated("plakoto", 1650)]))).toBe(false);
+    expect(
+      rare("variant-master", withRatings([rated("portes", 1610), rated("plakoto", 1650), rated("fevga", 1600)])),
+    ).toBe(true);
   });
 
   it("raining sixes, the pinned mother and a high cube", () => {

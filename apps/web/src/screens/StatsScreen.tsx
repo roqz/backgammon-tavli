@@ -1,6 +1,7 @@
 import { fromMat, getVariant, isDraw } from "@tavli/engine";
 import { useMemo, useState } from "react";
 import { humanSeat } from "../bot/useBotDriver";
+import { Icon, type IconName } from "../components/Icon";
 import { Button, Card, Modal } from "../components/ui";
 import { useT } from "../i18n";
 import { type GameRecord, useArchive } from "../store/archive";
@@ -66,10 +67,17 @@ export const computeStats = (records: readonly GameRecord[]) => {
 
 const pct = (t: Tally) => (t.played ? `${Math.round((100 * t.won) / t.played)} %` : "–");
 
-function Row({ label, tally }: { label: string; tally: Tally }) {
+function Row({ label, tally, icon }: { label: string; tally: Tally; icon?: IconName }) {
   return (
     <tr className="border-t border-stone-800">
-      <td className="py-2 pr-3 text-stone-200">{label}</td>
+      <td className="py-2 pr-3 text-stone-200">
+        {icon && (
+          <>
+            <Icon name={icon} />{" "}
+          </>
+        )}
+        {label}
+      </td>
       <td className="py-2 text-right tabular-nums">{tally.played}</td>
       <td className="py-2 text-right tabular-nums">{tally.won}</td>
       <td className="py-2 text-right tabular-nums">{pct(tally)}</td>
@@ -80,7 +88,15 @@ function Row({ label, tally }: { label: string; tally: Tally }) {
   );
 }
 
-function Table({ title, rows, t }: { title: string; rows: [string, Tally][]; t: ReturnType<typeof useT> }) {
+function Table({
+  title,
+  rows,
+  t,
+}: {
+  title: string;
+  rows: [string, Tally, IconName?][];
+  t: ReturnType<typeof useT>;
+}) {
   return (
     <Card>
       <h2 className="mb-2 font-semibold text-stone-200">{title}</h2>
@@ -95,8 +111,8 @@ function Table({ title, rows, t }: { title: string; rows: [string, Tally][]; t: 
           </tr>
         </thead>
         <tbody>
-          {rows.map(([label, tally]) => (
-            <Row key={label} label={label} tally={tally} />
+          {rows.map(([label, tally, icon]) => (
+            <Row key={label} label={label} tally={tally} icon={icon} />
           ))}
         </tbody>
       </table>
@@ -162,10 +178,11 @@ export function StatsScreen({
             title={t.byOpponent}
             rows={(["easy", "medium", "hard", "expert", "online"] as const)
               .filter((l) => stats.byOpponent.has(l))
-              .map((l) => [
-                l === "online" ? `🌐 ${t.online}` : `${t.computer} (${levelName[l]})`,
-                stats.byOpponent.get(l)!,
-              ])}
+              .map((l): [string, Tally, IconName?] =>
+                l === "online"
+                  ? [t.online, stats.byOpponent.get(l)!, "globe"]
+                  : [`${t.computer} (${levelName[l]})`, stats.byOpponent.get(l)!],
+              )}
           />
           <Table
             t={t}
@@ -187,7 +204,7 @@ export function StatsScreen({
                     </div>
                   </div>
                   <Button className="px-3 py-1.5 text-sm" onClick={() => onReplay(r)}>
-                    ▶ {t.watch}
+                    <Icon name="play" /> {t.watch}
                   </Button>
                 </li>
               ))}
@@ -199,7 +216,7 @@ export function StatsScreen({
             )}
           </Card>
           <Button variant="ghost" className="self-center text-sm" onClick={() => setConfirmClear(true)}>
-            🗑 {t.clearArchive}
+            <Icon name="trash" /> {t.clearArchive}
           </Button>
         </>
       )}
@@ -260,7 +277,7 @@ function MatImport({ onImport }: { onImport: (records: GameRecord[]) => void }) 
   return (
     <div className="flex flex-col items-end">
       <label className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-stone-300 hover:bg-stone-800">
-        📂 {t.matImport}
+        <Icon name="folder" /> {t.matImport}
         <input
           type="file"
           accept=".mat,.txt,text/plain"

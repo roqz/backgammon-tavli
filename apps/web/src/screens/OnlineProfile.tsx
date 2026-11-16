@@ -18,7 +18,9 @@ import {
 import { useEffect, useState } from "react";
 import { ACHIEVEMENTS } from "../achievements";
 import { AccuracyCard, percent } from "../components/Accuracy";
-import { FrameMedallion, PlayerName } from "../components/PlayerName";
+import { Icon } from "../components/Icon";
+import { Medallion, Plaque } from "../components/Medallion";
+import { FrameMedallion, PlayerName, titleText } from "../components/PlayerName";
 import { OtpInput, RecoveryCodesModal, SecurityCard } from "../components/Security";
 import { Sparkline } from "../components/Sparkline";
 import { Button, Card, Modal, Toggle } from "../components/ui";
@@ -43,9 +45,10 @@ import {
   setFriendsCanWatch,
   setListed,
   setShowcase,
+  setTitle as setTitleRemote,
 } from "../online/client";
 import { useOnline } from "../online/store";
-import { FRAME_LOOK, useOfferedFrames, useUnlocked } from "../rewards";
+import { useOfferedFrames, useUnlocked } from "../rewards";
 import type { GameRecord } from "../store/archive";
 import { AddFriendButton } from "./FriendsPanel";
 
@@ -117,7 +120,7 @@ export function AuthForm() {
     <Card className="flex flex-col gap-4">
       {pendingJoin && (
         <p className="rounded-lg bg-amber-400/15 px-3 py-2 text-sm text-amber-100">
-          ✉ {t.inviteBanner.replace("{code}", pendingJoin)}
+          <Icon name="mail" /> {t.inviteBanner.replace("{code}", pendingJoin)}
         </p>
       )}
       {mode !== "recover" && (
@@ -185,7 +188,9 @@ export function AuthForm() {
           </label>
           {needOtp && (
             <>
-              <p className="text-sm text-stone-300">🔐 {t.errors["2fa code required"]}</p>
+              <p className="text-sm text-stone-300">
+                <Icon name="key" /> {t.errors["2fa code required"]}
+              </p>
               <OtpInput value={otp} onChange={setOtp} onEnter={() => loginReady && doLogin()} />
             </>
           )}
@@ -203,7 +208,9 @@ export function AuthForm() {
       )}
       {mode === "recover" && (
         <>
-          <h2 className="font-display text-lg font-semibold text-amber-100">🔑 {t.recoverTitle}</h2>
+          <h2 className="font-display text-lg font-semibold text-amber-100">
+            <Icon name="key" /> {t.recoverTitle}
+          </h2>
           <p className="text-sm leading-relaxed text-stone-400">{t.recoverHint}</p>
           <label className="flex flex-col gap-1 text-sm text-stone-400">
             {t.username}
@@ -240,7 +247,9 @@ export function AuthForm() {
           </label>
           {needOtp && (
             <>
-              <p className="text-sm text-stone-300">🔐 {t.errors["2fa code required"]}</p>
+              <p className="text-sm text-stone-300">
+                <Icon name="key" /> {t.errors["2fa code required"]}
+              </p>
               <OtpInput appOnly value={otp} onChange={setOtp} onEnter={() => recoverReady && doRecover()} />
             </>
           )}
@@ -252,7 +261,7 @@ export function AuthForm() {
             className="self-start text-sm text-stone-400 underline underline-offset-2 hover:text-stone-200"
             onClick={() => switchTo("login")}
           >
-            ← {t.backToLogin}
+            <Icon name="back" /> {t.backToLogin}
           </button>
         </>
       )}
@@ -300,7 +309,7 @@ function FramePicker() {
             <Button
               key={f}
               variant={frame === f ? "primary" : "ghost"}
-              className="px-3 py-1.5 text-sm"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm"
               disabled={!open}
               title={
                 open
@@ -314,10 +323,55 @@ function FramePicker() {
               }
               onClick={() => choose(f)}
             >
-              {open ? FRAME_LOOK[f].icon : "🔒"} {t.frameNames[f]}
+              {open ? <Medallion frame={f} size={20} /> : <Icon name="lock" />} {t.frameNames[f]}
             </Button>
           );
         })}
+      </div>
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </fieldset>
+  );
+}
+
+/** The title under the name, from the earned ones. */
+function TitlePicker() {
+  const t = useT();
+  const [state, setState] = useState<{ title: string | null; titles: readonly string[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    fetchAccount()
+      .then((a) => setState({ title: a.title, titles: a.titles }))
+      .catch(() => {});
+  }, []);
+  if (!state || state.titles.length === 0) return null;
+  const choose = (title: string | null) => {
+    setError(null);
+    setTitleRemote(title)
+      .then((a) => setState({ title: a.title, titles: a.titles }))
+      .catch((e: unknown) => setError(errorOf(t, e)));
+  };
+  return (
+    <fieldset className="flex flex-col gap-2" data-testid="title-picker">
+      <legend className="mb-1 text-stone-100">{t.titleLabel}</legend>
+      <p className="text-xs text-stone-500">{t.titleHint}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={state.title === null ? "primary" : "ghost"}
+          className="px-3 py-1.5 text-sm"
+          onClick={() => choose(null)}
+        >
+          {t.titleNone}
+        </Button>
+        {state.titles.map((id) => (
+          <Button
+            key={id}
+            variant={state.title === id ? "primary" : "ghost"}
+            className="px-3 py-1.5 text-sm"
+            onClick={() => choose(id)}
+          >
+            {titleText(t, id)}
+          </Button>
+        ))}
       </div>
       {error && <p className="text-xs text-red-400">{error}</p>}
     </fieldset>
@@ -441,15 +495,18 @@ function PrivacyCard() {
   };
   return (
     <details className="rounded-xl border border-stone-800 p-3 text-sm">
-      <summary className="cursor-pointer text-stone-300">🛡 {t.privacyTitle}</summary>
+      <summary className="cursor-pointer text-stone-300">
+        <Icon name="shield" /> {t.privacyTitle}
+      </summary>
       <div className="mt-3 flex flex-col gap-3">
         <FramePicker />
+        <TitlePicker />
         <ShowcasePicker />
         <FriendsCanWatchToggle />
         <ListedToggle />
         <div>
           <Button disabled={busy} onClick={() => void run(exportData)}>
-            ⬇ {t.exportData}
+            <Icon name="download" /> {t.exportData}
           </Button>
           <p className="mt-1 text-xs text-stone-500">{t.exportHint}</p>
         </div>
@@ -466,7 +523,7 @@ function PrivacyCard() {
         )}
         <div>
           <Button variant="danger" disabled={busy} onClick={() => setDeleting(true)}>
-            🗑 {t.deleteProfile}
+            <Icon name="trash" /> {t.deleteProfile}
           </Button>
           <p className="mt-1 text-xs text-stone-500">{t.deleteHint}</p>
         </div>
@@ -551,7 +608,9 @@ function AccountCard() {
       </div>
       {!profile.username && (
         <div className="flex flex-col gap-3 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
-          <div className="font-semibold text-amber-200">🔐 {t.secureAccount}</div>
+          <div className="font-semibold text-amber-200">
+            <Icon name="key" /> {t.secureAccount}
+          </div>
           <p className="text-sm text-stone-400">{t.secureHint}</p>
           <label className="flex flex-col gap-1 text-sm text-stone-400">
             {t.username}
@@ -605,7 +664,11 @@ function AccountCard() {
       {confirmLogout && (
         <Modal onClose={() => setConfirmLogout(false)}>
           <p className="mb-2 text-stone-100">{t.logout}?</p>
-          {!profile.username && <p className="mb-4 text-sm text-amber-300">⚠ {t.logoutGuestWarn}</p>}
+          {!profile.username && (
+            <p className="mb-4 text-sm text-amber-300">
+              <Icon name="warning" /> {t.logoutGuestWarn}
+            </p>
+          )}
           <div className="flex gap-2">
             <Button className="flex-1" onClick={() => setConfirmLogout(false)}>
               {t.cancel}
@@ -672,7 +735,11 @@ function PasswordChange() {
         <span className="text-xs text-stone-500">{t.passwordRules}</span>
       </label>
       {state.error && <p className="text-sm text-red-400">{state.error}</p>}
-      {state.ok && <p className="text-sm text-emerald-400">✓ {t.passwordChanged}</p>}
+      {state.ok && (
+        <p className="text-sm text-emerald-400">
+          <Icon name="check" /> {t.passwordChanged}
+        </p>
+      )}
       <div className="flex gap-2">
         <Button className="flex-1" onClick={() => setOpen(false)}>
           {t.cancel}
@@ -738,7 +805,13 @@ export function MatchList({
               <div className="text-xl font-bold text-amber-100 tabular-nums">{r.rating}</div>
               <div className="text-xs text-stone-400">
                 {variantName(r.variant, t.tavliMatch)}
-                {r.pool === "blitz" && ` · ⚡ ${t.timeControls.blitz}`} · {r.wins}/{r.matches}
+                {r.pool === "blitz" && (
+                  <>
+                    {" "}
+                    · <Icon name="blitz" /> {t.timeControls.blitz}
+                  </>
+                )}{" "}
+                · {r.wins}/{r.matches}
               </div>
               {profile.history?.[ratingKey(r.variant, r.pool)] && (
                 <Sparkline
@@ -774,8 +847,15 @@ export function MatchList({
                     {t.vs} {opp.name} · {m.score[seat]}:{m.score[seat === 0 ? 1 : 0]}
                   </div>
                   <div className="text-xs text-stone-500">
-                    {variantName(m.variant, t.tavliMatch)} · {m.length === 0 ? `∞ ${t.money}` : m.length} ·{" "}
-                    {new Date(m.endedAt).toLocaleDateString(t.locale)}
+                    {variantName(m.variant, t.tavliMatch)} ·{" "}
+                    {m.length === 0 ? (
+                      <>
+                        <Icon name="infinity" /> {t.money}
+                      </>
+                    ) : (
+                      m.length
+                    )}{" "}
+                    · {new Date(m.endedAt).toLocaleDateString(t.locale)}
                     {acc && ` · ${t.accuracyMatch.replace("{n}", percent(acc.agreement))}`}
                   </div>
                 </div>
@@ -784,7 +864,13 @@ export function MatchList({
                   disabled={loading !== null}
                   onClick={() => void open(m)}
                 >
-                  {loading === m.id ? "…" : `▶ ${t.watch}`}
+                  {loading === m.id ? (
+                    "…"
+                  ) : (
+                    <>
+                      <Icon name="play" /> {t.watch}
+                    </>
+                  )}
                 </Button>
               </li>
             );
@@ -849,12 +935,18 @@ export function PlayerSheet({
     <Modal onClose={onClose}>
       <div className="max-h-[80vh] overflow-y-auto" data-testid="player-profile">
         <div className="mb-3 flex items-start gap-3">
-          <FrameMedallion frame={profile?.frame ?? null} />
+          <FrameMedallion frame={profile?.frame ?? null} shine />
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold text-stone-100">
               <PlayerName name={profile?.name ?? name} rank={profile?.rank} supporter={profile?.supporter} />
             </h2>
-            {profile?.frame && <p className="text-xs text-brass">{t.frameNames[profile.frame]}</p>}
+            {profile?.title ? (
+              <p className="text-xs text-brass" data-testid="profile-title">
+                {titleText(t, profile.title)}
+              </p>
+            ) : (
+              profile?.frame && <p className="text-xs text-brass">{t.frameNames[profile.frame]}</p>
+            )}
             {profile?.since && (
               <p className="text-xs text-stone-500">
                 {t.profileSince.replace("{month}", month(profile.since))}
@@ -862,7 +954,7 @@ export function PlayerSheet({
             )}
           </div>
           <button type="button" className="text-stone-400" onClick={onClose} aria-label={t.close}>
-            ✕
+            <Icon name="close" className="h-5 w-5" />
           </button>
         </div>
         <AddFriendButton playerId={playerId} className="mb-3" />
@@ -877,7 +969,14 @@ export function PlayerSheet({
                   key={`${x.month}${x.variant}${x.pool ?? ""}`}
                   className="rounded-full border border-brass/40 bg-stone-900 px-2.5 py-0.5 text-xs text-stone-200"
                 >
-                  {TROPHY_MARK[x.place]} {trophyText(t, x)} · {month(x.month)}
+                  <Plaque place={x.place} size={16} /> {trophyText(t, x)}
+                  {x.pool === "blitz" && (
+                    <>
+                      {" "}
+                      <Icon name="blitz" />
+                    </>
+                  )}{" "}
+                  · {month(x.month)}
                 </li>
               ))}
             </ul>
@@ -917,7 +1016,13 @@ export function PlayerSheet({
                   <div className="text-xl font-bold text-amber-100 tabular-nums">{r.rating}</div>
                   <div className="text-xs text-stone-400">
                     {variantName(r.variant, t.tavliMatch)}
-                    {r.pool === "blitz" && " · ⚡"} · {r.wins}/{r.matches}
+                    {r.pool === "blitz" && (
+                      <>
+                        {" "}
+                        · <Icon name="blitz" label={t.timeControls.blitz} />
+                      </>
+                    )}{" "}
+                    · {r.wins}/{r.matches}
                   </div>
                 </div>
               ))}
@@ -933,6 +1038,5 @@ export function PlayerSheet({
   );
 }
 
-const TROPHY_MARK = { 1: "🥇", 2: "🥈", 3: "🥉" } as const;
 const trophyText = (t: ReturnType<typeof useT>, x: Trophy) =>
-  `${t.trophyPlace.replace("{place}", String(x.place))} ${variantName(x.variant, t.tavliMatch)}${x.pool === "blitz" ? " ⚡" : ""}`;
+  `${t.trophyPlace.replace("{place}", String(x.place))} ${variantName(x.variant, t.tavliMatch)}`;

@@ -30,7 +30,7 @@ test("four players fill a tournament; first-round matches start and lead back to
 
   // the bracket starts (after a short pause) and every player is taken to the board
   for (const p of pages) {
-    await expect(p.getByText(/🏆 Pokal · Halbfinale/)).toBeVisible({ timeout: 30_000 });
+    await expect(p.getByText(/Pokal · Halbfinale/)).toBeVisible({ timeout: 30_000 });
   }
 
   // in each match one player resigns; the winners see the way back to the bracket

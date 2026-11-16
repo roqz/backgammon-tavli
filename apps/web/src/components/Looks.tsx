@@ -16,6 +16,7 @@ import {
   useUnlocked,
 } from "../rewards";
 import { useSettings } from "../store/settings";
+import { Icon } from "./Icon";
 
 /** "🍂 10 games in an autumn season" */
 export const seasonHow = (t: Dict, key: SeasonKey): string =>
@@ -106,11 +107,13 @@ export function StylePicker() {
               <StylePreview style={s} />
             </div>
             <div className="mt-2 flex items-center justify-between px-1 text-sm">
-              <span className={style === s ? "font-semibold text-amber-200" : "text-stone-300"}>
-                {open ? "" : "🔒 "}
+              <span
+                className={`inline-flex items-center gap-1 ${style === s ? "font-semibold text-amber-200" : "text-stone-300"}`}
+              >
+                {!open && <Icon name="lock" />}
                 {t.styleNames[s]}
               </span>
-              {style === s && <span className="text-amber-300">✓</span>}
+              {style === s && <Icon name="check" className="h-4 w-4 text-amber-300" />}
             </div>
             {!open && <div className="px-1 text-[11px] leading-snug text-stone-500">{lock}</div>}
           </button>
@@ -158,7 +161,7 @@ export function DicePicker() {
               >
                 ⚃
               </span>
-              {open ? "" : "🔒 "}
+              {!open && <Icon name="lock" />}
               {t.diceSkins[d.id]}
             </button>
           );
@@ -212,7 +215,7 @@ export function CheckerPicker() {
               className={pill(checkerSet === id)}
             >
               <CheckerSwatch set={id} />
-              {open ? "" : "🔒 "}
+              {!open && <Icon name="lock" />}
               {t.checkerSets[id]}
             </button>
           );

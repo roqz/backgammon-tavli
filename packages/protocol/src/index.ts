@@ -202,7 +202,24 @@ export interface PublicPlayer {
   readonly rank?: number;
   /** Supports the project (badge next to the name). */
   readonly supporter?: boolean;
+  /** Title under the name, chosen from earned ones (see TITLE_ACHIEVEMENTS). */
+  readonly title?: string | null;
 }
+
+/**
+ * Achievements that give a title to show under the name; first places of monthly rankings give
+ * one as well ("month-winner:YYYY-MM:<rating key>").
+ */
+export const TITLE_ACHIEVEMENTS = [
+  "tournament-win",
+  "tournament-three",
+  "league-win",
+  "variant-master",
+  "rating-1600",
+  "veteran",
+  "honor-member",
+] as const;
+export const TitleSchema = z.object({ title: z.string().min(1).max(64).nullable() });
 
 // ---- progress and rewards ----------------------------------------------------------------------
 
@@ -218,6 +235,10 @@ export const FRAMES = {
   shield: "league-win",
   // first place of a monthly ranking (server records)
   champion: "month-winner",
+  // rating 1600 in Portes, Plakoto and Fevga; three tournament wins; two years and 300 matches
+  master: "variant-master",
+  series: "tournament-three",
+  veteran: "veteran",
   // rarities (docs/GAMIFICATION.md)
   rosette: "games-1000",
   medal: "honor-member",
@@ -802,6 +823,7 @@ export interface ProfileResponse {
   readonly trophies?: readonly Trophy[];
   /** Achievements the player shows on the profile (at most SHOWCASE_MAX). */
   readonly showcase?: readonly string[];
+  readonly title?: string | null;
 }
 
 /** Achievements a player can pin to the public profile. */
@@ -1181,6 +1203,9 @@ export interface AccountResponse {
   readonly listed: boolean;
   /** Achievements shown on the public profile. */
   readonly showcase: readonly string[];
+  /** The title under the name and the titles earned so far. */
+  readonly title: string | null;
+  readonly titles: readonly string[];
   /** Login asks for an authenticator app code. */
   readonly twoFactor: boolean;
   /** Unused recovery codes (accounts only). */

@@ -11,6 +11,7 @@ import {
   type TimingSummary,
 } from "@tavli/protocol";
 import { useState } from "react";
+import { Icon } from "../components/Icon";
 import { Button, Card, Segmented } from "../components/ui";
 import { useT } from "../i18n";
 import { httpUrl, useOnline } from "../online/store";
@@ -119,9 +120,11 @@ export function AdminScreen({
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center gap-2">
         <Button variant="ghost" onClick={onBack} className="px-3">
-          ←
+          <Icon name="back" label={t.back} />
         </Button>
-        <h1 className="text-2xl font-bold text-amber-100">🛡 {t.adminTitle}</h1>
+        <h1 className="text-2xl font-bold text-amber-100">
+          <Icon name="shield" /> {t.adminTitle}
+        </h1>
       </div>
       <Card className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm text-stone-400">
@@ -223,7 +226,12 @@ function ReportCard({
       {r.note && <p className="whitespace-pre-wrap text-stone-300">“{r.note}”</p>}
       <p className="text-xs text-stone-500">
         ← {r.reporter.name} · {r.reportsAgainst} {t.adminReportsAgainst}
-        {r.resolution ? ` · ✓ ${r.resolution}` : ""}
+        {r.resolution && (
+          <>
+            {" · "}
+            <Icon name="check" /> {r.resolution}
+          </>
+        )}
       </p>
       {info && (
         <p className="font-mono text-xs text-stone-400">
@@ -237,7 +245,7 @@ function ReportCard({
       <div className="mt-1 flex flex-wrap items-center gap-2">
         {onMatch && (
           <Button variant="ghost" className="px-3 py-1.5 text-sm" onClick={onMatch}>
-            ▶ {t.adminMatch}
+            <Icon name="play" /> {t.adminMatch}
           </Button>
         )}
         {banned ? (
@@ -269,7 +277,7 @@ function ReportCard({
             className="px-3 py-1.5 text-sm"
             onClick={() => onResolve(banned ? "banned" : "no action")}
           >
-            ✓ {t.adminDismiss}
+            <Icon name="check" /> {t.adminDismiss}
           </Button>
         )}
       </div>
@@ -283,8 +291,8 @@ function AnalysisLine({ a }: { a: AnalysisSummary }) {
   const t = useT();
   return (
     <p className="font-mono text-xs text-stone-400">
-      🤖 {t.adminAgreement}: {pct(a.agreement)} · {t.adminAvgLoss}: {a.averageLoss.toFixed(3)} · {a.decisions}{" "}
-      {t.adminDecisions}
+      <Icon name="robot" /> {t.adminAgreement}: {pct(a.agreement)} · {t.adminAvgLoss}:{" "}
+      {a.averageLoss.toFixed(3)} · {a.decisions} {t.adminDecisions}
     </p>
   );
 }
@@ -293,8 +301,8 @@ function TimingLine({ a }: { a: TimingSummary }) {
   const t = useT();
   return (
     <p className="font-mono text-xs text-stone-400">
-      ⏱ {t.adminTypicalTime}: {a.typicalSeconds.toFixed(1)} s · {t.adminSpread}: {a.spread.toFixed(2)} ·{" "}
-      {a.decisions} {t.adminDecisions}
+      <Icon name="clock" /> {t.adminTypicalTime}: {a.typicalSeconds.toFixed(1)} s · {t.adminSpread}:{" "}
+      {a.spread.toFixed(2)} · {a.decisions} {t.adminDecisions}
     </p>
   );
 }
@@ -374,7 +382,9 @@ function SignalsView({
     <div className="flex flex-col gap-4">
       <p className="text-xs text-stone-500">{t.adminSignalsHint.replace("{days}", String(th.days))}</p>
       <Card className="flex flex-col gap-2 text-sm">
-        <h2 className="font-semibold text-stone-100">🤖 {t.adminBotLike}</h2>
+        <h2 className="font-semibold text-stone-100">
+          <Icon name="robot" /> {t.adminBotLike}
+        </h2>
         <p className="text-xs text-stone-500">
           ≥ {pct(th.botLikeAgreement)} · ≥ {th.botLikeDecisions} {t.adminDecisions}
         </p>
@@ -387,7 +397,9 @@ function SignalsView({
         ))}
       </Card>
       <Card className="flex flex-col gap-2 text-sm">
-        <h2 className="font-semibold text-stone-100">⏱ {t.adminSteadyTiming}</h2>
+        <h2 className="font-semibold text-stone-100">
+          <Icon name="clock" /> {t.adminSteadyTiming}
+        </h2>
         <p className="text-xs text-stone-500">
           {t.adminSteadyTimingHint
             .replace("{spread}", th.timingSpread.toFixed(2))
@@ -402,7 +414,9 @@ function SignalsView({
         ))}
       </Card>
       <Card className="flex flex-col gap-2 text-sm">
-        <h2 className="font-semibold text-stone-100">🏳 {t.adminForfeits}</h2>
+        <h2 className="font-semibold text-stone-100">
+          <Icon name="flag" /> {t.adminForfeits}
+        </h2>
         <p className="text-xs text-stone-500">
           ≥ {pct(th.forfeitRate)} · ≥ {th.forfeitMatches} Matches
         </p>
@@ -514,7 +528,9 @@ function SupportView({
   return (
     <div className="flex flex-col gap-4">
       <Card className="flex flex-col gap-3">
-        <h2 className="font-semibold text-stone-100">💛 {t.adminGrant}</h2>
+        <h2 className="font-semibold text-stone-100">
+          <Icon name="heart" className="h-[1.15em] w-[1.15em] text-brass" /> {t.adminGrant}
+        </h2>
         <input
           className={field}
           placeholder={t.adminGrantPlayer}
@@ -611,7 +627,7 @@ function SupportView({
             {overview.supporters.map((s) => (
               <li key={s.id} className="flex flex-col gap-1 py-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className={s.active ? "text-brass" : "text-stone-600"}>♥</span>
+                  <Icon name="heart" className={`h-4 w-4 ${s.active ? "text-brass" : "text-stone-600"}`} />
                   <span className="min-w-0 flex-1 truncate text-stone-100">
                     {s.name}
                     {s.username && <span className="text-stone-500"> · {s.username}</span>}

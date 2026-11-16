@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAchievements } from "../achievements";
 import { Board } from "../board/Board";
 import { layoutFromBoard } from "../board/layout";
+import { Icon } from "../components/Icon";
 import { Button, Card } from "../components/ui";
 import { type Lang, useT } from "../i18n";
 import { useBoardTheme } from "../rewards";
@@ -315,9 +316,11 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-2 sm:p-4">
       <div className="flex items-center gap-2 px-1">
         <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
-          ←
+          <Icon name="back" />
         </Button>
-        <h1 className="flex-1 text-xl font-bold text-amber-100">🎓 {t.tutorial}</h1>
+        <h1 className="flex-1 text-xl font-bold text-amber-100">
+          <Icon name="school" /> {t.tutorial}
+        </h1>
         <span className="text-sm tabular-nums text-stone-500">
           {index + 1} / {LESSONS.length}
         </span>
@@ -345,7 +348,7 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
               {getVariant(v).name}
               {done && (
                 <>
-                  <span aria-hidden="true">✓</span>
+                  <Icon name="check" />
                   <span className="sr-only">({t.lessonsDone})</span>
                 </>
               )}
@@ -372,22 +375,32 @@ export function TutorialScreen({ onBack, onPlay }: { onBack: () => void; onPlay:
         />
       </div>
       <div aria-live="polite" className="min-h-6 text-center">
-        {success && <p className="font-semibold text-emerald-300">✓ {lesson.done[lang]}</p>}
+        {success && (
+          <p className="font-semibold text-emerald-300">
+            <Icon name="check" /> {lesson.done[lang]}
+          </p>
+        )}
         {finished && !success && <p className="text-amber-300">{t.tutorialTryAgain}</p>}
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         <Button variant="ghost" disabled={index === 0} onClick={() => go(index - 1)}>
-          ◀ {t.previous}
+          <Icon name="prev" /> {t.previous}
         </Button>
-        <Button onClick={() => go(index)}>↺ {t.tutorialReset}</Button>
-        {!finished && <Button onClick={() => setShowHint(true)}>💡 {t.hint}</Button>}
+        <Button onClick={() => go(index)}>
+          <Icon name="undo" /> {t.tutorialReset}
+        </Button>
+        {!finished && (
+          <Button onClick={() => setShowHint(true)}>
+            <Icon name="hint" /> {t.hint}
+          </Button>
+        )}
         {index < LESSONS.length - 1 ? (
           <Button variant={success ? "primary" : "ghost"} onClick={() => go(index + 1)}>
-            {t.next} ▶
+            {t.next} <Icon name="play" />
           </Button>
         ) : (
           <Button variant={success ? "primary" : "ghost"} onClick={onPlay}>
-            {t.tutorialPlay} ▶
+            {t.tutorialPlay} <Icon name="play" />
           </Button>
         )}
       </div>

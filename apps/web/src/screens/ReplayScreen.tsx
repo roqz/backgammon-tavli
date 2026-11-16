@@ -5,6 +5,7 @@ import { Board } from "../board/Board";
 import { applyMoveToLayout, layoutFromBoard } from "../board/layout";
 import { askBot } from "../bot/client";
 import { humanSeat } from "../bot/useBotDriver";
+import { Icon } from "../components/Icon";
 import { Button } from "../components/ui";
 import { turnText, useT } from "../i18n";
 import { buildFrames } from "../replay";
@@ -70,7 +71,7 @@ export function ReplayScreen({ records, onBack }: { records: readonly GameRecord
           title={t.exportMatHint}
           onClick={() => downloadMat(records)}
         >
-          ⬇ .mat
+          <Icon name="download" /> .mat
         </Button>
       )}
     </div>
@@ -154,7 +155,7 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex items-center justify-between gap-2 px-1">
           <Button variant="ghost" onClick={onBack} className="px-3 py-1.5 text-sm">
-            ← {t.back}
+            <Icon name="back" /> {t.back}
           </Button>
           <div className="text-center text-sm text-stone-400">
             <span className="font-semibold text-stone-200">{getVariant(record.variant).name}</span> ·{" "}
@@ -180,19 +181,27 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
         <div className="flex flex-col items-center gap-2">
           <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={() => go(0)} aria-label={t.toStart}>
-              ⏮
+              <Icon name="first" />
             </Button>
             <Button onClick={() => go(index - 1)} aria-label={t.previous}>
-              ◀
+              <Icon name="prev" />
             </Button>
             <Button variant="primary" className="min-w-28" onClick={() => setPlaying(!playing)}>
-              {playing ? `⏸ ${t.pause}` : `▶ ${t.play}`}
+              {playing ? (
+                <>
+                  <Icon name="pause" /> {t.pause}
+                </>
+              ) : (
+                <>
+                  <Icon name="play" /> {t.play}
+                </>
+              )}
             </Button>
             <Button onClick={() => go(index + 1)} aria-label={t.next}>
-              ▶
+              <Icon name="play" />
             </Button>
             <Button onClick={() => go(last)} aria-label={t.toEnd}>
-              ⏭
+              <Icon name="last" />
             </Button>
           </div>
           <input
@@ -210,7 +219,11 @@ function SingleReplay({ record, onBack, tabs }: { record: GameRecord; onBack: ()
         </div>
       </div>
       <aside className="flex w-full flex-col gap-3 rounded-xl border border-stone-800 bg-stone-900/80 p-4 lg:w-80">
-        {review === null && <Button onClick={() => void runReview()}>🔍 {t.reviewGame}</Button>}
+        {review === null && (
+          <Button onClick={() => void runReview()}>
+            <Icon name="search" /> {t.reviewGame}
+          </Button>
+        )}
         {review === "running" && (
           <p className="flex items-center gap-2 text-sm text-stone-400">
             <span className="h-3 w-3 rounded-full border-2 border-stone-600 border-t-amber-400 motion-safe:animate-spin" />
@@ -311,7 +324,9 @@ function MistakeDetail({ turn }: { turn: ReviewedTurn }) {
         <MistakeMark mistake={turn.mistake} />
       </div>
       {turn.mistake === "ok" && turn.loss < 1e-9 ? (
-        <div className="text-emerald-300">✓ {t.bestMovePlayed}</div>
+        <div className="text-emerald-300">
+          <Icon name="check" /> {t.bestMovePlayed}
+        </div>
       ) : (
         <div className="text-stone-300">
           {t.bestMove}: <span className="font-mono text-amber-200">{turn.best}</span>{" "}

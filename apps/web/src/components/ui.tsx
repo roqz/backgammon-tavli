@@ -1,4 +1,5 @@
 import { type ButtonHTMLAttributes, type ReactNode, useRef } from "react";
+import { Icon, type IconName } from "./Icon";
 import { useBackToClose, useDialogFocus } from "./overlay";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
@@ -187,7 +188,7 @@ export function Section({
   onToggle,
 }: {
   title: string;
-  icon: string;
+  icon: IconName;
   children: ReactNode;
   id?: string;
   open?: boolean;
@@ -195,7 +196,7 @@ export function Section({
 }) {
   const heading = (
     <>
-      <span aria-hidden>{icon}</span>
+      <Icon name={icon} className="h-[1.1em] w-[1.1em] text-amber-300" />
       <span className="flex-1 text-left">{title}</span>
       {onToggle && (
         <span aria-hidden className={`text-stone-500 transition-transform ${open ? "rotate-90" : ""}`}>

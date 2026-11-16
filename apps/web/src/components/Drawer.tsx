@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useRef } from "react";
+import { Icon } from "./Icon";
 import { useBackToClose, useDialogFocus } from "./overlay";
 
 /** Slide-in panel from the right over the current screen (the screen stays mounted). */
@@ -49,7 +50,7 @@ export function Drawer({
                 className="rounded-lg px-3 py-1.5 text-stone-300 hover:bg-stone-800"
                 aria-label={closeLabel}
               >
-                ✕
+                <Icon name="close" />
               </button>
             </div>
             {children}

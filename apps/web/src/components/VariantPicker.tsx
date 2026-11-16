@@ -1,4 +1,5 @@
 import type { MatchVariant } from "@tavli/engine";
+import type { ReactNode } from "react";
 import { useT } from "../i18n";
 
 const NAMES: Record<MatchVariant, string> = {
@@ -68,7 +69,7 @@ export function Choice<T extends string | number>({
   label: string;
   value: T;
   onChange: (v: T) => void;
-  options: readonly { value: T; label: string; title?: string }[];
+  options: readonly { value: T; label: ReactNode; title?: string }[];
 }) {
   return (
     <fieldset className="flex min-w-0 flex-col">

@@ -340,6 +340,13 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 - Öffentliches Profil (Tipp auf einen Namen): große Rahmen-Medaille, Clubrang, Unterstützer, Monat der Anmeldung, Podestplätze, bis zu drei selbst gewählte Erfolge (nur freigeschaltete), Ratings und letzte Partien; die Genauigkeit bleibt privat
 - Der Unterstützer-Rahmen „Mäzen“ wird nur angezeigt, solange die Unterstützung läuft
 
+### Eigene Icons und Prestige ✅
+
+- Eigenes SVG-Set statt Emoji (Design Doc „Tavli Icon-Set“): Bedien-Icons im 24er-Raster mit 1,75-px-Linie und `currentColor` (`components/Icon.tsx`), Rahmen als Medaillen mit Emaille, Metallring und graviertem Motiv, Raritäten mit Perlenring (`components/Medallion.tsx`), Podest-Plaketten und Clubrang-Marken. Emoji bleiben nur in Kurznachrichten, Saison- und Erfolgs-Symbolen
+- Spielerleiste: Medaille 26 px mit einmaligem Schimmer bei Raritäten (aus bei „Bewegung reduzieren“) und dem gewählten Titel in Messing darunter; Vorstellung beider Spieler beim Start eines Online-Matches (nicht nach einem Reconnect)
+- Titel unter dem Namen, wählbar aus verdienten: Turniersieger, Turnierserie, Ligameister, Variantenmeister, Aufsteiger, Veteran, Ehrenmitglied und jede gewonnene Monatswertung (`POST /api/account/title`, vom Server geprüft)
+- Neue Rahmen (vom Server geprüft): Variantenmeister, Turnierserie, Veteran; Zuschauer sehen Rahmen in der Liste laufender Partien
+
 ### Clubs und Ligen ✅
 
 - Clubs: gründen mit Konto oder nach 3 Matches (wie Turniere), Name eindeutig, Beschreibung, offen (direkt beitreten) oder geschlossen (Anfrage, ein Admin bestätigt); Rollen Gründer, Admin, Mitglied; höchstens 100 Mitglieder, höchstens 10 Clubs je Spieler; Suche nach Namen; Mitglieder sehen sich mit Online-Status; verlässt der Gründer den Club, übernimmt der dienstälteste Admin bzw. das dienstälteste Mitglied

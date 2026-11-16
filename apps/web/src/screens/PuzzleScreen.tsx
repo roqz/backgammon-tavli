@@ -4,6 +4,7 @@ import { Board } from "../board/Board";
 import { HEIGHT, WIDTH } from "../board/geometry";
 import { layoutFromBoard, useFollowingLayout } from "../board/layout";
 import { askBot } from "../bot/client";
+import { Icon } from "../components/Icon";
 import { Button, Card } from "../components/ui";
 import { useT } from "../i18n";
 import { gradePuzzle, type Puzzle, streak, today, usePuzzles } from "../puzzle";
@@ -73,9 +74,11 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
     >
       <div className="flex items-center gap-2 px-1">
         <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
-          ←
+          <Icon name="back" />
         </Button>
-        <h1 className="flex-1 text-xl font-bold text-amber-100">🧩 {t.puzzle}</h1>
+        <h1 className="flex-1 text-xl font-bold text-amber-100">
+          <Icon name="puzzle" /> {t.puzzle}
+        </h1>
         <span className="text-sm text-stone-400" title={t.puzzleStreak}>
           🔥 {streak(results)}
         </span>
@@ -94,7 +97,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
             })}
           </span>
           <Button variant="ghost" className="shrink-0 px-2 py-1 text-sm" onClick={() => setRulesOpen(true)}>
-            📖 {t.rules}
+            <Icon name="rules" /> {t.rules}
           </Button>
         </div>
         <p className="text-stone-100">
@@ -104,7 +107,13 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
         </p>
         {earlier && !graded && (
           <p className="text-xs text-stone-500">
-            {earlier.solved ? `✓ ${t.puzzleAlreadySolved}` : t.puzzleAlreadyTried}
+            {earlier.solved ? (
+              <>
+                <Icon name="check" /> {t.puzzleAlreadySolved}
+              </>
+            ) : (
+              t.puzzleAlreadyTried
+            )}
           </p>
         )}
       </Card>
@@ -132,7 +141,11 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
         </div>
       </div>
       <div aria-live="polite" className="min-h-6 text-center">
-        {graded?.solved && <p className="font-semibold text-emerald-300">✓ {t.puzzleSolved}</p>}
+        {graded?.solved && (
+          <p className="font-semibold text-emerald-300">
+            <Icon name="check" /> {t.puzzleSolved}
+          </p>
+        )}
         {graded && !graded.solved && (
           <p className="text-amber-300">
             {t.puzzleMissed.replace("{loss}", Number.isFinite(graded.loss) ? graded.loss.toFixed(3) : "?")}
@@ -143,19 +156,27 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
         {!graded && (
           <>
             <Button onClick={retry} disabled={state === puzzle.state}>
-              ↺ {t.tutorialReset}
+              <Icon name="undo" /> {t.tutorialReset}
             </Button>
             <Button variant="primary" disabled={!done} onClick={check}>
-              ✓ {t.puzzleCheck}
+              <Icon name="check" /> {t.puzzleCheck}
             </Button>
           </>
         )}
         {graded && (
           <>
             <Button onClick={() => setShowBest((b) => !b)}>
-              {showBest ? t.puzzleMyMove : `💡 ${t.puzzleShowBest}`}
+              {showBest ? (
+                t.puzzleMyMove
+              ) : (
+                <>
+                  <Icon name="hint" /> {t.puzzleShowBest}
+                </>
+              )}
             </Button>
-            <Button onClick={retry}>↺ {t.puzzleRetry}</Button>
+            <Button onClick={retry}>
+              <Icon name="undo" /> {t.puzzleRetry}
+            </Button>
           </>
         )}
       </div>
@@ -195,7 +216,9 @@ function Centered({ text, onBack }: { text: string; onBack: () => void }) {
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center gap-4 p-6 text-center">
       <p className="text-stone-400">{text}</p>
-      <Button onClick={onBack}>← {t.back}</Button>
+      <Button onClick={onBack}>
+        <Icon name="back" /> {t.back}
+      </Button>
     </div>
   );
 }

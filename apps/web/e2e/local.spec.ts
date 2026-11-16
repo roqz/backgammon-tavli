@@ -176,7 +176,8 @@ test("money play with beavers: beaver a double, then raccoon", async ({ page }) 
   const double = page.getByRole("button", { name: /Verdoppeln/ });
   for (let i = 0; i < 8 && !(await double.isVisible()); i++) {
     const end = page.getByRole("button", { name: "Zug beenden" });
-    if ((await end.count()) > 0 && (await end.isEnabled())) await end.click();
+    // the button may vanish between the check and the click (the turn ends by itself)
+    if ((await end.count()) > 0 && (await end.isEnabled())) await end.click({ timeout: 2_000 }).catch(() => {});
     else await tapMove(page);
     await page.waitForTimeout(400);
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOARDS, Store } from "../src/db";
+import { BOARDS, Store, VETERAN } from "../src/db";
 import { BACKUP_FILE } from "../src/server";
 
 let n = 0;
@@ -112,5 +112,44 @@ describe("backups", () => {
     expect(BACKUP_FILE.test("tavli-2026-11-16.db")).toBe(true);
     expect(BACKUP_FILE.test("tavli-2026-11-16.db-wal")).toBe(false);
     expect(BACKUP_FILE.test("other.db")).toBe(false);
+  });
+});
+
+describe("titles and the new frames", () => {
+  it("offers earned titles only, including first places of monthly rankings", () => {
+    const store = new Store(":memory:");
+    const [a, b] = ["Ann", "Ben"].map((name) => store.createPlayer(name).id) as [string, string];
+    expect(store.account(a)?.titles).toEqual([]);
+    expect(store.setTitle(a, "rating-1600")).toBe(false);
+    store.setRating(a, "backgammon", 1650);
+    store.db.prepare("UPDATE ratings SET matches = 1 WHERE player_id = ?").run(a);
+    expect(store.account(a)?.titles).toContain("rating-1600");
+    expect(store.setTitle(a, "rating-1600")).toBe(true);
+    expect(store.publicPlayer(a, "backgammon").title).toBe("rating-1600");
+    for (let i = 0; i < BOARDS.monthMinMatches; i++) play(store, a, b, `2026-11-${10 + (i % 9)}T10:00:00.000Z`);
+    store.archiveMonths(DEC);
+    expect(store.account(a)?.titles).toContain("month-winner:2026-11:backgammon");
+    expect(store.setTitle(a, "month-winner:2026-11:backgammon")).toBe(true);
+    expect(store.profile(a)?.title).toBe("month-winner:2026-11:backgammon");
+    expect(store.setTitle(b, "month-winner:2026-11:backgammon")).toBe(false);
+    expect(store.setTitle(a, null)).toBe(true);
+    expect(store.publicPlayer(a, "backgammon").title).toBeNull();
+  });
+
+  it("checks the variant master and veteran frames against the server's records", () => {
+    const store = new Store(":memory:");
+    const [a, b] = ["Ann", "Ben"].map((name) => store.createPlayer(name).id) as [string, string];
+    for (const v of ["portes", "plakoto"] as const) store.setRating(a, v, 1620);
+    store.db.prepare("UPDATE ratings SET matches = 3 WHERE player_id = ?").run(a);
+    expect(store.setFrame(a, "master")).toBe(false);
+    store.setRating(a, "fevga", 1601);
+    store.db.prepare("UPDATE ratings SET matches = 3 WHERE player_id = ?").run(a);
+    expect(store.setFrame(a, "master")).toBe(true);
+
+    expect(store.setFrame(b, "veteran")).toBe(false);
+    for (let i = 0; i < VETERAN.matches; i++) play(store, b, a, "2026-11-01T10:00:00.000Z", false);
+    expect(store.setFrame(b, "veteran")).toBe(false);
+    store.db.prepare("UPDATE players SET created_at = ? WHERE id = ?").run("2024-01-01T00:00:00.000Z", b);
+    expect(store.setFrame(b, "veteran")).toBe(true);
   });
 });

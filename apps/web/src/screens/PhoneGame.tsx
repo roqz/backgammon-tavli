@@ -2,6 +2,7 @@ import type { Frame } from "@tavli/protocol";
 import { AnimatePresence, motion } from "motion/react";
 import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HEIGHT, WIDTH } from "../board/geometry";
+import { Icon, type IconName } from "../components/Icon";
 import { useBackToClose, useDialogFocus } from "../components/overlay";
 import { PlayerName } from "../components/PlayerName";
 import { useT } from "../i18n";
@@ -144,6 +145,7 @@ export interface PlayerInfo {
   readonly frame?: Frame | null;
   readonly rank?: number;
   readonly supporter?: boolean;
+  readonly title?: string | null;
   readonly pips: number | null;
   readonly score: number;
   readonly active: boolean;
@@ -185,7 +187,15 @@ export function PlayerBar({ p, card = false, testId }: { p: PlayerInfo; card?: b
       <span
         className={`min-w-0 flex-1 truncate ${p.active ? "font-semibold text-amber-100" : "text-stone-200"}`}
       >
-        <PlayerName name={p.name} frame={p.frame} rank={p.rank} supporter={p.supporter} />
+        <PlayerName
+          name={p.name}
+          frame={p.frame}
+          rank={p.rank}
+          supporter={p.supporter}
+          title={p.title}
+          size={26}
+          shine
+        />
       </span>
       {p.emote ? (
         <EmoteChip emote={p.emote} />
@@ -208,15 +218,11 @@ function EmoteChip({ emote }: { emote: PlayerEmote }) {
     "flex min-w-0 max-w-[65%] items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-900";
   const body = (
     <>
-      <span aria-hidden>💬</span>
+      <Icon name="chat" className="h-3.5 w-3.5" />
       <span className="truncate" title={emote.when}>
         {emote.text}
       </span>
-      {emote.onDismiss && (
-        <span aria-hidden className="shrink-0 pl-0.5 opacity-60">
-          ✕
-        </span>
-      )}
+      {emote.onDismiss && <Icon name="close" className="h-3 w-3 shrink-0 opacity-60" />}
     </>
   );
   return emote.onDismiss ? (
@@ -261,7 +267,7 @@ export function EmoteNote({ name, emote }: { name: string; emote: PlayerEmote })
 export interface PhoneAction {
   readonly id: string;
   readonly label: string;
-  readonly icon?: string;
+  readonly icon?: IconName;
   readonly onClick: () => void;
   readonly disabled?: boolean;
   readonly variant: "primary" | "secondary" | "danger" | "ghost";
@@ -289,11 +295,7 @@ function ActionButton({ a, className = "" }: { a: PhoneAction; className?: strin
       title={a.title}
       className={`flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 disabled:cursor-not-allowed ${primary ? "text-base" : "flex-col gap-0.5 text-xs"} ${ACTION_STYLE[a.variant]} ${className}`}
     >
-      {a.icon && (
-        <span aria-hidden className={primary ? "" : "text-lg leading-none"}>
-          {a.icon}
-        </span>
-      )}
+      {a.icon && <Icon name={a.icon} className={primary ? "h-5 w-5" : "h-5 w-5"} />}
       <span className="truncate">{a.label}</span>
       {a.badge !== undefined && (
         <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-stone-950/25 px-1.5 text-sm tabular-nums">
@@ -380,7 +382,7 @@ export function IconButton({
 export interface SheetItem {
   readonly id: string;
   readonly label: string;
-  readonly icon: string;
+  readonly icon: IconName;
   readonly onClick: () => void;
   readonly danger?: boolean;
 }
@@ -440,9 +442,7 @@ export function MoreSheet({
                     it.danger ? "bg-red-900/50 text-red-100" : "bg-stone-800 text-stone-200"
                   }`}
                 >
-                  <span aria-hidden className="text-xl leading-none">
-                    {it.icon}
-                  </span>
+                  <Icon name={it.icon} className="h-6 w-6" />
                   {it.label}
                 </button>
               ))}

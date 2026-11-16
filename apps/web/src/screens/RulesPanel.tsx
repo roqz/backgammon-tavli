@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Drawer } from "../components/Drawer";
+import { Icon } from "../components/Icon";
 import { useT } from "../i18n";
 import { RULES, RULES_TOPICS, type RulesTopic } from "../rules";
 import { useSettings } from "../store/settings";
@@ -69,7 +70,16 @@ export function RulesDrawer({
 }) {
   const t = useT();
   return (
-    <Drawer open={open} onClose={onClose} title={`📖 ${t.rules}`} closeLabel={t.close}>
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title={
+        <>
+          <Icon name="rules" /> {t.rules}
+        </>
+      }
+      closeLabel={t.close}
+    >
       {open && <RulesPanel initial={initial} />}
     </Drawer>
   );

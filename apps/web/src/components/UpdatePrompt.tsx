@@ -1,5 +1,6 @@
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { useT } from "../i18n";
+import { Icon } from "./Icon";
 import { Button } from "./ui";
 
 /**
@@ -21,7 +22,7 @@ export function UpdatePrompt() {
       <span>{t.updateReady}</span>
       <div className="flex gap-2">
         <Button variant="ghost" className="px-3 py-1.5 text-sm" onClick={() => setNeedRefresh(false)}>
-          ✕
+          <Icon name="close" label={t.close} />
         </Button>
         <Button
           variant="primary"

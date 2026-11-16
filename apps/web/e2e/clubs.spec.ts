@@ -140,7 +140,7 @@ test("a correspondence league and a club tournament", async ({ browser }) => {
     .getByRole("button", { name: "Beitreten" })
     .click();
   await eli.getByRole("tab", { name: "Turniere" }).click();
-  await expect(eli.getByText("🏛 Taverna")).toBeVisible();
+  await expect(eli.getByText("Taverna", { exact: true }).first()).toBeVisible();
 });
 
 test("scheduled league: a fixed start time shows in the club's schedule", async ({ browser }) => {

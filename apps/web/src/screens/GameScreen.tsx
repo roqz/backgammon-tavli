@@ -28,6 +28,7 @@ import { askBot } from "../bot/client";
 import { humanSeat, useBotDriver } from "../bot/useBotDriver";
 import { Fireworks } from "../components/AchievementLayer";
 import { BLOCKED_VISIBLE_MS, EventBanner, noPlayDelay } from "../components/EventBanner";
+import { Icon } from "../components/Icon";
 import { PlayerName } from "../components/PlayerName";
 import { Button, Modal } from "../components/ui";
 import { errorText } from "../errors";
@@ -51,6 +52,7 @@ import {
   useResignRejected,
   XgidBox,
 } from "./GameExtras";
+import { MatchIntro } from "./MatchIntro";
 import {
   ActionArea,
   EmoteNote,
@@ -347,6 +349,12 @@ export function GameScreen({
   const frameOf = (p: Player) => (online && onlineInfo ? onlineInfo.players[p].frame : null);
   const rankOf = (p: Player) => (online && onlineInfo ? (onlineInfo.players[p].rank ?? 0) : 0);
   const supporterOf = (p: Player) => !!(online && onlineInfo?.players[p].supporter);
+  const titleOf = (p: Player) => (online && onlineInfo ? (onlineInfo.players[p].title ?? null) : null);
+  // the introduction belongs to a fresh match, not to a reconnect in the middle of one
+  const introduce =
+    online && onlineInfo && !onlineInfo.end && match.results.length === 0 && g.history.length === 0
+      ? onlineInfo
+      : null;
   const won =
     g.phase === "finished" &&
     g.result !== null &&
@@ -417,7 +425,7 @@ export function GameScreen({
         <>
           {countdown?.kind === "roll" && (
             <Button variant="ghost" onClick={cancelCountdown} aria-keyshortcuts="Escape">
-              ✕ {t.cancel}
+              <Icon name="close" /> {t.cancel}
             </Button>
           )}
           {canDouble(g) && (
@@ -431,7 +439,7 @@ export function GameScreen({
           )}
           {canRaccoon(g) && (
             <Button onClick={() => dispatch({ type: "raccoon" })} title={t.raccoonHint}>
-              🦝 {t.raccoon} ({g.cube.value * 2})
+              <Icon name="cube" /> {t.raccoon} ({g.cube.value * 2})
             </Button>
           )}
           <Button
@@ -456,7 +464,7 @@ export function GameScreen({
               aria-keyshortcuts="H"
               title={`${t.hint} (H)`}
             >
-              💡 {t.hint}
+              <Icon name="hint" /> {t.hint}
             </Button>
           )}
           <Button
@@ -465,11 +473,11 @@ export function GameScreen({
             aria-keyshortcuts="U"
             title={`${t.undo} (U)`}
           >
-            ↶ {t.undo}
+            <Icon name="undo" /> {t.undo}
           </Button>
           {countdown?.kind === "confirm" && (
             <Button variant="ghost" onClick={cancelCountdown} aria-keyshortcuts="Escape">
-              ✕ {t.cancel}
+              <Icon name="close" /> {t.cancel}
             </Button>
           )}
           <Button
@@ -494,7 +502,7 @@ export function GameScreen({
     const cancel: PhoneAction = {
       id: "cancel",
       label: t.cancel,
-      icon: "✕",
+      icon: "close",
       onClick: cancelCountdown,
       variant: "ghost",
       keys: "Escape",
@@ -516,7 +524,7 @@ export function GameScreen({
         acts.push({
           id: "raccoon",
           label: `${t.raccoon} (${g.cube.value * 2})`,
-          icon: "🦝",
+          icon: "cube",
           onClick: () => dispatch({ type: "raccoon" }),
           variant: "secondary",
           title: t.raccoonHint,
@@ -535,7 +543,7 @@ export function GameScreen({
         acts.push({
           id: "hint",
           label: t.hint,
-          icon: "💡",
+          icon: "hint",
           onClick: () => void askHint(),
           disabled: busy || hintLoading || legalMoves(g).length === 0,
           variant: "secondary",
@@ -545,7 +553,7 @@ export function GameScreen({
       acts.push({
         id: "undo",
         label: t.undo,
-        icon: "↶",
+        icon: "undo",
         onClick: () => dispatch({ type: "undo" }),
         disabled: !canUndo(g) || busy,
         variant: "secondary",
@@ -577,7 +585,7 @@ export function GameScreen({
         acts.push({
           id: "beaver",
           label: `${t.beaver} (${g.cube.value * 4})`,
-          icon: "🦫",
+          icon: "cube",
           onClick: () => dispatch({ type: "beaver" }),
           variant: "secondary",
           keys: "B",
@@ -606,6 +614,7 @@ export function GameScreen({
       frame: frameOf(p),
       rank: rankOf(p),
       supporter: supporterOf(p),
+      title: titleOf(p),
       pips: settings.showPips ? pipCount(rules, g.board, p) : null,
       score: match.score[p],
       active: actor === p,
@@ -626,7 +635,7 @@ export function GameScreen({
         )}
         {online && onlineInfo?.tournament && (
           <span className="rounded bg-amber-500/20 px-1 text-amber-200">
-            🏆{" "}
+            <Icon name="trophy" />{" "}
             {roundName(
               t,
               onlineInfo.tournament.round,
@@ -669,40 +678,50 @@ export function GameScreen({
       fn();
     };
     const items: SheetItem[] = [
-      { id: "rules", label: t.rules, icon: "📖", onClick: closeThen(() => setRulesOpen(true)) },
-      { id: "settings", label: t.settings, icon: "⚙", onClick: closeThen(() => setSettingsOpen(true)) },
+      { id: "rules", label: t.rules, icon: "rules", onClick: closeThen(() => setRulesOpen(true)) },
+      {
+        id: "settings",
+        label: t.settings,
+        icon: "settings",
+        onClick: closeThen(() => setSettingsOpen(true)),
+      },
     ];
     if (phone.turned || phone.kind === "portrait")
       items.push({
         id: "turn",
         label: phone.turned ? t.turnAuto : t.turnLandscape,
-        icon: "⟳",
+        icon: "rotate",
         onClick: closeThen(() => settings.update({ gameOrientation: phone.turned ? "auto" : "landscape" })),
       });
     if (fullscreenSupported())
       items.push({
         id: "fullscreen",
         label: fullscreen ? t.exitFullscreen : t.fullscreen,
-        icon: "⛶",
+        icon: "fullscreen",
         onClick: closeThen(() => void toggleFullscreen(sideways)),
       });
     if (g.phase !== "finished" && !offer)
       items.push({
         id: "resign",
         label: t.resign,
-        icon: "🏳",
+        icon: "flag",
         danger: true,
         onClick: closeThen(() => setResigning(true)),
       });
     if (online && onlineInfo)
-      items.push({ id: "report", label: t.report, icon: "⚑", onClick: closeThen(() => setReporting(true)) });
+      items.push({
+        id: "report",
+        label: t.report,
+        icon: "flag",
+        onClick: closeThen(() => setReporting(true)),
+      });
 
     const board = (
       <FitBoard ratio={sideways ? WIDTH / HEIGHT : HEIGHT / WIDTH}>
         {boardInner}
         {hintText && (
           <p className="pointer-events-none absolute inset-x-2 top-2 mx-auto w-fit rounded-full bg-stone-900/90 px-3 py-1 text-xs text-amber-200 shadow-lg">
-            💡 <span className="font-mono">{hintText}</span>
+            <Icon name="hint" /> <span className="font-mono">{hintText}</span>
           </p>
         )}
         {online && onlineError && (
@@ -710,19 +729,19 @@ export function GameScreen({
             role="alert"
             className="absolute inset-x-2 bottom-2 mx-auto w-fit rounded-full bg-stone-900/90 px-3 py-1 text-xs text-red-300 shadow-lg"
           >
-            ⚠ {errorText(t, onlineError)}
+            <Icon name="warning" /> {errorText(t, onlineError)}
           </p>
         )}
       </FitBoard>
     );
     const more = (
       <IconButton label={t.more} onClick={() => setMoreOpen(true)}>
-        ⋯
+        <Icon name="more" className="h-6 w-6" strokeWidth={3} />
       </IconButton>
     );
     const back = (
       <IconButton label={t.toMenu} onClick={onMenu}>
-        ←
+        <Icon name="back" className="h-5 w-5" />
       </IconButton>
     );
     const emote = online && onlineInfo && !onlineInfo.end && <EmoteButton />;
@@ -827,6 +846,7 @@ export function GameScreen({
       />
       <EventBanner placement={boardRotated ? "middle" : "top"} />
       {online && !phone && <EmoteBubbles />}
+      {introduce && <MatchIntro matchId={introduce.matchId} players={introduce.players} />}
       {resignRejected && (
         <p className="pointer-events-none absolute inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-stone-900/90 px-4 py-1.5 text-sm text-amber-200 shadow-lg">
           {t.resignRejected}
@@ -881,7 +901,7 @@ export function GameScreen({
           </div>
           {canBeaver(g) && (
             <Button className="mt-2 w-full" onClick={() => dispatch({ type: "beaver" })} title={t.beaverHint}>
-              🦫 {t.beaver} ({g.cube.value * 4})
+              <Icon name="cube" /> {t.beaver} ({g.cube.value * 4})
             </Button>
           )}
         </Modal>
@@ -937,7 +957,7 @@ export function GameScreen({
           className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 shadow-2xl"
           onClick={() => setPeekBoard(false)}
         >
-          🏁 {t.showResult}
+          <Icon name="finish" /> {t.showResult}
         </Button>
       )}
 
@@ -988,16 +1008,22 @@ export function GameScreen({
               }`}
               title={t.diceVerifiedHint}
             >
-              {onlineInfo.fairCheck === "ok"
-                ? `🎲 ✓ ${t.diceVerified}`
-                : onlineInfo.fairCheck === "failed"
-                  ? `⚠ ${t.diceCheckFailed}`
-                  : t.diceChecking}
+              {onlineInfo.fairCheck === "ok" ? (
+                <>
+                  <Icon name="check" /> {t.diceVerified}
+                </>
+              ) : onlineInfo.fairCheck === "failed" ? (
+                <>
+                  <Icon name="warning" /> {t.diceCheckFailed}
+                </>
+              ) : (
+                t.diceChecking
+              )}
             </p>
           )}
           {onlineInfo.rematch === "offered" && (
             <p className="mb-3 rounded-lg bg-amber-400/15 px-3 py-2 text-center text-amber-200">
-              🔁 {t.rematchOffered}
+              <Icon name="rematch" /> {t.rematchOffered}
             </p>
           )}
           {onlineInfo.rematch === "declined" && (
@@ -1024,7 +1050,7 @@ export function GameScreen({
                   onTournament(id);
                 }}
               >
-                🏆 {t.tToTournament}
+                <Icon name="trophy" /> {t.tToTournament}
               </Button>
             ) : (
               <Button
@@ -1033,11 +1059,17 @@ export function GameScreen({
                 disabled={onlineInfo.rematch === "requested" || onlineInfo.rematch === "declined"}
                 onClick={requestRematch}
               >
-                {onlineInfo.rematch === "requested"
-                  ? t.rematchWaiting
-                  : onlineInfo.rematch === "offered"
-                    ? `🔁 ${t.rematchAccept}`
-                    : `🔁 ${t.rematch}`}
+                {onlineInfo.rematch === "requested" ? (
+                  t.rematchWaiting
+                ) : onlineInfo.rematch === "offered" ? (
+                  <>
+                    <Icon name="rematch" /> {t.rematchAccept}
+                  </>
+                ) : (
+                  <>
+                    <Icon name="rematch" /> {t.rematch}
+                  </>
+                )}
               </Button>
             )}
           </div>
@@ -1047,14 +1079,14 @@ export function GameScreen({
               className="flex-1 text-xs text-stone-400"
               onClick={() => setPeekBoard(true)}
             >
-              👁 {t.viewBoard}
+              <Icon name="watch" /> {t.viewBoard}
             </Button>
             <Button
               variant="ghost"
               className="flex-1 text-xs text-stone-500"
               onClick={() => setReporting(true)}
             >
-              ⚑ {t.report}
+              <Icon name="flag" /> {t.report}
             </Button>
           </div>
           {opponentSeat !== null && (
@@ -1084,7 +1116,7 @@ export function GameScreen({
               </p>
               {moneySession && (
                 <Button variant="ghost" className="text-sm text-red-300" onClick={() => setForfeiting(true)}>
-                  🏳 {t.endSession}
+                  <Icon name="flag" /> {t.endSession}
                 </Button>
               )}
             </div>
@@ -1111,7 +1143,7 @@ export function GameScreen({
           )}
           <div className="mt-2 flex gap-2">
             <Button variant="ghost" className="flex-1 text-sm" onClick={() => setPeekBoard(true)}>
-              👁 {t.viewBoard}
+              <Icon name="watch" /> {t.viewBoard}
             </Button>
             {!online && (
               <Button
@@ -1122,7 +1154,7 @@ export function GameScreen({
                   if (record) onReplay(record);
                 }}
               >
-                ▶ {t.watchGame}
+                <Icon name="play" /> {t.watchGame}
               </Button>
             )}
           </div>
@@ -1151,7 +1183,7 @@ export function GameScreen({
             className="shrink-0 px-3 py-1.5 text-sm"
             aria-label={t.toMenu}
           >
-            ← <span className="hidden sm:inline">{t.toMenu}</span>
+            <Icon name="back" /> <span className="hidden sm:inline">{t.toMenu}</span>
           </Button>
           <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
             <span className="font-semibold text-stone-200">{rules.name}</span> · {t.game}{" "}
@@ -1166,7 +1198,7 @@ export function GameScreen({
             )}
             {online && onlineInfo?.tournament && (
               <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-200">
-                🏆 {onlineInfo.tournament.name} ·{" "}
+                <Icon name="trophy" /> {onlineInfo.tournament.name} ·{" "}
                 {roundName(
                   t,
                   onlineInfo.tournament.round,
@@ -1204,7 +1236,7 @@ export function GameScreen({
                 aria-label={t.resign}
                 title={t.resign}
               >
-                🏳
+                <Icon name="flag" className="h-5 w-5" />
               </Button>
             )}
             {online && onlineInfo && (
@@ -1215,7 +1247,7 @@ export function GameScreen({
                 aria-label={t.report}
                 title={t.report}
               >
-                ⚑
+                <Icon name="flag" className="h-5 w-5" />
               </Button>
             )}
             <Button
@@ -1225,7 +1257,7 @@ export function GameScreen({
               aria-label={t.rules}
               title={t.rules}
             >
-              📖
+              <Icon name="rules" className="h-5 w-5" />
             </Button>
             <Button
               variant="ghost"
@@ -1234,7 +1266,7 @@ export function GameScreen({
               aria-label={t.settings}
               title={t.settings}
             >
-              ⚙
+              <Icon name="settings" className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -1270,12 +1302,12 @@ export function GameScreen({
         </div>
         {online && onlineError && (
           <p role="alert" className="text-center text-sm text-red-400">
-            ⚠ {errorText(t, onlineError)}
+            <Icon name="warning" /> {errorText(t, onlineError)}
           </p>
         )}
         {hintText && (
           <p className="text-center text-sm text-amber-200">
-            💡 {t.suggestion}: <span className="font-mono">{hintText}</span>
+            <Icon name="hint" /> {t.suggestion}: <span className="font-mono">{hintText}</span>
           </p>
         )}
         {!hintText && g.phase === "moving" && g.played.length === 0 && !noPlay && (
@@ -1293,7 +1325,15 @@ export function GameScreen({
               <span
                 className={`flex-1 truncate ${actor === p ? "font-bold text-amber-200" : "text-stone-200"}`}
               >
-                <PlayerName name={name(p)} frame={frameOf(p)} rank={rankOf(p)} supporter={supporterOf(p)} />
+                <PlayerName
+                  name={name(p)}
+                  frame={frameOf(p)}
+                  rank={rankOf(p)}
+                  supporter={supporterOf(p)}
+                  title={titleOf(p)}
+                  size={26}
+                  shine
+                />
               </span>
               {settings.showPips && (
                 <span className="text-xs text-stone-500">
@@ -1324,10 +1364,12 @@ export function GameScreen({
 
         {g.phase !== "finished" && !offer && (
           <Button variant="ghost" className="hidden text-sm lg:block" onClick={() => setResigning(true)}>
-            🏳 {t.resign}
+            <Icon name="flag" /> {t.resign}
           </Button>
         )}
-        <p className="hidden px-1 text-xs leading-relaxed text-stone-500 lg:block">⌨ {t.shortcutsHint}</p>
+        <p className="hidden px-1 text-xs leading-relaxed text-stone-500 lg:block">
+          <Icon name="keyboard" /> {t.shortcutsHint}
+        </p>
       </aside>
 
       {dialogs}
@@ -1452,14 +1494,14 @@ function OnlineStatus({
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {!opponentConnected && (
         <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-300">
-          ⚠ {t.opponentAway} {graceUntil ? fmt(graceUntil - now) : ""}
+          <Icon name="warning" /> {t.opponentAway} {graceUntil ? fmt(graceUntil - now) : ""}
         </span>
       )}
       {deadline && (
         <span
           className={`rounded-full px-2 py-0.5 font-mono tabular-nums ${deadline - now < 10_000 ? "bg-red-500/25 text-red-200" : "bg-stone-800 text-stone-300"}`}
         >
-          ⏱ {fmt(deadline - now)}
+          <Icon name="clock" /> {fmt(deadline - now)}
         </span>
       )}
       {clock &&

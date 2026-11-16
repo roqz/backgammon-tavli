@@ -196,6 +196,49 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
     progress: (c) => flag(!!c.profile?.trophies?.some((x) => x.place === 1)),
   },
+  {
+    id: "variant-master",
+    icon: "🏛️",
+    title: { de: "Variantenmeister", en: "Variant master" },
+    text: {
+      de: "Erreiche Rating 1600 in Portes, Plakoto und Fevga.",
+      en: "Reach a rating of 1600 in Portes, Plakoto and Fevga.",
+    },
+    progress: (c) =>
+      count(
+        (["portes", "plakoto", "fevga"] as const).filter((v) =>
+          c.profile?.ratings.some((r) => r.variant === v && !r.pool && r.rating >= 1600 && r.matches > 0),
+        ).length,
+        3,
+      ),
+    rare: true,
+  },
+  {
+    id: "tournament-three",
+    icon: "👑",
+    title: { de: "Turnierserie", en: "Tournament series" },
+    text: { de: "Gewinne drei Turniere.", en: "Win three tournaments." },
+    progress: (c) =>
+      count(c.me ? c.tournaments.filter((t) => t.status === "finished" && t.winner === c.me).length : 0, 3),
+    rare: true,
+  },
+  {
+    id: "veteran",
+    icon: "⏳",
+    title: { de: "Veteran", en: "Veteran" },
+    text: {
+      de: "Zwei Jahre dabei und 300 Online-Matches gespielt.",
+      en: "Two years with the game and 300 online matches played.",
+    },
+    progress: (c) => {
+      const matches = c.profile?.ratings.reduce((s, r) => s + r.matches, 0) ?? 0;
+      const since = c.profile?.since ? Date.parse(`${c.profile.since}-01T00:00:00Z`) : Date.now();
+      const old = Date.now() - since >= 730 * 24 * 60 * 60 * 1000;
+      // both conditions: without the two years it stays one short of the goal
+      return [Math.max(0, Math.min(matches, 300) - (old ? 0 : 1)), 300];
+    },
+    rare: true,
+  },
   // ---- checker sets: wins per variant (career counters, beyond the archive) ----
   {
     id: "set-pearl",

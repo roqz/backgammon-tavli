@@ -1,6 +1,7 @@
 import type { ProfileResponse } from "@tavli/protocol";
 import { type ReactNode, useEffect, useState } from "react";
 import { tokens, useCareer, weekId } from "../career";
+import { Icon } from "../components/Icon";
 import { BoardPreview } from "../components/Setup";
 import { variantShortName } from "../components/VariantPicker";
 import { type Dict, useT } from "../i18n";
@@ -119,7 +120,7 @@ export function HomeScreen({
               className="min-h-11 rounded-lg px-2 text-stone-300 hover:bg-stone-800"
               onClick={() => unqueue()}
             >
-              ✕ {t.cancel}
+              <Icon name="close" /> {t.cancel}
             </button>
           </div>
         )}
@@ -212,7 +213,11 @@ export function HomeScreen({
           </section>
         )}
         <WeekLine onClick={onShowcase} />
-        {!online && <p className="text-center text-xs text-stone-500">📴 {t.offlineHint}</p>}
+        {!online && (
+          <p className="text-center text-xs text-stone-500">
+            <Icon name="offline" /> {t.offlineHint}
+          </p>
+        )}
       </nav>
 
       {/* the board as the title picture (wide screens), always in the classic look of the app */}
@@ -634,7 +639,15 @@ export function ProfileScreen({
               <ListRow
                 icon={<Glyph d={GLYPH.heart} className="h-5 w-5 text-brass" />}
                 label={t.supportTitle}
-                detail={supporter ? `♥ ${t.supporterBadge}` : t.supportSub}
+                detail={
+                  supporter ? (
+                    <>
+                      <Icon name="heart" className="h-[1.15em] w-[1.15em] text-brass" /> {t.supporterBadge}
+                    </>
+                  ) : (
+                    t.supportSub
+                  )
+                }
                 onClick={onSupport}
               />
             </ListGroup>

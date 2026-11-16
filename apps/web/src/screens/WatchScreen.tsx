@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Board } from "../board/Board";
 import { layoutFromBoard } from "../board/layout";
 
+import { Icon } from "../components/Icon";
 import { Button } from "../components/ui";
 import { lengthText, useT } from "../i18n";
 import { stopWatching } from "../online/client";
@@ -35,7 +36,9 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
         <p className="text-stone-400">
           {lastError === "match not watchable" ? t.watchUnavailable : t.loading}
         </p>
-        <Button onClick={leave}>← {t.back}</Button>
+        <Button onClick={leave}>
+          <Icon name="back" /> {t.back}
+        </Button>
       </div>
     );
   }
@@ -46,18 +49,35 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 p-2 sm:p-4">
       <div className="flex items-center justify-between gap-2 px-1">
         <Button variant="ghost" onClick={leave} className="px-3 py-1.5 text-sm" aria-label={t.back}>
-          ← <span className="hidden sm:inline">{t.back}</span>
+          <Icon name="back" /> <span className="hidden sm:inline">{t.back}</span>
         </Button>
         <div className="min-w-0 truncate text-center text-xs text-stone-400 sm:text-sm">
-          <span className="font-semibold text-stone-200">👁 {t.watching}</span> · {rules.name} ·{" "}
-          {lengthText(t, watch.length)}
-          {watch.tournament &&
-            ` · 🏆 ${watch.tournament.name} · ${roundName(t, watch.tournament.round, watch.tournament.rounds, watch.tournament.format)}`}
+          <span className="font-semibold text-stone-200">
+            <Icon name="watch" /> {t.watching}
+          </span>{" "}
+          · {rules.name} · {lengthText(t, watch.length)}
+          {watch.tournament && (
+            <>
+              {" · "}
+              <Icon name="trophy" />{" "}
+              {`${watch.tournament.name} · ${roundName(t, watch.tournament.round, watch.tournament.rounds, watch.tournament.format)}`}
+            </>
+          )}
         </div>
         <span className="flex gap-2 text-xs text-stone-500">
-          {watch.private && <span title={t.watchPrivate}>🔒</span>}
-          {watch.delayMs > 0 && <span title={t.watchDelayHint}>⏳ {Math.round(watch.delayMs / 1000)} s</span>}
-          <span title={t.spectators}>👁 {watch.spectators}</span>
+          {watch.private && (
+            <span title={t.watchPrivate}>
+              <Icon name="lock" label={t.watchPrivate} />
+            </span>
+          )}
+          {watch.delayMs > 0 && (
+            <span title={t.watchDelayHint}>
+              <Icon name="hourglass" /> {Math.round(watch.delayMs / 1000)} s
+            </span>
+          )}
+          <span title={t.spectators}>
+            <Icon name="watch" /> {watch.spectators}
+          </span>
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2 text-sm">
@@ -95,7 +115,8 @@ export function WatchScreen({ onBack }: { onBack: () => void }) {
       <Clock deadline={watch.deadline === null ? null : watch.deadline - watch.clockOffset} />
       {watch.end && (
         <p className="rounded-lg bg-amber-400/10 px-3 py-2 text-center text-amber-200">
-          🏁 {name(watch.end.winner)} {t.winsMatch} · {watch.end.score[0]}:{watch.end.score[1]}
+          <Icon name="finish" /> {name(watch.end.winner)} {t.winsMatch} · {watch.end.score[0]}:
+          {watch.end.score[1]}
         </p>
       )}
     </div>
@@ -113,7 +134,7 @@ function Clock({ deadline }: { deadline: number | null }) {
   const s = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
   return (
     <p className="text-center font-mono text-sm tabular-nums text-stone-400">
-      ⏱ {Math.floor(s / 60)}:{String(s % 60).padStart(2, "0")}
+      <Icon name="clock" /> {Math.floor(s / 60)}:{String(s % 60).padStart(2, "0")}
     </p>
   );
 }
