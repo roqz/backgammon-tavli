@@ -261,6 +261,7 @@ export function ActionCard({
   onClick,
   badge = 0,
   dot = false,
+  status,
   compact = false,
 }: {
   icon: ReactNode;
@@ -269,6 +270,8 @@ export function ActionCard({
   onClick: () => void;
   badge?: number;
   dot?: boolean;
+  /** Small mark after the title (e.g. today's puzzle state). */
+  status?: ReactNode;
   /** Small on phones (side by side, without the detail line); full size on large screens. */
   compact?: boolean;
 }) {
@@ -294,6 +297,7 @@ export function ActionCard({
         <span className="flex items-center gap-2 text-base font-semibold text-stone-50 wide:text-lg">
           {title}
           {dot && <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden />}
+          {status}
           <CountBadge n={badge} />
         </span>
         <span className={`block text-sm text-stone-400 ${compact ? "max-lg:sr-only" : ""}`}>{detail}</span>

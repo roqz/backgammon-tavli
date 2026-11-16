@@ -400,7 +400,7 @@ const de: Record<RulesTopic, RulesChapter> = {
           "Erfolge schalten Bretter, Würfel, Steine, Rahmen und Extras frei – nur über den Erfolg selbst, nicht im Tausch.",
           "Wochenaufgaben bringen Spielmarken: 1 je Aufgabe, 2 extra, wenn alle drei einer Woche erledigt sind.",
           "Im Tausch (Profil → Vitrine) gibt es nur, was kein Erfolg freischaltet: Klangsets für Steine, Schlagen und Spielende, Würfelklänge (Filz, Bein, Marmortisch), Kurznachrichten-Pakete und drei Luxus-Looks. Klänge lassen sich vorher anhören und danach unter Einstellungen → Ton wählen.",
-          "Der Punkt beim Tagesrätsel auf der Startseite zeigt den heutigen Stand: Punkt = noch offen, grauer Kreis = versucht, grüner Haken = gelöst.",
+          "Die Markierung beim Tagesrätsel (Startseite und Offline) zeigt den heutigen Stand: Punkt = noch offen, grauer Kreis = versucht, grüner Haken = gelöst. Das Rätsel nennt seine Variante; „Regeln“ öffnet die Anleitung genau dort.",
         ],
       },
       {
@@ -772,7 +772,7 @@ const en: Record<RulesTopic, RulesChapter> = {
           "Achievements unlock boards, dice, checkers, frames and extras – only through the achievement itself, never in the exchange.",
           "Weekly tasks earn tokens: 1 per task, 2 more when all three of a week are done.",
           "The exchange (Profile → Showcase) has only what no achievement unlocks: sound sets for checkers, hits and game end, dice sounds (felt, bone, marble table), quick-message packs and three luxury looks. Sounds can be heard before and chosen afterwards under Settings → Sound.",
-          "The mark next to the daily puzzle on the start page shows today's state: dot = still open, grey circle = tried, green tick = solved.",
+          "The mark next to the daily puzzle (start page and Offline) shows today's state: dot = still open, grey circle = tried, green tick = solved. The puzzle names its variant; “Rules” opens the rule book right there.",
         ],
       },
       {

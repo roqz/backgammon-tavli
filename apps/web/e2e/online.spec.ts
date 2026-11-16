@@ -78,6 +78,26 @@ test("a player who loses the connection comes back into the running match", asyn
   expect(await alice.locator("ol li").count()).toBeGreaterThanOrEqual(2);
 });
 
+test("on a phone held sideways the quick messages stay on screen", async ({ browser }) => {
+  const alice = await onlineGuest(browser, "Ines");
+  const bob = await onlineGuest(browser, "Jonas", {
+    viewport: { width: 852, height: 393 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  await newGame(alice, "Online-Gegner");
+  await alice.getByRole("button", { name: "1", exact: true }).click();
+  await alice.getByRole("button", { name: /Freund einladen/ }).click();
+  const code = ((await alice.locator("p.font-mono").textContent()) ?? "").trim();
+  await bob.goto(`/?join=${code}`);
+  await expect(bob.getByTestId("phone-board")).toBeVisible();
+  await bob.getByRole("button", { name: "Kurznachricht" }).click();
+  const picker = bob.getByTestId("emote-picker");
+  await expect(picker).toBeInViewport({ ratio: 1 });
+  await picker.getByRole("button").last().click();
+  await expect(alice.getByRole("status").filter({ hasText: /Jonas:/ })).toBeVisible();
+});
+
 test("a guest can secure an account and log in on a second device", async ({ browser }) => {
   const first = await onlineGuest(browser, "Carla");
   const username = `carla_${Date.now().toString(36)}`;

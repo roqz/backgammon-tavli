@@ -24,6 +24,15 @@ test("daily puzzle: a move is checked and the result recorded", async ({ page })
   await expect(page.getByTestId("puzzle-status")).toHaveAttribute("data-state", "open");
   await page.getByRole("button", { name: /Tagesrätsel/ }).click();
   await expect(page.getByText(/Finde den besten Zug/)).toBeVisible({ timeout: 30_000 });
+  // the variant is named clearly, and its rules are one tap away
+  const variant = (await page.getByTestId("puzzle-variant").textContent())!.trim();
+  expect(["Backgammon", "Portes", "Plakoto", "Fevga"]).toContain(variant);
+  await page.getByRole("button", { name: /Regeln/ }).click();
+  await expect(page.getByRole("dialog").getByRole("button", { name: variant, pressed: true })).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Schließen/ })
+    .click();
   for (let i = 0; i < 4 && (await page.getByRole("button", { name: /Prüfen/ }).isDisabled()); i++)
     await tapMove(page);
   await page.getByRole("button", { name: /Prüfen/ }).click();
@@ -34,6 +43,9 @@ test("daily puzzle: a move is checked and the result recorded", async ({ page })
     .click();
   // back to the start page (the browser Back button)
   await page.goBack();
+  await expect(page.getByTestId("puzzle-status")).toHaveAttribute("data-state", /solved|tried/);
+  // the offline page shows the same mark
+  await nav(page, "Offline");
   await expect(page.getByTestId("puzzle-status")).toHaveAttribute("data-state", /solved|tried/);
 });
 

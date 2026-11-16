@@ -143,7 +143,10 @@ describe("reconcileLayout", () => {
         // a whole turn at once, as a correspondence opponent sends it
         const start = g;
         while (g.phase === "moving" && legalMoves(g).length > 0)
-          g = applyAction(g, { type: "move", move: legalMoves(g)[Math.floor(rng() * legalMoves(g).length)]! });
+          g = applyAction(g, {
+            type: "move",
+            move: legalMoves(g)[Math.floor(rng() * legalMoves(g).length)]!,
+          });
         if (g.phase === "moving") g = applyAction(g, { type: "confirm" });
         const next = reconcileLayout(layout, g.board);
         expect(layoutMatches(next, g.board)).toBe(true);

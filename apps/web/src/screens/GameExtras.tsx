@@ -13,7 +13,8 @@ import {
 } from "@tavli/engine";
 import { EMOTES, type EmoteId, REPORT_REASONS, type ReportReason } from "@tavli/protocol";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, Modal } from "../components/ui";
 import { useT } from "../i18n";
 import { reportPlayer, sendEmote } from "../online/client";
@@ -169,54 +170,89 @@ export function EmoteButton({ onSend = sendEmote }: { onSend?: (id: EmoteId) => 
   const t = useT();
   const emotes = useEmotes();
   const [open, setOpen] = useState(false);
+  /** Screen position of the list (fixed, so no container clips it); null = below the button. */
+  const [place, setPlace] = useState<CSSProperties | null>(null);
   const ref = useRef<HTMLDivElement>(null);
-  // Closes on Escape and on a click outside.
+  const list = useRef<HTMLDivElement>(null);
+  /**
+   * Opens towards the side with more room (in landscape the button sits low on the screen) and
+   * scrolls if it is still too long, so the list always stays on screen. A turned stage (CSS
+   * rotation) keeps the plain placement, since screen coordinates do not match its axes there.
+   */
+  const toggle = () => {
+    const el = ref.current;
+    if (!open && el) {
+      if (el.closest('[data-turned="true"]')) setPlace(null);
+      else {
+        const r = el.getBoundingClientRect();
+        const below = window.innerHeight - r.bottom;
+        const up = r.top > below;
+        const left = r.left + r.width / 2 < window.innerWidth / 2;
+        setPlace({
+          position: "fixed",
+          ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+          ...(left ? { left: Math.max(8, r.left) } : { right: Math.max(8, window.innerWidth - r.right) }),
+          maxHeight: Math.max(120, (up ? r.top : below) - 12),
+        });
+      }
+    }
+    setOpen((o) => !o);
+  };
+  // Closes on Escape, on a click outside and when the screen turns.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     const onDown = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!ref.current?.contains(target) && !list.current?.contains(target)) setOpen(false);
     };
+    const onResize = () => setOpen(false);
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onDown);
+    window.addEventListener("resize", onResize);
     return () => {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("resize", onResize);
     };
   }, [open]);
+  const picker = open && (
+    <div
+      ref={list}
+      data-testid="emote-picker"
+      style={place ?? undefined}
+      className={`z-50 grid gap-1 overflow-y-auto overscroll-contain rounded-xl border border-stone-700 bg-stone-900 p-2 shadow-2xl ${
+        place ? "" : "absolute right-0 top-full mt-1"
+      } ${emotes.length > EMOTES.length ? "w-[min(26rem,calc(100vw-2rem))] grid-cols-2" : "w-56 grid-cols-1"}`}
+    >
+      {emotes.map((id) => (
+        <button
+          key={id}
+          type="button"
+          className="rounded-lg px-3 py-1.5 text-left text-sm text-stone-200 hover:bg-stone-800"
+          onClick={() => {
+            onSend(id);
+            setOpen(false);
+          }}
+        >
+          {t.emote[id]}
+        </button>
+      ))}
+    </div>
+  );
   return (
     <div className="relative" ref={ref}>
       <Button
         variant="ghost"
         className="px-3 py-1.5 text-lg"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-label={t.emotes}
         aria-expanded={open}
         title={t.emotes}
       >
         💬
       </Button>
-      {open && (
-        <div
-          className={`absolute right-0 top-full z-40 mt-1 grid gap-1 rounded-xl border border-stone-700 bg-stone-900 p-2 shadow-2xl ${
-            emotes.length > EMOTES.length ? "w-[min(26rem,calc(100vw-2rem))] grid-cols-2" : "w-56 grid-cols-1"
-          }`}
-        >
-          {emotes.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className="rounded-lg px-3 py-1.5 text-left text-sm text-stone-200 hover:bg-stone-800"
-              onClick={() => {
-                onSend(id);
-                setOpen(false);
-              }}
-            >
-              {t.emote[id]}
-            </button>
-          ))}
-        </div>
-      )}
+      {picker && (place ? createPortal(picker, document.body) : picker)}
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { fetchProfile, unqueue } from "../online/client";
 import { useOnlinePlayers } from "../online/presence";
 import { useOnline } from "../online/store";
 import { type Todo, todoCount } from "../online/todo";
-import { today, usePuzzles } from "../puzzle";
+import { puzzleVariant, today, usePuzzles } from "../puzzle";
 import { useGame } from "../store/game";
 import { type PlayMode, useSettings } from "../store/settings";
 import {
@@ -451,8 +451,8 @@ export function OfflineScreen({
           <ActionCard
             icon={<Glyph d={GLYPH.puzzle} />}
             title={t.puzzle}
-            detail={PUZZLE_STATE_TEXT[puzzleToday](t)}
-            dot={puzzleToday === "open"}
+            detail={`${PUZZLE_STATE_TEXT[puzzleToday](t)} · ${variantShortName(puzzleVariant(today()))}`}
+            status={<PuzzleStatus state={puzzleToday} />}
             onClick={onPuzzle}
           />
           <ActionCard

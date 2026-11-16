@@ -91,8 +91,12 @@ export const closeContexts = async () => {
 };
 
 /** New browser context with a guest profile on the online screen. */
-export const onlineGuest = async (browser: Browser, name: string): Promise<Page> => {
-  const ctx = track(await browser.newContext({ locale: "de-DE" }));
+export const onlineGuest = async (
+  browser: Browser,
+  name: string,
+  options: Parameters<Browser["newContext"]>[0] = {},
+): Promise<Page> => {
+  const ctx = track(await browser.newContext({ locale: "de-DE", ...options }));
   const page = await ctx.newPage();
   await prepare(page);
   await page.goto("/");

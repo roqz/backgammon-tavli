@@ -8,8 +8,10 @@ import { Button, Card } from "../components/ui";
 import { useT } from "../i18n";
 import { gradePuzzle, type Puzzle, streak, today, usePuzzles } from "../puzzle";
 import { useBoardTheme } from "../rewards";
+import type { RulesTopic } from "../rules";
 import { usePortraitPhone } from "./GameScreen";
 import { useSidewaysBoardStyle } from "./PhoneGame";
+import { RulesDrawer } from "./RulesPanel";
 
 /** The puzzle of the day: find the best move; the first answer counts for the streak. */
 export function PuzzleScreen({ onBack }: { onBack: () => void }) {
@@ -25,6 +27,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<Puzzle["state"] | null>(null);
   const [graded, setGraded] = useState<{ solved: boolean; loss: number } | null>(null);
   const [showBest, setShowBest] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const results = usePuzzles((s) => s.results);
   const record = usePuzzles((s) => s.record);
   const fitted = useFittedBoardWidth(boardBox, portrait && puzzle !== null);
@@ -78,10 +81,22 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
         </span>
       </div>
       <Card className={`flex flex-col gap-1 ${portrait ? "p-3" : "p-4"}`}>
-        <p className="text-sm text-stone-400">
-          {new Date(`${date}T12:00:00`).toLocaleDateString(t.locale, { dateStyle: "full" })} ·{" "}
-          {getVariant(puzzle.variant).name}
-        </p>
+        <div className="flex items-center gap-2">
+          <span
+            className="rounded-full bg-amber-400/15 px-3 py-0.5 text-base font-semibold text-amber-200"
+            data-testid="puzzle-variant"
+          >
+            {getVariant(puzzle.variant).name}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-xs text-stone-500">
+            {new Date(`${date}T12:00:00`).toLocaleDateString(t.locale, {
+              dateStyle: portrait ? "medium" : "full",
+            })}
+          </span>
+          <Button variant="ghost" className="shrink-0 px-2 py-1 text-sm" onClick={() => setRulesOpen(true)}>
+            📖 {t.rules}
+          </Button>
+        </div>
         <p className="text-stone-100">
           {t.puzzleTask
             .replace("{color}", color)
@@ -145,6 +160,11 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
         )}
       </div>
       {!portrait && <p className="text-center text-xs text-stone-500">{t.puzzleHint}</p>}
+      <RulesDrawer
+        open={rulesOpen}
+        onClose={() => setRulesOpen(false)}
+        initial={puzzle.variant as RulesTopic}
+      />
     </div>
   );
 }

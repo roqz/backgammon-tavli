@@ -42,9 +42,15 @@ const dayNumber = (date: string) => Math.floor(Date.parse(`${date}T00:00:00Z`) /
  * strong bot plays against itself from a seed of the date; the first decision after the
  * opening with a clear best move becomes the puzzle.
  */
+/** The variant of a day's puzzle (the four main variants in turn). */
+export const puzzleVariant = (date: string): VariantId => {
+  const day = dayNumber(date);
+  return PUZZLE_VARIANTS[((day % 4) + 4) % 4]!;
+};
+
 export function generatePuzzle(date: string): Puzzle {
   const day = dayNumber(date);
-  const variant = PUZZLE_VARIANTS[((day % 4) + 4) % 4]!;
+  const variant = puzzleVariant(date);
   for (let attempt = 0; attempt < 40; attempt++) {
     const rng = seededRng(day * 7919 + attempt * 104_729);
     let s = createGame({ variant, starter: 0, cube: false });
