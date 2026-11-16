@@ -263,6 +263,22 @@ export type CareerVariant = (typeof CAREER_VARIANTS)[number];
 const counter = z.number().int().min(0).max(1_000_000);
 
 /**
+ * What one device counted itself (games played on it). Each device only ever raises its own
+ * entry, so two devices merge without loss: per device the higher value, in total the sum.
+ */
+export const DeviceCountsSchema = z.object({
+  games: counter,
+  wins: counter,
+  winsBy: z.partialRecord(z.enum(CAREER_VARIANTS), counter),
+  expertWins: counter,
+});
+export type DeviceCounts = z.infer<typeof DeviceCountsSchema>;
+/** The counts from before there were counters per device. */
+export const BASE_COUNTS = "base";
+/** Device entries kept (each install of the app is one). */
+export const DEVICES_MAX = 200;
+
+/**
  * Lasting counters that outlive the local game archive (which keeps only the latest games),
  * weekly tasks done and items taken in exchange for tokens. See docs/GAMIFICATION.md.
  */
@@ -282,6 +298,14 @@ export const CareerSchema = z.object({
     .refine((r) => Object.keys(r).length <= 160),
   /** Shop items taken in exchange for tokens. */
   owned: z.array(z.string().regex(/^[a-z0-9-]{1,40}$/)).max(80),
+  /**
+   * The counters per device (device id → counts); games, wins, winsBy and expertWins above are
+   * their sum. Missing on progress from older app versions.
+   */
+  devices: z
+    .record(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/), DeviceCountsSchema)
+    .refine((r) => Object.keys(r).length <= DEVICES_MAX)
+    .optional(),
 });
 export type Career = z.infer<typeof CareerSchema>;
 
@@ -297,26 +321,68 @@ export const EMPTY_CAREER: Career = {
   owned: [],
 };
 
-/** Two devices' careers together: counters take the higher value, lists are united. */
+const maxWinsBy = (...all: Career["winsBy"][]): Career["winsBy"] => {
+  const out: Career["winsBy"] = {};
+  for (const w of all)
+    for (const [v, n] of Object.entries(w) as [CareerVariant, number][]) out[v] = Math.max(out[v] ?? 0, n);
+  return out;
+};
+
+/** The counts of a career from before the counters per device: they become its base entry. */
+export const baseCounts = (c: Career): DeviceCounts => ({
+  games: c.games,
+  wins: c.wins,
+  winsBy: { ...c.winsBy },
+  expertWins: c.expertWins ?? 0,
+});
+
+/**
+ * Two devices' careers together. Counters per device take the higher value and add up to the
+ * totals (a total from an older app version without them still counts as a floor); lists are
+ * united.
+ */
 export const mergeCareer = (a: Career, b: Career): Career => {
-  const winsBy: Career["winsBy"] = { ...a.winsBy };
-  for (const [v, n] of Object.entries(b.winsBy) as [CareerVariant, number][])
-    winsBy[v] = Math.max(winsBy[v] ?? 0, n);
+  let devices: Career["devices"];
+  if (a.devices || b.devices) {
+    devices = {};
+    for (const d of [a.devices ?? {}, b.devices ?? {}])
+      for (const [id, n] of Object.entries(d)) {
+        const m = devices[id];
+        devices[id] = m
+          ? {
+              games: Math.max(m.games, n.games),
+              wins: Math.max(m.wins, n.wins),
+              winsBy: maxWinsBy(m.winsBy, n.winsBy),
+              expertWins: Math.max(m.expertWins, n.expertWins),
+            }
+          : n;
+      }
+  }
+  const sum: DeviceCounts = { games: 0, wins: 0, winsBy: {}, expertWins: 0 };
+  for (const n of Object.values(devices ?? {})) {
+    sum.games += n.games;
+    sum.wins += n.wins;
+    sum.expertWins += n.expertWins;
+    for (const [v, k] of Object.entries(n.winsBy) as [CareerVariant, number][])
+      sum.winsBy[v] = (sum.winsBy[v] ?? 0) + k;
+  }
+  const winsBy = maxWinsBy(a.winsBy, b.winsBy, sum.winsBy);
   const weeks: Career["weeks"] = { ...a.weeks };
   for (const [w, done] of Object.entries(b.weeks))
     weeks[w] = [...new Set([...(weeks[w] ?? []), ...done])].sort((x, y) => x - y);
   // keep about three years of weeks
   for (const w of Object.keys(weeks).sort().reverse().slice(156)) delete weeks[w];
   return {
-    games: Math.max(a.games, b.games),
-    wins: Math.max(a.wins, b.wins),
+    games: Math.max(a.games, b.games, sum.games),
+    wins: Math.max(a.wins, b.wins, sum.wins),
     winsBy,
     corrFinished: Math.max(a.corrFinished, b.corrFinished),
     leagueGames: Math.max(a.leagueGames, b.leagueGames),
-    expertWins: Math.max(a.expertWins ?? 0, b.expertWins ?? 0),
+    expertWins: Math.max(a.expertWins ?? 0, b.expertWins ?? 0, sum.expertWins),
     challenged: [...new Set([...a.challenged, ...b.challenged])].slice(0, 50),
     weeks,
     owned: [...new Set([...a.owned, ...b.owned])].slice(0, 80),
+    ...(devices ? { devices } : {}),
   };
 };
 

@@ -1,4 +1,4 @@
-import { EMPTY_CAREER } from "@tavli/protocol";
+import { EMPTY_CAREER, mergeCareer } from "@tavli/protocol";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ACHIEVEMENTS, type AchievementContext } from "./achievements";
 import {
@@ -15,6 +15,7 @@ import {
   weekRange,
   winterSeason,
 } from "./career";
+import { useOnline } from "./online/store";
 import { hasLook, REWARDS, SHOP_ONLY } from "./rewards";
 import type { GameRecord } from "./store/archive";
 
@@ -28,6 +29,8 @@ const game = (over: Partial<GameRecord> & { date: string }): GameRecord => ({
   matchLength: 3,
   result: { winner: 0, level: 1, cube: 1, points: 1, reason: "bear-off" },
   history: [],
+  // played on this device
+  device: useOnline.getState().deviceId,
   ...over,
 });
 
@@ -54,6 +57,44 @@ describe("career", () => {
     expect(useCareer.getState()).toMatchObject({ games: 2, wins: 1, winsBy: { plakoto: 1 } });
     useCareer.getState().count([game({ date: "2026-11-11T09:00:00Z", variant: "plakoto" }), ...records]);
     expect(useCareer.getState().winsBy.plakoto).toBe(2);
+  });
+
+  it("games played on two devices without a connection add up; synced games are not counted twice", () => {
+    const me = useOnline.getState().deviceId;
+    // both devices start from the same synced state (older counters as the base)
+    useCareer.setState({
+      ...EMPTY_CAREER,
+      games: 50,
+      wins: 20,
+      devices: { base: { games: 50, wins: 20, winsBy: {}, expertWins: 0 } },
+    });
+    // this device plays 3 games offline
+    const here = [1, 2, 3].map((h) => game({ date: `2026-11-12T0${h}:00:00Z` }));
+    useCareer.getState().count(here);
+    expect(useCareer.getState().games).toBe(53);
+    // meanwhile the other device played 2 (its own entry), and its games arrive with the archive
+    const other = {
+      ...EMPTY_CAREER,
+      games: 52,
+      wins: 22,
+      devices: {
+        base: { games: 50, wins: 20, winsBy: {}, expertWins: 0 },
+        "other-device": { games: 2, wins: 2, winsBy: {}, expertWins: 0 },
+      },
+    };
+    useCareer.getState().absorb(other);
+    const theirs = [4, 5].map((h) => game({ date: `2026-11-12T0${h}:00:00Z`, device: "other-device" }));
+    useCareer.getState().count([...theirs, ...here]);
+    expect(useCareer.getState()).toMatchObject({ games: 55, wins: 25 });
+    expect(useCareer.getState().devices?.[me]?.games).toBe(3);
+    // the other device gets the same totals from this one
+    const back = mergeCareer(other, {
+      ...EMPTY_CAREER,
+      games: useCareer.getState().games,
+      wins: useCareer.getState().wins,
+      devices: useCareer.getState().devices,
+    });
+    expect(back.games).toBe(55);
   });
 
   it("finds ISO weeks and their Monday", () => {

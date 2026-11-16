@@ -2,6 +2,7 @@ import type { GameResult, Player, TurnRecord, VariantId } from "@tavli/engine";
 import { ARCHIVE_MAX } from "@tavli/protocol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useOnline } from "../online/store";
 import type { PlayerInfo } from "./game";
 
 /** A finished game, kept locally for statistics and replays. */
@@ -15,6 +16,8 @@ export interface GameRecord {
   readonly matchLength: number;
   readonly result: GameResult;
   readonly history: readonly TurnRecord[];
+  /** The device it was played on (online/store deviceId): only that one counts it in the career. */
+  readonly device?: string;
   /** Set on the game that decided a match: its winner and how far each seat was behind at worst. */
   readonly matchEnd?: { readonly winner: Player; readonly maxDeficit: readonly [number, number] };
 }
@@ -39,6 +42,7 @@ export const useArchive = create<ArchiveStore>()(
           records: [
             {
               ...r,
+              device: useOnline.getState().deviceId,
               id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
               date: new Date().toISOString(),
             },

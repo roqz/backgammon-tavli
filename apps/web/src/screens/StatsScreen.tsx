@@ -1,6 +1,8 @@
 import { fromMat, getVariant, isDraw } from "@tavli/engine";
 import { useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { humanSeat } from "../bot/useBotDriver";
+import { useCareer } from "../career";
 import { Icon, type IconName } from "../components/Icon";
 import { Button, Card, Modal } from "../components/ui";
 import { useT } from "../i18n";
@@ -139,6 +141,10 @@ export function StatsScreen({
   const clear = useArchive((s) => s.clear);
   const [confirmClear, setConfirmClear] = useState(false);
   const stats = useMemo(() => computeStats(records), [records]);
+  // the lasting counters (all devices, beyond the archive's latest games)
+  const career = useCareer(useShallow((c) => ({ games: c.games, wins: c.wins })));
+  const games = Math.max(career.games, stats.total.played);
+  const wins = Math.max(career.wins, stats.total.won);
   const levelName: Record<string, string> = {
     easy: t.easy,
     medium: t.medium,
@@ -163,8 +169,8 @@ export function StatsScreen({
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              [t.vsComputer, String(stats.total.played)],
-              [t.winRate, pct(stats.total)],
+              [t.vsComputer, String(games)],
+              [t.winRate, games ? `${Math.round((100 * wins) / games)} %` : "–"],
               [t.gammons, String(stats.total.gammons)],
               [t.streak, String(stats.streak)],
             ].map(([label, value]) => (
@@ -174,6 +180,11 @@ export function StatsScreen({
               </Card>
             ))}
           </div>
+          {games > stats.total.played && (
+            <p className="text-xs text-stone-500" data-testid="stats-recent">
+              {t.statsRecent.replace("{n}", String(stats.total.played))}
+            </p>
+          )}
           <Table
             t={t}
             title={t.byOpponent}

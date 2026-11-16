@@ -8,18 +8,22 @@ import { isDraw } from "@tavli/engine";
  * profile (merged: higher counters win, lists are united).
  */
 import {
+  BASE_COUNTS,
+  baseCounts,
   CAREER_VARIANTS,
   type Career,
   type CareerVariant,
   CLUB_RANKS,
   clubPoints,
   clubRank,
+  type DeviceCounts,
   EMPTY_CAREER,
   mergeCareer,
 } from "@tavli/protocol";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { humanSeat } from "./bot/useBotDriver";
+import { useOnline } from "./online/store";
 import type { GameRecord } from "./store/archive";
 
 export { CLUB_RANKS, clubPoints, clubRank };
@@ -29,7 +33,10 @@ export { CLUB_RANKS, clubPoints, clubRank };
 interface CareerStore extends Career {
   /** Date of the newest archived game already counted ("" = none yet). */
   seen: string;
-  /** Counts archived games newer than `seen`. */
+  /**
+   * Counts archived games newer than `seen` that were played on this device (games from other
+   * devices come with the archive sync and are counted there, in their own entry).
+   */
   count: (records: readonly GameRecord[]) => void;
   /** Finished correspondence games (all, and those of a league), as listed by the server. */
   setCorr: (finished: number, league: number) => void;
@@ -50,34 +57,58 @@ const careerOf = (s: CareerStore): Career => ({
   challenged: s.challenged,
   weeks: s.weeks,
   owned: s.owned,
+  devices: s.devices,
 });
 
 export const useCareer = create<CareerStore>()(
   persist(
     (set, get) => ({
       ...EMPTY_CAREER,
+      devices: {},
       seen: "",
       count: (records) => {
         const s = get();
-        const fresh = records.filter((r) => r.date > s.seen);
+        const device = useOnline.getState().deviceId;
+        const fresh = records.filter((r) => r.date > s.seen && r.device === device);
         if (fresh.length === 0) return;
-        let { games, wins } = s;
-        let expertWins = s.expertWins ?? 0;
-        const winsBy = { ...s.winsBy };
+        const own: DeviceCounts = s.devices?.[device] ?? { games: 0, wins: 0, winsBy: {}, expertWins: 0 };
+        const add: DeviceCounts = { games: 0, wins: 0, winsBy: {}, expertWins: 0 };
         for (const r of fresh) {
           const seat = humanSeat(r.players);
           if (seat === null) continue; // two players on one device: nobody's career
-          games++;
+          add.games++;
           if (!isDraw(r.result) && r.result.winner === seat) {
-            wins++;
+            add.wins++;
             const v = r.variant as CareerVariant;
-            if (CAREER_VARIANTS.includes(v)) winsBy[v] = (winsBy[v] ?? 0) + 1;
-            if (r.players.some((p) => p.kind === "bot" && p.level === "expert")) expertWins++;
+            if (CAREER_VARIANTS.includes(v)) add.winsBy[v] = (add.winsBy[v] ?? 0) + 1;
+            if (r.players.some((p) => p.kind === "bot" && p.level === "expert")) add.expertWins++;
           }
         }
         // ISO dates sort as text: the newest one counted so far
         const seen = [s.seen, ...fresh.map((r) => r.date)].sort().at(-1) ?? s.seen;
-        set({ games, wins, winsBy, expertWins, seen });
+        if (add.games === 0) return set({ seen });
+        const winsBy = { ...s.winsBy };
+        const ownBy = { ...own.winsBy };
+        for (const [v, n] of Object.entries(add.winsBy) as [CareerVariant, number][]) {
+          winsBy[v] = (winsBy[v] ?? 0) + n;
+          ownBy[v] = (ownBy[v] ?? 0) + n;
+        }
+        set({
+          games: s.games + add.games,
+          wins: s.wins + add.wins,
+          winsBy,
+          expertWins: (s.expertWins ?? 0) + add.expertWins,
+          devices: {
+            ...s.devices,
+            [device]: {
+              games: own.games + add.games,
+              wins: own.wins + add.wins,
+              winsBy: ownBy,
+              expertWins: own.expertWins + add.expertWins,
+            },
+          },
+          seen,
+        });
       },
       setCorr: (finished, league) =>
         set((s) =>
@@ -115,8 +146,13 @@ export const useCareer = create<CareerStore>()(
     }),
     {
       name: "tavli.career",
-      version: 1,
+      version: 2,
       partialize: (s) => ({ ...careerOf(s), seen: s.seen }),
+      // version 2: counters per device; what was counted before becomes the base entry
+      migrate: (state, version) => {
+        const s = state as Career & { seen: string };
+        return version < 2 && !s.devices ? { ...s, devices: { [BASE_COUNTS]: baseCounts(s) } } : s;
+      },
     },
   ),
 );

@@ -305,7 +305,7 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 ### Vitrine, Clubrang, Wochenaufgaben ✅
 
 - Details: [`docs/GAMIFICATION.md`](GAMIFICATION.md)
-- Karriere-Zähler über das 200-Spiele-Archiv hinaus (Siege je Variante, Fernpartien, Herausforderungen), mit dem Profil zusammengeführt
+- Karriere-Zähler über das 200-Spiele-Archiv hinaus (Siege je Variante, Fernpartien, Herausforderungen), mit dem Profil zusammengeführt. Partien und Siege zählt jedes Gerät in einem eigenen Eintrag (nur die dort gespielten Partien, erkennbar am Gerät im Archiv-Eintrag); zusammengeführt wird je Gerät der höhere Wert, die Summe ist der Gesamtwert – so gehen auch parallel offline gespielte Partien nicht verloren. Die Stände von vorher sind der Eintrag „base“. Die Statistik zeigt oben diese Gesamtwerte, die Aufschlüsselung kommt aus den letzten 200 Partien
 - Clubrang (Gast bis Ehrenmitglied) aus Aktivitätspunkten, online als Abzeichen neben dem Namen
 - Varianten-Meister (Bronze/Silber/Gold je Variante, alle Gold = Intarsien-Brett), Steinsätze je Variante
 - Wochenaufgaben (3 pro ISO-Woche, für alle gleich) bringen Spielmarken; Steine, Würfel und Bretter lassen sich eintauschen, Prestige-Looks nicht
