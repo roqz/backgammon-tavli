@@ -282,7 +282,7 @@ S = bis 1 Tag, M = einige Tage, L = mehrere Wochen
 **Offen ohne Eingaben von dir:**
 
 - Play Store per TWA, Beaver/Raccoon im Geldspiel
-- Neuronales Netz: Backgammon fertig (Stufe „Experte“); Netze für Hypergammon, Portes/Tavla, Plakoto, Fevga/Narde vertagt (Rechenlast)
+- Neuronales Netz: für alle Varianten trainiert und aktiv (Stufe „Experte“, Ergebnisse in KONZEPT.md)
 - Fair-Play-Analyse auf das Netz umstellen (vertagt)
 
 **Offen mit Eingaben von dir:**

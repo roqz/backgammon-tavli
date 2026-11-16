@@ -157,7 +157,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 ### Offen in Phase 3 / Ausblick Experten-KI
 
 - ~~Gewichte per Selbstspiel~~, ~~Gammons, Match-Equity-Table~~, ~~Hinweis-Funktion~~ (erledigt)
-- ~~Neuronales Netz für Backgammon~~ (erledigt, Stufe „Experte“); Netze für die anderen Varianten vertagt; wildbg per WASM als Alternative für Backgammon
+- ~~Neuronales Netz für alle Varianten~~ (erledigt, Stufe „Experte“); wildbg per WASM als Alternative für Backgammon
 
 ### Phase 4 – Feinschliff ✅
 
@@ -348,7 +348,8 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - „Experte“ = Netz + 2-Ply-Suche wie „Stark“; Würfel- und Aufgabe-Entscheidungen ebenfalls mit dem Netz. Wo kein Netz trainiert ist, spielt „Experte“ wie „Stark“ und wird im Menü nicht angeboten
 - Partie-Analysen und Tipps nutzen das Netz; die Fair-Play-Analyse bleibt vorerst bei der kalibrierten Heuristik
 - Backgammon-Netz: 500 000 Selbstspiel-Partien, 96 versteckte Einheiten (~2 h mit 12 Threads). Experte gegen Stark ohne Würfel 39/60 Siege (65 %, +0,43 Punkte/Partie), mit Würfel 74/100. Mit Würfel eskaliert der Würfel zwischen Netz und Heuristik teils extrem (beide halten sich für Favorit) – Punkte pro Partie sind dort nicht aussagekräftig
-- Netze für Hypergammon, Portes/Tavla, Plakoto, Fevga/Narde: noch nicht trainiert (`tuning/train-rest.sh`)
+- Netze für die übrigen Varianten (`tuning/train-rest.sh`, 8 Threads): Hypergammon 300 000 Partien/48 Einheiten (9 min), Portes, Plakoto, Fevga je 200 000 Partien/80 Einheiten (43, 108, 108 min). Tavla nutzt das Portes-Netz, Narde das Fevga-Netz
+- Experte gegen Stark ohne Würfel, je 400 Partien: Hypergammon 57 % (+0,25 Punkte/Partie), Portes 68 % (+0,46), Tavla 60 % (+0,26), Plakoto 67 % (+0,60), Fevga 78 % (+0,88), Narde 82 % (+1,14) – alle aktiviert
 - Stärketest: `scripts/nn-duel.ts <variante> [partien] [gegner] [snapshot] [nocube]`
 
 ### Beaver und Raccoon, Doppler-Obergrenze ✅

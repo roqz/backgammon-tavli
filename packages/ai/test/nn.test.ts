@@ -16,10 +16,12 @@ describe("neural network evaluation", () => {
       for (let i = 0; i < net[k].length; i += 37) expect(back[k][i]).toBeCloseTo(net[k][i]!, 4);
   });
 
+  it("every variant has a trained network", () => {
+    for (const v of ["backgammon", "hypergammon", "portes", "tavla", "plakoto", "fevga", "narde"] as const)
+      expect(hasNet(v)).toBe(true);
+  });
+
   it("the trained backgammon network gives consistent chances", async () => {
-    expect(hasNet("backgammon")).toBe(true);
-    expect(hasNet("plakoto")).toBe(false);
-    expect(hasNet("hypergammon")).toBe(false);
     const net = (await loadNet("backgammon"))!;
     expect(netFor("backgammon")).toBe(net);
     const b = initialBoard(getVariant("backgammon"));
