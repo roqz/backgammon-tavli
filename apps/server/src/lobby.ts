@@ -747,17 +747,17 @@ export class Lobby {
       if (now - inv.createdAt > INVITE_TTL_MS) this.invites.delete(code);
   }
 
-  /** Ends a banned player's connection; a running match is forfeited after the grace period. */
-  /** Disconnects a banned player, or one who deleted the profile (also forfeiting a running match). */
+  /** Disconnects a banned player, or one who deleted the profile; a running match is lost at once. */
   kick(playerId: string, reason: "banned" | "deleted" = "banned"): void {
     this.removeFromQueues(playerId);
     this.removeInvites(playerId);
-    if (reason === "deleted") {
-      const room = this.roomByPlayer.get(playerId);
-      const seat = room?.seatOf(playerId);
-      if (room && seat !== null && seat !== undefined && !room.ended) room.leave(seat);
-      this.tournaments.withdrawEverywhere(playerId);
+    const room = this.roomByPlayer.get(playerId);
+    const seat = room?.seatOf(playerId);
+    if (room && seat !== null && seat !== undefined && !room.ended) {
+      if (reason === "deleted") room.leave(seat);
+      else room.abandon(seat);
     }
+    if (reason === "deleted") this.tournaments.withdrawEverywhere(playerId);
     const conn = this.connByPlayer.get(playerId);
     if (!conn) return;
     conn.send({ t: "error", message: reason });

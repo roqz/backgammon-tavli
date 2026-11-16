@@ -47,6 +47,37 @@ test("two players: invite link, play, resign, verified dice, leaderboard", async
   await expect(alice.getByText("Alice (du)")).toBeVisible();
 });
 
+test("a player who loses the connection comes back into the running match", async ({ browser }) => {
+  const alice = await onlineGuest(browser, "Alma");
+  const bob = await onlineGuest(browser, "Bruno");
+  await newGame(alice, "Online-Gegner");
+  await alice.getByRole("button", { name: "1", exact: true }).click();
+  await alice.getByRole("button", { name: /Freund einladen/ }).click();
+  const code = ((await alice.locator("p.font-mono").textContent()) ?? "").trim();
+  await bob.goto(`/?join=${code}`);
+  await expect(bob.locator("svg").first()).toBeVisible();
+
+  // network gone (e.g. a tunnel, or the phone switching networks)
+  await bob.context().setOffline(true);
+  await expect(bob.getByText(/Verbindung unterbrochen/).first()).toBeVisible();
+  await expect(alice.getByText(/Gegner getrennt/)).toBeVisible();
+  await bob.waitForTimeout(1_500);
+  await bob.context().setOffline(false);
+  await expect(bob.getByText(/Verbindung unterbrochen/)).toHaveCount(0);
+  await expect(alice.getByText(/Gegner getrennt/)).toHaveCount(0);
+
+  // and the match simply goes on
+  for (let i = 0; i < 20 && (await alice.locator("ol li").count()) < 2; i++) {
+    await tapMove(alice);
+    await tapMove(bob);
+    await alice.waitForTimeout(200);
+  }
+  await expect
+    .poll(async () => JSON.stringify(await bob.locator("ol li").allInnerTexts()))
+    .toBe(JSON.stringify(await alice.locator("ol li").allInnerTexts()));
+  expect(await alice.locator("ol li").count()).toBeGreaterThanOrEqual(2);
+});
+
 test("a guest can secure an account and log in on a second device", async ({ browser }) => {
   const first = await onlineGuest(browser, "Carla");
   const username = `carla_${Date.now().toString(36)}`;

@@ -55,7 +55,16 @@ let ws: WebSocket | null = null;
 let retry = 0;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let pingTimer: ReturnType<typeof setInterval> | null = null;
+let probeTimer: ReturnType<typeof setTimeout> | null = null;
 let wanted = false;
+/** When the server was last heard from (any message, also pongs). */
+let lastHeard = 0;
+
+const PING_MS = 10_000;
+/** Without any message for this long the connection counts as dead (e.g. after a network change). */
+const SILENT_MS = 25_000;
+/** How long the server may take to answer a ping when the app comes back to the foreground. */
+const PROBE_MS = 3_500;
 
 const set = (patch: Parameters<ReturnType<typeof useOnline.getState>["set"]>[0]) =>
   useOnline.getState().set(patch);
@@ -253,7 +262,9 @@ const onMessage = (msg: ServerMessage) => {
 
 const scheduleReconnect = () => {
   if (!wanted || retryTimer) return;
-  const delay = Math.min(15_000, 500 * 2 ** retry++);
+  // during a match every second counts: retry often instead of backing off far
+  const cap = useOnline.getState().match ? 2_000 : 15_000;
+  const delay = Math.min(cap, 500 * 2 ** retry++);
   set({ status: "reconnecting" });
   retryTimer = setTimeout(() => {
     retryTimer = null;
@@ -271,11 +282,16 @@ export const connect = (): void => {
   const socket = new WebSocket(wsUrl(serverUrl));
   ws = socket;
   socket.onopen = () => {
+    lastHeard = Date.now();
     send({ t: "hello", playerId: profile.id, token: profile.token, deviceId: useOnline.getState().deviceId });
     if (pingTimer) clearInterval(pingTimer);
-    pingTimer = setInterval(() => send({ t: "ping" }), 25_000);
+    pingTimer = setInterval(() => {
+      if (Date.now() - lastHeard > SILENT_MS) return reopen();
+      send({ t: "ping" });
+    }, PING_MS);
   };
   socket.onmessage = (e) => {
+    lastHeard = Date.now();
     try {
       onMessage(JSON.parse(e.data as string) as ServerMessage);
     } catch (err) {
@@ -283,7 +299,9 @@ export const connect = (): void => {
     }
   };
   socket.onclose = (e) => {
-    if (ws === socket) ws = null;
+    // a socket given up on before (or replaced by a newer one) no longer decides anything
+    if (ws !== socket) return;
+    ws = null;
     if (pingTimer) clearInterval(pingTimer);
     if (e.code === 4001) {
       // unknown player (e.g. server database reset): forget the profile
@@ -316,12 +334,58 @@ export const connect = (): void => {
   };
 };
 
+/**
+ * Gives up the current socket (it may be half-open: no error, but nothing arrives any more) and
+ * connects again at once. The server keeps the match while the player's time runs.
+ */
+const reopen = () => {
+  const old = ws;
+  ws = null;
+  if (pingTimer) clearInterval(pingTimer);
+  pingTimer = null;
+  old?.close();
+  if (!wanted) return;
+  retry = 0;
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = null;
+  set({ status: "reconnecting" });
+  connect();
+};
+
+/** Back in the foreground or online again: make sure the connection really works, quickly. */
+const probe = () => {
+  if (!wanted) return;
+  if (!ws || ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) return reopen();
+  if (ws.readyState !== WebSocket.OPEN || probeTimer) return;
+  const since = Date.now();
+  send({ t: "ping" });
+  probeTimer = setTimeout(() => {
+    probeTimer = null;
+    if (lastHeard < since) reopen();
+  }, PROBE_MS);
+};
+
+if (typeof window !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") probe();
+  });
+  window.addEventListener("pageshow", probe);
+  window.addEventListener("online", probe);
+  // the old socket will not survive the network change; show it and retry until it is back
+  window.addEventListener("offline", () => {
+    if (wanted) reopen();
+  });
+}
+
 export const disconnect = (): void => {
   wanted = false;
   if (retryTimer) clearTimeout(retryTimer);
   retryTimer = null;
-  ws?.close();
+  if (pingTimer) clearInterval(pingTimer);
+  pingTimer = null;
+  const old = ws;
   ws = null;
+  old?.close();
   set({ status: "offline" });
 };
 

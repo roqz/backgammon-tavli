@@ -189,7 +189,7 @@ Da der Code Open Source ist, ist eine Bezahlschranke im Client sinnlos. Sinnvoll
 - `packages/protocol`: zod-validierte Client-Nachrichten, typisierte Server-Nachrichten und REST-Typen
 - `apps/server`: autoritativer Server – würfelt kryptografisch sicher, prüft jede Aktion mit der Engine
   - Matchmaking-Warteschlange je Variante/Länge, private Einladungen per Code/Link
-  - Reconnect mit Karenzzeit (90 s), sonst Aufgabe; Zugzeit 60 s (Verdopplung 30 s), bei Ablauf zieht ein Bot, nach 3 Zeitüberschreitungen Aufgabe
+  - Reconnect mit Karenzzeit (90 s, aber nie vor dem Ende der eigenen laufenden Zugzeit bzw. Schachuhr), sonst Aufgabe; gesperrte Spieler verlieren sofort. Der Client prüft die Verbindung beim Zurückkehren in die App und bei Netzwechsel (Ping, nach 3,5 s ohne Antwort neu), erkennt stumme Verbindungen (25 s ohne Nachricht) und versucht es im Match spätestens alle 2 s neu; Zugzeit 60 s (Verdopplung 30 s), bei Ablauf zieht ein Bot, nach 3 Zeitüberschreitungen Aufgabe
   - Gast-Profile mit Token (kein Passwort), FIBS-Rating je Variante mit Erfahrungsfaktor, Rangliste, Profile, Match-Archiv – SQLite über `node:sqlite`
   - Integrationstests mit echten WebSocket-Clients
 - Web: Online-Lobby (Profil, Gegner suchen, Freund einladen, Code eingeben, Rangliste), Spiel über den Server mit denselben Animationen, Zugzeit-Uhr, Gegnerstatus, Match aufgeben, Rating-Änderung am Ende; lokale Partie bleibt während Online-Spielen erhalten

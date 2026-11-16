@@ -191,10 +191,57 @@ describe("online server", () => {
     a.send({ t: "queue", variant: "backgammon", length: 1 });
     await a.next("queued");
     b.send({ t: "queue", variant: "backgammon", length: 1 });
-    await a.next("state");
-    const end = a.next("match-end");
-    await b.close();
-    expect(await end).toMatchObject({ winner: 0, reason: "abandoned" });
+    let state = await a.next("state");
+    while (playerToAct(state.match.game) === null) state = await a.next("state");
+    // the player who is not to act: only the grace period counts for them
+    const waiting = playerToAct(state.match.game) === 0 ? 1 : 0;
+    const [away, stays] = waiting === 0 ? [a, b] : [b, a];
+    const end = stays.next("match-end");
+    await away.close();
+    expect(await end).toMatchObject({ winner: waiting === 0 ? 1 : 0, reason: "abandoned" });
+  });
+
+  it("keeps a disconnected player in the match while their own move time runs", async () => {
+    await server.close();
+    server = await start({ graceMs: 200, turnMs: 1_500 });
+    const { a, b, pa, pb } = await pair();
+    a.send({ t: "queue", variant: "backgammon", length: 1 });
+    await a.next("queued");
+    b.send({ t: "queue", variant: "backgammon", length: 1 });
+    let state = await a.next("state");
+    while (playerToAct(state.match.game) === null) state = await a.next("state");
+    const actor = playerToAct(state.match.game)!;
+    const [away, stays, who] = actor === 0 ? [a, b, pa] : [b, a, pb];
+    const notice = stays.next("opponent", (m) => !m.connected);
+    await away.close();
+    // the grace period alone would be over after 200 ms, but the move time lasts longer
+    expect((await notice).graceUntil).toBeGreaterThan(Date.now() + 800);
+    await new Promise((r) => setTimeout(r, 600));
+    expect(stays.messages.some((m) => m.t === "match-end")).toBe(false);
+    const back = await TestClient.connect(server);
+    clients.push(back);
+    const resumed = back.next("state");
+    back.send({ t: "hello", playerId: who.id, token: who.token });
+    expect(playerToAct((await resumed).match.game)).toBe(actor);
+    expect(stays.messages.some((m) => m.t === "match-end")).toBe(false);
+  });
+
+  it("lets a player who stays away lose when their move time is over", async () => {
+    await server.close();
+    server = await start({ graceMs: 200, turnMs: 800 });
+    const { a, b } = await pair();
+    a.send({ t: "queue", variant: "backgammon", length: 1 });
+    await a.next("queued");
+    b.send({ t: "queue", variant: "backgammon", length: 1 });
+    let state = await a.next("state");
+    while (playerToAct(state.match.game) === null) state = await a.next("state");
+    const actor = playerToAct(state.match.game)!;
+    const [away, stays] = actor === 0 ? [a, b] : [b, a];
+    const end = stays.next("match-end");
+    const gone = Date.now();
+    await away.close();
+    expect(await end).toMatchObject({ winner: actor === 0 ? 1 : 0, reason: "abandoned" });
+    expect(Date.now() - gone).toBeGreaterThan(400);
   });
 
   it("pairs close ratings at once and distant ratings only after waiting", async () => {

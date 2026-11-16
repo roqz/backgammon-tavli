@@ -1,6 +1,7 @@
 import { applyAction, canConfirm, getVariant, type Move } from "@tavli/engine";
-import { useEffect, useMemo, useState } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Board } from "../board/Board";
+import { HEIGHT, WIDTH } from "../board/geometry";
 import { layoutFromBoard, useFollowingLayout } from "../board/layout";
 import { askBot } from "../bot/client";
 import { Button, Card } from "../components/ui";
@@ -17,6 +18,8 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
   const portrait = usePortraitPhone();
   const boardStyle = useSidewaysBoardStyle();
   const date = useMemo(() => today(), []);
+  // phones held upright: task, board and buttons share one screen (the board cannot be scrolled)
+  const boardBox = useRef<HTMLDivElement>(null);
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [error, setError] = useState(false);
   const [state, setState] = useState<Puzzle["state"] | null>(null);
@@ -24,6 +27,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
   const [showBest, setShowBest] = useState(false);
   const results = usePuzzles((s) => s.results);
   const record = usePuzzles((s) => s.record);
+  const fitted = useFittedBoardWidth(boardBox, portrait && puzzle !== null);
 
   useEffect(() => {
     askBot({ kind: "puzzle", date })
@@ -60,7 +64,10 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
   const color = solver === 0 ? t.white : t.black;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-2 sm:p-4">
+    <div
+      className={`mx-auto flex w-full max-w-4xl flex-col p-2 sm:p-4 ${portrait ? "h-dvh gap-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "gap-3"}`}
+      data-testid="puzzle-screen"
+    >
       <div className="flex items-center gap-2 px-1">
         <Button variant="ghost" onClick={onBack} className="px-3" aria-label={t.back}>
           ←
@@ -70,7 +77,7 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
           🔥 {streak(results)}
         </span>
       </div>
-      <Card className="flex flex-col gap-1 p-4">
+      <Card className={`flex flex-col gap-1 ${portrait ? "p-3" : "p-4"}`}>
         <p className="text-sm text-stone-400">
           {new Date(`${date}T12:00:00`).toLocaleDateString(t.locale, { dateStyle: "full" })} ·{" "}
           {getVariant(puzzle.variant).name}
@@ -86,19 +93,28 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
           </p>
         )}
       </Card>
-      <div className="overflow-hidden rounded-xl shadow-2xl ring-1 ring-black/40" style={boardStyle}>
-        <Board
-          state={shownState}
-          layout={showBest ? layoutFromBoard(puzzle.state.board) : layout}
-          theme={theme}
-          interactive={!done && !graded}
-          openingDice={null}
-          numbersFor={solver}
-          viewer={solver}
-          onMoves={play}
-          hint={showBest ? puzzle.best : null}
-          rotated={portrait}
-        />
+      <div
+        ref={boardBox}
+        className={portrait ? "flex min-h-0 flex-1 items-start justify-center" : "contents"}
+      >
+        <div
+          className="overflow-hidden rounded-xl shadow-2xl ring-1 ring-black/40"
+          style={portrait ? { width: fitted ?? "100%" } : boardStyle}
+          data-testid="puzzle-board"
+        >
+          <Board
+            state={shownState}
+            layout={showBest ? layoutFromBoard(puzzle.state.board) : layout}
+            theme={theme}
+            interactive={!done && !graded}
+            openingDice={null}
+            numbersFor={solver}
+            viewer={solver}
+            onMoves={play}
+            hint={showBest ? puzzle.best : null}
+            rotated={portrait}
+          />
+        </div>
       </div>
       <div aria-live="polite" className="min-h-6 text-center">
         {graded?.solved && <p className="font-semibold text-emerald-300">✓ {t.puzzleSolved}</p>}
@@ -128,9 +144,30 @@ export function PuzzleScreen({ onBack }: { onBack: () => void }) {
           </>
         )}
       </div>
-      <p className="text-center text-xs text-stone-500">{t.puzzleHint}</p>
+      {!portrait && <p className="text-center text-xs text-stone-500">{t.puzzleHint}</p>}
     </div>
   );
+}
+
+/**
+ * Width of the upright (rotated) board so that it fills the box without getting taller than it;
+ * null until measured or when not fitting.
+ */
+function useFittedBoardWidth(box: RefObject<HTMLDivElement | null>, active: boolean): number | null {
+  const [width, setWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!active || !el) return setWidth(null);
+    const measure = () => {
+      const { width: w, height: h } = el.getBoundingClientRect();
+      setWidth(Math.floor(Math.min(w, (h * HEIGHT) / WIDTH)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [box, active]);
+  return width;
 }
 
 function Centered({ text, onBack }: { text: string; onBack: () => void }) {

@@ -123,6 +123,7 @@ describe("resignation offers, emotes and moderation", () => {
     // banning disconnects the player and keeps them out
     const b = clients[1]!;
     const kicked = b.next("error", (m) => m.message === "banned");
+    const ended = a.next("match-end", () => true, 5_000);
     await api(server, `/api/admin/players/${pb.id}/ban`, {
       method: "POST",
       headers: admin,
@@ -140,8 +141,8 @@ describe("resignation offers, emotes and moderation", () => {
         body: JSON.stringify({ name: "B" }),
       }),
     ).rejects.toThrow(/403/);
-    // the running match is forfeited after the grace period
-    const end = await a.next("match-end", () => true, 5_000);
+    // the running match is lost at once (a banned player cannot come back)
+    const end = await ended;
     expect(end.reason).toBe("abandoned");
     const board = await api<LeaderboardEntry[]>(server, "/api/leaderboard?variant=backgammon");
     expect(board.some((e) => e.playerId === pb.id)).toBe(false);

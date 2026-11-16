@@ -232,9 +232,38 @@ export class MatchRoom {
     const s = this.seats[seat];
     s.conn = null;
     if (this.ended) return;
-    s.graceUntil = Date.now() + this.deps.timings.graceMs;
+    this.armGrace(seat, Date.now() + this.deps.timings.graceMs);
+  }
+
+  /**
+   * A disconnected player loses by abandonment when the grace period is over – but never while
+   * their own move time is still running: whoever is back before their time runs out plays on.
+   */
+  private armGrace(seat: Player, until: number): void {
+    const s = this.seats[seat];
+    if (s.graceTimer) clearTimeout(s.graceTimer);
+    s.graceUntil = Math.max(until, this.ownDeadline(seat));
     this.sendTo(opponent(seat), { t: "opponent", connected: false, graceUntil: s.graceUntil });
-    s.graceTimer = setTimeout(() => this.forfeit(seat, "abandoned"), this.deps.timings.graceMs);
+    s.graceTimer = setTimeout(
+      () => {
+        s.graceTimer = null;
+        if (s.conn || this.ended) return;
+        const own = this.ownDeadline(seat);
+        if (own > Date.now()) return this.armGrace(seat, own);
+        this.forfeit(seat, "abandoned");
+      },
+      Math.max(0, s.graceUntil - Date.now()),
+    );
+  }
+
+  /** End of the seat's running move time (0 when it is not their decision). */
+  private ownDeadline(seat: Player): number {
+    return playerToAct(this.match.game) === seat && this.deadline ? this.deadline : 0;
+  }
+
+  /** The player cannot come back (banned): the match is lost by abandonment at once. */
+  abandon(seat: Player): void {
+    this.forfeit(seat, "abandoned");
   }
 
   /** The player leaves on purpose: forfeits a running match. */
@@ -375,6 +404,16 @@ export class MatchRoom {
   }
 
   private scheduleClock(): void {
+    this.armClock();
+    // a player who is away gets at least their new move time to come back
+    for (const seat of [0, 1] as const) {
+      const s = this.seats[seat];
+      if (!s.conn && s.graceTimer && this.ownDeadline(seat) > (s.graceUntil ?? 0))
+        this.armGrace(seat, this.ownDeadline(seat));
+    }
+  }
+
+  private armClock(): void {
     if (this.clock) clearTimeout(this.clock);
     this.clock = null;
     this.deadline = null;

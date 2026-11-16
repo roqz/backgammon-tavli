@@ -49,6 +49,23 @@ test.describe("portrait", () => {
   });
 });
 
+test.describe("portrait puzzle", () => {
+  test.use({ viewport: { width: 393, height: 659 } }); // iPhone 16 Pro in Safari, toolbars shown
+  test("task, board and buttons fit on one screen", async ({ page }) => {
+    await prepare(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: /Tagesrätsel/ }).click();
+    await expect(page.getByText(/Finde den besten Zug/)).toBeVisible({ timeout: 30_000 });
+    const board = (await page.getByTestId("puzzle-board").boundingBox())!;
+    expect(board.height).toBeGreaterThan(board.width); // turned by 90°
+    const scroll = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+    expect(scroll).toBeLessThanOrEqual(1);
+    await expect(page.getByRole("button", { name: /Prüfen/ })).toBeInViewport({ ratio: 1 });
+    await expect(page.getByText(/Finde den besten Zug/)).toBeInViewport();
+    expect(await tapMove(page)).toBe(true);
+  });
+});
+
 test.describe("landscape", () => {
   test.use({ viewport: { width: 844, height: 340 } });
   test("board at full height, actions on the right", async ({ page }) => {
