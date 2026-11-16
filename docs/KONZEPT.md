@@ -342,7 +342,7 @@ Die einzige aktuelle Liste; die „Offen“-Abschnitte der Phasen verweisen hier
 
 ### Eigene Icons und Prestige ✅
 
-- Eigenes SVG-Set statt Emoji (Design Doc „Tavli Icon-Set“): Bedien-Icons im 24er-Raster mit 1,75-px-Linie und `currentColor` (`components/Icon.tsx`), Rahmen als Medaillen mit Emaille, Metallring und graviertem Motiv, Raritäten mit Perlenring (`components/Medallion.tsx`), Podest-Plaketten und Clubrang-Marken. Emoji bleiben nur in Kurznachrichten, Saison- und Erfolgs-Symbolen
+- Eigenes SVG-Set statt Emoji (Design Doc „Tavli Icon-Set“): Bedien-Icons im 24er-Raster mit 1,75-px-Linie und `currentColor` (`components/Icon.tsx`), Rahmen als Medaillen mit Emaille, Metallring und graviertem Motiv, Raritäten mit Perlenring (`components/Medallion.tsx`), Podest-Plaketten und Clubrang-Marken. Erfolge als Plaketten (grünes Emaille-Sechseck, Messingrand, Motiv aus dem Icon-Set, Steinsätze in ihrer Materialfarbe, Raritäten mit Perlenring; `components/AchievementBadge.tsx`). Emoji bleiben nur in Kurznachrichten, Saison-Symbolen und Texten (Benachrichtigungen)
 - Spielerleiste: Medaille 26 px mit einmaligem Schimmer bei Raritäten (aus bei „Bewegung reduzieren“) und dem gewählten Titel in Messing darunter; Vorstellung beider Spieler beim Start eines Online-Matches (nicht nach einem Reconnect)
 - Titel unter dem Namen, wählbar aus verdienten: Turniersieger, Turnierserie, Ligameister, Variantenmeister, Aufsteiger, Veteran, Ehrenmitglied und jede gewonnene Monatswertung (`POST /api/account/title`, vom Server geprüft)
 - Neue Rahmen (vom Server geprüft): Variantenmeister, Turnierserie, Veteran; Zuschauer sehen Rahmen in der Liste laufender Partien

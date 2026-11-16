@@ -11,6 +11,7 @@ import { usePuzzles } from "../puzzle";
 import { LESSONS } from "../screens/TutorialScreen";
 import { useArchive } from "../store/archive";
 import { useSettings } from "../store/settings";
+import { AchievementBadge } from "./AchievementBadge";
 
 /**
  * Watches games, puzzles, tutorial and online profile, unlocks achievements and announces new
@@ -130,9 +131,13 @@ function AchievementToast() {
           exit={{ y: -40, opacity: 0 }}
           className="fixed inset-x-3 top-3 z-50 mx-auto flex max-w-sm items-center gap-3 rounded-xl border border-amber-400/50 bg-stone-900 px-4 py-3 text-left shadow-2xl"
         >
-          <span className="text-3xl" aria-hidden>
-            {a.icon}
-          </span>
+          {a.badge ? (
+            <AchievementBadge a={{ badge: a.badge, tint: a.tint, rare: a.rare }} size={44} />
+          ) : (
+            <span className="text-3xl" aria-hidden>
+              {a.icon}
+            </span>
+          )}
           <span>
             <span className="block text-xs uppercase tracking-wider text-amber-300">
               {t.achievementUnlocked}

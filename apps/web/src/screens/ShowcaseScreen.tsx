@@ -21,6 +21,7 @@ import {
   weekId,
   weekRange,
 } from "../career";
+import { AchievementBadge } from "../components/AchievementBadge";
 import { Icon } from "../components/Icon";
 import {
   CheckerPicker,
@@ -355,9 +356,7 @@ function Rarities() {
               className={`flex flex-col gap-2 rounded-xl border p-3 ${open ? "border-brass/60 bg-brass/10" : "border-stone-800"}`}
             >
               <div className="flex items-start gap-3">
-                <span aria-hidden className={`text-3xl ${open ? "" : "opacity-50 grayscale"}`}>
-                  {a.icon}
-                </span>
+                <AchievementBadge a={a} size={44} locked={!open} />
                 <div className="min-w-0 flex-1">
                   <div className={`font-display font-semibold ${open ? "text-brass" : "text-stone-100"}`}>
                     {a.title[lang]}

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ACHIEVEMENTS, useAchievements } from "../achievements";
 import type { THEMES } from "../board/themes";
 import { currentCareer } from "../career";
+import { AchievementBadge } from "../components/AchievementBadge";
 import { Icon } from "../components/Icon";
 import { Medallion } from "../components/Medallion";
 import { Card } from "../components/ui";
@@ -99,9 +100,7 @@ export function AchievementsPanel() {
               key={a.id}
               className={`flex gap-3 rounded-xl border p-3 ${open ? "border-amber-400/40 bg-amber-400/5" : "border-stone-800"}`}
             >
-              <span className={`text-2xl ${open ? "" : "opacity-40 grayscale"}`} aria-hidden>
-                {a.icon}
-              </span>
+              <AchievementBadge a={a} size={40} locked={!open} />
               <div className="min-w-0 flex-1">
                 <div className={open ? "font-semibold text-amber-100" : "text-stone-300"}>
                   {a.title[lang]} {open && <span className="sr-only">✓</span>}

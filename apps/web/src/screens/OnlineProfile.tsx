@@ -18,6 +18,7 @@ import {
 import { useEffect, useState } from "react";
 import { ACHIEVEMENTS } from "../achievements";
 import { AccuracyCard, percent } from "../components/Accuracy";
+import { AchievementBadge } from "../components/AchievementBadge";
 import { Icon } from "../components/Icon";
 import { Medallion, Plaque } from "../components/Medallion";
 import { FrameMedallion, PlayerName, titleText } from "../components/PlayerName";
@@ -417,7 +418,10 @@ function ShowcasePicker() {
             aria-pressed={ids.includes(a.id)}
             onClick={() => toggle(a.id)}
           >
-            {a.icon} {a.title[lang]}
+            <span className="inline-flex items-center gap-1.5">
+              <AchievementBadge a={a} size={20} />
+              {a.title[lang]}
+            </span>
           </Button>
         ))}
       </div>
@@ -991,12 +995,10 @@ export function PlayerSheet({
               {shown.map((a) => (
                 <li
                   key={a.id}
-                  className="rounded-lg border border-stone-800 bg-stone-900/70 px-3 py-2 text-sm"
+                  className="flex items-center gap-2 rounded-lg border border-stone-800 bg-stone-900/70 px-3 py-2 text-sm"
                 >
-                  <span aria-hidden className="mr-1">
-                    {a.icon}
-                  </span>
-                  <span className="text-stone-100">{a.title[lang]}</span>
+                  <AchievementBadge a={a} size={28} />
+                  <span className="min-w-0 text-stone-100">{a.title[lang]}</span>
                 </li>
               ))}
             </ul>

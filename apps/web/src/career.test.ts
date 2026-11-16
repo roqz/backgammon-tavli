@@ -220,7 +220,10 @@ describe("special moments", () => {
       ({ ...base, profile: { id: "me", name: "Me", recent: [], ratings } }) as unknown as AchievementContext;
     expect(rare("variant-master", withRatings([rated("portes", 1610), rated("plakoto", 1650)]))).toBe(false);
     expect(
-      rare("variant-master", withRatings([rated("portes", 1610), rated("plakoto", 1650), rated("fevga", 1600)])),
+      rare(
+        "variant-master",
+        withRatings([rated("portes", 1610), rated("plakoto", 1650), rated("fevga", 1600)]),
+      ),
     ).toBe(true);
   });
 
